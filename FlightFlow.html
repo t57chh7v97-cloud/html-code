@@ -522,6 +522,7 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
 <div id="mQR" class="mbg"><div class="modal"><div class="mhd"><div class="mic">📱</div><div><div class="mtl">QR Code</div><div class="mst">Scan to open on FlightAware</div></div><button class="mcl" onclick="CM('mQR')">✕</button></div><div class="mbd" style="text-align:center"><div id="qrWrap" style="display:inline-block;padding:16px;background:#fff;border-radius:16px;border:3px solid #1a1a2e;margin-bottom:12px"></div><p class="mds">Scan with your camera app to track this flight live.</p></div></div></div>
 <div id="mCmp" class="mbg"><div class="modal" style="max-width:560px"><div class="mhd"><div class="mic">⚖️</div><div><div class="mtl">Compare Flights</div><div class="mst">Side-by-side</div></div><button class="mcl" onclick="CM('mCmp')">✕</button></div><div class="mbd"><div class="ir" style="margin-bottom:12px"><input type="text" id="cmpIn" class="mi mono" placeholder="Second flight e.g. AA 101..." style="text-transform:uppercase;font-weight:600"/><button class="mp" style="flex-shrink:0;border-radius:var(--r8)" onclick="doCmp()">🔍</button></div><div id="cmpR"></div></div></div></div>
 <div id="mCal" class="mbg"><div class="modal"><div class="mhd"><div class="mic">📅</div><div><div class="mtl">Add to Calendar</div><div class="mst">Export flight as event</div></div><button class="mcl" onclick="CM('mCal')">✕</button></div><div class="mbd"><div style="display:flex;flex-direction:column;gap:10px"><button class="ms2" style="padding:14px;font-size:14px" onclick="doICal()"><span style="font-size:22px">📆</span> Download .ics — Apple and Outlook</button><button class="ms2" style="padding:14px;font-size:14px" onclick="doGCal()"><span style="font-size:22px">🗓</span> Open in Google Calendar</button></div></div></div></div>
+<div id="mMulti" class="mbg"><div class="modal" style="max-width:520px"><div class="mhd"><div class="mic">🛫</div><div><div class="mtl">Multiple Departures</div><div class="mst">This flight number flies more than once that day</div></div><button class="mcl" onclick="CM('mMulti')">✕</button></div><div class="mbd" id="multiBd"></div></div></div>
 <div id="mJL" class="mbg"><div class="modal"><div class="mhd"><div class="mic">😴</div><div><div class="mtl">Jet Lag Calculator</div><div class="mst">Visual timezone comparison and tips</div></div><button class="mcl" onclick="CM('mJL')">✕</button></div><div class="mbd" id="jlBd"></div></div></div>
 <div id="mVis" class="mbg"><div class="modal"><div class="mhd"><div class="mic">🛂</div><div><div class="mtl">Visa Requirements</div><div class="mst">Entry requirements by passport</div></div><button class="mcl" onclick="CM('mVis')">✕</button></div><div class="mbd" id="visBd"></div></div></div>
 <div id="mML" class="mbg"><div class="modal" style="max-width:560px"><div class="mhd"><div class="mic">🛫</div><div><div class="mtl">Multi-Leg Journey</div><div class="mst">Track connecting flights</div></div><button class="mcl" onclick="CM('mML')">✕</button></div><div class="mbd"><div id="mlLgs"></div><div style="display:flex;gap:8px;margin-top:10px"><button class="ms2" style="flex:1" onclick="addLg()">➕ Add leg</button><button class="mp" style="flex:2" onclick="bldML()">🗺 Build journey</button></div><div id="mlR" style="margin-top:14px"></div></div></div></div>
@@ -1473,8 +1474,10 @@ function rFDateBar(dates,selOff){
     var cls='fdchip'+(d.offset===selOff?' act':'')+(d.offset===0?' today':'')+(d.offset<0?' past':'');
     var st=d.fd?d.fd.status:'--';
     var dot=st==='Landed'?'✅':st==='Delayed'?'⚠️':st==='Cancelled'?'❌':st==='In Air'?'✈️':'📅';
-    var multi=d.all&&d.all.length>1?'<span style="font-size:9px;background:rgba(79,110,247,.2);color:var(--acc);border-radius:3px;padding:1px 4px;margin-left:2px">x'+d.all.length+'</span>':'';
-    return '<button class="'+cls+'" onclick="selDt('+d.offset+')">'
+    var isMulti=d.all&&d.all.length>1;
+    var multi=isMulti?'<span style="font-size:9px;background:rgba(79,110,247,.2);color:var(--acc);border-radius:3px;padding:1px 4px;margin-left:2px">x'+d.all.length+'</span>':'';
+    var handler=isMulti?'openMultiPicker('+d.offset+')':'selDt('+d.offset+')';
+    return '<button class="'+cls+'" onclick="'+handler+'">'
       +'<span class="fdclbl">'+d.label+'</span>'
       +'<span class="fdcdt">'+d.date.slice(5)+multi+'</span>'
       +'<span style="font-size:10px">'+dot+' '+st+'</span>'
@@ -1482,6 +1485,27 @@ function rFDateBar(dates,selOff){
   }).join('');
 }
 function selDt(offset){var d=S.fdates.find(function(x){return x.offset===offset;});if(!d||!d.fd)return;S.selDate=offset;rDash(S.parsed,d.fd);}
+// ═══ MULTIPLE DAILY DEPARTURES PICKER ═══
+function openMultiPicker(offset){
+  var d=S.fdates.find(function(x){return x.offset===offset;});
+  if(!d||!d.all||!d.all.length){selDt(offset);return;}
+  g('multiBd').innerHTML='<p class="mds">'+S.parsed.full+' operates '+d.all.length+' times on '+d.label.toLowerCase()+' ('+d.date+'). Pick the one you meant:</p>'
+    +d.all.map(function(inst,i){
+      return'<div onclick="pickMultiFlight('+offset+','+i+')" style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--s2);border:1.5px solid var(--bor);border-radius:10px;margin-bottom:8px;cursor:pointer" onmouseover="this.style.borderColor=\'var(--acc)\'" onmouseout="this.style.borderColor=\'var(--bor)\'">'
+        +'<div style="flex:1"><div style="font-size:15px;font-weight:800;color:var(--txt)">'+inst.dep+' '+inst.depTime+' '+inst.depTz+' &rarr; '+inst.arr+' '+inst.arrTime+' '+inst.arrTz+'</div><div style="font-size:12px;color:var(--t2)">'+inst.dur+' &bull; '+(inst.acName||'Unknown aircraft')+'</div></div>'
+        +'<span class="sb '+sbc(inst.status)+'" style="font-size:11px;flex-shrink:0">'+inst.status+'</span>'
+      +'</div>';
+    }).join('');
+  OM('mMulti');
+}
+function pickMultiFlight(offset,idx){
+  var d=S.fdates.find(function(x){return x.offset===offset;});
+  if(!d||!d.all||!d.all[idx])return;
+  d.fd=d.all[idx];
+  S.selDate=offset;
+  CM('mMulti');
+  rDash(S.parsed,d.fd);
+}
 
 // ═══ OPENWEATHERMAP ═══
 var wxLastAP=null;
@@ -1701,6 +1725,7 @@ function collapseHero(){
 }
 function rDash(parsed,fd){
   collapseHero();
+  S.fd=fd;
   S.curAp=fd.arr;
   var dI=AP[fd.dep]||{cy:fd.dep,n:fd.dep};
   var aI=AP[fd.arr]||{cy:fd.arr,n:fd.arr};
