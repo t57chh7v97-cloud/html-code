@@ -455,6 +455,11 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
   <div class="ir"><input type="password" id="akIn" class="mi mono" placeholder="Paste RapidAPI key here..." autocomplete="off"/><button class="icob" onclick="tPW('akIn','e1')" id="e1">👁</button></div>
   <div class="mas"><button class="ms2" onclick="clrAK()">🗑 Clear</button><button class="mp" onclick="savAK()">✓ Save and connect</button></div>
   <div class="mdv"></div>
+  <div class="msc">🛫 AviationStack — Alternative Live Flight Data</div>
+  <p class="mds">Free at <a href="https://aviationstack.com" target="_blank">aviationstack.com</a> — sign up → copy your access key from the dashboard. Only used if no AeroDataBox key is set above. <strong>Free tier only returns today's flights</strong> — other dates on the date bar still fall back to estimated schedules.</p>
+  <div class="ir"><input type="password" id="avkIn" class="mi mono" placeholder="Paste AviationStack key here..." autocomplete="off"/><button class="icob" onclick="tPW('avkIn','e3')" id="e3">👁</button></div>
+  <div class="mas"><button class="ms2" onclick="clrAVK()">🗑 Clear</button><button class="mp" onclick="savAVK()">✓ Save and connect</button></div>
+  <div class="mdv"></div>
   <div class="msc">🌤 OpenWeatherMap — Weather and Air Quality</div>
   <p class="mds">Free at <a href="https://openweathermap.org/api" target="_blank">openweathermap.org</a> — 1,000 calls/day, no CORS issues, works on Codecademy ✅</p>
   <div class="ir"><input type="password" id="wkIn" class="mi mono" placeholder="Paste OpenWeatherMap key here..." autocomplete="off"/><button class="icob" onclick="tPW('wkIn','e2')" id="e2">👁</button></div>
@@ -1166,9 +1171,12 @@ function fPP(){rPP(g('ppSrch')&&g('ppSrch').value||'');}
 function savPP(){var v=g('ppSel')&&g('ppSel').value;if(v)ls.s('ff_pp',v);}
 function getPP(){return ls.g('ff_pp')||'US';}
 function getAK(){return ls.g('ff_ak')||'';}
+function getAVK(){return ls.g('ff_avk')||'';}
 function getWK(){return ls.g('ff_wk')||'';}
 function savAK(){ls.s('ff_ak',g('akIn').value.trim());uBadge();CM('mSet');if(S.parsed)doLkp();}
 function clrAK(){ls.s('ff_ak','');if(g('akIn'))g('akIn').value='';uBadge();}
+function savAVK(){ls.s('ff_avk',g('avkIn').value.trim());uBadge();CM('mSet');if(S.parsed)doLkp();}
+function clrAVK(){ls.s('ff_avk','');if(g('avkIn'))g('avkIn').value='';uBadge();}
 function savWK(){ls.s('ff_wk',g('wkIn').value.trim());CM('mSet');if(S.fd)swxR(S.fd.arr);}
 function clrWK(){ls.s('ff_wk','');if(g('wkIn'))g('wkIn').value='';}
 function tPW(id,bid){var el=g(id),b=g(bid);if(!el)return;el.type=el.type==='password'?'text':'password';if(b)b.textContent=el.type==='password'?'👁':'🙈';}
@@ -1177,9 +1185,12 @@ function uBadge(){
   if(getAK()){
     b.innerHTML='✅ Live';b.className='nbdg lbdg';
     b.title='Live data from AeroDataBox. Click Settings to manage key.';
+  }else if(getAVK()){
+    b.innerHTML='✅ Live (today only)';b.className='nbdg lbdg';
+    b.title='Live data from AviationStack — free tier only covers today\'s flights. Click Settings to manage key.';
   }else{
     b.innerHTML='Demo mode';b.className='nbdg dbdg';
-    b.title='No API key. Click Settings to add your free AeroDataBox key.';
+    b.title='No API key. Click Settings to add a free flight-data key.';
     b.style.cursor='pointer';b.onclick=function(){OM('mSet');};
   }
 }
@@ -1295,6 +1306,58 @@ function mapLive(raw,parsed){
   var acData=acIata?ACF[acIata]:null;
   return{airline:airline,dep:depAp.iata||dep.iata||'???',arr:arrAp.iata||arr.iata||'???',status:status,depTime:dL?fmtT(dL.h,dL.min):'--',arrTime:aL?fmtT(aL.h,aL.min):'--',depTimeTag:dIsEstimated?'Estimated':'Scheduled',arrTimeTag:aIsEstimated?'Estimated':'Scheduled',depDate:dL?fmtD(dL.mo,dL.d):'',arrDate:aL?fmtD(aL.mo,aL.d):'',depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:dep.terminal||'--',arrT:arr.terminal||'--',depG:dep.gate||'--',arrG:arr.gate||'--',acName:acData?acData.n:(raw.aircraft&&raw.aircraft.model)||'Unknown',acIata:acIata,acData:acData,baggage:arr.baggageBelt?'Belt '+arr.baggageBelt:(arr.baggage||'--'),dur:dur,dlyMins:dep.delay||0,dIso:dIso,aIso:aIso,live:true,codeshare:null};
 }
+// ═══ AVIATIONSTACK (alternative provider) ═══
+// Free tier only covers today's real-time flights — no historical or future date lookups.
+function fetchFlAviationstack(iata){
+  var key=getAVK();if(!key)return Promise.resolve(null);
+  var url='https://api.aviationstack.com/v1/flights?access_key='+encodeURIComponent(key)+'&flight_iata='+encodeURIComponent(iata);
+  return fetch(url).then(function(r){return r.ok?r.json():null;}).then(function(j){return(j&&j.data&&j.data.length)?j.data:null;}).catch(function(){return null;});
+}
+function pickFlightAV(rawArr,dep,arr){
+  if(!rawArr||!rawArr.length)return null;
+  var candidates=rawArr.filter(function(r){return(r.flight_status||'').toLowerCase()!=='cancelled';});
+  if(!candidates.length)candidates=rawArr;
+  if(dep&&arr){
+    var match=candidates.find(function(r){
+      var d=(r.departure&&r.departure.iata)||'',a=(r.arrival&&r.arrival.iata)||'';
+      return d===dep&&a===arr;
+    });
+    if(match)return match;
+  }
+  return candidates[0];
+}
+function mapAviationstack(raw,parsed){
+  var dep=raw.departure||{},arr=raw.arrival||{};
+  var airline=AL[parsed.code]||{n:(raw.airline&&raw.airline.name)||parsed.code,c:'#1a1a2e'};
+  var stmap={scheduled:'Scheduled',active:'In Air',landed:'Landed',cancelled:'Cancelled',incident:'Delayed',diverted:'Delayed'};
+  var status=stmap[(raw.flight_status||'').toLowerCase()]||'Scheduled';
+  var dTz=dep.timezone||(AP[dep.iata]||{}).tz||'UTC';
+  var aTz=arr.timezone||(AP[arr.iata]||{}).tz||'UTC';
+  var dRaw=dep.estimated||dep.scheduled,aRaw=arr.estimated||arr.scheduled;
+  var dIso=dRaw?new Date(dRaw):null;var aIso=aRaw?new Date(aRaw):null;
+  if(dIso&&isNaN(dIso))dIso=null;if(aIso&&isNaN(aIso))aIso=null;
+  function localParts(dt,tz){
+    if(!dt)return null;
+    try{
+      var fmt=new Intl.DateTimeFormat('en-US',{timeZone:tz,hour:'2-digit',minute:'2-digit',hour12:false,month:'2-digit',day:'2-digit'});
+      var parts=fmt.formatToParts(dt);
+      var get=function(t){return parseInt((parts.find(function(p){return p.type===t;})||{value:'0'}).value,10);};
+      return{h:get('hour')%24,min:get('minute'),mo:get('month'),d:get('day')};
+    }catch(e){return null;}
+  }
+  var dL=localParts(dIso,dTz),aL=localParts(aIso,aTz);
+  var dur='--';
+  if(dIso&&aIso){var ms=aIso-dIso;if(ms>0&&ms<48*3600000){var mn=Math.round(ms/60000);dur=Math.floor(mn/60)+'h '+mn%60+'m';}}
+  return{airline:airline,dep:dep.iata||'???',arr:arr.iata||'???',status:status,
+    depTime:dL?fmtT(dL.h,dL.min):'--',arrTime:aL?fmtT(aL.h,aL.min):'--',
+    depTimeTag:dep.estimated&&dep.estimated!==dep.scheduled?'Estimated':'Scheduled',
+    arrTimeTag:arr.estimated&&arr.estimated!==arr.scheduled?'Estimated':'Scheduled',
+    depDate:dL?fmtD(dL.mo,dL.d):'',arrDate:aL?fmtD(aL.mo,aL.d):'',
+    depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,
+    depT:dep.terminal||'--',arrT:arr.terminal||'--',depG:dep.gate||'--',arrG:arr.gate||'--',
+    acName:(raw.aircraft&&(raw.aircraft.icao||raw.aircraft.iata))||'Unknown',acIata:null,acData:null,
+    baggage:arr.baggage||'--',dur:dur,dlyMins:dep.delay||0,dIso:dIso,aIso:aIso,live:true,codeshare:null};
+}
 // ═══ DEMO — correct UTC offset approach ═══
 function bDemo(code,num,dep,arr,offset){
   var airline=AL[code]||{n:code,c:'#1a1a2e'};
@@ -1362,19 +1425,46 @@ function localDateLabel(daysOff){
   if(iso===t)return'Today';if(iso===y)return'Yesterday';if(iso===tm)return'Tomorrow';
   return new Date(iso+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
 }
+// Fetch "today's" flight from whichever provider has a key — AeroDataBox
+// first (supports any date), else AviationStack (free tier is today-only).
+function fetchTodayFlight(parsed,dep,arr){
+  if(getAK()){
+    return fetchFl(parsed.full.replace(' ',''),null).then(function(rawArr){
+      var raw=pickFlight(rawArr,dep,arr);
+      return raw?mapLive(raw,parsed):null;
+    });
+  }
+  if(getAVK()){
+    return fetchFlAviationstack(parsed.full.replace(' ','')).then(function(rawArr){
+      var raw=pickFlightAV(rawArr,dep,arr);
+      return raw?mapAviationstack(raw,parsed):null;
+    });
+  }
+  return Promise.resolve(null);
+}
 function bldFDates(parsed,dep,arr,todayFd){
   var offsets=[-1,0,1,2,3];
   var proms=offsets.map(function(o){
     var iso=localDateStr(o),lbl=localDateLabel(o);
     var demo=bDemo(parsed.code,parsed.num,dep,arr,o);
     if(o===0&&todayFd)return Promise.resolve({offset:o,date:iso,label:lbl,fd:todayFd,all:null});
-    if(!getAK())return Promise.resolve({offset:o,date:iso,label:lbl,fd:demo,all:null});
-    return fetchFl(parsed.full.replace(' ',''),iso).then(function(rawArr){
-      var raw=pickFlight(rawArr,dep,arr);
-      var fd=raw?mapLive(raw,parsed):demo;
-      var all=rawArr&&rawArr.length>1?rawArr.map(function(r){return mapLive(r,parsed);}):null;
-      return{offset:o,date:iso,label:lbl,fd:fd,all:all};
-    });
+    if(getAK()){
+      return fetchFl(parsed.full.replace(' ',''),iso).then(function(rawArr){
+        var raw=pickFlight(rawArr,dep,arr);
+        var fd=raw?mapLive(raw,parsed):demo;
+        var all=rawArr&&rawArr.length>1?rawArr.map(function(r){return mapLive(r,parsed);}):null;
+        return{offset:o,date:iso,label:lbl,fd:fd,all:all};
+      });
+    }
+    // AviationStack's free tier only covers today — other offsets fall back to demo.
+    if(o===0&&getAVK()){
+      return fetchFlAviationstack(parsed.full.replace(' ','')).then(function(rawArr){
+        var raw=pickFlightAV(rawArr,dep,arr);
+        var fd=raw?mapAviationstack(raw,parsed):demo;
+        return{offset:o,date:iso,label:lbl,fd:fd,all:null};
+      });
+    }
+    return Promise.resolve({offset:o,date:iso,label:lbl,fd:demo,all:null});
   });
   return Promise.all(proms);
 }
@@ -1580,7 +1670,25 @@ function doWithRoutes(parsed,dep,arr,todayFd){g('dash').innerHTML='<div class="l
 // ═══ PARSE FLIGHT ═══
 function pFL(raw){var s=raw.replace(/\s+/g,'').toUpperCase();var m=s.match(/^([A-Z0-9]{2})(\d{1,5}[A-Z]?)$/);if(!m)return null;return{code:m[1],num:m[2],full:m[1]+' '+m[2]};}
 function showLd(){g('dash').innerHTML='<div class="ldc"><div class="spn"></div><div class="ldt">Fetching flight data...</div><div class="lds">Connecting to AeroDataBox</div></div>';}
-function doLkp(){var raw=g('flIn')&&g('flIn').value.trim();var parsed=pFL(raw||'');if(!parsed){g('dash').innerHTML='<div class="erm">Enter a valid flight like B6 1368 or AA 100.</div>';return;}if(!AL[parsed.code]){g('dash').innerHTML='<div class="erm">Airline code '+parsed.code+' not recognized. Check the flight number.</div>';return;}ls.s('ff_last',raw);addRc(parsed.full);S.parsed=parsed;var sr=ls.gj('ff_rt_'+parsed.full);if(sr&&sr.dep&&sr.arr){showLd();fetchFl(parsed.full.replace(' ',''),null).then(function(rawArr){var raw2=pickFlight(rawArr,sr.dep,sr.arr);var fd=raw2?mapLive(raw2,parsed):null;doWithRoutes(parsed,sr.dep,sr.arr,fd);});return;}if(getAK()){showLd();fetchFl(parsed.full.replace(' ',''),null).then(function(rawArr){var raw2=pickFlight(rawArr,null,null);if(raw2){var fd=mapLive(raw2,parsed);ls.sj('ff_rt_'+parsed.full,{dep:fd.dep,arr:fd.arr});doWithRoutes(parsed,fd.dep,fd.arr,fd);}else{showPicker(parsed);}});}else{showPicker(parsed);}}
+function doLkp(){
+  var raw=g('flIn')&&g('flIn').value.trim();var parsed=pFL(raw||'');
+  if(!parsed){g('dash').innerHTML='<div class="erm">Enter a valid flight like B6 1368 or AA 100.</div>';return;}
+  if(!AL[parsed.code]){g('dash').innerHTML='<div class="erm">Airline code '+parsed.code+' not recognized. Check the flight number.</div>';return;}
+  ls.s('ff_last',raw);addRc(parsed.full);S.parsed=parsed;
+  var sr=ls.gj('ff_rt_'+parsed.full);
+  if(sr&&sr.dep&&sr.arr){
+    showLd();
+    fetchTodayFlight(parsed,sr.dep,sr.arr).then(function(fd){doWithRoutes(parsed,sr.dep,sr.arr,fd);});
+    return;
+  }
+  if(getAK()||getAVK()){
+    showLd();
+    fetchTodayFlight(parsed,null,null).then(function(fd){
+      if(fd){ls.sj('ff_rt_'+parsed.full,{dep:fd.dep,arr:fd.arr});doWithRoutes(parsed,fd.dep,fd.arr,fd);}
+      else{showPicker(parsed);}
+    });
+  }else{showPicker(parsed);}
+}
 // ═══ LIVE ON-TIME ═══
 function fetchLiveOT(depIata){var key=getAK();if(!key)return;fetch('https://aerodatabox.p.rapidapi.com/airports/iata/'+depIata+'/stats/flights/departure?withTime=false',{headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}}).then(function(r){return r.ok?r.json():null;}).then(function(j){if(!j||j.onTimePercent==null)return;S.liveOT=Math.round(j.onTimePercent);var el=g('otStat');if(el){var pct=S.liveOT;el.style.background=pct>=85?'#dcfce7':pct>=75?'#fef9c3':'#fee2e2';el.style.color=pct>=85?'#166534':pct>=75?'#5c4400':'#991b1b';el.textContent='Live: '+pct+'% on-time';}}).catch(function(){});}
 
@@ -1600,11 +1708,12 @@ function rDash(parsed,fd){
   var dsMap={AA:'81%',DL:'84%',UA:'82%',WN:'83%',B6:'78%',AS:'86%',F9:'74%',NK:'72%',BA:'79%',LH:'82%',AF:'77%',KL:'83%',EK:'85%',QR:'88%',SQ:'91%',AC:'80%'};
   var ds=S.liveOT!=null?S.liveOT+'%':(dsMap[parsed.code]||null);
   var dstat=ds?'<span id="otStat" style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--s2);color:var(--t2);display:inline-block;margin-top:3px">'+ds+' on-time</span>':'<span id="otStat" style="font-size:11px;color:var(--tM);display:inline-block;margin-top:3px">Fetching on-time stats...</span>';
+  var provName=getAK()?'AeroDataBox':(getAVK()?'AviationStack':null);
   var livBnr=fd.live
-  ?'<div class="blive"><span class="ldot"></span>Live data via AeroDataBox &mdash; updated '+new Date().toLocaleTimeString()+'<button class="bref" onclick="doLkp()">&#x21bb; Refresh</button></div>'
-  :(getAK()
-    ?'<div class="bdemo" style="background:#fef3c7;border-color:#f59e0b">No data found for this date &mdash; showing estimated schedule. <span onclick="showPicker(S.parsed)" style="cursor:pointer;font-weight:700;text-decoration:underline">Wrong airports?</span></div>'
-    :'<div class="bdemo">No API key &mdash; showing estimated times. <a onclick="OM(&apos;mSet&apos;)" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Add AeroDataBox key in Settings</a> for live data.</div>');
+  ?'<div class="blive"><span class="ldot"></span>Live data via '+provName+' &mdash; updated '+new Date().toLocaleTimeString()+'<button class="bref" onclick="doLkp()">&#x21bb; Refresh</button></div>'
+  :(provName
+    ?'<div class="bdemo" style="background:#fef3c7;border-color:#f59e0b">No live data for this date via '+provName+' &mdash; showing estimated schedule. <span onclick="showPicker(S.parsed)" style="cursor:pointer;font-weight:700;text-decoration:underline">Wrong airports?</span></div>'
+    :'<div class="bdemo">No API key &mdash; showing estimated times. <a onclick="OM(&apos;mSet&apos;)" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Add a flight-data key in Settings</a> for live data.</div>');
   var dlyBnr=fd.dlyMins>0?'<div class="bdly">Delayed +'+fd.dlyMins+' min</div>':'';
   var kidBnr=S.kid?'<div class="bkid">Kid Mode ON - made just for you!</div>':'';
   var arrTm=offTm(fd.dIso,-120),brdTm=offTm(fd.dIso,-40);
@@ -2389,7 +2498,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var haEl=g('homeAP');if(haEl)haEl.value=ls.g('ff_home')||'';
   try{var tz=Intl.DateTimeFormat().resolvedOptions().timeZone;if(tz){S.uTz=tz;S.uCity=tz.split('/').pop().replace(/_/g,' ');}}catch(e){}
   sClk();
-  var ak=g('akIn'),wk=g('wkIn');if(ak)ak.value=getAK();if(wk)wk.value=getWK();
+  var ak=g('akIn'),avk=g('avkIn'),wk=g('wkIn');if(ak)ak.value=getAK();if(avk)avk.value=getAVK();if(wk)wk.value=getWK();
   if(ls.g('ff_nt')==='1'&&typeof Notification!=='undefined'&&Notification.permission==='granted'){S.notif=true;var b=g('ntBtn');if(b){b.textContent='On';b.classList.add('on');}}
   S.rc=ls.gj('ff_rc')||[];rRc();
   var bgs=document.querySelectorAll('.mbg');for(var i=0;i<bgs.length;i++){(function(el){el.addEventListener('click',function(e){if(e.target===el)CM(el.id);});})(bgs[i]);}
