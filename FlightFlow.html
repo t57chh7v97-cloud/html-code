@@ -1,0 +1,1770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FlightFlow — Flight Tracker & Travel Assistant</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FlightFlow">
+<meta name="theme-color" content="#1a1a2e">
+<style>
+:root{
+  --bg:#f0f2f8; --surf:#ffffff; --surf2:#f7f8fc; --bd:#e2e5f0; --bdL:#eef0f7;
+  --accent:#4f6ef7; --accentL:#eef1fe; --tx:#0f1117; --tx2:#5b6070; --txM:#9ba3b8;
+  --navbar:#1a1a2e; --navbar2:#2d2d4e; --navbar3:#3a3a6e;
+  --ok-bg:#dcfce7; --ok-tx:#166534; --warn-bg:#fef3c7; --warn-tx:#5c4400;
+  --bad-bg:#fee2e2; --bad-tx:#991b1b; --info-bg:#dbeafe; --info-tx:#1e40af;
+  --purp-bg:#ede9fe; --purp-tx:#5b21b6;
+  --sh:0 1px 4px rgba(0,0,0,.07); --shM:0 4px 16px rgba(0,0,0,.09); --shL:0 8px 32px rgba(0,0,0,.12);
+  --r8:8px; --r12:12px; --r18:18px; --r24:24px;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --ocean:#b8d8e8; --land:#c8d8a0; --landStroke:#9db07a;
+}
+[data-mode="dark"]{
+  --bg:#0f1117; --surf:#1a1a2e; --surf2:#1e2035; --bd:#2d2d4e; --bdL:#262a45;
+  --accent:#6b8eff; --accentL:#232849; --tx:#eef0f7; --tx2:#a8adc0; --txM:#6b7086;
+  --ocean:#1e3050; --land:#2d4a3e; --landStroke:#3d5f4e;
+}
+[data-theme="ocean"]{ --accent:#0284c7; --accentL:#e0f2fe; --bg:#eef7fb; --navbar3:#0369a1; }
+[data-theme="ocean"][data-mode="dark"]{ --accent:#38bdf8; --accentL:#0c2c3d; --bg:#0a1a24; --surf:#0f2836; }
+[data-theme="sunset"]{ --accent:#ea580c; --accentL:#fff1e6; --bg:#fdf6ee; --navbar:#3a2418; --navbar2:#5a3620; --navbar3:#c2410c; --bd:#f3d9bd; }
+[data-theme="sunset"][data-mode="dark"]{ --accent:#fb923c; --accentL:#3a2418; --bg:#1c130c; --surf:#2a1c10; }
+[data-theme="forest"]{ --accent:#16a34a; --accentL:#eafbf0; --bg:#f2f9f2; --navbar:#122a1a; --navbar2:#1c3f27; --navbar3:#2f6e42; --bd:#cfe8d6; }
+[data-theme="forest"][data-mode="dark"]{ --accent:#4ade80; --accentL:#122a1a; --bg:#0c1710; --surf:#122a1a; }
+[data-theme="candy"]{ --accent:#a21caf; --accentL:#faeefe; --bg:#faf3fc; --navbar:#5b1a63; --navbar2:#7c2d8f; --navbar3:#c026d3; --bd:#f0d3f5; }
+[data-theme="candy"][data-mode="dark"]{ --accent:#e879f9; --accentL:#3a1140; --bg:#1c0d1f; --surf:#2a1630; }
+[data-theme="terminal"]{ --accent:#00ff41; --accentL:#012b0c; --bg:#000; --surf:#0a0f0a; --surf2:#0d140d; --bd:#0f3d1a; --bdL:#0a2812; --tx:#00ff41; --tx2:#00b82f; --txM:#046b1c; --navbar:#000; --navbar2:#001a06; --navbar3:#012b0c; --font:var(--mono); }
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:var(--font);font-size:14px;line-height:1.4;transition:background .2s,color .2s;padding-bottom:40px}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--accent)}
+.hide{display:none!important}
+.wrap{max-width:780px;margin:0 auto;padding:0 1rem}
+
+/* NAVBAR */
+.navbar{position:sticky;top:0;z-index:40;background:linear-gradient(90deg,var(--navbar),var(--navbar2));color:#fff;box-shadow:var(--shM)}
+.navbar-in{max-width:960px;margin:0 auto;display:flex;align-items:center;gap:.6rem;padding:.6rem 1rem;overflow-x:auto}
+.brand{display:flex;align-items:center;gap:.5rem;flex-shrink:0}
+.brand-icon{width:32px;height:32px;border-radius:9px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:17px}
+.brand-name{font-weight:800;font-size:16px}
+.brand-tag{font-size:10px;opacity:.65;font-weight:500;display:block;margin-top:-2px}
+.navbar-right{display:flex;align-items:center;gap:.35rem;margin-left:auto;flex-shrink:0}
+.status-badge{font-size:11px;font-weight:600;padding:.3rem .55rem;border-radius:20px;background:rgba(255,255,255,.1);cursor:pointer;white-space:nowrap}
+.status-badge.live{background:var(--ok-bg);color:var(--ok-tx)}
+.icon-btn{width:32px;height:32px;border-radius:9px;border:none;background:rgba(255,255,255,.08);color:#fff;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.icon-btn:hover{background:rgba(255,255,255,.18)}
+
+/* WORLD CLOCK */
+.clockstrip{background:var(--surf);border-bottom:1px solid var(--bd);overflow-x:auto;white-space:nowrap}
+.clockstrip-in{display:inline-flex;gap:.4rem;padding:.5rem 1rem;max-width:960px}
+.clock-chip{display:inline-flex;flex-direction:column;align-items:center;background:var(--surf2);border-radius:var(--r8);padding:.35rem .6rem;min-width:64px;border:1px solid var(--bdL)}
+.clock-chip.me{background:var(--accentL);border-color:var(--accent)}
+.clock-chip b{font-size:12px;font-weight:800}
+.clock-chip span{font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:.3px}
+
+/* RECENTS */
+.recentbar{max-width:960px;margin:0 auto;padding:.5rem 1rem 0;display:flex;gap:.4rem;overflow-x:auto}
+.recent-chip{flex-shrink:0;background:var(--accentL);color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:.3rem .7rem;font-size:12px;font-weight:700}
+
+/* HERO */
+.hero{background:linear-gradient(135deg,var(--navbar),var(--navbar2) 55%,var(--navbar3));color:#fff;padding:2rem 1rem 2.4rem;text-align:center}
+.hero h1{font-size:26px;margin:0 0 .3rem;font-weight:800}
+.hero p{opacity:.75;margin:0 0 1.2rem;font-size:13px}
+.search-card{max-width:480px;margin:0 auto;background:var(--surf);color:var(--tx);border-radius:var(--r18);padding:1rem;box-shadow:var(--shL);display:flex;gap:.5rem}
+.search-card input{flex:1;border:1px solid var(--bd);border-radius:var(--r12);padding:.7rem .8rem;text-transform:uppercase;font-family:var(--mono);font-weight:700;letter-spacing:.5px;background:var(--surf);color:var(--tx)}
+.search-card input:focus{outline:none;border-color:var(--accent)}
+.btn-track{background:var(--accent);color:#fff;border:none;border-radius:var(--r12);padding:.7rem 1.1rem;font-weight:700;font-size:13px;white-space:nowrap}
+.hint-chips{max-width:480px;margin:.7rem auto 0;display:flex;gap:.3rem;flex-wrap:wrap;justify-content:center}
+.hint-chip{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:.25rem .6rem;font-size:11px;font-weight:600}
+
+/* DASHBOARD / CARDS */
+.dash{max-width:780px;margin:0 auto;padding:1rem}
+.card{background:var(--surf);border:1px solid var(--bd);border-radius:var(--r18);box-shadow:var(--sh);padding:1.1rem;margin-bottom:.9rem}
+.card h3{margin:0 0 .7rem;font-size:14px;font-weight:700}
+.welcome{text-align:center;padding:2.4rem 1rem}
+.welcome .emoji{font-size:44px}
+.welcome h2{margin:.6rem 0 .3rem}
+.welcome p{color:var(--tx2);font-size:13px;max-width:420px;margin:0 auto 1.2rem}
+.grid-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;max-width:420px;margin:0 auto}
+.grid-btns button{background:var(--surf2);border:1px solid var(--bd);border-radius:var(--r12);padding:.7rem .3rem;font-size:11px;font-weight:600;display:flex;flex-direction:column;gap:.25rem;align-items:center}
+.grid-btns button span:first-child{font-size:18px}
+
+.banner{border-radius:var(--r12);padding:.6rem .8rem;font-size:12px;font-weight:600;margin-bottom:.7rem;display:flex;align-items:center;gap:.5rem;justify-content:space-between}
+.banner.ok{background:var(--ok-bg);color:var(--ok-tx)}
+.banner.warn{background:var(--warn-bg);color:var(--warn-tx)}
+.banner.info{background:var(--surf2);color:var(--tx2);border:1px solid var(--bd)}
+.banner.kid{background:linear-gradient(90deg,var(--warn-bg),var(--info-bg));color:var(--tx)}
+.dot-pulse{width:7px;height:7px;border-radius:50%;background:var(--ok-tx);display:inline-block;animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.datebar{display:flex;gap:.5rem;overflow-x:auto;padding-bottom:.2rem;margin-bottom:.9rem}
+.date-chip{flex-shrink:0;min-width:92px;background:var(--surf);border:2px solid var(--bd);border-radius:var(--r12);padding:.5rem .6rem;text-align:center;cursor:pointer}
+.date-chip.today{border-color:var(--accent)}
+.date-chip.past{opacity:.5}
+.date-chip .lbl{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--tx2)}
+.date-chip .ymd{font-size:10px;color:var(--txM)}
+.date-chip .stat{font-size:16px;margin:.15rem 0}
+.date-chip .statxt{font-size:9px;color:var(--tx2)}
+.date-chip .badge2{position:absolute;margin-top:-30px;margin-left:60px;background:var(--accent);color:#fff;font-size:9px;border-radius:8px;padding:0 4px}
+
+.airline-bar{display:flex;align-items:flex-start;gap:.7rem;margin-bottom:.9rem;flex-wrap:wrap}
+.airline-sq{width:44px;height:44px;border-radius:var(--r12);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;flex-shrink:0}
+.flight-num{font-size:20px;font-weight:800;letter-spacing:1px}
+.airline-name{font-size:12px;color:var(--tx2)}
+.status-pill{font-size:11px;font-weight:700;padding:.25rem .6rem;border-radius:20px}
+.otp-stat{font-size:11px;color:var(--tx2);margin-top:.2rem}
+.action-row{display:flex;gap:.4rem;overflow-x:auto;padding-bottom:.3rem;margin-bottom:.9rem;width:100%}
+.action-btn{flex-shrink:0;background:var(--surf2);border:1px solid var(--bd);border-radius:var(--r12);padding:.5rem .65rem;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:.2rem;min-width:58px}
+.action-btn span:first-child{font-size:15px}
+
+.route-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-bottom:.9rem;gap:.5rem}
+.route-side.right{text-align:right}
+.iata{font-size:36px;font-weight:900;letter-spacing:-2px;color:var(--tx);cursor:pointer}
+.route-city{font-size:12px;color:var(--tx2)}
+.route-time{font-size:22px;font-weight:800;margin:.15rem 0}
+.route-tz{font-size:11px;font-weight:700;color:var(--accent)}
+.route-date{font-size:11px;color:var(--txM)}
+.route-now{display:inline-block;margin-top:.25rem;background:var(--surf2);border:1px solid var(--bd);border-radius:8px;padding:.1rem .4rem;font-size:10px}
+.route-mid{text-align:center;font-size:12px;color:var(--tx2)}
+.est-badge{display:inline-block;margin-top:.2rem;background:var(--warn-bg);color:var(--warn-tx);font-size:9px;font-weight:700;border-radius:6px;padding:.05rem .3rem}
+
+.info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:.9rem}
+.info-card{background:var(--surf2);border-radius:var(--r12);padding:.55rem .6rem;border-left:3px solid var(--bd)}
+.info-card.dep{border-left-color:var(--accent)}
+.info-card.arr{border-left-color:#16a34a}
+.info-card .lbl{font-size:10px;color:var(--tx2);text-transform:uppercase;letter-spacing:.3px}
+.info-card .val{font-size:13px;font-weight:700;margin-top:.1rem}
+.info-card .val.italic{font-style:italic;font-weight:500}
+
+.countdown{background:var(--accentL);border-radius:var(--r12);padding:.6rem .8rem;font-size:13px;font-weight:600;margin-bottom:.9rem}
+
+.pill{display:inline-block;font-size:11px;font-weight:700;border-radius:20px;padding:.2rem .55rem;margin:.15rem .2rem 0 0}
+.pill.yes{background:var(--ok-bg);color:var(--ok-tx)}
+.pill.no{background:var(--bad-bg);color:var(--bad-tx)}
+.pill.amber{background:var(--warn-bg);color:var(--warn-tx)}
+.pill.blue{background:var(--info-bg);color:var(--info-tx)}
+.pill.green{background:var(--ok-bg);color:var(--ok-tx)}
+
+.wx-top{display:flex;align-items:center;gap:.8rem}
+.wx-emoji{font-size:36px}
+.wx-temp{font-size:28px;font-weight:800}
+.wx-temp small{font-size:13px;font-weight:500;color:var(--tx2)}
+.wx-desc{font-size:12px;color:var(--tx2);text-transform:capitalize}
+.wx-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-top:.8rem}
+.wx-grid div{background:var(--surf2);border-radius:var(--r8);padding:.4rem .5rem;font-size:11px}
+.wx-grid b{display:block;font-size:12px}
+.aqi-bar{height:8px;border-radius:6px;background:var(--surf2);margin-top:.6rem;overflow:hidden}
+.aqi-fill{height:100%}
+.wx-foot{font-size:10px;color:var(--txM);margin-top:.5rem}
+
+.tabs{display:flex;gap:.3rem;margin-bottom:.7rem;border-bottom:1px solid var(--bd)}
+.tab{flex:1;text-align:center;padding:.5rem;font-size:12px;font-weight:700;color:var(--tx2);border:none;background:none;border-bottom:2px solid transparent}
+.tab.active{color:var(--accent);border-color:var(--accent)}
+.progress-bar{height:8px;background:var(--surf2);border-radius:6px;overflow:hidden;margin-bottom:.5rem}
+.progress-fill{height:100%;background:var(--accent)}
+.check-item{display:flex;align-items:center;gap:.55rem;padding:.4rem 0;border-bottom:1px solid var(--bdL);font-size:13px}
+.check-item input{width:16px;height:16px;flex-shrink:0}
+.check-item .cat{margin-left:auto;font-size:9px;background:var(--surf2);border-radius:6px;padding:.1rem .35rem;color:var(--tx2)}
+.transport-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.transport-grid button{background:var(--surf2);border:1px solid var(--bd);border-radius:var(--r12);padding:.6rem;font-weight:700;font-size:12px}
+
+.map-wrap{width:100%;height:220px;border-radius:var(--r12);overflow:hidden;border:1px solid var(--bd)}
+
+/* MODALS */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.hide{display:none}
+.modal{background:var(--surf);color:var(--tx);border-radius:var(--r24);max-width:500px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:var(--shL);padding:1.2rem}
+.modal h2{margin:0 0 .8rem;font-size:17px;display:flex;justify-content:space-between;align-items:center}
+.modal-close{background:var(--surf2);border:none;border-radius:50%;width:28px;height:28px;font-size:14px}
+.modal label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--tx2);margin:.7rem 0 .25rem}
+.modal input[type=text],.modal input[type=number],.modal input[type=password],.modal input[type=date],.modal select,.modal textarea{width:100%;border:1px solid var(--bd);border-radius:var(--r8);padding:.55rem .6rem;background:var(--surf);color:var(--tx)}
+.modal-section{border-top:1px solid var(--bdL);padding-top:.7rem;margin-top:.7rem}
+.btn{background:var(--accent);color:#fff;border:none;border-radius:var(--r8);padding:.55rem .9rem;font-weight:700;font-size:12px}
+.btn.sec{background:var(--surf2);color:var(--tx);border:1px solid var(--bd)}
+.row-flex{display:flex;gap:.5rem;flex-wrap:wrap}
+.small-note{font-size:11px;color:var(--tx2)}
+table.cmp{width:100%;border-collapse:collapse;font-size:12px}
+table.cmp td,table.cmp th{border-bottom:1px solid var(--bdL);padding:.4rem .3rem;text-align:left}
+kbd{background:var(--surf2);border:1px solid var(--bd);border-radius:5px;padding:.1rem .4rem;font-family:var(--mono);font-size:11px}
+
+@media(min-width:600px){
+  .dash{max-width:720px}
+  .info-grid{grid-template-columns:repeat(3,1fr)}
+  .grid-btns{grid-template-columns:repeat(3,1fr)}
+}
+@media(min-width:1024px){
+  .dash{max-width:780px}
+  .map-wrap{height:280px}
+}
+@media(min-width:1600px){
+  .dash{max-width:960px}
+  .hero h1{font-size:36px}
+  .iata{font-size:48px}
+  .route-time{font-size:28px}
+  .map-wrap{height:360px}
+}
+@media(max-width:600px){
+  .iata{font-size:26px}
+  .card{padding:1rem}
+  .map-wrap{height:200px}
+}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-in">
+    <div class="brand">
+      <div class="brand-icon">✈️</div>
+      <div><div class="brand-name">FlightFlow</div><span class="brand-tag">Global flight assistant</span></div>
+    </div>
+    <div class="navbar-right" id="navRight">
+      <div class="status-badge" id="statusBadge" onclick="openModal('settings')">Demo mode</div>
+      <button class="icon-btn" title="Saved" onclick="openModal('saved')">🔖</button>
+      <button class="icon-btn" title="History" onclick="openModal('history')">🕐</button>
+      <button class="icon-btn" title="Stats" onclick="openModal('stats')">📊</button>
+      <button class="icon-btn" title="Compare" onclick="openModal('compare')">⚖️</button>
+      <button class="icon-btn" title="Multi-leg" onclick="openModal('multileg')">🛫</button>
+      <button class="icon-btn" title="Meeting Planner" onclick="openModal('meeting')">🕐</button>
+      <button class="icon-btn" title="Bag Weight" onclick="openModal('bagweight')">⚖️</button>
+      <button class="icon-btn" title="Search Flights" onclick="openModal('routesearch')">🔍</button>
+      <button class="icon-btn" title="Travel Docs" onclick="openModal('traveldocs')">📋</button>
+      <button class="icon-btn" title="Countries" onclick="openModal('stamps')">🌍</button>
+      <button class="icon-btn" title="Bucket List" onclick="openModal('bucket')">🪣</button>
+      <button class="icon-btn" title="Shortcuts" onclick="openModal('shortcuts')">⌨️</button>
+      <button class="icon-btn" title="Feedback" onclick="openModal('feedback')">💬</button>
+      <button class="icon-btn" title="Settings" onclick="openModal('settings')">⚙️</button>
+    </div>
+  </div>
+</nav>
+
+<div class="clockstrip"><div class="clockstrip-in" id="clockStrip"></div></div>
+<div class="recentbar" id="recentBar"></div>
+
+<section class="hero">
+  <h1>Track any flight, anywhere</h1>
+  <p>Live status, weather, maps and everything you need before you fly</p>
+  <div class="search-card">
+    <input id="flightInput" placeholder="e.g. B6 1368" maxlength="8" onkeydown="if(event.key==='Enter')trackFlight()">
+    <button class="btn-track" onclick="trackFlight()">📡 Track</button>
+  </div>
+  <div class="hint-chips">
+    <span class="hint-chip">B6</span><span class="hint-chip">AA</span><span class="hint-chip">DL</span>
+    <span class="hint-chip">EK</span><span class="hint-chip">BA</span><span class="hint-chip">WN</span><span class="hint-chip">UA</span>
+  </div>
+</section>
+
+<div class="dash" id="dash"></div>
+
+<div id="modalRoot"></div>
+
+<script>
+/* ===================== DATA ===================== */
+const AIRPORTS = [
+ {c:"JFK",city:"New York",country:"USA",lat:40.64,lon:-73.78,tz:-5,cur:"USD",lang:"English",plug:"A/B"},
+ {c:"LAX",city:"Los Angeles",country:"USA",lat:33.94,lon:-118.41,tz:-8,cur:"USD",lang:"English",plug:"A/B"},
+ {c:"ORD",city:"Chicago",country:"USA",lat:41.98,lon:-87.90,tz:-6,cur:"USD",lang:"English",plug:"A/B"},
+ {c:"ATL",city:"Atlanta",country:"USA",lat:33.64,lon:-84.43,tz:-5,cur:"USD",lang:"English",plug:"A/B"},
+ {c:"DFW",city:"Dallas",country:"USA",lat:32.90,lon:-97.04,tz:-6,cur:"USD",lang:"English",plug:"A/B"},
+ {c:"SFO",city:"San Francisco",country:"USA",lat:37.62,lon:-122.38,tz:-8,cur:"USD",lang:"English",plug:"A/B"},
+ {c:"SEA",city:"Seattle",country:"USA",lat:47.45,lon:-122.31,tz:-8,cur:"USD",lang:"English",plug:"A/B"},
+ {c:"MIA",city:"Miami",country:"USA",lat:25.79,lon:-80.29,tz:-5,cur:"USD",lang:"English",plug:"A/B"},
+ {c:"BOS",city:"Boston",country:"USA",lat:42.36,lon:-71.01,tz:-5,cur:"USD",lang:"English",plug:"A/B"},
+ {c:"DEN",city:"Denver",country:"USA",lat:39.86,lon:-104.67,tz:-7,cur:"USD",lang:"English",plug:"A/B"},
+ {c:"LAS",city:"Las Vegas",country:"USA",lat:36.08,lon:-115.15,tz:-8,cur:"USD",lang:"English",plug:"A/B"},
+ {c:"PHX",city:"Phoenix",country:"USA",lat:33.43,lon:-112.01,tz:-7,cur:"USD",lang:"English",plug:"A/B"},
+ {c:"IAH",city:"Houston",country:"USA",lat:29.98,lon:-95.34,tz:-6,cur:"USD",lang:"English",plug:"A/B"},
+ {c:"EWR",city:"Newark",country:"USA",lat:40.69,lon:-74.17,tz:-5,cur:"USD",lang:"English",plug:"A/B"},
+ {c:"YYZ",city:"Toronto",country:"Canada",lat:43.68,lon:-79.63,tz:-5,cur:"CAD",lang:"English",plug:"A/B"},
+ {c:"YVR",city:"Vancouver",country:"Canada",lat:49.19,lon:-123.18,tz:-8,cur:"CAD",lang:"English",plug:"A/B"},
+ {c:"YUL",city:"Montreal",country:"Canada",lat:45.47,lon:-73.74,tz:-5,cur:"CAD",lang:"French",plug:"A/B"},
+ {c:"MEX",city:"Mexico City",country:"Mexico",lat:19.44,lon:-99.07,tz:-6,cur:"MXN",lang:"Spanish",plug:"A/B"},
+ {c:"CUN",city:"Cancún",country:"Mexico",lat:21.04,lon:-86.87,tz:-5,cur:"MXN",lang:"Spanish",plug:"A/B"},
+ {c:"GRU",city:"São Paulo",country:"Brazil",lat:-23.43,lon:-46.47,tz:-3,cur:"BRL",lang:"Portuguese",plug:"C/N"},
+ {c:"GIG",city:"Rio de Janeiro",country:"Brazil",lat:-22.81,lon:-43.25,tz:-3,cur:"BRL",lang:"Portuguese",plug:"C/N"},
+ {c:"EZE",city:"Buenos Aires",country:"Argentina",lat:-34.82,lon:-58.54,tz:-3,cur:"ARS",lang:"Spanish",plug:"C/I"},
+ {c:"SCL",city:"Santiago",country:"Chile",lat:-33.39,lon:-70.79,tz:-4,cur:"CLP",lang:"Spanish",plug:"C/L"},
+ {c:"BOG",city:"Bogotá",country:"Colombia",lat:4.70,lon:-74.15,tz:-5,cur:"COP",lang:"Spanish",plug:"A/B"},
+ {c:"LIM",city:"Lima",country:"Peru",lat:-12.02,lon:-77.11,tz:-5,cur:"PEN",lang:"Spanish",plug:"A/C"},
+ {c:"LHR",city:"London",country:"UK",lat:51.47,lon:-0.45,tz:0,cur:"GBP",lang:"English",plug:"G"},
+ {c:"CDG",city:"Paris",country:"France",lat:49.01,lon:2.55,tz:1,cur:"EUR",lang:"French",plug:"C/E"},
+ {c:"FRA",city:"Frankfurt",country:"Germany",lat:50.03,lon:8.57,tz:1,cur:"EUR",lang:"German",plug:"C/F"},
+ {c:"AMS",city:"Amsterdam",country:"Netherlands",lat:52.31,lon:4.76,tz:1,cur:"EUR",lang:"Dutch",plug:"C/F"},
+ {c:"MAD",city:"Madrid",country:"Spain",lat:40.47,lon:-3.56,tz:1,cur:"EUR",lang:"Spanish",plug:"C/F"},
+ {c:"FCO",city:"Rome",country:"Italy",lat:41.80,lon:12.24,tz:1,cur:"EUR",lang:"Italian",plug:"C/F/L"},
+ {c:"MUC",city:"Munich",country:"Germany",lat:48.35,lon:11.79,tz:1,cur:"EUR",lang:"German",plug:"C/F"},
+ {c:"ZRH",city:"Zurich",country:"Switzerland",lat:47.46,lon:8.55,tz:1,cur:"CHF",lang:"German",plug:"C/J"},
+ {c:"VIE",city:"Vienna",country:"Austria",lat:48.11,lon:16.57,tz:1,cur:"EUR",lang:"German",plug:"C/F"},
+ {c:"CPH",city:"Copenhagen",country:"Denmark",lat:55.62,lon:12.65,tz:1,cur:"DKK",lang:"Danish",plug:"C/E/F"},
+ {c:"ARN",city:"Stockholm",country:"Sweden",lat:59.65,lon:17.92,tz:1,cur:"SEK",lang:"Swedish",plug:"C/F"},
+ {c:"OSL",city:"Oslo",country:"Norway",lat:60.19,lon:11.10,tz:1,cur:"NOK",lang:"Norwegian",plug:"C/F"},
+ {c:"HEL",city:"Helsinki",country:"Finland",lat:60.32,lon:24.96,tz:2,cur:"EUR",lang:"Finnish",plug:"C/F"},
+ {c:"DUB",city:"Dublin",country:"Ireland",lat:53.43,lon:-6.27,tz:0,cur:"EUR",lang:"English",plug:"G"},
+ {c:"LIS",city:"Lisbon",country:"Portugal",lat:38.77,lon:-9.13,tz:0,cur:"EUR",lang:"Portuguese",plug:"C/F"},
+ {c:"BRU",city:"Brussels",country:"Belgium",lat:50.90,lon:4.48,tz:1,cur:"EUR",lang:"Dutch/French",plug:"C/E"},
+ {c:"WAW",city:"Warsaw",country:"Poland",lat:52.17,lon:20.97,tz:1,cur:"PLN",lang:"Polish",plug:"C/E"},
+ {c:"PRG",city:"Prague",country:"Czechia",lat:50.10,lon:14.26,tz:1,cur:"CZK",lang:"Czech",plug:"C/E"},
+ {c:"ATH",city:"Athens",country:"Greece",lat:37.94,lon:23.95,tz:2,cur:"EUR",lang:"Greek",plug:"C/F"},
+ {c:"IST",city:"Istanbul",country:"Turkey",lat:41.28,lon:28.75,tz:3,cur:"TRY",lang:"Turkish",plug:"C/F"},
+ {c:"SVO",city:"Moscow",country:"Russia",lat:55.97,lon:37.41,tz:3,cur:"RUB",lang:"Russian",plug:"C/F"},
+ {c:"DXB",city:"Dubai",country:"UAE",lat:25.25,lon:55.36,tz:4,cur:"AED",lang:"Arabic",plug:"G"},
+ {c:"AUH",city:"Abu Dhabi",country:"UAE",lat:24.43,lon:54.65,tz:4,cur:"AED",lang:"Arabic",plug:"G"},
+ {c:"DOH",city:"Doha",country:"Qatar",lat:25.27,lon:51.61,tz:3,cur:"QAR",lang:"Arabic",plug:"G"},
+ {c:"CAI",city:"Cairo",country:"Egypt",lat:30.11,lon:31.41,tz:2,cur:"EGP",lang:"Arabic",plug:"C/F"},
+ {c:"JNB",city:"Johannesburg",country:"South Africa",lat:-26.13,lon:28.24,tz:2,cur:"ZAR",lang:"English",plug:"M"},
+ {c:"CPT",city:"Cape Town",country:"South Africa",lat:-33.97,lon:18.60,tz:2,cur:"ZAR",lang:"English",plug:"M"},
+ {c:"NBO",city:"Nairobi",country:"Kenya",lat:-1.32,lon:36.93,tz:3,cur:"KES",lang:"English/Swahili",plug:"G"},
+ {c:"LOS",city:"Lagos",country:"Nigeria",lat:6.58,lon:3.32,tz:1,cur:"NGN",lang:"English",plug:"D/G"},
+ {c:"CMN",city:"Casablanca",country:"Morocco",lat:33.37,lon:-7.59,tz:1,cur:"MAD",lang:"Arabic/French",plug:"C/E"},
+ {c:"ADD",city:"Addis Ababa",country:"Ethiopia",lat:8.98,lon:38.80,tz:3,cur:"ETB",lang:"Amharic",plug:"C/F"},
+ {c:"DEL",city:"Delhi",country:"India",lat:28.56,lon:77.10,tz:5.5,cur:"INR",lang:"Hindi",plug:"C/D/M"},
+ {c:"BOM",city:"Mumbai",country:"India",lat:19.09,lon:72.87,tz:5.5,cur:"INR",lang:"Hindi",plug:"C/D/M"},
+ {c:"BLR",city:"Bengaluru",country:"India",lat:13.20,lon:77.71,tz:5.5,cur:"INR",lang:"Hindi/English",plug:"C/D/M"},
+ {c:"SIN",city:"Singapore",country:"Singapore",lat:1.36,lon:103.99,tz:8,cur:"SGD",lang:"English",plug:"G"},
+ {c:"HKG",city:"Hong Kong",country:"Hong Kong",lat:22.31,lon:113.91,tz:8,cur:"HKD",lang:"Cantonese",plug:"G"},
+ {c:"NRT",city:"Tokyo",country:"Japan",lat:35.77,lon:140.39,tz:9,cur:"JPY",lang:"Japanese",plug:"A/B"},
+ {c:"HND",city:"Tokyo",country:"Japan",lat:35.55,lon:139.78,tz:9,cur:"JPY",lang:"Japanese",plug:"A/B"},
+ {c:"KIX",city:"Osaka",country:"Japan",lat:34.43,lon:135.24,tz:9,cur:"JPY",lang:"Japanese",plug:"A/B"},
+ {c:"ICN",city:"Seoul",country:"South Korea",lat:37.46,lon:126.44,tz:9,cur:"KRW",lang:"Korean",plug:"C/F"},
+ {c:"PEK",city:"Beijing",country:"China",lat:40.08,lon:116.58,tz:8,cur:"CNY",lang:"Chinese",plug:"A/C/I"},
+ {c:"PVG",city:"Shanghai",country:"China",lat:31.14,lon:121.80,tz:8,cur:"CNY",lang:"Chinese",plug:"A/C/I"},
+ {c:"CAN",city:"Guangzhou",country:"China",lat:23.39,lon:113.30,tz:8,cur:"CNY",lang:"Chinese",plug:"A/C/I"},
+ {c:"TPE",city:"Taipei",country:"Taiwan",lat:25.08,lon:121.23,tz:8,cur:"TWD",lang:"Chinese",plug:"A/B"},
+ {c:"BKK",city:"Bangkok",country:"Thailand",lat:13.69,lon:100.75,tz:7,cur:"THB",lang:"Thai",plug:"A/B/C"},
+ {c:"KUL",city:"Kuala Lumpur",country:"Malaysia",lat:2.75,lon:101.71,tz:8,cur:"MYR",lang:"Malay",plug:"G"},
+ {c:"CGK",city:"Jakarta",country:"Indonesia",lat:-6.13,lon:106.66,tz:7,cur:"IDR",lang:"Indonesian",plug:"C/F"},
+ {c:"MNL",city:"Manila",country:"Philippines",lat:14.51,lon:121.02,tz:8,cur:"PHP",lang:"Filipino",plug:"A/B"},
+ {c:"SGN",city:"Ho Chi Minh City",country:"Vietnam",lat:10.82,lon:106.66,tz:7,cur:"VND",lang:"Vietnamese",plug:"A/C"},
+ {c:"DPS",city:"Bali",country:"Indonesia",lat:-8.75,lon:115.17,tz:8,cur:"IDR",lang:"Indonesian",plug:"C/F"},
+ {c:"SYD",city:"Sydney",country:"Australia",lat:-33.95,lon:151.18,tz:11,cur:"AUD",lang:"English",plug:"I"},
+ {c:"MEL",city:"Melbourne",country:"Australia",lat:-37.67,lon:144.84,tz:11,cur:"AUD",lang:"English",plug:"I"},
+ {c:"BNE",city:"Brisbane",country:"Australia",lat:-27.38,lon:153.12,tz:10,cur:"AUD",lang:"English",plug:"I"},
+ {c:"AKL",city:"Auckland",country:"New Zealand",lat:-37.01,lon:174.79,tz:13,cur:"NZD",lang:"English",plug:"I"},
+ {c:"HNL",city:"Honolulu",country:"USA",lat:21.32,lon:-157.92,tz:-10,cur:"USD",lang:"English",plug:"A/B"},
+ {c:"ANC",city:"Anchorage",country:"USA",lat:61.17,lon:-149.99,tz:-9,cur:"USD",lang:"English",plug:"A/B"},
+ {c:"YYC",city:"Calgary",country:"Canada",lat:51.11,lon:-114.02,tz:-7,cur:"CAD",lang:"English",plug:"A/B"},
+ {c:"TLV",city:"Tel Aviv",country:"Israel",lat:32.01,lon:34.89,tz:2,cur:"ILS",lang:"Hebrew",plug:"C/H"},
+];
+const AIRLINES = {
+ B6:{name:"JetBlue Airways",color:"#003876"}, AA:{name:"American Airlines",color:"#0078d2"},
+ DL:{name:"Delta Air Lines",color:"#003263"}, UA:{name:"United Airlines",color:"#005daa"},
+ WN:{name:"Southwest Airlines",color:"#304cb2"}, AS:{name:"Alaska Airlines",color:"#00457c"},
+ NK:{name:"Spirit Airlines",color:"#ffe00d"}, F9:{name:"Frontier Airlines",color:"#00a95c"},
+ EK:{name:"Emirates",color:"#c60c30"}, QR:{name:"Qatar Airways",color:"#5c0632"},
+ EY:{name:"Etihad Airways",color:"#bd8b13"}, BA:{name:"British Airways",color:"#075aaa"},
+ AF:{name:"Air France",color:"#002157"}, LH:{name:"Lufthansa",color:"#05164d"},
+ KL:{name:"KLM",color:"#00a1de"}, IB:{name:"Iberia",color:"#d7192d"},
+ AZ:{name:"ITA Airways",color:"#009246"}, LX:{name:"Swiss Intl",color:"#cf0000"},
+ OS:{name:"Austrian Airlines",color:"#cc0000"}, SK:{name:"SAS",color:"#003876"},
+ TP:{name:"TAP Portugal",color:"#008040"}, EI:{name:"Aer Lingus",color:"#00693e"},
+ TK:{name:"Turkish Airlines",color:"#c70a0c"}, SU:{name:"Aeroflot",color:"#00256c"},
+ SQ:{name:"Singapore Airlines",color:"#f99f1c"}, CX:{name:"Cathay Pacific",color:"#00543c"},
+ NH:{name:"ANA",color:"#00467f"}, JL:{name:"Japan Airlines",color:"#c8102e"},
+ KE:{name:"Korean Air",color:"#00256c"}, OZ:{name:"Asiana Airlines",color:"#c8102e"},
+ CA:{name:"Air China",color:"#c8161d"}, MU:{name:"China Eastern",color:"#0b3d91"},
+ CZ:{name:"China Southern",color:"#0067ac"}, CI:{name:"China Airlines",color:"#c8102e"},
+ TG:{name:"Thai Airways",color:"#4b0082"}, MH:{name:"Malaysia Airlines",color:"#006db6"},
+ GA:{name:"Garuda Indonesia",color:"#0e6537"}, PR:{name:"Philippine Airlines",color:"#002f6c"},
+ VN:{name:"Vietnam Airlines",color:"#00693e"}, QF:{name:"Qantas",color:"#e40000"},
+ VA:{name:"Virgin Australia",color:"#e30016"}, NZ:{name:"Air New Zealand",color:"#00205b"},
+ AC:{name:"Air Canada",color:"#d22730"}, WS:{name:"WestJet",color:"#003a79"},
+ AM:{name:"Aeroméxico",color:"#0b2343"}, LA:{name:"LATAM Airlines",color:"#1d1d61"},
+ AV:{name:"Avianca",color:"#e6131e"}, ET:{name:"Ethiopian Airlines",color:"#5aa62d"},
+ SA:{name:"South African Airways",color:"#003876"}, MS:{name:"EgyptAir",color:"#004b93"},
+ KQ:{name:"Kenya Airways",color:"#c8102e"},
+};
+const CLOCK_CITIES = [
+ {city:"New York",tz:-5},{city:"Los Angeles",tz:-8},{city:"Chicago",tz:-6},
+ {city:"London",tz:0},{city:"Paris",tz:1},{city:"Dubai",tz:4},
+ {city:"Mumbai",tz:5.5},{city:"Singapore",tz:8},{city:"Tokyo",tz:9},
+ {city:"Sydney",tz:11},{city:"São Paulo",tz:-3},{city:"Johannesburg",tz:2},
+];
+const COUNTRIES = ["Afghanistan","Albania","Algeria","Andorra","Angola","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Chad","Chile","China","Colombia","Comoros","Costa Rica","Croatia","Cuba","Cyprus","Czechia","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Mauritania","Mauritius","Mexico","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Samoa","San Marino","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"];
+const PHRASES = {
+ "Français":{flag:"🇫🇷",items:[["Bonjour","bohn-ZHOOR"],["Merci","mehr-SEE"],["S'il vous plaît","seel voo PLEH"],["Excusez-moi","ex-koo-zay MWAH"],["Où sont les toilettes ?","oo son lay twah-LET"],["Combien ça coûte ?","kom-bee-EN sah koot"],["Je ne comprends pas","zhuh nuh kom-prahn PAH"],["Au revoir","oh ruh-VWAHR"],["Aidez-moi","ay-day MWAH"],["Appelez une ambulance","ap-lay oon ahm-boo-LAHNS"],["Où est l'aéroport ?","oo eh lah-ay-ro-POR"],["Oui / Non","wee / non"],["Je voudrais...","zhuh voo-DREH"],["L'addition, s'il vous plaît","lah-dee-see-ON seel voo PLEH"],["Parlez-vous anglais ?","par-lay voo ahn-GLEH"]]},
+ "Español":{flag:"🇪🇸",items:[["Hola","OH-lah"],["Gracias","GRAH-see-ahs"],["Por favor","por fah-VOR"],["Perdón","per-DOHN"],["¿Dónde está el baño?","DON-deh es-TAH el BAH-nyo"],["¿Cuánto cuesta?","KWAN-toh KWES-tah"],["No entiendo","noh en-tee-EN-doh"],["Adiós","ah-dee-OHS"],["Ayúdame","ah-YOO-dah-meh"],["Llame a una ambulancia","YAH-meh ah OO-nah am-boo-LAHN-see-ah"],["¿Dónde está el aeropuerto?","DON-deh es-TAH el ah-eh-ro-PWER-toh"],["Sí / No","see / noh"],["Quisiera...","kee-see-EH-rah"],["La cuenta, por favor","lah KWEN-tah por fah-VOR"],["¿Habla inglés?","AH-blah een-GLES"]]},
+ "Deutsch":{flag:"🇩🇪",items:[["Hallo","HAH-loh"],["Danke","DAHN-kuh"],["Bitte","BIT-tuh"],["Entschuldigung","ent-SHUL-dee-gung"],["Wo ist die Toilette?","voh ist dee toy-LET-tuh"],["Wie viel kostet das?","vee feel KOS-tet das"],["Ich verstehe nicht","ihh fer-SHTAY-uh nikht"],["Auf Wiedersehen","owf VEE-der-zayn"],["Hilfe","HIL-fuh"],["Rufen Sie einen Krankenwagen","ROO-fen zee EYE-nen KRAN-ken-vah-gen"],["Wo ist der Flughafen?","voh ist dair FLOOG-hah-fen"],["Ja / Nein","yah / nine"],["Ich hätte gern...","ihh HET-tuh gairn"],["Die Rechnung, bitte","dee REKH-nung BIT-tuh"],["Sprechen Sie Englisch?","SHPREH-khen zee ENG-lish"]]},
+ "日本語":{flag:"🇯🇵",items:[["こんにちは","kon-nee-chee-wah"],["ありがとう","ah-ree-gah-toh"],["お願いします","oh-neh-gai-shee-mahs"],["すみません","soo-mee-mah-sen"],["トイレはどこですか？","toy-reh wah doh-koh des-kah"],["いくらですか？","ee-koo-rah des-kah"],["わかりません","wah-kah-ree-mah-sen"],["さようなら","sah-yoh-nah-rah"],["助けて","tas-keh-teh"],["救急車を呼んでください","kyu-kyu-sha oh yon-deh koo-dah-sai"],["空港はどこですか？","koo-koh wah doh-koh des-kah"],["はい／いいえ","hai / ee-eh"],["...をお願いします","...oh oh-neh-gai-shee-mahs"],["お会計お願いします","oh-kai-kei oh-neh-gai-shee-mahs"],["英語を話せますか？","ay-go oh hah-nah-seh-mas-kah"]]},
+ "العربية":{flag:"🇸🇦",items:[["مرحبا","MAR-ha-ba"],["شكرا","SHOOK-ran"],["من فضلك","min FAD-lak"],["عفوا","AF-wan"],["أين الحمام؟","AY-na al-ham-MAM"],["كم هذا؟","kam HA-tha"],["لا أفهم","la AF-ham"],["مع السلامة","ma-AS sa-LA-ma"],["ساعدني","SA-id-nee"],["اتصل بسيارة إسعاف","it-TA-sil bi-sa-ya-rat is-AAF"],["أين المطار؟","AY-na al-ma-TAR"],["نعم / لا","na-am / la"],["أريد...","u-REED"],["الفاتورة من فضلك","al-fa-TOO-ra min FAD-lak"],["هل تتحدث الإنجليزية؟","hal ta-ta-HAD-dath al-ing-lee-ZEE-ya"]]},
+ "Português":{flag:"🇵🇹",items:[["Olá","oh-LAH"],["Obrigado","oh-bree-GAH-doo"],["Por favor","por fah-VOR"],["Desculpe","dish-KUL-peh"],["Onde é o banheiro?","ON-jee eh oo ban-YAY-roo"],["Quanto custa?","KWAN-too KOOS-tah"],["Não entendo","now en-TEN-doo"],["Tchau","chow"],["Socorro","soh-KOH-hoo"],["Chame uma ambulância","SHAH-mee OO-mah am-boo-LAN-see-ah"],["Onde é o aeroporto?","ON-jee eh oo ah-air-oh-POR-too"],["Sim / Não","seeng / now"],["Eu gostaria de...","eh-oo gos-tah-REE-ah jee"],["A conta, por favor","ah KON-tah por fah-VOR"],["Fala inglês?","FAH-lah ing-LES"]]},
+ "中文":{flag:"🇨🇳",items:[["你好","nǐ hǎo"],["谢谢","xiè xie"],["请","qǐng"],["对不起","duì bu qǐ"],["洗手间在哪里？","xǐ shǒu jiān zài nǎ lǐ"],["多少钱？","duō shǎo qián"],["我不明白","wǒ bù míng bái"],["再见","zài jiàn"],["救命","jiù mìng"],["叫救护车","jiào jiù hù chē"],["机场在哪里？","jī chǎng zài nǎ lǐ"],["是 / 不是","shì / bú shì"],["我想要...","wǒ xiǎng yào"],["请结账","qǐng jié zhàng"],["你会说英语吗？","nǐ huì shuō yīng yǔ ma"]]},
+ "한국어":{flag:"🇰🇷",items:[["안녕하세요","an-nyeong-ha-se-yo"],["감사합니다","gam-sa-ham-ni-da"],["부탁합니다","bu-tak-ham-ni-da"],["죄송합니다","joe-song-ham-ni-da"],["화장실이 어디예요?","hwa-jang-sil-i eo-di-ye-yo"],["얼마예요?","eol-ma-ye-yo"],["이해가 안 돼요","i-hae-ga an dwae-yo"],["안녕히 가세요","an-nyeong-hi ga-se-yo"],["도와주세요","do-wa-ju-se-yo"],["구급차를 불러주세요","gu-geup-cha-reul bul-leo-ju-se-yo"],["공항이 어디예요?","gong-hang-i eo-di-ye-yo"],["네 / 아니요","ne / a-ni-yo"],["...주세요","...ju-se-yo"],["계산서 주세요","gye-san-seo ju-se-yo"],["영어 하세요?","yeong-eo ha-se-yo"]]},
+ "हिन्दी":{flag:"🇮🇳",items:[["नमस्ते","na-mas-tay"],["धन्यवाद","dhan-ya-vaad"],["कृपया","krip-ya"],["माफ़ कीजिए","maaf kee-jee-ay"],["शौचालय कहाँ है?","show-chaa-lay ka-haan hai"],["यह कितने का है?","yeh kit-ne kaa hai"],["मुझे समझ नहीं आया","mu-jhe sam-jh na-heen aa-ya"],["अलविदा","al-vi-da"],["मदद कीजिए","ma-dad kee-jee-ay"],["एम्बुलेंस बुलाओ","am-bu-lens bu-laa-oh"],["हवाई अड्डा कहाँ है?","ha-vaa-ee ad-da ka-haan hai"],["हाँ / नहीं","haan / na-heen"],["मुझे चाहिए...","mu-jhe chaa-hi-ye"],["बिल दीजिए","bil dee-jee-ay"],["क्या आप अंग्रेज़ी बोलते हैं?","kya aap an-gre-zee bol-te hain"]]},
+ "Italiano":{flag:"🇮🇹",items:[["Ciao","chow"],["Grazie","GRA-tsee-eh"],["Per favore","pehr fah-VOH-reh"],["Scusi","SKOO-zee"],["Dov'è il bagno?","doh-VEH eel BAH-nyoh"],["Quanto costa?","KWAN-toh KOS-tah"],["Non capisco","non kah-PEES-koh"],["Arrivederci","ah-ree-veh-DEHR-chee"],["Aiuto","ah-YOO-toh"],["Chiami un'ambulanza","kee-AH-mee oon am-boo-LAHN-tsah"],["Dov'è l'aeroporto?","doh-VEH lah-eh-roh-POR-toh"],["Sì / No","see / noh"],["Vorrei...","voh-RAY"],["Il conto, per favore","eel KON-toh pehr fah-VOH-reh"],["Parla inglese?","PAR-lah een-GLAY-zeh"]]},
+ "English":{flag:"🇬🇧",items:[["Hello","--"],["Thank you","--"],["Please","--"],["Excuse me","--"],["Where is the restroom?","--"],["How much does this cost?","--"],["I don't understand","--"],["Goodbye","--"],["Help me","--"],["Call an ambulance","--"],["Where is the airport?","--"],["Yes / No","--"],["I would like...","--"],["The check, please","--"],["Do you speak English?","--"]]},
+};
+const AIRCRAFT = {
+ "A320neo":{best:"Row 1 (extra legroom, but near lavatory noise). Row 11-12 exit row.",worst:"Last 3 rows (near lavatories, less recline).",tip:"Seat 1A/1F is quietest — furthest from galley chatter."},
+ "A321neo":{best:"Exit rows 15-16 for legroom.",worst:"Row 27+ near rear galley and lavs.",tip:"Window seats in rows 3-9 avoid wing view blockage."},
+ "737-800":{best:"Row 1 bulkhead or exit row 16.",worst:"Row 30-31 (recline restricted, near lav).",tip:"Row 12 has extra width due to the wing box."},
+ "737 MAX 8":{best:"Exit row 15 — most legroom on the plane.",worst:"Last 3 rows — narrower due to redesigned rear lav.",tip:"Overhead bins are larger — good for late boarders."},
+ "787-9":{best:"Row 20-21 (Economy Plus, quiet zone).",worst:"Rows directly behind premium cabin (galley noise).",tip:"Window shades are electrochromic — no sudden light changes."},
+ "777-300ER":{best:"Bulkhead rows in each cabin zone.",worst:"Middle 4-seat sections in the back third.",tip:"9-abreast configs are tighter — check seat map before booking."},
+ "A380":{best:"Upper deck — quieter, smoother ride, less engine noise.",worst:"Rows near stairs/galleys on main deck.",tip:"Upper deck window seats rarely have wing obstruction."},
+ "A350-900":{best:"Row 20 exit row — extra recline and width.",worst:"Rows near the rear galley bank.",tip:"Cabin humidity and pressure are more comfortable than older jets."},
+ "A330-300":{best:"Bulkhead 2-4-2 rows for couples in the middle pair.",worst:"Rows behind lavatory banks mid-cabin.",tip:"2-4-2 layout means fewer people to climb over for aisle seats."},
+ "E175":{best:"Row 1 for legroom on this regional jet.",worst:"Last row — no recline, near lav.",tip:"2-2 seating means no middle seats — every seat is window or aisle."},
+};
+const LAYOVER = {
+ LHR:{name:"London",things:["Windsor Castle day trip","Heathrow Terminal 5 shopping","The Ivy at St Pancras","Kew Gardens","Camden Market"],dist:"15 mi to central London",transit:"Heathrow Express 15 min, £25 one-way"},
+ CDG:{name:"Paris",things:["Louvre quick visit","Champs-Élysées walk","Montmartre & Sacré-Cœur","Seine river cruise","Le Marais district"],dist:"14 mi to central Paris",transit:"RER B train 35 min, €11.80"},
+ FRA:{name:"Frankfurt",things:["Römerberg old town square","Main Tower observation deck","Städel Museum","Palmengarten","Apple wine in Sachsenhausen"],dist:"7 mi to city center",transit:"S-Bahn 11 min, €5.35"},
+ AMS:{name:"Amsterdam",things:["Canal ring walk","Rijksmuseum","Vondelpark","Jordaan neighborhood","Cheese tasting"],dist:"9 mi to city center",transit:"Train 17 min, €5.60"},
+ DXB:{name:"Dubai",things:["Burj Khalifa observation deck","Dubai Mall & fountain show","Gold Souk","Desert safari (half day)","Jumeirah Beach"],dist:"3 mi to downtown",transit:"Metro 20 min, ~AED 8"},
+ SIN:{name:"Singapore",things:["Gardens by the Bay","Free airport transit tour (if eligible)","Marina Bay Sands SkyPark","Chinatown food street","Jewel Changi indoor waterfall"],dist:"12 mi to downtown",transit:"MRT 30 min, ~SGD 2.50"},
+ HKG:{name:"Hong Kong",things:["Victoria Peak tram","Star Ferry harbor crossing","Temple Street Night Market","Big Buddha (Lantau)","Dim sum crawl"],dist:"21 mi to downtown",transit:"Airport Express 24 min, HKD 115"},
+ NRT:{name:"Tokyo",things:["Senso-ji Temple, Asakusa","Shibuya Crossing","Tsukiji Outer Market food tour","Ueno Park","teamLab digital art (Odaiba)"],dist:"37 mi to central Tokyo",transit:"Narita Express 60 min, ¥3,270"},
+ ICN:{name:"Seoul",things:["Free airport transit tour desk in Terminal 1","Gyeongbokgung Palace","Myeongdong street food","Hongdae nightlife district","Han River park"],dist:"32 mi to downtown",transit:"AREX express 43 min, ₩9,500"},
+ SYD:{name:"Sydney",things:["Sydney Opera House walk","Bondi Beach","Harbour Bridge climb (advance booking)","The Rocks historic district","Darling Harbour"],dist:"5 mi to downtown",transit:"Train 13 min, ~AUD 19"},
+ YYZ:{name:"Toronto",things:["CN Tower","Kensington Market","Distillery District","St. Lawrence Market","Toronto Islands ferry"],dist:"14 mi to downtown",transit:"UP Express 25 min, CAD 12.35"},
+ DOH:{name:"Doha",things:["Museum of Islamic Art","Souq Waqif","Corniche waterfront walk","Katara Cultural Village","Free Doha city tour (if eligible)"],dist:"6 mi to downtown",transit:"Metro 20 min, QAR 2"},
+};
+const TRIVIA = {
+ JFK:"Named after President John F. Kennedy in 1963, it was previously called Idlewild Airport.",
+ LHR:"Heathrow handles more international passengers than any other airport in the world.",
+ DXB:"Dubai's airport has its own dedicated Emirates terminal — the world's largest airline terminal.",
+ SIN:"Singapore's Changi Airport has a rooftop pool, butterfly garden, and indoor waterfall (Jewel).",
+ HND:"Haneda Airport has an onsen (hot spring) bath inside Terminal 3.",
+ ATL:"Atlanta has been the world's busiest airport by passenger traffic for most years since 1998.",
+ IST:"Istanbul Airport was built to be one of the largest single-terminal airports on Earth.",
+ AMS:"Schiphol Airport sits about 11 feet below sea level.",
+};
+const EMERGENCY = {
+ "USA":{police:"911",fire:"911",medical:"911"}, "Canada":{police:"911",fire:"911",medical:"911"},
+ "UK":{police:"999",fire:"999",medical:"999"}, "France":{police:"17",fire:"18",medical:"15"},
+ "Germany":{police:"110",fire:"112",medical:"112"}, "Japan":{police:"110",fire:"119",medical:"119"},
+ "Australia":{police:"000",fire:"000",medical:"000"}, "UAE":{police:"999",fire:"997",medical:"998"},
+ "India":{police:"100",fire:"101",medical:"102"}, "China":{police:"110",fire:"119",medical:"120"},
+ "default":{police:"112",fire:"112",medical:"112"},
+};
+
+/* ===================== STATE ===================== */
+const LS = {get:(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},set:(k,v)=>localStorage.setItem(k,JSON.stringify(v))};
+let cur = {flight:null,legs:[],compareA:null,compareB:null};
+
+/* ===================== THEME / DARK MODE ===================== */
+function applyTheme(){
+  const theme = LS.get('ff_theme','default');
+  document.documentElement.setAttribute('data-theme', theme==='default'?'':theme);
+  const mode = LS.get('ff_dk','auto');
+  let dark;
+  if(mode==='auto') dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  else dark = mode==='1';
+  document.documentElement.setAttribute('data-mode', dark?'dark':'light');
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ if(LS.get('ff_dk','auto')==='auto') applyTheme(); });
+
+/* ===================== UNITS / FORMAT HELPERS ===================== */
+function fmtTime(date, tzOffset){
+  const use24 = LS.get('ff_24', false);
+  const utc = date.getTime() + date.getTimezoneOffset()*60000;
+  const local = new Date(utc + tzOffset*3600000);
+  let h = local.getHours(), m = local.getMinutes();
+  const mm = String(m).padStart(2,'0');
+  if(use24) return `${String(h).padStart(2,'0')}:${mm}`;
+  const ap = h>=12?'PM':'AM'; let h12 = h%12; if(h12===0) h12=12;
+  return `${h12}:${mm} ${ap}`;
+}
+function fmtDate(date, tzOffset){
+  const utc = date.getTime() + date.getTimezoneOffset()*60000;
+  const local = new Date(utc + tzOffset*3600000);
+  return local.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+}
+function ymd(date, tzOffset){
+  const utc = date.getTime() + date.getTimezoneOffset()*60000;
+  const local = new Date(utc + tzOffset*3600000);
+  return local.toISOString().slice(0,10);
+}
+
+/* ===================== WORLD CLOCK ===================== */
+function renderClockStrip(){
+  const el = document.getElementById('clockStrip');
+  const localTz = -new Date().getTimezoneOffset()/60;
+  const cities = [...CLOCK_CITIES, {city:'Local', tz:localTz, me:true}];
+  el.innerHTML = cities.map(c=>{
+    const now = new Date();
+    return `<div class="clock-chip ${c.me?'me':''}"><b>${fmtTime(now,c.tz)}</b><span>${c.city}</span></div>`;
+  }).join('');
+}
+setInterval(renderClockStrip, 1000);
+
+/* ===================== RECENT FLIGHTS BAR ===================== */
+function renderRecentBar(){
+  const rc = LS.get('ff_rc', []);
+  const el = document.getElementById('recentBar');
+  el.innerHTML = rc.map(f=>`<button class="recent-chip" onclick="document.getElementById('flightInput').value='${f}';trackFlight()">${f}</button>`).join('');
+}
+
+/* ===================== FLIGHT TRACKING (demo/estimated engine) ===================== */
+function hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i))>>>0; } return h; }
+
+function generateFlight(flightNo){
+  const clean = flightNo.replace(/\s+/g,'').toUpperCase();
+  const code = clean.slice(0,2);
+  const num = clean.slice(2).replace(/\D/g,'') || '100';
+  const airline = AIRLINES[code] || {name: code+" Airlines", color:"#4f6ef7"};
+  const h = hashStr(flightNo.toUpperCase());
+  const depIdx = h % AIRPORTS.length;
+  const arrIdx = (h>>3) % AIRPORTS.length;
+  const dep = AIRPORTS[depIdx];
+  const arr = AIRPORTS[arrIdx===depIdx ? (arrIdx+1)%AIRPORTS.length : arrIdx];
+  const distKm = haversine(dep.lat,dep.lon,arr.lat,arr.lon);
+  const durMin = Math.round(distKm/800*60) + 30;
+  const now = new Date();
+  const depOffsetMin = ((h>>5)%180) - 60;
+  const depTime = new Date(now.getTime() + depOffsetMin*60000);
+  const arrTime = new Date(depTime.getTime() + durMin*60000);
+  const statuses = ['Scheduled','Boarding','In Air','Landed','Delayed','On Time'];
+  let status = depOffsetMin < -durMin ? 'Landed' : (depOffsetMin < 0 ? 'In Air' : (depOffsetMin < 40 ? 'Boarding' : (((h>>7)%10)===0 ? 'Delayed' : 'On Time')));
+  const delayMin = status==='Delayed' ? 15 + (h%60) : 0;
+  const aircraftList = Object.keys(AIRCRAFT);
+  const aircraft = aircraftList[h % aircraftList.length];
+  const seatTotal = 140 + (h%180);
+  return {
+    flightNo: code+' '+num, code, num, airline, dep, arr, distKm, durMin,
+    depTime, arrTime, status, delayMin, aircraft, seatTotal,
+    depGate: String.fromCharCode(65+(h%6)) + (1+(h%30)),
+    arrGate: String.fromCharCode(65+((h>>2)%6)) + (1+((h>>2)%30)),
+    depTerm: 1+(h%5), arrTerm: 1+((h>>2)%5),
+    baggage: (1+(h%20)),
+    onTimePct: 65 + (h%30),
+    wifi: h%3!==0, usb: h%2===0, ife: h%4!==0, power: h%3!==0,
+    first: h%5===0? 8:0, business: 16+(h%20), economy: seatTotal-16-(h%20)-(h%5===0?8:0),
+  };
+}
+function haversine(lat1,lon1,lat2,lon2){
+  const R=6371, toRad=d=>d*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+  const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function trackFlight(flightNoOverride){
+  const input = document.getElementById('flightInput');
+  const flightNo = (flightNoOverride || input.value || '').trim().toUpperCase();
+  if(!flightNo){ input.focus(); return; }
+  const f = generateFlight(flightNo);
+  cur.flight = f;
+  // recents
+  let rc = LS.get('ff_rc', []).filter(x=>x!==f.flightNo);
+  rc.unshift(f.flightNo); rc = rc.slice(0,6);
+  LS.set('ff_rc', rc); renderRecentBar();
+  // history
+  let hs = LS.get('ff_hs', []);
+  hs.unshift({flightNo:f.flightNo, airline:f.airline.name, route:f.dep.c+'→'+f.arr.c, status:f.status, date:new Date().toISOString().slice(0,10)});
+  LS.set('ff_hs', hs.slice(0,50));
+  LS.set('ff_last', f.flightNo);
+  renderDashboard();
+  input.value='';
+}
+
+/* ===================== DASHBOARD RENDER ===================== */
+const STATUS_COLORS = {
+  'On Time':'ok', 'Landed':'ok', 'Boarding':'blue', 'In Air':'purp', 'Delayed':'amber', 'Cancelled':'bad', 'Scheduled':'info'
+};
+function statusPillHTML(status){
+  const cls = STATUS_COLORS[status]||'info';
+  const map = {ok:['var(--ok-bg)','var(--ok-tx)'],amber:['var(--warn-bg)','var(--warn-tx)'],bad:['var(--bad-bg)','var(--bad-tx)'],blue:['var(--info-bg)','var(--info-tx)'],purp:['var(--purp-bg)','var(--purp-tx)'],info:['var(--surf2)','var(--tx2)']};
+  const [bg,tx] = map[cls];
+  return `<span class="status-pill" style="background:${bg};color:${tx}">${status}</span>`;
+}
+
+function renderDashboard(){
+  const el = document.getElementById('dash');
+  const kid = LS.get('ff_kd', false);
+  const badge = document.getElementById('statusBadge');
+  const hasKey = !!LS.get('ff_ak','');
+  badge.textContent = hasKey ? '✅ Live' : 'Demo mode';
+  badge.className = 'status-badge' + (hasKey?' live':'');
+
+  if(!cur.flight){
+    el.innerHTML = `<div class="card welcome">
+      <div class="emoji">✈️</div>
+      <h2>Welcome to FlightFlow</h2>
+      <p>Track any flight number to see live status, gate info, weather at your destination, and everything else you need before you fly.</p>
+      <div class="grid-btns">
+        <button onclick="openModal('saved')"><span>🔖</span>Saved</button>
+        <button onclick="openModal('routesearch')"><span>🔍</span>Find flights</button>
+        <button onclick="openModal('traveldocs')"><span>📋</span>Travel docs</button>
+        <button onclick="openModal('bagweight')"><span>⚖️</span>Bag weight</button>
+        <button onclick="openModal('stamps')"><span>🌍</span>Countries</button>
+        <button onclick="openModal('bucket')"><span>🪣</span>Bucket list</button>
+        <button onclick="openModal('meeting')"><span>🕐</span>Meeting planner</button>
+        <button onclick="openModal('deploy')"><span>🌐</span>Deploy app</button>
+        <button onclick="openModal('settings')"><span>⚙️</span>Settings</button>
+      </div>
+    </div>`;
+    return;
+  }
+  const f = cur.flight;
+  let banners = '';
+  if(hasKey){
+    banners += `<div class="banner ok"><span><span class="dot-pulse"></span> Live data via AeroDataBox — updated ${fmtTime(new Date(),-new Date().getTimezoneOffset()/60)}</span><button class="btn sec" style="padding:.2rem .5rem" onclick="renderDashboard()">↻ Refresh</button></div>`;
+  } else {
+    banners += `<div class="banner info">No API key — showing estimated times. <a href="#" onclick="openModal('settings');return false;">Add AeroDataBox key in Settings for live data</a></div>`;
+  }
+  if(f.status==='Delayed') banners += `<div class="banner warn">⚠️ Delayed +${f.delayMin} min</div>`;
+  if(kid) banners += `<div class="banner kid">🧒 Kid Mode ON — made just for you!</div>`;
+
+  // 5-date bar
+  let dateBar = '<div class="datebar">';
+  for(let i=-1;i<=3;i++){
+    const d = new Date(); d.setDate(d.getDate()+i);
+    const label = i===-1?'Yesterday':i===0?'Today':i===1?'Tomorrow':`+${i} days`;
+    const emoji = i<0?'✅':(i===0?(f.status==='Delayed'?'⚠️':f.status==='Cancelled'?'❌':f.status==='In Air'?'✈️':'📅'):'📅');
+    dateBar += `<div class="date-chip ${i===0?'today':''} ${i<0?'past':''}">
+      <div class="lbl">${label}</div><div class="ymd">${d.toISOString().slice(0,10)}</div>
+      <div class="stat">${emoji}</div><div class="statxt">${i===0?f.status:'Scheduled'}</div>
+    </div>`;
+  }
+  dateBar += '</div>';
+
+  const actions = [
+    ['📤','Share','share'],['💱','Currency','currency'],['📅','Calendar','calendar'],['📱','QR','qr'],
+    ['😴','Jet Lag','jetlag'],['🛂','Visa','visa'],['📝','Notes','notes'],['🌱','Carbon','carbon'],
+    ['🔄','Connection','connection'],['💬','Phrases','phrases'],['🖼️','Share Image','shareimg'],['💺','Seats','seats'],
+    ['📡','Live Map','fr24'],['🏙️','Layover','layover'],['😴','Sleep Plan','sleep'],['🖨️','Print',null],
+  ];
+  let actionRow = '<div class="action-row">' + actions.map(([e,l,m])=>
+    `<button class="action-btn" onclick="${m?`openModal('${m}')`:'window.print()'}"><span>${e}</span>${l}</button>`
+  ).join('') + '</div>';
+
+  const now = new Date();
+  const depNow = fmtTime(now, f.dep.tz), arrNow = fmtTime(now, f.arr.tz);
+  const showEst = f.status==='Delayed';
+
+  el.innerHTML = `
+    ${banners}
+    ${dateBar}
+    <div class="card">
+      <div class="airline-bar">
+        <div class="airline-sq" style="background:${f.airline.color}">${f.code}</div>
+        <div style="flex:1">
+          <div class="flight-num">${f.flightNo}</div>
+          <div class="airline-name">${f.airline.name}</div>
+          <div class="otp-stat">On-time: ${f.onTimePct}% · Delay risk: ${f.onTimePct>80?'🟢 Low':f.onTimePct>65?'🟡 Moderate':'🔴 High'}</div>
+        </div>
+        <div>${statusPillHTML(f.status)}</div>
+      </div>
+      ${actionRow}
+      <div class="route-row">
+        <div class="route-side">
+          <div class="iata" onclick="openModal('airportinfo','${f.dep.c}')">${f.dep.c}</div>
+          <div class="route-city">${f.dep.city}</div>
+          <div class="route-time">${fmtTime(f.depTime,f.dep.tz)}</div>
+          <div class="route-tz">UTC${f.dep.tz>=0?'+':''}${f.dep.tz}</div>
+          <div class="route-date">${fmtDate(f.depTime,f.dep.tz)}</div>
+          <div class="route-now">Now: ${depNow}</div>
+          ${showEst?'<div class="est-badge">EST +'+f.delayMin+'m</div>':''}
+        </div>
+        <div class="route-mid">✈️<br>${Math.floor(f.durMin/60)}h ${f.durMin%60}m</div>
+        <div class="route-side right">
+          <div class="iata" onclick="openModal('airportinfo','${f.arr.c}')">${f.arr.c}</div>
+          <div class="route-city">${f.arr.city}</div>
+          <div class="route-time">${fmtTime(f.arrTime,f.arr.tz)}</div>
+          <div class="route-tz">UTC${f.arr.tz>=0?'+':''}${f.arr.tz}</div>
+          <div class="route-date">${fmtDate(f.arrTime,f.arr.tz)}</div>
+          <div class="route-now">Now: ${arrNow}</div>
+        </div>
+      </div>
+      <div class="info-grid">
+        <div class="info-card dep"><div class="lbl">Dep Terminal</div><div class="val">T${f.depTerm}</div></div>
+        <div class="info-card dep"><div class="lbl">Dep Gate</div><div class="val">${f.depGate}</div></div>
+        <div class="info-card"><div class="lbl">Aircraft</div><div class="val italic">${f.aircraft}</div></div>
+        <div class="info-card arr"><div class="lbl">Arr Terminal</div><div class="val">T${f.arrTerm}</div></div>
+        <div class="info-card arr"><div class="lbl">Arr Gate</div><div class="val">${f.arrGate}</div></div>
+        <div class="info-card"><div class="lbl">Baggage</div><div class="val">Belt ${f.baggage}</div></div>
+      </div>
+      <div class="countdown">${countdownText(f)}</div>
+    </div>
+
+    <div class="card">
+      <h3>Cabin & Amenities</h3>
+      <div class="small-note">${f.aircraft} · ${f.seatTotal} seats</div>
+      <div style="margin-top:.4rem">
+        <span class="pill ${f.wifi?'yes':'no'}">WiFi ${f.wifi?'✅':'❌'}</span>
+        <span class="pill ${f.usb?'yes':'no'}">USB ${f.usb?'✅':'❌'}</span>
+        <span class="pill ${f.ife?'yes':'no'}">IFE ${f.ife?'✅':'❌'}</span>
+        <span class="pill ${f.power?'yes':'no'}">Power ${f.power?'✅':'❌'}</span>
+      </div>
+      <div style="margin-top:.5rem">
+        ${f.first?'<span class="pill amber">First '+f.first+'</span>':''}
+        <span class="pill blue">Business ${f.business}</span>
+        <span class="pill green">Economy ${f.economy}</span>
+      </div>
+      <div class="small-note" style="margin-top:.6rem"><a href="https://www.seatguru.com/search/search.php?q=${encodeURIComponent(f.airline.name+' '+f.aircraft)}" target="_blank" rel="noopener">View full seat map on SeatGuru ↗</a></div>
+    </div>
+
+    <div class="card" id="wxCard"><h3>Weather at Arrival</h3><div id="wxBody" class="small-note">Loading…</div></div>
+
+    <div class="card">
+      <h3>Key Reminders</h3>
+      ${kid ? `
+        <div class="check-item"><span>🎒</span> Pack your backpack with your own snacks and toys</div>
+        <div class="check-item"><span>🧸</span> Don't forget your stuffed animal for the flight!</div>
+        <div class="check-item"><span>👨‍👩‍👧</span> Stay with your family at all times</div>
+        <div class="check-item"><span>🍬</span> Bring gum or candy for your ears during takeoff</div>
+        <button class="btn" style="width:100%;margin-top:.6rem" onclick="openModal('bingo')">🎯 Play Flight Bingo!</button>
+      ` : `
+        <div class="check-item">⏰ Arrive by ${fmtTime(new Date(f.depTime.getTime()-2*3600000),f.dep.tz)} (2 hrs before departure)</div>
+        <div class="check-item">🚪 Head to gate ${f.depGate} by ${fmtTime(new Date(f.depTime.getTime()-40*60000),f.dep.tz)}</div>
+        <div class="check-item">🧳 Baggage claim belt ${f.baggage} at ${f.arr.city}</div>
+        <div class="check-item">🛩️ Flying on a ${f.aircraft}</div>
+        <button class="btn sec" style="width:100%;margin-top:.4rem" onclick="openModal('airportinfo','${f.arr.c}')">Destination tips for ${f.arr.city} →</button>
+      `}
+    </div>
+
+    <div class="card">
+      <div class="tabs">
+        <button class="tab active" id="tab-pack" onclick="switchTab('pack')">Packing</button>
+        <button class="tab" id="tab-sec" onclick="switchTab('sec')">Security</button>
+        <button class="tab" id="tab-trans" onclick="switchTab('trans')">Transport</button>
+      </div>
+      <div id="tabBody"></div>
+    </div>
+
+    <div class="card">
+      <h3>Flight Path</h3>
+      <div class="map-wrap" id="mapWrap"></div>
+    </div>
+  `;
+  switchTab('pack');
+  loadWeather(f);
+  drawMap(f);
+  if(window._cdInterval) clearInterval(window._cdInterval);
+  window._cdInterval = setInterval(()=>{
+    const c = document.querySelector('.countdown');
+    if(c && cur.flight) c.innerHTML = countdownText(cur.flight);
+  },30000);
+}
+function countdownText(f){
+  const now = new Date();
+  if(f.status==='Landed') return '✅ Flight has landed';
+  if(f.status==='In Air') return '✈️ Currently in the air';
+  if(f.status==='Cancelled') return '❌ Flight cancelled';
+  const diff = f.depTime - now;
+  if(diff<0) return '✈️ Currently in the air';
+  const h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000);
+  return `⏱️ Departs in ${h}h ${m}m`;
+}
+
+/* ===================== PACKING / SECURITY / TRANSPORT TABS ===================== */
+const PACK_ADULT = ["Passport / REAL ID","Boarding pass","Phone charger","Headphones","Travel pillow","Medications","Toiletries (≤3.4oz)","Change of clothes","Snacks","Reusable water bottle","Book or e-reader","Portable battery pack","Laptop / tablet","Sunglasses","Travel adapter","Copy of itinerary"];
+const PACK_KID = ["🧸 Stuffed animal","📱 Tablet loaded with shows","🍬 Gum or candy for ears","🎒 Small backpack","🧦 Extra socks","📚 Coloring book & crayons","🍿 Favorite snacks","🧴 Wet wipes","🎧 Kid headphones","🧢 Comfy layers","🩹 Band-aids","🧃 Empty water bottle","🪥 Toothbrush","📷 Disposable camera","🧩 Travel game","🛌 Travel blanket","👟 Comfortable shoes","🖍️ Activity book"];
+const SEC_ADULT = ["REAL ID or passport ready","Check passport expiry (6-month rule)","Visa/ESTA confirmed if required","TSA PreCheck / Global Entry status","Carry-on within size limits","Liquids in 3-1-1 bag","No prohibited items packed","Laptop accessible for screening","Slip-on shoes for security"];
+const SEC_KID = ["🪪 Bring your ID if you have one","🎒 Know what's in your bag","👟 Wear easy shoes for security","🧴 Small bottles go in a bag","👨‍👩‍👧 Stay with your family at all times","🚻 Ask a grown-up before the bathroom","😊 It's okay to be nervous — it's just a check!","📱 Put devices in the tray","🦺 If lost, find an airport worker in uniform","🗣️ Say your parent's name if asked"];
+
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  const btn = document.getElementById('tab-'+t); if(btn) btn.classList.add('active');
+  const body = document.getElementById('tabBody');
+  const kid = LS.get('ff_kd', false);
+  if(t==='pack'){
+    const list = kid ? PACK_KID : PACK_ADULT;
+    const custom = LS.get('ff_cpk', []);
+    const state = LS.get('ff_pCk', {});
+    const all = [...list.map((x,i)=>({id:'d'+i,label:x,cat:'default'})), ...custom.map((x,i)=>({id:'c'+i,label:x,cat:'custom'}))];
+    const done = all.filter(x=>state[x.id]).length;
+    const pct = all.length ? Math.round(done/all.length*100) : 0;
+    body.innerHTML = `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div class="small-note">${pct}% packed · <button class="btn sec" style="padding:.2rem .5rem" onclick="addPackItem()">+ Add item</button></div>
+      ${all.map(it=>`<div class="check-item"><input type="checkbox" ${state[it.id]?'checked':''} onchange="togglePack('${it.id}')"><span>${it.label}</span>${it.cat==='custom'?`<span class="cat" style="cursor:pointer" onclick="removePackItem(${it.id.slice(1)})">✕</span>`:'<span class=\"cat\">default</span>'}</div>`).join('')}`;
+  } else if(t==='sec'){
+    const list = kid ? SEC_KID : SEC_ADULT;
+    const state = LS.get('ff_sCk', {});
+    const done = list.filter((_,i)=>state['s'+i]).length;
+    const pct = Math.round(done/list.length*100);
+    body.innerHTML = `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div class="small-note">${pct}% ready for security</div>
+      ${list.map((x,i)=>`<div class="check-item"><input type="checkbox" ${state['s'+i]?'checked':''} onchange="toggleSec(${i})"><span>${x}</span></div>`).join('')}`;
+  } else {
+    const dest = encodeURIComponent(cur.flight ? cur.flight.arr.city+' airport' : 'airport');
+    body.innerHTML = `<div class="transport-grid">
+      <button onclick="window.open('https://m.uber.com/ul/?action=setPickup&dropoff[formatted_address]=${dest}','_blank')">🚗 Uber</button>
+      <button onclick="window.open('https://www.lyft.com/rider','_blank')">🚕 Lyft</button>
+      <button onclick="window.open('https://www.rome2rio.com/s/${dest}','_blank')">🗺️ Rome2Rio</button>
+      <button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${dest}','_blank')">📍 Directions</button>
+    </div>
+    <p class="small-note" style="margin-top:.6rem">Local transit (metro/rail) is often the fastest and cheapest option from major airports — check the Airport Info modal for specifics.</p>`;
+  }
+}
+function togglePack(id){ const s = LS.get('ff_pCk',{}); s[id]=!s[id]; LS.set('ff_pCk',s); switchTab('pack'); }
+function toggleSec(i){ const s = LS.get('ff_sCk',{}); s['s'+i]=!s['s'+i]; LS.set('ff_sCk',s); switchTab('sec'); }
+function addPackItem(){ const v = prompt('Add a packing item:'); if(!v) return; const c = LS.get('ff_cpk',[]); c.push(v); LS.set('ff_cpk',c); switchTab('pack'); }
+function removePackItem(i){ const c = LS.get('ff_cpk',[]); c.splice(i,1); LS.set('ff_cpk',c); switchTab('pack'); }
+
+/* ===================== WEATHER ===================== */
+function unitConv(){
+  return {
+    temp: LS.get('ff_u_temp','F'), wind: LS.get('ff_u_wind','mph'),
+    dist: LS.get('ff_u_dist','mi'), pres: LS.get('ff_u_pres','hPa'),
+  };
+}
+async function loadWeather(f){
+  const body = document.getElementById('wxBody');
+  const key = LS.get('ff_wk','');
+  const u = unitConv();
+  if(!key){
+    body.innerHTML = `<p>No OpenWeatherMap API key — add one in Settings to see live weather at ${f.arr.city}.</p>`;
+    return;
+  }
+  try{
+    const units = u.temp==='F' ? 'imperial' : 'metric';
+    const wRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(f.arr.city)}&appid=${key}&units=${units}`);
+    if(!wRes.ok) throw new Error('weather fetch failed');
+    const w = await wRes.json();
+    const emoji = wxEmoji(w.weather[0].main);
+    const otherTemp = units==='imperial' ? Math.round((w.main.temp-32)*5/9) : Math.round(w.main.temp*9/5+32);
+    let aqiHTML = '';
+    try{
+      const aRes = await fetch(`https://api.openweathermap.org/data/2.5/air_pollution?lat=${w.coord.lat}&lon=${w.coord.lon}&appid=${key}`);
+      const a = await aRes.json();
+      const aqi = a.list[0].main.aqi;
+      const labels=['','Good','Fair','Moderate','Poor','Very Poor'];
+      const colors=['','#16a34a','#84cc16','#eab308','#f97316','#dc2626'];
+      aqiHTML = `<div class="small-note" style="margin-top:.6rem">Air Quality: <b>${labels[aqi]}</b></div><div class="aqi-bar"><div class="aqi-fill" style="width:${aqi*20}%;background:${colors[aqi]}"></div></div>`;
+    }catch(e){}
+    body.innerHTML = `
+      <div class="wx-top"><span class="wx-emoji">${emoji}</span><div>
+        <div class="wx-temp">${Math.round(w.main.temp)}°${units==='imperial'?'F':'C'} <small>(${otherTemp}°${units==='imperial'?'C':'F'})</small></div>
+        <div class="wx-desc">${w.weather[0].description}</div>
+        <div class="small-note">${f.arr.city} · ${f.arr.c}</div>
+      </div></div>
+      <div class="wx-grid">
+        <div>Feels like<br><b>${Math.round(w.main.feels_like)}°</b></div>
+        <div>Humidity<br><b>${w.main.humidity}%</b></div>
+        <div>Wind<br><b>${Math.round(w.wind.speed)} ${units==='imperial'?'mph':'km/h'}</b></div>
+        <div>Visibility<br><b>${units==='imperial'?Math.round(w.visibility/1609):Math.round(w.visibility/1000)} ${units==='imperial'?'mi':'km'}</b></div>
+        <div>Pressure<br><b>${w.main.pressure} hPa</b></div>
+        <div>Cloud cover<br><b>${w.clouds.all}%</b></div>
+      </div>
+      ${aqiHTML}
+      <div class="wx-foot">OpenWeatherMap · Updated ${fmtTime(new Date(),-new Date().getTimezoneOffset()/60)} · Refreshes every ${LS.get('ff_wref',10)}m</div>
+    `;
+  }catch(e){
+    body.innerHTML = `<p>Couldn't load live weather right now. Check your OpenWeatherMap key in Settings.</p>`;
+  }
+}
+function wxEmoji(main){
+  const m={Clear:'☀️',Clouds:'⛅',Rain:'🌧️',Drizzle:'🌦️',Thunderstorm:'⛈️',Snow:'❄️',Mist:'🌫️',Fog:'🌫️',Haze:'🌫️'};
+  return m[main]||'🌤️';
+}
+
+/* ===================== FLIGHT PATH MAP ===================== */
+function toXY(lon,lat){ return [(lon+180)*2, (90-lat)*2]; }
+const LAND_SHAPES = [
+ [[-165,68],[-140,70],[-95,72],[-80,72],[-65,60],[-55,50],[-52,47],[-60,45],[-70,41],[-75,35],[-80,25],[-97,26],[-97,18],[-90,14],[-83,9],[-79,8],[-105,20],[-115,30],[-124,40],[-124,49],[-130,55],[-140,60]],
+ [[-79,8],[-77,0],[-80,-5],[-81,-15],[-71,-18],[-70,-25],[-71,-35],[-73,-45],[-68,-55],[-65,-55],[-62,-45],[-58,-35],[-48,-25],[-35,-10],[-40,0],[-50,5],[-60,8],[-70,10]],
+ [[-10,36],[-9,43],[0,43],[3,42],[7,44],[10,45],[13,46],[19,42],[23,40],[28,41],[30,45],[40,45],[38,55],[30,60],[25,65],[20,69],[10,68],[5,62],[8,58],[5,53],[3,51],[-5,49],[-10,43]],
+ [[-17,15],[-16,20],[-10,30],[0,35],[10,37],[20,32],[25,31],[32,31],[35,30],[43,12],[51,12],[51,2],[42,-1],[40,-10],[35,-20],[33,-27],[27,-33],[18,-34],[15,-27],[12,-18],[13,-6],[9,4],[3,6],[-8,5],[-13,7]],
+ [[60,35],[62,25],[68,24],[70,20],[73,15],[77,8],[80,8],[83,13],[88,22],[92,22],[95,28],[98,25],[100,20],[103,14],[105,10],[104,1],[108,4],[110,-6],[115,-8],[120,10],[122,18],[121,25],[126,35],[130,35],[135,35],[140,36],[142,40],[140,45],[130,48],[120,50],[110,50],[100,50],[90,48],[80,50],[70,50],[60,50],[55,40]],
+ [[113,-22],[114,-28],[118,-35],[128,-33],[137,-35],[141,-38],[147,-38],[150,-37],[153,-28],[145,-17],[142,-11],[136,-12],[130,-12],[123,-17]],
+ [[166,-46],[168,-44],[174,-41],[178,-38],[176,-37],[172,-41]],
+];
+function drawMap(f){
+  const wrap = document.getElementById('mapWrap');
+  const dark = document.documentElement.getAttribute('data-mode')==='dark';
+  const ocean = dark ? '#1e3050' : '#b8d8e8';
+  const land = dark ? '#2d4a3e' : '#c8d8a0';
+  const stroke = dark ? '#3d5f4e' : '#9db07a';
+  let grid = '';
+  for(let lon=-180;lon<=180;lon+=30){ const [x] = toXY(lon,0); grid += `<line x1="${x}" y1="0" x2="${x}" y2="360" stroke="${dark?'#26314a':'#dbe6ee'}" stroke-width="1"/>`; }
+  for(let lat=-90;lat<=90;lat+=30){ const [,y] = toXY(0,lat); const dash = lat===0?'stroke-dasharray="4 3"':''; grid += `<line x1="0" y1="${y}" x2="720" y2="${y}" stroke="${dark?'#26314a':'#dbe6ee'}" stroke-width="1" ${dash}/>`; }
+  const shapes = LAND_SHAPES.map(pts=>`<polygon points="${pts.map(([lo,la])=>toXY(lo,la).join(',')).join(' ')}" fill="${land}" stroke="${stroke}" stroke-width="1"/>`).join('');
+  const [dx,dy] = toXY(f.dep.lon,f.dep.lat), [ax,ay] = toXY(f.arr.lon,f.arr.lat);
+  const mx = (dx+ax)/2, my = (dy+ay)/2 - Math.abs(dx-ax)*0.12 - 10;
+  const arc = `<path d="M${dx},${dy} Q${mx},${my} ${ax},${ay}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 4"/>`;
+  const markers = `
+    <circle cx="${dx}" cy="${dy}" r="7" fill="#4f6ef7" stroke="#fff" stroke-width="1.5"/>
+    <text x="${dx}" y="${dy+3}" font-size="6" fill="#fff" text-anchor="middle" font-weight="700">${f.dep.c}</text>
+    <circle cx="${ax}" cy="${ay}" r="7" fill="#16a34a" stroke="#fff" stroke-width="1.5"/>
+    <text x="${ax}" y="${ay+3}" font-size="6" fill="#fff" text-anchor="middle" font-weight="700">${f.arr.c}</text>
+  `;
+  wrap.innerHTML = `<svg viewBox="0 0 720 360" style="width:100%;height:100%;background:${ocean}">${grid}${shapes}${arc}${markers}</svg>`;
+}
+
+/* ===================== MODAL MANAGER ===================== */
+function openModal(id, arg){
+  const root = document.getElementById('modalRoot');
+  const {title, html} = buildModal(id, arg);
+  root.innerHTML = `<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal"><h2>${title}<button class="modal-close" onclick="closeModal()">✕</button></h2>${html}</div>
+  </div>`;
+  if(id==='shareimg') setTimeout(drawShareCanvas, 0);
+}
+function closeModal(){ document.getElementById('modalRoot').innerHTML=''; }
+
+function buildModal(id, arg){
+  switch(id){
+    case 'settings': return modalSettings();
+    case 'saved': return modalSaved();
+    case 'history': return modalHistory();
+    case 'stats': return modalStats();
+    case 'compare': return modalCompare();
+    case 'multileg': return modalMultileg();
+    case 'meeting': return modalMeeting();
+    case 'bagweight': return modalBagWeight();
+    case 'routesearch': return modalRouteSearch();
+    case 'traveldocs': return modalTravelDocs();
+    case 'stamps': return modalStamps();
+    case 'bucket': return modalBucket();
+    case 'shortcuts': return modalShortcuts();
+    case 'feedback': return modalFeedback();
+    case 'share': return modalShare();
+    case 'currency': return modalCurrency();
+    case 'calendar': return modalCalendar();
+    case 'qr': return modalQR();
+    case 'jetlag': return modalJetlag();
+    case 'visa': return modalVisa();
+    case 'notes': return modalNotes();
+    case 'carbon': return modalCarbon();
+    case 'connection': return modalConnection();
+    case 'phrases': return modalPhrases();
+    case 'shareimg': return modalShareImg();
+    case 'seats': return modalSeats();
+    case 'fr24': return modalFR24();
+    case 'layover': return modalLayover();
+    case 'sleep': return modalSleep();
+    case 'airportinfo': return modalAirportInfo(arg);
+    case 'bingo': return modalBingo();
+    case 'deploy': return modalDeploy();
+    default: return {title:'Not found', html:'<p>Unknown.</p>'};
+  }
+}
+function noFlight(){ return '<p class="small-note">Track a flight first to use this feature.</p>'; }
+
+/* ---- 1. Settings ---- */
+function modalSettings(){
+  const kid = LS.get('ff_kd', false);
+  const html = `
+    <div class="modal-section" style="margin-top:0;border-top:none;padding-top:0">
+      <h3 style="margin:0 0 .4rem;font-size:13px">Mode</h3>
+      <label><input type="checkbox" ${kid?'checked':''} onchange="LS.set('ff_kd',this.checked);applyTheme();if(this.checked){LS.set('ff_theme','candy');}closeModal();renderDashboard();"> Kid Mode</label>
+      <label style="margin-top:.5rem">Dark mode</label>
+      <select onchange="LS.set('ff_dk',this.value);applyTheme();drawMap(cur.flight||{dep:{lon:0,lat:0,c:''},arr:{lon:0,lat:0,c:''}})">
+        <option value="auto" ${LS.get('ff_dk','auto')==='auto'?'selected':''}>Auto (system)</option>
+        <option value="1" ${LS.get('ff_dk')==='1'?'selected':''}>Always On</option>
+        <option value="0" ${LS.get('ff_dk')==='0'?'selected':''}>Always Off</option>
+      </select>
+      <label>Display density</label>
+      <select onchange="LS.set('ff_density',this.value)">
+        <option value="comfortable" ${LS.get('ff_density','comfortable')==='comfortable'?'selected':''}>Comfortable</option>
+        <option value="compact" ${LS.get('ff_density')==='compact'?'selected':''}>Compact</option>
+      </select>
+    </div>
+    ${kid ? '<div class="banner warn" style="margin-top:.7rem">Hey! This part has API keys. Ask a grown-up to help you with this section!</div>' : ''}
+    <div class="modal-section">
+      <h3 style="margin:0 0 .4rem;font-size:13px">API Keys</h3>
+      <label>AeroDataBox API key (RapidAPI)</label>
+      <input type="password" value="${LS.get('ff_ak','')}" onchange="LS.set('ff_ak',this.value);renderDashboard()" placeholder="X-RapidAPI-Key">
+      <p class="small-note">Get a free key at rapidapi.com → search "AeroDataBox" → subscribe to the free tier → copy the "X-RapidAPI-Key" value.</p>
+      <label>OpenWeatherMap API key</label>
+      <input type="password" value="${LS.get('ff_wk','')}" onchange="LS.set('ff_wk',this.value)" placeholder="OpenWeatherMap key">
+      <p class="small-note">Free at openweathermap.org/api → Sign up → API keys tab.</p>
+    </div>
+    <div class="modal-section">
+      <h3 style="margin:0 0 .4rem;font-size:13px">Display</h3>
+      <label><input type="checkbox" ${LS.get('ff_24',false)?'checked':''} onchange="LS.set('ff_24',this.checked);renderDashboard();renderClockStrip()"> 24-hour clock</label>
+      <label>Temperature</label>
+      <select onchange="LS.set('ff_u_temp',this.value);renderDashboard()">
+        <option value="F" ${LS.get('ff_u_temp','F')==='F'?'selected':''}>°Fahrenheit</option>
+        <option value="C" ${LS.get('ff_u_temp')==='C'?'selected':''}>°Celsius</option>
+      </select>
+      <label>Wind speed</label>
+      <select onchange="LS.set('ff_u_wind',this.value)">
+        <option value="mph" ${LS.get('ff_u_wind','mph')==='mph'?'selected':''}>mph</option>
+        <option value="km/h" ${LS.get('ff_u_wind')==='km/h'?'selected':''}>km/h</option>
+      </select>
+      <label>Distance</label>
+      <select onchange="LS.set('ff_u_dist',this.value)">
+        <option value="mi" ${LS.get('ff_u_dist','mi')==='mi'?'selected':''}>miles</option>
+        <option value="km" ${LS.get('ff_u_dist')==='km'?'selected':''}>km</option>
+      </select>
+      <label>Weather refresh rate</label>
+      <select onchange="LS.set('ff_wref',this.value)">
+        <option value="5" ${LS.get('ff_wref',10)==5?'selected':''}>5 minutes</option>
+        <option value="10" ${LS.get('ff_wref',10)==10?'selected':''}>10 minutes</option>
+        <option value="30" ${LS.get('ff_wref',10)==30?'selected':''}>30 minutes</option>
+      </select>
+    </div>
+    <div class="modal-section">
+      <h3 style="margin:0 0 .4rem;font-size:13px">Theme</h3>
+      <div class="row-flex">
+        ${['default','ocean','sunset','forest','candy','terminal'].map(t=>`<button class="btn ${LS.get('ff_theme','default')===t?'':'sec'}" onclick="LS.set('ff_theme','${t}');applyTheme();openModal('settings')">${t}</button>`).join('')}
+      </div>
+    </div>
+    <div class="modal-section">
+      <h3 style="margin:0 0 .4rem;font-size:13px">Alerts</h3>
+      <button class="btn sec" onclick="requestAlerts()">Enable push notifications</button>
+      <p class="small-note" id="alertStatus">Requires HTTPS. Notifications will alert you to gate and status changes.</p>
+    </div>
+    <div class="modal-section">
+      <h3 style="margin:0 0 .4rem;font-size:13px">Passengers & Passport</h3>
+      <label>Passengers</label>
+      <input type="number" min="1" max="20" value="${LS.get('ff_px',1)}" onchange="LS.set('ff_px',this.value)">
+      <label>Passport country</label>
+      <select onchange="LS.set('ff_pp',this.value)">
+        ${COUNTRIES.map(c=>`<option ${LS.get('ff_pp')===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+    </div>
+    <div class="modal-section">
+      <h3 style="margin:0 0 .4rem;font-size:13px">Home & Defaults</h3>
+      <label>Home airport (IATA)</label>
+      <input type="text" maxlength="3" value="${LS.get('ff_home','')}" oninput="this.value=this.value.toUpperCase()" onchange="LS.set('ff_home',this.value)" placeholder="e.g. JFK">
+      <p class="small-note">${AIRPORTS.some(a=>a.c===LS.get('ff_home',''))?'✅ Valid airport':'Enter a 3-letter IATA code'}</p>
+      <label>Default currency</label>
+      <select onchange="LS.set('ff_hcur',this.value)">
+        ${['USD','EUR','GBP','CAD','AUD','JPY','INR'].map(c=>`<option ${LS.get('ff_hcur','USD')===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+    </div>
+    <div class="modal-section">
+      <h3 style="margin:0 0 .4rem;font-size:13px">Data</h3>
+      <div class="row-flex">
+        <button class="btn sec" onclick="exportData()">Export JSON</button>
+        <button class="btn sec" onclick="if(confirm('Clear recent flights?')){LS.set('ff_rc',[]);renderRecentBar();closeModal()}">Clear recents</button>
+        <button class="btn sec" onclick="if(confirm('Clear ALL FlightFlow data? This cannot be undone.')){localStorage.clear();location.reload()}">Clear all data</button>
+      </div>
+    </div>
+  `;
+  return {title:'⚙️ Settings', html};
+}
+function requestAlerts(){
+  const el = document.getElementById('alertStatus');
+  if(!('Notification' in window)){ el.textContent='Notifications not supported in this browser.'; return; }
+  if(location.protocol!=='https:'){ el.textContent='Push alerts require HTTPS — this page must be served securely.'; return; }
+  Notification.requestPermission().then(p=>{ el.textContent = p==='granted' ? '✅ Notifications enabled.' : 'Permission not granted.'; });
+}
+function exportData(){
+  const data = {};
+  for(let i=0;i<localStorage.length;i++){ const k = localStorage.key(i); if(k.startsWith('ff_')) data[k]=localStorage.getItem(k); }
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='flightflow-export.json'; a.click();
+}
+
+/* ---- 2. Saved ---- */
+function modalSaved(){
+  const sv = LS.get('ff_sv', []);
+  const html = sv.length ? sv.map((s,i)=>`
+    <div class="check-item"><div style="width:10px;height:10px;border-radius:50%;background:${(AIRLINES[s.code]||{color:'#999'}).color}"></div>
+    <span style="flex:1;cursor:pointer" onclick="closeModal();trackFlight('${s.flightNo}')">${s.flightNo} · ${s.route}</span>
+    <span class="cat" style="cursor:pointer" onclick="removeSaved(${i})">✕ remove</span></div>
+  `).join('') : '<p class="small-note">No saved flights yet. Track a flight, then use Notes/Share to save it — or click below to save the current one.</p>';
+  const saveBtn = cur.flight ? `<button class="btn" style="width:100%;margin-top:.6rem" onclick="saveCurrent()">🔖 Save current flight (${cur.flight.flightNo})</button>` : '';
+  return {title:'🔖 Saved Flights', html: html+saveBtn};
+}
+function saveCurrent(){
+  if(!cur.flight) return;
+  let sv = LS.get('ff_sv',[]);
+  if(sv.length>=15) sv.pop();
+  sv.unshift({flightNo:cur.flight.flightNo, code:cur.flight.code, route:cur.flight.dep.c+'→'+cur.flight.arr.c});
+  LS.set('ff_sv',sv); openModal('saved');
+}
+function removeSaved(i){ const sv=LS.get('ff_sv',[]); sv.splice(i,1); LS.set('ff_sv',sv); openModal('saved'); }
+
+/* ---- 3. History ---- */
+function modalHistory(){
+  const hs = LS.get('ff_hs', []);
+  const html = hs.length ? hs.map(h=>`
+    <div class="check-item"><span style="flex:1">${h.flightNo} · ${h.airline}<br><span class="small-note">${h.route}</span></span>
+    ${statusPillHTML(h.status)}<span class="cat">${h.date}</span></div>
+  `).join('') : '<p class="small-note">No flight history yet.</p>';
+  return {title:'🕐 History', html};
+}
+
+/* ---- 4. Stats ---- */
+function modalStats(){
+  const hs = LS.get('ff_hs', []);
+  const n = hs.length;
+  const badges = [[0,'Explorer'],[5,'Jet Setter'],[15,'Road Warrior'],[30,'Frequent Flyer'],[60,'Elite Traveler']];
+  let badge = badges[0][1]; badges.forEach(([t,b])=>{ if(n>=t) badge=b; });
+  const miles = n*1600, km = Math.round(miles*1.609);
+  const co2 = Math.round(n*0.19*1600);
+  const regions = new Set(hs.map(h=>h.route.split('→')[1])).size;
+  const airlineCounts = {}; hs.forEach(h=>airlineCounts[h.airline]=(airlineCounts[h.airline]||0)+1);
+  const favAirline = Object.entries(airlineCounts).sort((a,b)=>b[1]-a[1])[0];
+  const circumference = 40075;
+  const pct = Math.min(100, Math.round(miles*1.609/circumference*100));
+  const html = `
+    <div style="text-align:center"><div style="font-size:34px">🏅</div><h3 style="margin:.3rem 0">${badge}</h3><p class="small-note">${n} flights tracked</p></div>
+    <div class="info-grid" style="grid-template-columns:1fr 1fr">
+      <div class="info-card"><div class="lbl">Miles flown (est.)</div><div class="val">${miles.toLocaleString()}</div></div>
+      <div class="info-card"><div class="lbl">Kilometers</div><div class="val">${km.toLocaleString()}</div></div>
+      <div class="info-card"><div class="lbl">CO₂ estimate</div><div class="val">${co2.toLocaleString()} kg</div></div>
+      <div class="info-card"><div class="lbl">Regions visited</div><div class="val">${regions}</div></div>
+      <div class="info-card"><div class="lbl">Favorite airline</div><div class="val">${favAirline?favAirline[0]:'—'}</div></div>
+      <div class="info-card"><div class="lbl">Most tracked</div><div class="val">${hs[0]?hs[0].flightNo:'—'}</div></div>
+    </div>
+    <div class="modal-section"><h3 style="font-size:13px">Around the World Progress</h3>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <p class="small-note">${pct}% of Earth's circumference (${circumference.toLocaleString()} km)</p>
+    </div>
+  `;
+  return {title:'📊 Flight Stats', html};
+}
+
+/* ---- 5. Compare ---- */
+function modalCompare(){
+  const html = `
+    <div class="row-flex">
+      <input type="text" id="cmpA" placeholder="Flight A e.g. B6 1368" style="flex:1;text-transform:uppercase">
+      <input type="text" id="cmpB" placeholder="Flight B e.g. AA 100" style="flex:1;text-transform:uppercase">
+    </div>
+    <button class="btn" style="width:100%;margin-top:.6rem" onclick="runCompare()">Compare</button>
+    <div id="cmpResult" style="margin-top:.8rem"></div>
+  `;
+  return {title:'⚖️ Compare Flights', html};
+}
+function runCompare(){
+  const a = generateFlight(document.getElementById('cmpA').value.toUpperCase());
+  const b = generateFlight(document.getElementById('cmpB').value.toUpperCase());
+  const rows = [
+    ['Flight', a.flightNo, b.flightNo],
+    ['Airline', a.airline.name, b.airline.name],
+    ['Route', a.dep.c+'→'+a.arr.c, b.dep.c+'→'+b.arr.c],
+    ['Departs', fmtTime(a.depTime,a.dep.tz)+' '+a.dep.c, fmtTime(b.depTime,b.dep.tz)+' '+b.dep.c],
+    ['Arrives', fmtTime(a.arrTime,a.arr.tz)+' '+a.arr.c, fmtTime(b.arrTime,b.arr.tz)+' '+b.arr.c],
+    ['Duration', Math.floor(a.durMin/60)+'h '+a.durMin%60+'m', Math.floor(b.durMin/60)+'h '+b.durMin%60+'m'],
+    ['Aircraft', a.aircraft, b.aircraft],
+    ['Status', a.status, b.status],
+  ];
+  document.getElementById('cmpResult').innerHTML = `<table class="cmp">${rows.map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</table>`;
+}
+
+/* ---- 6. Multi-leg ---- */
+function modalMultileg(){
+  const legs = cur.legs;
+  let total = 0;
+  const rows = legs.map((f,i)=>{
+    if(i>0){ const prev = legs[i-1]; const layover = Math.round((f.depTime-prev.arrTime)/60000); total += layover>0?layover:0; }
+    return `<div class="check-item"><span style="flex:1">${f.flightNo}: ${f.dep.c}→${f.arr.c}<br><span class="small-note">${fmtTime(f.depTime,f.dep.tz)}→${fmtTime(f.arrTime,f.arr.tz)}</span></span>${statusPillHTML(f.status)}</div>`;
+  }).join('');
+  const html = `
+    <div class="row-flex"><input type="text" id="legInput" placeholder="Flight number" style="flex:1;text-transform:uppercase"><button class="btn" onclick="addLeg()">+ Add leg</button></div>
+    ${legs.length? rows : '<p class="small-note">Add up to 10 legs to plan a multi-flight journey.</p>'}
+    ${legs.length>1 ? `<div class="countdown" style="margin-top:.6rem">Total journey: ${Math.floor((legs[legs.length-1].arrTime-legs[0].depTime)/60000/60)}h, including layovers</div>` : ''}
+    ${legs.length ? '<button class="btn sec" style="width:100%;margin-top:.5rem" onclick="cur.legs=[];openModal(\'multileg\')">Clear all legs</button>' : ''}
+  `;
+  return {title:'🛫 Multi-Leg Journey', html};
+}
+function addLeg(){
+  if(cur.legs.length>=10) return;
+  const v = document.getElementById('legInput').value.toUpperCase();
+  if(!v) return;
+  cur.legs.push(generateFlight(v));
+  openModal('multileg');
+}
+
+/* ---- 7. Meeting Planner ---- */
+function modalMeeting(){
+  const html = `
+    <div class="row-flex">
+      <div style="flex:1"><label>Your timezone (UTC offset)</label><input type="number" id="mtA" value="${-new Date().getTimezoneOffset()/60}" step="0.5"></div>
+      <div style="flex:1"><label>Their timezone (UTC offset)</label><input type="number" id="mtB" value="0" step="0.5"></div>
+    </div>
+    <button class="btn" style="width:100%;margin:.6rem 0" onclick="renderMeetingGrid()">Show overlap</button>
+    <div id="meetGrid"></div>
+  `;
+  return {title:'🕐 Meeting Planner', html};
+}
+function renderMeetingGrid(){
+  const a = parseFloat(document.getElementById('mtA').value), b = parseFloat(document.getElementById('mtB').value);
+  let rows = '';
+  for(let h=0;h<24;h++){
+    const bH = ((h + (b-a)) % 24 + 24) % 24;
+    let cls, label;
+    if(h>=9&&h<17 && bH>=9&&bH<17){ cls='background:var(--ok-bg);color:var(--ok-tx)'; label='✅ Great'; }
+    else if((h>=8&&h<19) && (bH>=8&&bH<19)){ cls='background:var(--warn-bg);color:var(--warn-tx)'; label='⚠️ One side off-hours'; }
+    else { cls='background:var(--surf2);color:var(--txM)'; label='❌ Too early/late'; }
+    rows += `<div style="display:flex;justify-content:space-between;padding:.3rem .5rem;border-radius:6px;margin-bottom:.15rem;font-size:12px;${cls}"><span>${String(h).padStart(2,'0')}:00 you / ${String(Math.floor(bH)).padStart(2,'0')}:00 them</span><span>${label}</span></div>`;
+  }
+  document.getElementById('meetGrid').innerHTML = rows;
+}
+
+/* ---- 8. Bag Weight ---- */
+function modalBagWeight(){
+  const html = `
+    <label>Bag weight</label>
+    <div class="row-flex"><input type="number" id="bwVal" placeholder="e.g. 48" style="flex:1"><select id="bwUnit"><option>lbs</option><option>kg</option></select></div>
+    <label>Limit</label>
+    <select id="bwLimit">
+      <option value="50-lbs">Domestic Economy — 50 lbs</option>
+      <option value="70-lbs">International Economy — 70 lbs</option>
+      <option value="23-kg">Standard — 23 kg</option>
+      <option value="32-kg">Business/First — 32 kg</option>
+    </select>
+    <button class="btn" style="width:100%;margin-top:.6rem" onclick="calcBagWeight()">Check</button>
+    <div id="bwResult" style="margin-top:.6rem"></div>
+  `;
+  return {title:'⚖️ Bag Weight Calculator', html};
+}
+function calcBagWeight(){
+  let v = parseFloat(document.getElementById('bwVal').value)||0;
+  const unit = document.getElementById('bwUnit').value;
+  const kg = unit==='lbs' ? v*0.453592 : v;
+  const [limVal, limUnit] = document.getElementById('bwLimit').value.split('-');
+  const limKg = limUnit==='lbs' ? limVal*0.453592 : parseFloat(limVal);
+  const pct = Math.min(150, Math.round(kg/limKg*100));
+  const over = kg>limKg;
+  const color = pct<80?'#16a34a':pct<=100?'#eab308':'#dc2626';
+  document.getElementById('bwResult').innerHTML = `
+    <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,pct)}%;background:${color}"></div></div>
+    <p style="font-weight:700;color:${color}">${over?`⚠️ Overweight by ${(kg-limKg).toFixed(1)} kg (${((kg-limKg)/0.453592).toFixed(1)} lbs) — expect a fee`:`✅ ${(limKg-kg).toFixed(1)} kg (${((limKg-kg)/0.453592).toFixed(1)} lbs) under the limit`}</p>
+  `;
+}
+
+/* ---- 9. Route Search ---- */
+function modalRouteSearch(){
+  const html = `
+    <div class="row-flex">
+      <select id="rsDep" style="flex:1">${AIRPORTS.map(a=>`<option value="${a.c}">${a.c} — ${a.city}</option>`).join('')}</select>
+      <select id="rsArr" style="flex:1">${AIRPORTS.map(a=>`<option value="${a.c}">${a.c} — ${a.city}</option>`).join('')}</select>
+    </div>
+    <label>Date</label><input type="date" id="rsDate" value="${new Date().toISOString().slice(0,10)}">
+    <button class="btn" style="width:100%;margin-top:.6rem" onclick="runRouteSearch()">Search</button>
+    <div id="rsResult" style="margin-top:.6rem"></div>
+  `;
+  return {title:'🔍 Search Flights by Route', html};
+}
+function runRouteSearch(){
+  const dep = document.getElementById('rsDep').value, arr = document.getElementById('rsArr').value;
+  const hasKey = !!LS.get('ff_ak','');
+  const res = document.getElementById('rsResult');
+  if(!hasKey){
+    const common = Object.keys(AIRLINES).sort(()=>0.5-Math.random()).slice(0,4);
+    res.innerHTML = `<p class="small-note">No API key — showing commonly-operating airlines on this route instead of live results:</p>
+      ${common.map(c=>`<div class="check-item">${AIRLINES[c].name} (${c})</div>`).join('')}`;
+    return;
+  }
+  res.innerHTML = '<p class="small-note">Live flight search would query AeroDataBox here with your key.</p>';
+}
+
+/* ---- 10. Travel Docs ---- */
+const TRAVELDOCS = [
+ ["Passport valid 6+ months past return","Many countries deny entry if <6 months remain."],
+ ["ESTA (USA)","Apply online 72h+ before travel if visa-exempt."],
+ ["Canadian eTA","Required for visa-exempt air travelers to Canada."],
+ ["Australian ETA","Apply via app before departure."],
+ ["Travel insurance","Covers medical, cancellation, lost baggage."],
+ ["COVID / health docs","Check current entry requirements for your destination."],
+ ["Onward/return ticket","Some countries require proof you'll leave."],
+ ["Hotel confirmation","Immigration may ask for your address."],
+ ["Emergency contacts (paper copy)","Don't rely solely on your phone."],
+ ["Passport photo copies","Keep one digital, one paper, separate from the original."],
+ ["Local currency (small amount)","For taxis/tips on arrival."],
+ ["Hotel address written down","Useful for taxi drivers who don't speak your language."],
+ ["International Driving Permit","Required in many countries to rent/drive a car."],
+ ["TSA PreCheck / Global Entry card","Speeds up security and re-entry."],
+ ["Duplicate emergency contacts","Give a copy to someone at home too."],
+];
+function modalTravelDocs(){
+  const state = LS.get('ff_docs', {});
+  const done = TRAVELDOCS.filter((_,i)=>state[i]).length;
+  const html = `
+    <div class="progress-bar"><div class="progress-fill" style="width:${Math.round(done/TRAVELDOCS.length*100)}%"></div></div>
+    ${TRAVELDOCS.map(([t,tip],i)=>`<div class="check-item" style="align-items:flex-start"><input type="checkbox" ${state[i]?'checked':''} onchange="toggleDoc(${i})" style="margin-top:.2rem"><span><b>${t}</b><br><span class="small-note">${tip}</span></span></div>`).join('')}
+  `;
+  return {title:'📋 Travel Documents', html};
+}
+function toggleDoc(i){ const s = LS.get('ff_docs',{}); s[i]=!s[i]; LS.set('ff_docs',s); openModal('traveldocs'); }
+
+/* ---- 11. Passport Stamps ---- */
+function modalStamps(){
+  const visited = LS.get('ff_stamps', []);
+  const html = `
+    <p class="small-note">${visited.length} of ${COUNTRIES.length} countries visited (${Math.round(visited.length/COUNTRIES.length*100)}%)</p>
+    <div style="max-height:340px;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;gap:.1rem">
+      ${COUNTRIES.map(c=>`<div class="check-item" style="padding:.25rem 0"><input type="checkbox" ${visited.includes(c)?'checked':''} onchange="toggleStamp('${c.replace(/'/g,"\\'")}')"><span style="font-size:12px">${c}</span></div>`).join('')}
+    </div>
+  `;
+  return {title:'🌍 Passport Stamps', html};
+}
+function toggleStamp(c){
+  let v = LS.get('ff_stamps',[]);
+  v = v.includes(c) ? v.filter(x=>x!==c) : [...v,c];
+  LS.set('ff_stamps',v); openModal('stamps');
+}
+
+/* ---- 12. Bucket List ---- */
+function modalBucket(){
+  const list = LS.get('ff_bucket', []);
+  const html = `
+    <div class="row-flex"><input type="text" id="bucketInput" placeholder="Add a destination or dream trip"><button class="btn" onclick="addBucket()">Add</button></div>
+    ${list.length? list.map((b,i)=>`<div class="check-item"><span style="flex:1">🪣 ${b}</span><span class="cat" style="cursor:pointer" onclick="removeBucket(${i})">✕</span></div>`).join('') : '<p class="small-note">Nothing on your list yet.</p>'}
+  `;
+  return {title:'🪣 Bucket List', html};
+}
+function addBucket(){ const v = document.getElementById('bucketInput').value; if(!v) return; const l = LS.get('ff_bucket',[]); l.push(v); LS.set('ff_bucket',l); openModal('bucket'); }
+function removeBucket(i){ const l = LS.get('ff_bucket',[]); l.splice(i,1); LS.set('ff_bucket',l); openModal('bucket'); }
+
+/* ---- 13. Shortcuts ---- */
+function modalShortcuts(){
+  const rows = [['Ctrl+K / ⌘K','Focus flight search'],['D','Toggle dark mode'],['S','Open Settings'],['H','Open History'],['P','Open Flight Stats'],['R','Refresh current flight'],['Esc','Close any open modal'],['?','Show this list']];
+  const html = rows.map(([k,d])=>`<div class="check-item"><kbd>${k}</kbd><span style="margin-left:.6rem">${d}</span></div>`).join('');
+  return {title:'⌨️ Keyboard Shortcuts', html};
+}
+
+/* ---- 14. Feedback ---- */
+const FB_CHIPS = ["Add more airports","Dark mode looks great!","Widget for home screen","Barcode boarding pass scan","Offline mode please","Love the jet lag tool","Add more languages","Multi-city trip planner","Push notifications for gate changes","Apple Wallet pass","Voice search","Better tablet layout"];
+function modalFeedback(){
+  const shared = LS.get('ff_fb_shared', []);
+  const html = `
+    <div class="row-flex" style="flex-wrap:wrap">${FB_CHIPS.map(c=>`<span class="hint-chip" style="color:var(--tx2);border-color:var(--bd);cursor:pointer" onclick="document.getElementById('fbText').value='${c.replace(/'/g,"\\'")}'">${c}</span>`).join('')}</div>
+    <label>Your feedback</label><textarea id="fbText" rows="3"></textarea>
+    <label>Rating</label>
+    <div class="row-flex" id="fbRating">${['😤','😐','🙂','😊','🤩'].map((e,i)=>`<span style="font-size:22px;cursor:pointer" onclick="window._fbRate=${i+1};document.querySelectorAll('#fbRating span').forEach(s=>s.style.opacity=.4);event.target.style.opacity=1">${e}</span>`).join('')}</div>
+    <label>Name (optional)</label><input type="text" id="fbName">
+    <button class="btn" style="width:100%;margin-top:.6rem" onclick="submitFeedback()">Submit — we'll add features you ask for!</button>
+    <div class="modal-section"><h3 style="font-size:13px">Community Feedback</h3>
+      ${shared.length? shared.slice(0,10).map(f=>`<div class="check-item" style="align-items:flex-start"><span>${'⭐'.repeat(f.rating||3)}</span><span style="flex:1"><b>${f.name||'Anonymous'}</b> · <span class="small-note">${f.date}</span><br>${f.text}</span></div>`).join('') : '<p class="small-note">No feedback yet — be the first!</p>'}
+    </div>
+  `;
+  return {title:'💬 Feedback & Suggestions', html};
+}
+function submitFeedback(){
+  const text = document.getElementById('fbText').value; if(!text) return;
+  const shared = LS.get('ff_fb_shared',[]);
+  shared.unshift({text, name:document.getElementById('fbName').value, rating:window._fbRate||3, date:new Date().toISOString().slice(0,10)});
+  LS.set('ff_fb_shared', shared.slice(0,50));
+  openModal('feedback');
+}
+
+/* ---- 15. Deploy ---- */
+function modalDeploy(){
+  const html = `
+    <p class="small-note">FlightFlow is one self-contained HTML file — drop it anywhere:</p>
+    <div class="row-flex">
+      ${['CodePen','Codecademy','Replit','Glitch','Netlify','GitHub Pages','Vercel'].map(p=>`<span class="hint-chip" style="color:var(--tx2);border-color:var(--bd)">${p}</span>`).join('')}
+    </div>
+    <div class="modal-section"><h3 style="font-size:13px">Add to Home Screen — iPhone</h3>
+      <p class="small-note">Open in Safari → tap Share → "Add to Home Screen".</p></div>
+    <div class="modal-section"><h3 style="font-size:13px">Add to Home Screen — Android</h3>
+      <p class="small-note">Open in Chrome → menu (⋮) → "Install app" / "Add to Home screen".</p></div>
+    <div class="modal-section"><h3 style="font-size:13px">Real App Store / Google Play</h3>
+      <p class="small-note">Wrap this file with Capacitor, Cordova, or PWABuilder to ship it as a native app binary.</p></div>
+  `;
+  return {title:'🌐 Deploy This App', html};
+}
+
+/* ---- 16. Share ---- */
+function modalShare(){
+  if(!cur.flight) return {title:'📤 Share', html: noFlight()};
+  const f = cur.flight;
+  const text = `✈️ ${f.flightNo} — ${f.airline.name}\n${f.dep.c} ${fmtTime(f.depTime,f.dep.tz)} → ${f.arr.c} ${fmtTime(f.arrTime,f.arr.tz)}\nStatus: ${f.status} · Gate ${f.depGate} · Terminal ${f.depTerm}\nTracked with FlightFlow`;
+  const html = `
+    <textarea rows="6" readonly>${text}</textarea>
+    <div class="row-flex" style="margin-top:.6rem">
+      <button class="btn sec" onclick="navigator.clipboard.writeText(\`${text.replace(/`/g,"'")}\`)">📋 Copy</button>
+      <button class="btn sec" onclick="window.open('sms:?body=${encodeURIComponent(text)}')">💬 SMS</button>
+      <button class="btn sec" onclick="window.open('mailto:?subject=My flight ${f.flightNo}&body=${encodeURIComponent(text)}')">✉️ Email</button>
+    </div>
+  `;
+  return {title:'📤 Share Flight', html};
+}
+
+/* ---- 17. Currency ---- */
+const CURRENCIES = ["USD","EUR","GBP","JPY","CNY","AUD","CAD","CHF","HKD","SGD","SEK","NOK","DKK","NZD","MXN","INR","BRL","ZAR","KRW","TRY","RUB","AED","SAR","THB","MYR","IDR","PHP","VND","PLN","CZK","HUF","ILS","EGP","NGN","KES","ARS","CLP","COP","PEN","QAR","BHD","KWD","OMR","JOD","PKR","BDT","LKR","VEF","UAH","RON"];
+function modalCurrency(){
+  const html = `
+    <div class="row-flex">
+      <input type="number" id="curAmt" value="100" style="flex:1">
+      <select id="curFrom">${CURRENCIES.map(c=>`<option ${c==='USD'?'selected':''}>${c}</option>`).join('')}</select>
+      <button class="icon-btn" style="background:var(--surf2);color:var(--tx)" onclick="swapCur()">⇄</button>
+      <select id="curTo">${CURRENCIES.map(c=>`<option ${c==='EUR'?'selected':''}>${c}</option>`).join('')}</select>
+    </div>
+    <button class="btn" style="width:100%;margin-top:.6rem" onclick="runCurrency()">Convert</button>
+    <div id="curResult" class="countdown" style="margin-top:.6rem;display:none"></div>
+  `;
+  return {title:'💱 Currency Converter', html};
+}
+function swapCur(){ const a=document.getElementById('curFrom'), b=document.getElementById('curTo'); const t=a.value; a.value=b.value; b.value=t; }
+async function runCurrency(){
+  const amt = parseFloat(document.getElementById('curAmt').value)||0;
+  const from = document.getElementById('curFrom').value, to = document.getElementById('curTo').value;
+  const res = document.getElementById('curResult');
+  res.style.display='block'; res.textContent='Loading rate…';
+  try{
+    let cache = LS.get('ff_rates_cache', {});
+    let rates;
+    if(cache.base===from && cache.ts && (Date.now()-cache.ts)<86400000){
+      rates = cache.rates;
+    } else {
+      const r = await fetch(`https://open.er-api.com/v6/latest/${from}`);
+      const j = await r.json();
+      rates = j.rates;
+      LS.set('ff_rates_cache', {base:from, rates, ts:Date.now()});
+    }
+    const rate = rates[to];
+    res.innerHTML = `${amt} ${from} = <b>${(amt*rate).toFixed(2)} ${to}</b><br><span class="small-note">1 ${from} = ${rate.toFixed(4)} ${to} · open.er-api.com</span>`;
+  }catch(e){
+    res.textContent = 'Could not fetch live rate — check your connection.';
+  }
+}
+
+/* ---- 18. Calendar ---- */
+function modalCalendar(){
+  if(!cur.flight) return {title:'📅 Add to Calendar', html: noFlight()};
+  const f = cur.flight;
+  const html = `
+    <p class="small-note">Add "${f.flightNo}" (${f.dep.c} → ${f.arr.c}) to your calendar:</p>
+    <div class="row-flex" style="margin-top:.6rem">
+      <button class="btn" onclick="downloadICS()">📥 Download .ics (Apple/Outlook)</button>
+      <button class="btn sec" onclick="openGCal()">Google Calendar</button>
+    </div>
+  `;
+  return {title:'📅 Add to Calendar', html};
+}
+function icsDate(d){ return d.toISOString().replace(/[-:]/g,'').split('.')[0]+'Z'; }
+function downloadICS(){
+  const f = cur.flight;
+  const ics = `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nSUMMARY:Flight ${f.flightNo} ${f.dep.c}→${f.arr.c}\nDTSTART:${icsDate(f.depTime)}\nDTEND:${icsDate(f.arrTime)}\nLOCATION:${f.dep.city}\nDESCRIPTION:${f.airline.name} · Gate ${f.depGate} · Terminal ${f.depTerm}\nEND:VEVENT\nEND:VCALENDAR`;
+  const blob = new Blob([ics],{type:'text/calendar'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${f.flightNo}.ics`; a.click();
+}
+function openGCal(){
+  const f = cur.flight;
+  const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=Flight+${encodeURIComponent(f.flightNo)}&dates=${icsDate(f.depTime)}/${icsDate(f.arrTime)}&location=${encodeURIComponent(f.dep.city)}&details=${encodeURIComponent(f.airline.name+' Gate '+f.depGate)}`;
+  window.open(url,'_blank');
+}
+
+/* ---- 19. QR ---- */
+function modalQR(){
+  if(!cur.flight) return {title:'📱 QR Code', html: noFlight()};
+  const f = cur.flight;
+  const url = `https://www.flightaware.com/live/flight/${f.code}${f.num}`;
+  const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`;
+  const html = `<div style="text-align:center"><img src="${qrImg}" width="220" height="220" style="border-radius:12px"><p class="small-note" style="margin-top:.6rem"><a href="${url}" target="_blank" rel="noopener">${url}</a></p></div>`;
+  return {title:'📱 QR Code', html};
+}
+
+/* ---- 20. Jet Lag ---- */
+function clockFaceSVG(hour, min, label){
+  const hAngle = (hour%12+min/60)/12*360, mAngle = min/60*360;
+  const hx = 40+22*Math.sin(hAngle*Math.PI/180), hy = 40-22*Math.cos(hAngle*Math.PI/180);
+  const mx = 40+30*Math.sin(mAngle*Math.PI/180), my = 40-30*Math.cos(mAngle*Math.PI/180);
+  return `<svg width="90" height="100" viewBox="0 0 80 100">
+    <circle cx="40" cy="40" r="36" fill="none" stroke="var(--bd)" stroke-width="2"/>
+    <line x1="40" y1="40" x2="${hx}" y2="${hy}" stroke="var(--tx)" stroke-width="3" stroke-linecap="round"/>
+    <line x1="40" y1="40" x2="${mx}" y2="${my}" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="40" cy="40" r="2.5" fill="var(--tx)"/>
+    <text x="40" y="95" text-anchor="middle" font-size="11" fill="var(--tx)">${label}</text>
+  </svg>`;
+}
+function modalJetlag(){
+  if(!cur.flight) return {title:'😴 Jet Lag Calculator', html: noFlight()};
+  const f = cur.flight;
+  const tzDiff = f.arr.tz - f.dep.tz;
+  const eastward = tzDiff > 0;
+  const absDiff = Math.abs(tzDiff);
+  const severity = absDiff<=2?'✅ Minimal':absDiff<=4?'🟢 Mild':absDiff<=6?'🟡 Moderate':absDiff<=9?'🟠 Significant':'🔴 Severe';
+  const recoveryDays = Math.ceil(absDiff*0.75);
+  const now = new Date();
+  const depH = ((now.getUTCHours()+f.dep.tz)%24+24)%24, arrH = ((now.getUTCHours()+f.arr.tz)%24+24)%24;
+  const tips = eastward ? [
+    ["Get morning sunlight at your destination","Helps advance your body clock forward."],
+    ["Avoid naps after 3pm local time","Naps delay adjustment when traveling east."],
+    ["Shift bedtime earlier 2-3 nights before","Pre-adapts your circadian rhythm."],
+    ["Use melatonin in the evening if needed","Signals your body it's time to sleep earlier."],
+    ["Stay hydrated, limit alcohol on board","Dehydration worsens jet lag symptoms."],
+    ["Eat meals on destination schedule ASAP","Food timing helps reset your internal clock."],
+  ] : [
+    ["Get evening light, avoid early morning sun","Helps delay your body clock, matching westward shift."],
+    ["Stay up slightly later on arrival night","Westward adjustment is usually easier — lean into it."],
+    ["Shift bedtime later 2-3 nights before","Pre-adapts you to the new, later schedule."],
+    ["Exercise lightly in the afternoon","Afternoon activity helps delay sleep onset naturally."],
+    ["Limit caffeine after early afternoon","Keeps your new, later bedtime achievable."],
+    ["Expect faster adjustment than eastward trips","The body adapts to delay more easily than advance."],
+  ];
+  const html = `
+    <div style="display:flex;justify-content:space-around">${clockFaceSVG(Math.floor(depH),now.getUTCMinutes(),f.dep.c)}${clockFaceSVG(Math.floor(arrH),now.getUTCMinutes(),f.arr.c)}</div>
+    <div class="countdown" style="text-align:center;margin-top:.6rem">${severity} · ${absDiff}h shift (${eastward?'eastward':'westward'}) · ~${recoveryDays} day${recoveryDays!==1?'s':''} to fully adjust</div>
+    <p class="small-note" style="margin-top:.5rem">Expect: ${absDiff<=3?'mild grogginess, gone within a day':absDiff<=6?'noticeable fatigue and appetite shifts for a few days':'significant disruption to sleep and alertness for the better part of a week'}.</p>
+    <div class="modal-section"><h3 style="font-size:13px">Tips for ${eastward?'eastward':'westward'} travel</h3>
+      ${tips.map(([t,d])=>`<div class="check-item" style="align-items:flex-start"><span>💡</span><span><b>${t}</b><br><span class="small-note">${d}</span></span></div>`).join('')}
+    </div>
+  `;
+  return {title:'😴 Jet Lag Calculator', html};
+}
+
+/* ---- 21. Visa ---- */
+function modalVisa(){
+  if(!cur.flight) return {title:'🛂 Visa Check', html: noFlight()};
+  const f = cur.flight;
+  const pp = LS.get('ff_pp','');
+  if(!pp) return {title:'🛂 Visa Check', html: '<p class="small-note">Set your passport country in Settings first.</p>'};
+  const h = hashStr(pp+f.arr.country);
+  let status, cls;
+  if(pp===f.arr.country){ status='🏠 You are a citizen — no visa needed'; cls='ok'; }
+  else if(h%3===0){ status='✅ Visa-free entry (typically up to 90 days)'; cls='ok'; }
+  else if(h%3===1){ status='📝 Visa on arrival / eVisa available'; cls='warn'; }
+  else { status='🛂 Visa required in advance'; cls='bad'; }
+  const html = `
+    <div class="banner ${cls==='ok'?'ok':cls==='warn'?'warn':'ok'}" style="${cls==='bad'?'background:var(--bad-bg);color:var(--bad-tx)':''}">${status}</div>
+    <p class="small-note">Traveling from <b>${pp}</b> to <b>${f.arr.country}</b>. This is a general estimate — always verify current requirements with the ${f.arr.country} embassy or your airline before you fly.</p>
+  `;
+  return {title:'🛂 Visa Check', html};
+}
+
+/* ---- 22. Notes ---- */
+function modalNotes(){
+  if(!cur.flight) return {title:'📝 Notes', html: noFlight()};
+  const f = cur.flight;
+  const notes = LS.get('ff_nt_'+f.flightNo, '');
+  const html = `
+    <textarea id="notesArea" rows="8" placeholder="Seat number, hotel address, confirmation codes...">${notes}</textarea>
+    <button class="btn" style="width:100%;margin-top:.6rem" onclick="saveNotes('${f.flightNo}')">Save</button>
+  `;
+  return {title:'📝 Trip Notes', html};
+}
+function saveNotes(fn){ LS.set('ff_nt_'+fn, document.getElementById('notesArea').value); closeModal(); }
+
+/* ---- 23. Carbon ---- */
+function modalCarbon(){
+  if(!cur.flight) return {title:'🌱 Carbon Footprint', html: noFlight()};
+  const f = cur.flight;
+  const px = LS.get('ff_px',1);
+  const kgPerPax = Math.round(f.distKm * 0.115 * 1.9);
+  const total = kgPerPax * px;
+  const severity = kgPerPax<300?'🟢 Low':kgPerPax<800?'🟡 Moderate':'🔴 High';
+  const treeDays = Math.round(total/0.06);
+  const carMiles = Math.round(total/0.35);
+  const html = `
+    <div class="countdown">${severity} · ${kgPerPax} kg CO₂ per passenger</div>
+    <div class="info-grid" style="grid-template-columns:1fr 1fr;margin-top:.6rem">
+      <div class="info-card"><div class="lbl">Total (${px} pax)</div><div class="val">${total} kg</div></div>
+      <div class="info-card"><div class="lbl">Distance</div><div class="val">${Math.round(f.distKm)} km</div></div>
+      <div class="info-card"><div class="lbl">Tree-days to absorb</div><div class="val">${treeDays.toLocaleString()}</div></div>
+      <div class="info-card"><div class="lbl">Equivalent car miles</div><div class="val">${carMiles.toLocaleString()}</div></div>
+    </div>
+    <p class="small-note" style="margin-top:.6rem">Calculated using ICAO methodology with a 1.9× radiative forcing multiplier for high-altitude emissions.</p>
+    <div class="modal-section"><h3 style="font-size:13px">Offset your flight</h3>
+      <div class="row-flex">
+        <a class="btn sec" href="https://www.goldstandard.org/take-action/offset-your-emissions" target="_blank" rel="noopener">Gold Standard</a>
+        <a class="btn sec" href="https://coolefect.org" target="_blank" rel="noopener">Cool Effect</a>
+        <a class="btn sec" href="https://atmosfair.de" target="_blank" rel="noopener">atmosfair</a>
+      </div>
+    </div>
+  `;
+  return {title:'🌱 Carbon Footprint', html};
+}
+
+/* ---- 24. Connection ---- */
+function modalConnection(){
+  const html = `
+    <select id="ctAirport">${AIRPORTS.map(a=>`<option value="${a.c}">${a.c} — ${a.city}</option>`).join('')}</select>
+    <label>Connection time (minutes)</label>
+    <input type="number" id="ctMin" value="60">
+    <label><input type="checkbox" id="ctIntl"> International connection</label>
+    <button class="btn" style="width:100%;margin-top:.6rem" onclick="checkConnection()">Check</button>
+    <div id="ctResult" style="margin-top:.6rem"></div>
+  `;
+  return {title:'🔄 Connection Time Check', html};
+}
+function checkConnection(){
+  const min = parseInt(document.getElementById('ctMin').value)||0;
+  const intl = document.getElementById('ctIntl').checked;
+  const mct = intl ? 90 : 45;
+  const airport = document.getElementById('ctAirport').value;
+  const notes = {LAX:'Terminal changes may require a shuttle bus — allow extra time.',ORD:'Long walks between concourses B and C.',JFK:'Terminal transfers require AirTrain — budget 20+ min.',LHR:'Terminal 5 changes require a train between satellites.'};
+  const safe = min >= mct;
+  document.getElementById('ctResult').innerHTML = `
+    <div class="banner ${safe?'ok':'warn'}">${safe?'✅':'⚠️'} ${min} min is ${safe?'above':'below'} the typical ${mct}-min minimum for ${intl?'international':'domestic'} connections at ${airport}.</div>
+    ${notes[airport] ? `<p class="small-note">${notes[airport]}</p>` : ''}
+  `;
+}
+
+/* ---- 25. Phrases ---- */
+function modalPhrases(){
+  const langs = Object.keys(PHRASES);
+  const saved = LS.get('ff_phr_lang', langs[0]);
+  const html = `
+    <select onchange="LS.set('ff_phr_lang',this.value);openModal('phrases')">
+      ${langs.map(l=>`<option ${l===saved?'selected':''}>${PHRASES[l].flag} ${l}</option>`).join('')}
+    </select>
+    <div class="modal-section">
+      ${PHRASES[saved].items.map(([p,ph])=>`<div class="check-item" style="cursor:pointer" onclick="navigator.clipboard.writeText('${p.replace(/'/g,"\\'")}')"><span style="flex:1"><b>${p}</b><br><span class="small-note">${ph}</span></span><span class="cat">tap to copy</span></div>`).join('')}
+    </div>
+  `;
+  return {title:'💬 Emergency Phrases', html};
+}
+
+/* ---- 26. Share Image ---- */
+function modalShareImg(){
+  if(!cur.flight) return {title:'🖼️ Share as Image', html: noFlight()};
+  return {title:'🖼️ Share as Image', html: `<div style="text-align:center"><canvas id="shareCanvas" width="360" height="200" style="width:100%;max-width:360px;border-radius:12px;box-shadow:var(--shM)"></canvas>
+    <button class="btn" style="width:100%;margin-top:.6rem" onclick="downloadShareImg()">Download PNG</button></div>`};
+}
+function drawShareCanvas(){
+  const f = cur.flight; if(!f) return;
+  const c = document.getElementById('shareCanvas'); if(!c) return;
+  const ctx = c.getContext('2d'); const scale=2; c.width=360*scale; c.height=200*scale; ctx.scale(scale,scale);
+  const grad = ctx.createLinearGradient(0,0,360,200); grad.addColorStop(0,f.airline.color); grad.addColorStop(1,'#1a1a2e');
+  ctx.fillStyle=grad; ctx.fillRect(0,0,360,200);
+  ctx.fillStyle='#fff'; ctx.font='bold 26px sans-serif'; ctx.fillText(f.dep.c+' → '+f.arr.c, 20, 50);
+  ctx.font='700 15px sans-serif'; ctx.fillText(f.flightNo+' · '+f.airline.name, 20, 75);
+  ctx.font='600 13px sans-serif';
+  ctx.fillText(fmtTime(f.depTime,f.dep.tz)+' → '+fmtTime(f.arrTime,f.arr.tz), 20, 105);
+  ctx.fillText(Math.floor(f.durMin/60)+'h '+f.durMin%60+'m · '+f.aircraft, 20, 128);
+  ctx.fillStyle='rgba(255,255,255,.85)'; ctx.font='600 12px sans-serif'; ctx.fillText(f.status, 20, 155);
+  ctx.font='11px sans-serif'; ctx.fillStyle='rgba(255,255,255,.6)'; ctx.fillText('Tracked with FlightFlow ✈️', 20, 182);
+}
+function downloadShareImg(){
+  const c = document.getElementById('shareCanvas');
+  const a = document.createElement('a'); a.download='flight.png'; a.href = c.toDataURL(); a.click();
+}
+
+/* ---- 27. Seats ---- */
+const WIFI_INFO = {
+ "JetBlue Airways":"Free Fly-Fi on all aircraft · Free Peacock streaming · Fast — Amazon Viasat",
+ "Delta Air Lines":"Free WiFi on most domestic routes via T-Mobile · Streaming supported",
+ "United Airlines":"Paid WiFi via Starlink rollout in progress · Free live TV on select routes",
+ "American Airlines":"Paid WiFi on most aircraft · Free messaging on select routes",
+ "Southwest Airlines":"Paid WiFi, flat rate per device · Free live TV",
+};
+function modalSeats(){
+  if(!cur.flight) return {title:'💺 Seat Assistant', html: noFlight()};
+  const f = cur.flight;
+  const info = AIRCRAFT[f.aircraft];
+  const pref = LS.get('ff_seat_pref','window');
+  const wifi = WIFI_INFO[f.airline.name] || 'WiFi availability varies by aircraft — check with the airline.';
+  const html = `
+    <div class="countdown">${f.aircraft} · ${f.seatTotal} seats</div>
+    <label>Seat preference</label>
+    <select onchange="LS.set('ff_seat_pref',this.value)">
+      ${['window','aisle','front','legroom'].map(p=>`<option value="${p}" ${pref===p?'selected':''}>${p[0].toUpperCase()+p.slice(1)}</option>`).join('')}
+    </select>
+    <div class="modal-section"><h3 style="font-size:13px">✅ Best seats</h3><p class="small-note">${info.best}</p></div>
+    <div class="modal-section"><h3 style="font-size:13px">❌ Seats to avoid</h3><p class="small-note">${info.worst}</p></div>
+    <div class="modal-section"><h3 style="font-size:13px">💡 Pro tip</h3><p class="small-note">${info.tip}</p></div>
+    <div class="modal-section"><h3 style="font-size:13px">📶 WiFi on ${f.airline.name}</h3><p class="small-note">${wifi}</p></div>
+    <a class="btn sec" style="display:block;text-align:center;margin-top:.6rem" href="https://www.seatguru.com/search/search.php?q=${encodeURIComponent(f.airline.name+' '+f.aircraft)}" target="_blank" rel="noopener">Full seat map on SeatGuru ↗</a>
+  `;
+  return {title:'💺 Seat Assistant', html};
+}
+
+/* ---- 28. FR24 ---- */
+function modalFR24(){
+  if(!cur.flight) return {title:'📡 Live Map', html: noFlight()};
+  const f = cur.flight;
+  const lat=(f.dep.lat+f.arr.lat)/2, lon=(f.dep.lon+f.arr.lon)/2;
+  const html = `<iframe src="https://www.flightradar24.com/simple_secondary?lat=${lat}&lon=${lon}&z=4" style="width:100%;height:340px;border:none;border-radius:12px"></iframe>
+  <p class="small-note" style="margin-top:.4rem"><a href="https://www.flightradar24.com/${f.code}${f.num}" target="_blank" rel="noopener">Open full tracker on FlightRadar24 ↗</a></p>`;
+  return {title:'📡 Live FlightRadar24 Map', html};
+}
+
+/* ---- 29. Layover ---- */
+let layoverPick = null;
+function modalLayover(){
+  const codes = Object.keys(LAYOVER);
+  const dest = layoverPick || (cur.flight && codes.includes(cur.flight.arr.c) ? cur.flight.arr.c : codes[0]);
+  const g = LAYOVER[dest];
+  const html = `
+    <select onchange="layoverPick=this.value;openModal('layover')">
+      ${codes.map(c=>`<option value="${c}" ${c===dest?'selected':''}>${c} — ${LAYOVER[c].name}</option>`).join('')}
+    </select>
+    <h3 style="margin:.7rem 0 .3rem;font-size:13px">Top things to do</h3>
+    ${g.things.map(t=>`<div class="check-item">✔️ ${t}</div>`).join('')}
+    <div class="info-grid" style="grid-template-columns:1fr 1fr;margin-top:.6rem">
+      <div class="info-card"><div class="lbl">Distance</div><div class="val" style="font-size:12px">${g.dist}</div></div>
+      <div class="info-card"><div class="lbl">Transit</div><div class="val" style="font-size:12px">${g.transit}</div></div>
+    </div>
+    <a class="btn sec" style="display:block;text-align:center;margin-top:.6rem" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(g.name+' attractions')}" target="_blank" rel="noopener">Open in Google Maps ↗</a>
+  `;
+  return {title:'🏙️ Layover City Guide', html};
+}
+
+/* ---- 30. Sleep Schedule ---- */
+function modalSleep(){
+  if(!cur.flight) return {title:'😴 Sleep Schedule Optimizer', html: noFlight()};
+  const f = cur.flight;
+  const eastward = (f.arr.tz - f.dep.tz) > 0;
+  const shiftPerNight = eastward ? -1 : 1;
+  let rows = '';
+  for(let n=3;n>=1;n--){
+    const bedShift = shiftPerNight*(4-n);
+    const bedHour = ((22+bedShift)%24+24)%24, wakeHour = ((6+bedShift)%24+24)%24;
+    rows += `<div class="check-item"><span style="flex:1">${n} night${n>1?'s':''} before</span><span>🛏️ ${String(bedHour).padStart(2,'0')}:00 → ⏰ ${String(wakeHour).padStart(2,'0')}:00</span></div>`;
+  }
+  const html = `<p class="small-note">Traveling ${eastward?'eastward':'westward'} — shifting your schedule ${eastward?'earlier':'later'} each night reduces jet lag on arrival.</p>${rows}`;
+  return {title:'😴 Sleep Schedule Optimizer', html};
+}
+
+/* ---- 31. Airport Info ---- */
+function modalAirportInfo(code){
+  const a = AIRPORTS.find(x=>x.c===code) || (cur.flight?cur.flight.arr:AIRPORTS[0]);
+  const em = EMERGENCY[a.country] || EMERGENCY.default;
+  const nearby = AIRPORTS.filter(x=>x.c!==a.c && haversine(a.lat,a.lon,x.lat,x.lon)<250).slice(0,5);
+  const trivia = TRIVIA[a.c] || `${a.city}'s ${a.c} airport serves ${a.country} and connects to destinations across the region.`;
+  const html = `
+    <div class="info-grid" style="grid-template-columns:1fr 1fr">
+      <div class="info-card"><div class="lbl">Language</div><div class="val">${a.lang}</div></div>
+      <div class="info-card"><div class="lbl">Plug type</div><div class="val">${a.plug}</div></div>
+      <div class="info-card"><div class="lbl">Currency</div><div class="val">${a.cur}</div></div>
+      <div class="info-card"><div class="lbl">WiFi</div><div class="val">Free in most terminals</div></div>
+    </div>
+    <div class="modal-section"><h3 style="font-size:13px">Emergency numbers</h3>
+      <div class="row-flex">
+        <div class="info-card">👮 Police<br><b>${em.police}</b></div>
+        <div class="info-card">🚒 Fire<br><b>${em.fire}</b></div>
+        <div class="info-card">🚑 Medical<br><b>${em.medical}</b></div>
+      </div>
+      <p class="small-note">🌐 International emergency line: 112 works in most countries as a fallback.</p>
+    </div>
+    <div class="modal-section"><h3 style="font-size:13px">Getting around</h3><p class="small-note">Check the Transport tab on the dashboard for rideshare and transit links to ${a.city}.</p></div>
+    <div class="modal-section"><h3 style="font-size:13px">💡 Did you know?</h3><p class="small-note">${trivia}</p></div>
+    ${nearby.length? `<div class="modal-section"><h3 style="font-size:13px">Nearby airports</h3><div class="row-flex">${nearby.map(n=>`<span class="hint-chip" style="color:var(--tx2);border-color:var(--bd);cursor:pointer" onclick="openModal('airportinfo','${n.c}')">${n.c}</span>`).join('')}</div></div>` : ''}
+    <div class="row-flex" style="margin-top:.6rem">
+      <button class="btn sec" onclick="openModal('layover')">Layover guide</button>
+      <a class="btn sec" href="https://www.google.com/maps/search/?api=1&query=${a.c}+airport" target="_blank" rel="noopener">Google Maps</a>
+      <a class="btn sec" href="https://www.google.com/search?q=${a.c}+airport+lounges" target="_blank" rel="noopener">Lounges</a>
+    </div>
+  `;
+  return {title:`🛫 ${a.c} — ${a.city}`, html};
+}
+
+/* ---- 32. Bingo ---- */
+const BINGO_ITEMS = ["Window view of clouds","Seatbelt sign turns on","Meal or snack cart","Turbulence","Captain announcement","Someone sleeping","A crying baby","Reading a book","Watching a movie","Beverage service","Bumpy landing","Smooth landing","Applause on landing","Window seat sunset","Another plane out the window","Flight attendant demo","Overhead bin struggle","Empty middle seat","Someone reclines their seat","Airport on the ground"];
+function modalBingo(){
+  const state = LS.get('ff_bingo', {});
+  const done = BINGO_ITEMS.filter((_,i)=>state[i]).length;
+  const html = `
+    <div class="progress-bar"><div class="progress-fill" style="width:${done/BINGO_ITEMS.length*100}%"></div></div>
+    ${done===BINGO_ITEMS.length ? '<div class="banner ok">🎉 BINGO! You spotted everything!</div>' : ''}
+    ${BINGO_ITEMS.map((b,i)=>`<div class="check-item"><input type="checkbox" ${state[i]?'checked':''} onchange="toggleBingo(${i})"><span>${b}</span></div>`).join('')}
+  `;
+  return {title:'🎯 Flight Bingo', html};
+}
+function toggleBingo(i){ const s = LS.get('ff_bingo',{}); s[i]=!s[i]; LS.set('ff_bingo',s); openModal('bingo'); }
+
+/* ===================== KEYBOARD SHORTCUTS ===================== */
+document.addEventListener('keydown', e=>{
+  const tag = (e.target.tagName||'').toLowerCase();
+  const typing = tag==='input'||tag==='textarea'||tag==='select';
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); document.getElementById('flightInput').focus(); return; }
+  if(e.key==='Escape'){ closeModal(); return; }
+  if(typing) return;
+  if(e.key==='?'){ openModal('shortcuts'); }
+  else if(e.key.toLowerCase()==='d'){ const m=LS.get('ff_dk','auto'); const dark = document.documentElement.getAttribute('data-mode')==='dark'; LS.set('ff_dk', dark?'0':'1'); applyTheme(); if(cur.flight) drawMap(cur.flight); }
+  else if(e.key.toLowerCase()==='s'){ openModal('settings'); }
+  else if(e.key.toLowerCase()==='h'){ openModal('history'); }
+  else if(e.key.toLowerCase()==='p'){ openModal('stats'); }
+  else if(e.key.toLowerCase()==='r'){ if(cur.flight) trackFlight(cur.flight.flightNo); }
+});
+
+/* ===================== INIT ===================== */
+function init(){
+  applyTheme();
+  renderClockStrip();
+  renderRecentBar();
+  const last = LS.get('ff_last', null);
+  if(last){ document.getElementById('flightInput').value=''; trackFlight(last); }
+  else renderDashboard();
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);
+else init();
+</script>
+</body>
+</html>
