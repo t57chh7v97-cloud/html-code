@@ -4,6 +4,8 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>FlightFlow ✈️</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -115,8 +117,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .sia{background:#ede9fe;color:#5b21b6}
 .ssc{background:var(--s2);color:var(--t2)}
 .sln{background:#dcfce7;color:#166534}
-.abs{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
-.ab{background:var(--s2);border:1px solid var(--bor);border-radius:8px;padding:6px 9px;font-size:12px;color:var(--t2);cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap;font-weight:600;text-decoration:none}
+.abs{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;margin-top:12px}
+.abs::-webkit-scrollbar{display:none}
+.ab{background:var(--s2);border:1px solid var(--bor);border-radius:8px;padding:6px 9px;font-size:12px;color:var(--t2);cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap;font-weight:600;text-decoration:none;flex-shrink:0}
 .ab:hover{background:var(--accL);color:var(--acc);border-color:var(--acc)}
 /* DATE BAR */
 .fdbar{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px;padding-bottom:4px}
@@ -375,9 +378,9 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
 /* === PHONE (up to 600px) === */
 @media(max-width:600px){
   .w{padding:0 .75rem}
-  .hero{padding:1.5rem .75rem 2rem}
-  .hero h1{font-size:21px}
-  .hero p{font-size:13px}
+  .hero{padding:1rem .75rem 1.1rem}
+  .hero h1{font-size:19px;margin-bottom:2px}
+  .hero p{font-size:12px;margin-bottom:.75rem}
   .sc{flex-direction:column;gap:8px;padding:10px}
   .trk{width:100%;justify-content:center}
   .iata{font-size:26px;letter-spacing:-1px}
@@ -392,15 +395,16 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
   .wxdets{grid-template-columns:1fr}
   .apig{grid-template-columns:1fr}
   .nav-r .nbdg{display:none}
-  .alb{flex-wrap:wrap}
+  .alb{flex-wrap:wrap;margin-bottom:10px;padding-bottom:10px}
   .alr{width:100%}
-  .abs{justify-content:flex-start}
   .modal{max-width:100%;border-radius:16px 16px 0 0}
   .mbg{align-items:flex-end}
-  .rr{gap:4px}
+  .rr{gap:4px;margin-bottom:10px}
   .ig{gap:6px}
   .fmap{height:200px}
-  .card{padding:1rem}
+  .card{padding:.85rem;margin-bottom:8px}
+  .cdr{margin-top:8px;padding-top:8px}
+  .abs{margin-top:8px}
 }
 /* === TABLET (600-1024px) === */
 @media(min-width:600px) and (max-width:1024px){
@@ -580,19 +584,21 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
   </div>
 </div></nav>
 <!-- CLOCK -->
-<div class="ckb"><div class="w"><div class="cklb">🕐 Now</div><div id="clkI" class="ckis"></div></div></div>
+<div class="ckb" id="ckbWrap"><div class="w"><div class="cklb">🕐 Now</div><div id="clkI" class="ckis"></div></div></div>
 <!-- RECENTS -->
 <div id="rcBar" class="rcs" style="display:none"><div class="w"><div id="rcChp"></div></div></div>
 <!-- HERO -->
-<section class="hero"><div class="hri">
+<section class="hero" id="heroSec"><div class="hri">
+  <div id="heroIntro">
   <h1>Track your flight ✈️</h1>
   <p>Real-time dashboard — live data, weather, seat maps, multiple dates, checklists and more</p>
+  </div>
   <div class="sc">
     <div class="sf"><span style="font-size:18px;color:#9ba3b8;flex-shrink:0">🔍</span>
     <input type="text" id="flIn" placeholder="B6 1368, AA 100, DL 220, EK 202..." maxlength="10" autocomplete="off" spellcheck="false"/></div>
     <button class="trk" onclick="doLkp()">📡 Track</button>
   </div>
-  <div class="hnts"><span class="hnt">JetBlue: B6</span><span class="hnt">American: AA</span><span class="hnt">Delta: DL</span><span class="hnt">United: UA</span><span class="hnt">Emirates: EK</span><span class="hnt">British: BA</span><span class="hnt">Southwest: WN</span></div>
+  <div class="hnts" id="heroHints"><span class="hnt">JetBlue: B6</span><span class="hnt">American: AA</span><span class="hnt">Delta: DL</span><span class="hnt">United: UA</span><span class="hnt">Emirates: EK</span><span class="hnt">British: BA</span><span class="hnt">Southwest: WN</span></div>
 </div></section>
 <!-- DASHBOARD -->
 <main class="main"><div class="w"><div id="dash">
@@ -614,7 +620,7 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
     <button class="eab" onclick="OM('mFbk');rFbk()">💬 Feedback</button>
   </div></div>
 </div></div></main>
-<footer><div class="w"><span>FlightFlow ✈️</span><span class="fdt">•</span><span>AeroDataBox · OpenWeatherMap · open.er-api.com</span><span class="fdt">•</span><span>Canvas map</span></div></footer>
+<footer><div class="w"><span>FlightFlow ✈️</span><span class="fdt">•</span><span>AeroDataBox · OpenWeatherMap · open.er-api.com</span><span class="fdt">•</span><span>Leaflet · OpenStreetMap</span></div></footer>
 <script>
 // ═══ UNITS SYSTEM ═══
 function getU(k,def){return ls.g('ff_u_'+k)||def;}
@@ -646,10 +652,10 @@ function syncUnits(){
   if(!ls.g('ff_u_share'))ls.s('ff_u_share','full');
 }
 
-// ═══ INLINE CANVAS MAP ═══
+// ═══ LEAFLET / OPENSTREETMAP FLIGHT PATH MAP ═══
 var MapInline=(function(){
-  function project(lon,lat,W,H){return[(lon+180)/360*W,(90-lat)/180*H];}
-  function gc(lo1,la1,lo2,la2,n){
+  var mapInst=null;
+  function gcPoints(lo1,la1,lo2,la2,n){
     var r=function(d){return d*Math.PI/180;},deg=function(r){return r*180/Math.PI;};
     var f1=r(la1),l1=r(lo1),f2=r(la2),l2=r(lo2);
     var d=2*Math.asin(Math.sqrt(Math.pow(Math.sin((f2-f1)/2),2)+Math.cos(f1)*Math.cos(f2)*Math.pow(Math.sin((l2-l1)/2),2)));
@@ -658,117 +664,38 @@ var MapInline=(function(){
     for(var i=0;i<=n;i++){var f=i/n,A=Math.sin((1-f)*d)/Math.sin(d),B=Math.sin(f*d)/Math.sin(d);var x=A*Math.cos(f1)*Math.cos(l1)+B*Math.cos(f2)*Math.cos(l2);var y=A*Math.cos(f1)*Math.sin(l1)+B*Math.cos(f2)*Math.sin(l2);var z=A*Math.sin(f1)+B*Math.sin(f2);pts.push([deg(Math.atan2(z,Math.sqrt(x*x+y*y))),deg(Math.atan2(y,x))]);}
     return pts;
   }
-  function poly(ctx,pts,W,H){ctx.beginPath();pts.forEach(function(p,i){var xy=project(p[0],p[1],W,H);i?ctx.lineTo(xy[0],xy[1]):ctx.moveTo(xy[0],xy[1]);});ctx.closePath();ctx.fill();}
+  function airportIcon(code,col){
+    return L.divIcon({
+      className:'',
+      html:'<div style="background:'+col+';color:#fff;font:800 11px -apple-system,sans-serif;padding:4px 8px;border-radius:20px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);white-space:nowrap">'+code+'</div>',
+      iconSize:null,
+      iconAnchor:[20,12]
+    });
+  }
   function render(el,dLat,dLon,dCode,aLat,aLon,aCode,dark){
+    if(typeof L==='undefined'){el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ba3b8;font-size:13px">Map library failed to load — check your connection.</div>';return;}
+    if(mapInst){mapInst.remove();mapInst=null;}
     el.innerHTML='';
-    var W=el.offsetWidth||680,H=260;
-    var ocean=dark?'#1e3050':'#b8d8e8';
-    var land=dark?'#2d4a3e':'#c8d8a0';
-    var landStr=dark?'#243d33':'#b0c888';
-    var grid=dark?'rgba(255,255,255,.07)':'rgba(0,0,0,.08)';
-    // Proper Mercator projection
-    function mx(lon){return Math.round((lon+180)/360*W*10)/10;}
-    function my(lat){
-      var la=Math.max(-85,Math.min(85,lat));
-      var r=la*Math.PI/180;
-      return Math.round((H/2-(H*0.9/(2*Math.PI))*Math.log(Math.tan(Math.PI/4+r/2)))*10)/10;
-    }
-    // Great circle arc
-    var pts=gc(dLon,dLat,aLon,aLat,80);
-    var arcPts=pts.map(function(p){return mx(p[1])+','+my(p[0]);}).join(' ');
-    // SVG with a proper world map using path data
-    // These paths are hand-simplified Natural Earth coordinates
-    var svg='<svg width="100%" height="'+H+'" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="display:block;border-radius:0 0 18px 18px">';
-    svg+='<rect width="'+W+'" height="'+H+'" fill="'+ocean+'"/>';
-    // Draw land using a series of accurate polygons
-    // Each country/continent as a proper shape
-    function P(coords){
-      var d=coords.map(function(c,i){return(i?'L':'M')+mx(c[0])+' '+my(c[1]);}).join('');
-      return '<path d="'+d+'Z" fill="'+land+'" stroke="'+landStr+'" stroke-width="0.4"/>';
-    }
-    // North America - main body
-    svg+=P([[-167,68],[-141,69],[-131,54],[-126,50],[-123,48],[-123,46],[-124,43],[-120,34],[-117,32],[-117,30],[-105,20],[-90,16],[-83,10],[-77,8],[-76,9],[-82,10],[-84,11],[-85,10],[-87,16],[-90,18],[-92,15],[-88,16],[-84,18],[-80,25],[-81,31],[-81,35],[-76,35],[-75,38],[-70,42],[-67,45],[-60,45],[-64,44],[-66,44],[-67,47],[-65,47],[-64,50],[-61,46],[-59,46],[-63,47],[-65,50],[-60,47],[-55,47],[-54,47],[-53,47],[-57,51],[-58,54],[-64,58],[-68,60],[-65,62],[-68,63],[-72,63],[-76,64],[-78,62],[-77,60],[-80,60],[-83,62],[-85,63],[-82,66],[-80,69],[-90,72],[-100,73],[-110,73],[-120,72],[-130,70],[-140,70],[-155,70],[-167,68]]);
-    // Greenland
-    svg+=P([[-44,59],[-42,65],[-38,68],[-25,83],[-18,83],[-20,78],[-22,73],[-28,70],[-35,67],[-44,59]]);
-    // Cuba
-    svg+=P([[-85,22],[-82,23],[-74,20],[-74,19],[-77,20],[-85,22]]);
-    // Hispaniola
-    svg+=P([[-74,18],[-72,19],[-68,19],[-68,18],[-72,18],[-74,18]]);
-    // South America
-    svg+=P([[-81,8],[-77,8],[-75,10],[-68,11],[-62,10],[-60,5],[-51,4],[-50,0],[-50,-5],[-35,-5],[-35,-23],[-48,-28],[-52,-32],[-52,-33],[-53,-34],[-58,-38],[-62,-38],[-65,-42],[-68,-46],[-72,-50],[-68,-54],[-65,-55],[-68,-54],[-72,-50],[-73,-40],[-74,-30],[-72,-18],[-80,-2],[-80,0],[-78,2],[-77,8],[-81,8]]);
-    // Europe - main body
-    svg+=P([[-9,38],[-9,44],[-8,44],[-2,44],[0,44],[3,43],[5,43],[7,44],[8,46],[10,47],[12,47],[14,46],[14,44],[12,43],[12,40],[15,38],[16,38],[20,38],[22,38],[26,38],[28,40],[30,38],[30,46],[28,56],[24,56],[22,56],[18,57],[14,58],[10,58],[6,58],[4,56],[2,52],[0,51],[-3,51],[-5,48],[-5,44],[-9,38]]);
-    // Scandinavia
-    svg+=P([[5,58],[6,58],[8,58],[10,60],[12,60],[14,62],[16,68],[18,68],[20,70],[26,70],[28,72],[30,70],[28,66],[24,62],[22,60],[22,58],[24,56],[18,56],[14,58],[10,58],[6,58]]);
-    // UK
-    svg+=P([[-6,50],[-3,50],[0,51],[2,52],[0,54],[-3,58],[-5,58],[-4,56],[-2,56],[-2,52],[-4,52],[-5,50],[-6,50]]);
-    // Ireland
-    svg+=P([[-10,51],[-8,51],[-6,52],[-6,55],[-8,55],[-10,54],[-10,51]]);
-    // Iceland
-    svg+=P([[-24,64],[-22,64],[-14,64],[-14,66],[-18,66],[-22,66],[-24,65],[-24,64]]);
-    // Africa
-    svg+=P([[-17,14],[-15,10],[-15,8],[-10,5],[-5,4],[0,4],[5,4],[10,4],[15,4],[22,4],[28,2],[32,-2],[36,-4],[40,-10],[38,-16],[34,-20],[32,-26],[28,-32],[28,-34],[26,-34],[20,-34],[18,-28],[16,-22],[14,-14],[12,-5],[8,4],[4,5],[2,5],[0,5],[-5,5],[-10,5],[-15,8],[-15,10],[-17,14]]);
-    // Madagascar
-    svg+=P([[44,-12],[48,-14],[50,-18],[48,-22],[44,-24],[44,-20],[44,-16],[44,-12]]);
-    // Arabian Peninsula
-    svg+=P([[36,28],[38,28],[40,24],[44,22],[52,22],[56,22],[58,20],[58,16],[54,12],[50,12],[46,14],[44,14],[42,16],[38,20],[36,22],[36,28]]);
-    // Turkey
-    svg+=P([[26,42],[30,42],[34,36],[36,36],[38,36],[40,36],[42,38],[42,40],[40,42],[36,42],[32,42],[28,42],[26,42]]);
-    // Iran + Iraq
-    svg+=P([[42,38],[44,36],[46,32],[48,30],[52,28],[56,28],[60,28],[60,30],[56,36],[52,38],[48,38],[44,38],[42,38]]);
-    // Central Asia + Russia south
-    svg+=P([[42,40],[48,42],[54,44],[60,44],[66,44],[70,44],[74,42],[76,40],[78,36],[80,34],[74,34],[70,34],[66,36],[62,36],[58,36],[54,38],[50,38],[46,38],[42,40]]);
-    // India
-    svg+=P([[66,24],[70,22],[72,20],[74,18],[78,8],[80,10],[80,14],[78,18],[80,22],[76,26],[72,26],[68,26],[66,24]]);
-    // Southeast Asia mainland
-    svg+=P([[92,28],[96,26],[100,22],[100,14],[102,8],[104,6],[104,2],[100,2],[100,6],[98,10],[96,14],[94,18],[90,22],[88,26],[88,28],[92,28]]);
-    // China + Mongolia
-    svg+=P([[76,40],[80,44],[86,48],[92,52],[98,52],[104,52],[110,52],[114,48],[118,48],[120,50],[124,50],[128,48],[130,46],[134,44],[136,34],[136,30],[130,28],[124,22],[118,22],[114,22],[110,18],[106,12],[104,10],[102,10],[100,12],[96,18],[92,22],[88,26],[88,28],[92,28],[90,30],[86,30],[82,30],[78,32],[76,34],[76,40]]);
-    // Japan
-    svg+=P([[130,32],[132,32],[134,34],[136,36],[138,38],[140,40],[140,42],[138,44],[136,44],[134,42],[132,38],[130,34],[130,32]]);
-    svg+=P([[140,42],[142,42],[144,44],[144,46],[142,46],[140,44],[140,42]]);
-    svg+=P([[144,44],[146,44],[148,44],[148,46],[146,46],[144,44]]);
-    // Korean Peninsula
-    svg+=P([[124,38],[126,34],[128,34],[130,36],[130,38],[128,38],[126,38],[124,38]]);
-    // Philippines
-    svg+=P([[120,16],[122,14],[122,10],[120,8],[120,10],[118,12],[120,16]]);
-    // Indonesia - Java + Sumatra
-    svg+=P([[104,-6],[108,-6],[112,-8],[114,-8],[110,-8],[106,-6],[104,-6]]);
-    svg+=P([[96,4],[100,4],[104,2],[106,-2],[104,-4],[100,-4],[96,0],[96,4]]);
-    // Australia
-    svg+=P([[114,-22],[118,-20],[122,-18],[130,-14],[134,-12],[136,-12],[138,-14],[140,-18],[142,-18],[144,-20],[146,-22],[148,-24],[150,-26],[152,-28],[152,-32],[148,-38],[144,-38],[140,-36],[136,-32],[130,-32],[124,-28],[120,-28],[114,-24],[114,-22]]);
-    // New Zealand North Island
-    svg+=P([[172,-36],[174,-36],[178,-38],[178,-40],[174,-42],[172,-40],[172,-36]]);
-    // New Zealand South Island
-    svg+=P([[168,-44],[170,-44],[172,-46],[172,-46],[170,-46],[168,-46],[168,-44]]);
-    // Russia - simplified
-    svg+=P([[32,70],[40,68],[50,68],[60,68],[70,68],[80,70],[90,72],[100,72],[110,72],[120,72],[130,70],[140,70],[150,68],[160,66],[166,64],[166,60],[160,54],[154,50],[142,46],[138,44],[134,44],[132,48],[128,52],[124,52],[120,50],[116,52],[110,54],[104,52],[98,52],[92,52],[86,48],[80,44],[76,40],[74,46],[70,54],[66,60],[62,66],[56,68],[50,68],[44,68],[38,70],[32,70]]);
-    // Canada north
-    svg+=P([[-80,60],[-85,63],[-82,66],[-80,69],[-90,72],[-100,73],[-110,73],[-120,72],[-130,70],[-140,70],[-155,70],[-167,68],[-141,69],[-131,54],[-126,50],[-120,54],[-115,58],[-110,60],[-105,60],[-100,60],[-95,60],[-90,60],[-85,60],[-80,60]]);
-    // Grid lines
-    for(var lo=-180;lo<=180;lo+=30){svg+='<line x1="'+mx(lo)+'" y1="0" x2="'+mx(lo)+'" y2="'+H+'" stroke="'+grid+'" stroke-width="0.5"/>';}
-    for(var la=-60;la<=60;la+=30){var yy=my(la);if(yy>0&&yy<H)svg+='<line x1="0" y1="'+yy+'" x2="'+W+'" y2="'+yy+'" stroke="'+grid+'" stroke-width="0.5"/>';}
-    // Equator
-    svg+='<line x1="0" y1="'+my(0)+'" x2="'+W+'" y2="'+my(0)+'" stroke="'+grid+'" stroke-width="1.2" stroke-dasharray="4,4"/>';
-    // Great circle arc
-    svg+='<polyline points="'+arcPts+'" fill="none" stroke="#4f6ef7" stroke-width="2.5" stroke-dasharray="7,4" stroke-linecap="round" opacity="0.9"/>';
-    // Airport markers
-    function svgMarker(lat,lon,code,col){
-      var x=mx(lon),y=my(lat);
-      if(x<0||x>W||y<0||y>H)return'';
-      var lx=x>W*0.65?x-52:x+10,ly=y<20?y+20:y-20;
-      var tw=code.length*7+8;
-      var bgc=dark?'rgba(15,20,40,.92)':'rgba(255,255,255,.95)';
-      var txc=dark?'#e0e8ff':'#0f1117';
-      return'<circle cx="'+x+'" cy="'+y+'" r="9" fill="'+col+'" stroke="white" stroke-width="2.5"/>'
-        +'<text x="'+x+'" y="'+(y+0.5)+'" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="8" font-weight="800" font-family="-apple-system,sans-serif">'+code.slice(0,3)+'</text>'
-        +'<rect x="'+(lx-2)+'" y="'+(ly-9)+'" width="'+tw+'" height="18" rx="4" fill="'+bgc+'" stroke="'+col+'" stroke-width="1.5"/>'
-        +'<text x="'+(lx+3)+'" y="'+(ly+1)+'" dominant-baseline="middle" fill="'+txc+'" font-size="11" font-weight="700" font-family="-apple-system,sans-serif">'+code+'</text>';
-    }
-    svg+=svgMarker(dLat,dLon,dCode,'#4f6ef7');
-    svg+=svgMarker(aLat,aLon,aCode,'#22c55e');
-    svg+='</svg>';
-    el.innerHTML=svg;
+    el.style.background='transparent';
+    var mapId='lmap-'+Date.now();
+    var div=document.createElement('div');
+    div.id=mapId;div.style.width='100%';div.style.height='100%';
+    el.appendChild(div);
+    var map=L.map(mapId,{scrollWheelZoom:false,attributionControl:true});
+    mapInst=map;
+    var tileUrl=dark
+      ?'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+      :'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+    L.tileLayer(tileUrl,{
+      attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      maxZoom:18
+    }).addTo(map);
+    var gc=gcPoints(dLon,dLat,aLon,aLat,64);
+    var line=L.polyline(gc,{color:'#4f6ef7',weight:3,opacity:.9,dashArray:'7,6',lineCap:'round'}).addTo(map);
+    L.marker([dLat,dLon],{icon:airportIcon(dCode,'#4f6ef7')}).addTo(map);
+    L.marker([aLat,aLon],{icon:airportIcon(aCode,'#22c55e')}).addTo(map);
+    map.fitBounds(line.getBounds(),{padding:[36,36]});
+    setTimeout(function(){map.invalidateSize();},80);
   }
   return{render:render};
 })();
@@ -1316,6 +1243,24 @@ function fetchFl(iata,date){
   var url='https://aerodatabox.p.rapidapi.com/flights/number/'+encodeURIComponent(iata.replace(' ',''))+'/'+dt+'?withAircraftImage=false&withLocation=false';
   return fetch(url,{headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}}).then(function(r){return r.ok?r.json():null;}).then(function(j){return j&&j.length?j:null;}).catch(function(){return null;});
 }
+// A flight number can return multiple entries (codeshares, multiple daily
+// departures). Once we know the real route, prefer the entry that matches it
+// instead of blindly taking the first non-cancelled result — that mismatch
+// was the source of "wrong airports and times" with a live API key.
+function pickFlight(rawArr,dep,arr){
+  if(!rawArr||!rawArr.length)return null;
+  var candidates=rawArr.filter(function(r){return r.status&&r.status.toLowerCase()!=='cancelled';});
+  if(!candidates.length)candidates=rawArr;
+  if(dep&&arr){
+    var match=candidates.find(function(r){
+      var d=(r.departure&&r.departure.airport&&r.departure.airport.iata)||'';
+      var a=(r.arrival&&r.arrival.airport&&r.arrival.airport.iata)||'';
+      return d===dep&&a===arr;
+    });
+    if(match)return match;
+  }
+  return candidates[0];
+}
 // ═══ MAP LIVE — reads h/min directly from local string, no conversion ═══
 function mapLive(raw,parsed){
   var dep=raw.departure||{},arr=raw.arrival||{};
@@ -1417,14 +1362,15 @@ function localDateLabel(daysOff){
   if(iso===t)return'Today';if(iso===y)return'Yesterday';if(iso===tm)return'Tomorrow';
   return new Date(iso+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
 }
-function bldFDates(parsed,dep,arr){
+function bldFDates(parsed,dep,arr,todayFd){
   var offsets=[-1,0,1,2,3];
   var proms=offsets.map(function(o){
     var iso=localDateStr(o),lbl=localDateLabel(o);
     var demo=bDemo(parsed.code,parsed.num,dep,arr,o);
+    if(o===0&&todayFd)return Promise.resolve({offset:o,date:iso,label:lbl,fd:todayFd,all:null});
     if(!getAK())return Promise.resolve({offset:o,date:iso,label:lbl,fd:demo,all:null});
     return fetchFl(parsed.full.replace(' ',''),iso).then(function(rawArr){
-      var raw=rawArr&&rawArr.length?(rawArr.find(function(r){return r.status&&r.status.toLowerCase()!=='cancelled';})||rawArr[0]):null;
+      var raw=pickFlight(rawArr,dep,arr);
       var fd=raw?mapLive(raw,parsed):demo;
       var all=rawArr&&rawArr.length>1?rawArr.map(function(r){return mapLive(r,parsed);}):null;
       return{offset:o,date:iso,label:lbl,fd:fd,all:all};
@@ -1628,18 +1574,25 @@ function clearAll(){if(!confirm('Clear ALL FlightFlow data? Cannot be undone.'))
 function rMap(dep,arr){var dA=AP[dep],aA=AP[arr],el=g('fmap');if(!el)return;if(!dA||!aA){el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:260px;color:#9ba3b8;font-size:13px">Map unavailable</div>';return;}try{MapInline.render(el,dA.lat,dA.lon,dep,aA.lat,aA.lon,arr,S.dark);}catch(e){el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:260px;color:#9ba3b8">'+dep+' to '+arr+'</div>';}}
 // ═══ ROUTE PICKER ═══
 function apOpts(){return Object.entries(AP).sort(function(a,b){return a[0].localeCompare(b[0]);}).map(function(e){return '<option value="'+e[0]+'">'+e[0]+' - '+e[1].cy+'</option>';}).join('');}
-function showPicker(parsed){var opts=apOpts();var sv=ls.gj('ff_rt_'+parsed.full);g('dash').innerHTML='<div class="rpc"><div class="rph"><div class="rpic">📍</div><div><div class="rptl">Where is '+parsed.full+' flying?</div><div class="rpst">No API key yet - select airports for demo</div></div></div><div class="rpgr"><div><label class="rplb">From</label><select id="dSel" class="rpsl"><option value="">Select...</option>'+opts+'</select></div><div><label class="rplb">To</label><select id="aSel" class="rpsl"><option value="">Select...</option>'+opts+'</select></div></div><button class="cfb" onclick="cfRT(\''+parsed.code+'\',\''+parsed.num+'\',\''+parsed.full+'\')">Show flight</button></div>';if(sv){if(g('dSel'))g('dSel').value=sv.dep;if(g('aSel'))g('aSel').value=sv.arr;}}
+function showPicker(parsed){collapseHero();var opts=apOpts();var sv=ls.gj('ff_rt_'+parsed.full);g('dash').innerHTML='<div class="rpc"><div class="rph"><div class="rpic">📍</div><div><div class="rptl">Where is '+parsed.full+' flying?</div><div class="rpst">No API key yet - select airports for demo</div></div></div><div class="rpgr"><div><label class="rplb">From</label><select id="dSel" class="rpsl"><option value="">Select...</option>'+opts+'</select></div><div><label class="rplb">To</label><select id="aSel" class="rpsl"><option value="">Select...</option>'+opts+'</select></div></div><button class="cfb" onclick="cfRT(\''+parsed.code+'\',\''+parsed.num+'\',\''+parsed.full+'\')">Show flight</button></div>';if(sv){if(g('dSel'))g('dSel').value=sv.dep;if(g('aSel'))g('aSel').value=sv.arr;}}
 function cfRT(code,num,full){var dep=g('dSel')&&g('dSel').value,arr=g('aSel')&&g('aSel').value;if(!dep||!arr){alert('Please select both airports.');return;}if(dep===arr){alert('Cannot be the same airport.');return;}ls.sj('ff_rt_'+full,{dep:dep,arr:arr});var parsed={code:code,num:num,full:full};S.parsed=parsed;doWithRoutes(parsed,dep,arr);}
-function doWithRoutes(parsed,dep,arr){g('dash').innerHTML='<div class="ldc"><div class="spn"></div><div class="ldt">Loading flight dates...</div></div>';bldFDates(parsed,dep,arr).then(function(dates){S.fdates=dates;S.selDate=0;var td=dates.find(function(d){return d.offset===0;});if(td&&td.fd){S.fd=td.fd;sSav(parsed,td.fd);aHst(parsed,td.fd);rDash(parsed,td.fd);}});}
+function doWithRoutes(parsed,dep,arr,todayFd){g('dash').innerHTML='<div class="ldc"><div class="spn"></div><div class="ldt">Loading flight dates...</div></div>';bldFDates(parsed,dep,arr,todayFd).then(function(dates){S.fdates=dates;S.selDate=0;var td=dates.find(function(d){return d.offset===0;});if(td&&td.fd){S.fd=td.fd;sSav(parsed,td.fd);aHst(parsed,td.fd);rDash(parsed,td.fd);}});}
 // ═══ PARSE FLIGHT ═══
 function pFL(raw){var s=raw.replace(/\s+/g,'').toUpperCase();var m=s.match(/^([A-Z0-9]{2})(\d{1,5}[A-Z]?)$/);if(!m)return null;return{code:m[1],num:m[2],full:m[1]+' '+m[2]};}
 function showLd(){g('dash').innerHTML='<div class="ldc"><div class="spn"></div><div class="ldt">Fetching flight data...</div><div class="lds">Connecting to AeroDataBox</div></div>';}
-function doLkp(){var raw=g('flIn')&&g('flIn').value.trim();var parsed=pFL(raw||'');if(!parsed){g('dash').innerHTML='<div class="erm">Enter a valid flight like B6 1368 or AA 100.</div>';return;}if(!AL[parsed.code]){g('dash').innerHTML='<div class="erm">Airline code '+parsed.code+' not recognized. Check the flight number.</div>';return;}ls.s('ff_last',raw);addRc(parsed.full);S.parsed=parsed;var sr=ls.gj('ff_rt_'+parsed.full);if(sr&&sr.dep&&sr.arr){showLd();doWithRoutes(parsed,sr.dep,sr.arr);return;}if(getAK()){showLd();fetchFl(parsed.full.replace(' ',''),null).then(function(rawArr){var raw2=rawArr&&rawArr.length?(rawArr.find(function(r){return r.status&&r.status.toLowerCase()!=='cancelled';})||rawArr[0]):null;if(raw2){var fd=mapLive(raw2,parsed);S.fd=fd;ls.sj('ff_rt_'+parsed.full,{dep:fd.dep,arr:fd.arr});doWithRoutes(parsed,fd.dep,fd.arr);}else{showPicker(parsed);}});}else{showPicker(parsed);}}
+function doLkp(){var raw=g('flIn')&&g('flIn').value.trim();var parsed=pFL(raw||'');if(!parsed){g('dash').innerHTML='<div class="erm">Enter a valid flight like B6 1368 or AA 100.</div>';return;}if(!AL[parsed.code]){g('dash').innerHTML='<div class="erm">Airline code '+parsed.code+' not recognized. Check the flight number.</div>';return;}ls.s('ff_last',raw);addRc(parsed.full);S.parsed=parsed;var sr=ls.gj('ff_rt_'+parsed.full);if(sr&&sr.dep&&sr.arr){showLd();fetchFl(parsed.full.replace(' ',''),null).then(function(rawArr){var raw2=pickFlight(rawArr,sr.dep,sr.arr);var fd=raw2?mapLive(raw2,parsed):null;doWithRoutes(parsed,sr.dep,sr.arr,fd);});return;}if(getAK()){showLd();fetchFl(parsed.full.replace(' ',''),null).then(function(rawArr){var raw2=pickFlight(rawArr,null,null);if(raw2){var fd=mapLive(raw2,parsed);ls.sj('ff_rt_'+parsed.full,{dep:fd.dep,arr:fd.arr});doWithRoutes(parsed,fd.dep,fd.arr,fd);}else{showPicker(parsed);}});}else{showPicker(parsed);}}
 // ═══ LIVE ON-TIME ═══
 function fetchLiveOT(depIata){var key=getAK();if(!key)return;fetch('https://aerodatabox.p.rapidapi.com/airports/iata/'+depIata+'/stats/flights/departure?withTime=false',{headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}}).then(function(r){return r.ok?r.json():null;}).then(function(j){if(!j||j.onTimePercent==null)return;S.liveOT=Math.round(j.onTimePercent);var el=g('otStat');if(el){var pct=S.liveOT;el.style.background=pct>=85?'#dcfce7':pct>=75?'#fef9c3':'#fee2e2';el.style.color=pct>=85?'#166534':pct>=75?'#5c4400':'#991b1b';el.textContent='Live: '+pct+'% on-time';}}).catch(function(){});}
 
 // ═══ RENDER DASHBOARD ═══
+function collapseHero(){
+  var ckb=g('ckbWrap');if(ckb)ckb.style.display='none';
+  var hi=g('heroIntro');if(hi)hi.style.display='none';
+  var hh=g('heroHints');if(hh)hh.style.display='none';
+  var hs=g('heroSec');if(hs)hs.style.padding='.6rem .75rem';
+}
 function rDash(parsed,fd){
+  collapseHero();
   S.curAp=fd.arr;
   var dI=AP[fd.dep]||{cy:fd.dep,n:fd.dep};
   var aI=AP[fd.arr]||{cy:fd.arr,n:fd.arr};
@@ -1666,28 +1619,6 @@ function rDash(parsed,fd){
       +'<div class="alinf"><div class="fnum">'+parsed.full+'</div><div class="aln">'+fd.airline.n+'</div><div>'+dstat+'</div></div>'
       +'<div class="alr">'
         +'<span class="sb '+sbc(fd.status)+'">'+fd.status+(fd.dlyMins?' +'+fd.dlyMins+'m':'')+'</span>'
-        +'<div class="abs">'
-          +'<button class="ab" onclick="openShr()">Share</button>'
-          +'<button class="ab" onclick="openCur()">Currency</button>'
-          +'<button class="ab" onclick="OM(\'mCal\')">Calendar</button>'
-          +'<button class="ab" onclick="openQR()">QR</button>'
-          +(isKid?'':'<button class="ab" onclick="openJL()">Jet lag</button>')
-          +(isKid?'':'<button class="ab" onclick="openVis()">Visa</button>')
-          +'<button class="ab" onclick="openNts()">📝 Notes</button>'
-          +'<button class="ab" onclick="openCarbon()">🌱 Carbon</button>'
-          +'<button class="ab" onclick="openConn()">🔄 Connection</button>'
-          +'<button class="ab" onclick="openPhr()">💬 Phrases</button>'
-          +'<button class="ab" onclick="openShareImg()">🖼️ Share img</button>'
-          +'<button class="ab" onclick="openSeatAssist()">💺 Seats</button>'
-          +'<button class="ab" onclick="openLiveMap()">📡 Live map</button>'
-          +'<button class="ab" onclick="openLayover()">🏙️ Layover</button>'
-          +'<button class="ab" onclick="openSleep()">😴 Sleep plan</button>'
-          +'<button class="ab" onclick="printSummary()">🖨️ Print</button>'
-          +'<button class="ab" onclick="openWeatherCompare()">🌤️ Wx compare</button>'
-          +'<button class="ab" onclick="openPriceCalendar()">💰 Prices</button>'
-          +'<a class="ab" href="https://www.flightaware.com/live/flight/'+(parsed.code+parsed.num).replace(/ /g,"")+'" target="_blank">✈ FA</a>'
-          +'<a class="ab" href="https://www.flightradar24.com/'+(parsed.code+parsed.num).replace(/ /g,"")+'" target="_blank">📡 FR24</a>'
-        +'</div>'
       +'</div>'
     +'</div>'
     +'<div class="rr">'
@@ -1720,6 +1651,28 @@ function rDash(parsed,fd){
       +'<div class="ic"><div class="icl">Baggage</div><div class="icv">'+fd.baggage+'</div></div>'
     +'</div>'
     +(cd?'<div class="cdr">'+cd+'</div>':'')
+    +'<div class="abs">'
+      +'<button class="ab" onclick="openShr()">Share</button>'
+      +'<button class="ab" onclick="openCur()">Currency</button>'
+      +'<button class="ab" onclick="OM(\'mCal\')">Calendar</button>'
+      +'<button class="ab" onclick="openQR()">QR</button>'
+      +(isKid?'':'<button class="ab" onclick="openJL()">Jet lag</button>')
+      +(isKid?'':'<button class="ab" onclick="openVis()">Visa</button>')
+      +'<button class="ab" onclick="openNts()">📝 Notes</button>'
+      +'<button class="ab" onclick="openCarbon()">🌱 Carbon</button>'
+      +'<button class="ab" onclick="openConn()">🔄 Connection</button>'
+      +'<button class="ab" onclick="openPhr()">💬 Phrases</button>'
+      +'<button class="ab" onclick="openShareImg()">🖼️ Share img</button>'
+      +'<button class="ab" onclick="openSeatAssist()">💺 Seats</button>'
+      +'<button class="ab" onclick="openLiveMap()">📡 Live map</button>'
+      +'<button class="ab" onclick="openLayover()">🏙️ Layover</button>'
+      +'<button class="ab" onclick="openSleep()">😴 Sleep plan</button>'
+      +'<button class="ab" onclick="printSummary()">🖨️ Print</button>'
+      +'<button class="ab" onclick="openWeatherCompare()">🌤️ Wx compare</button>'
+      +'<button class="ab" onclick="openPriceCalendar()">💰 Prices</button>'
+      +'<a class="ab" href="https://www.flightaware.com/live/flight/'+(parsed.code+parsed.num).replace(/ /g,"")+'" target="_blank">✈ FA</a>'
+      +'<a class="ab" href="https://www.flightradar24.com/'+(parsed.code+parsed.num).replace(/ /g,"")+'" target="_blank">📡 FR24</a>'
+    +'</div>'
     +'</div>'
     +seatSec
     +'<div class="card"><div class="slbl">Weather at '+(aI.cy||fd.arr)+'</div><div id="wxC"></div></div>'
