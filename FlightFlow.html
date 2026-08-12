@@ -1258,11 +1258,26 @@ function lSv(fl){CM('mSav');CM('mHst');if(g('flIn'))g('flIn').value=fl;doLkp();}
 function dSav(fl){ls.sj('ff_sv',gSav().filter(function(f){return f.fl!==fl;}));rSav();}
 function sbc(s){var m={Delayed:'sdl',Cancelled:'scx',Boarding:'sbd','In Air':'sia',Landed:'sln',Scheduled:'ssc','On Time':'sot'};return m[s]||'sot';}
 // ═══ AERODATABOX ═══
+var S_lastFetchErr=null;
 function fetchFl(iata,date){
   var key=getAK();if(!key)return Promise.resolve(null);
   var dt=date||localDateStr(0);
   var url='https://aerodatabox.p.rapidapi.com/flights/number/'+encodeURIComponent(iata.replace(' ',''))+'/'+dt+'?withAircraftImage=false&withLocation=false';
-  return fetch(url,{headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}}).then(function(r){return r.ok?r.json():null;}).then(function(j){return j&&j.length?j:null;}).catch(function(){return null;});
+  S_lastFetchErr=null;
+  return fetch(url,{headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}})
+    .then(function(r){
+      if(!r.ok){
+        var reason=r.status===401?'invalid key':r.status===403?'not subscribed to AeroDataBox, or quota exceeded':r.status===429?'rate limited — out of monthly/per-minute quota':'HTTP '+r.status;
+        S_lastFetchErr='AeroDataBox request failed: '+reason+'.';
+        return null;
+      }
+      return r.json();
+    })
+    .then(function(j){return j&&j.length?j:null;})
+    .catch(function(e){
+      S_lastFetchErr='AeroDataBox request failed: network or CORS error ('+((e&&e.message)||'request blocked')+').';
+      return null;
+    });
 }
 // A flight number can return multiple entries (codeshares, multiple daily
 // departures). Once we know the real route, prefer the entry that matches it
@@ -1321,7 +1336,24 @@ function mapLive(raw,parsed){
 function fetchFlAviationstack(iata){
   var key=getAVK();if(!key)return Promise.resolve(null);
   var url='https://api.aviationstack.com/v1/flights?access_key='+encodeURIComponent(key)+'&flight_iata='+encodeURIComponent(iata);
-  return fetch(url).then(function(r){return r.ok?r.json():null;}).then(function(j){return(j&&j.data&&j.data.length)?j.data:null;}).catch(function(){return null;});
+  S_lastFetchErr=null;
+  return fetch(url)
+    .then(function(r){
+      if(!r.ok){S_lastFetchErr='AviationStack request failed: HTTP '+r.status+'.';return null;}
+      return r.json();
+    })
+    .then(function(j){
+      // AviationStack often returns HTTP 200 with an "error" object instead of a proper error status.
+      if(j&&j.error){
+        S_lastFetchErr='AviationStack request failed: '+(j.error.message||j.error.code||'invalid request')+'.';
+        return null;
+      }
+      return(j&&j.data&&j.data.length)?j.data:null;
+    })
+    .catch(function(e){
+      S_lastFetchErr='AviationStack request failed: network or CORS error ('+((e&&e.message)||'request blocked')+').';
+      return null;
+    });
 }
 function pickFlightAV(rawArr,dep,arr){
   if(!rawArr||!rawArr.length)return null;
@@ -1697,7 +1729,15 @@ function clearAll(){if(!confirm('Clear ALL FlightFlow data? Cannot be undone.'))
 function rMap(dep,arr){var dA=AP[dep],aA=AP[arr],el=g('fmap');if(!el)return;if(!dA||!aA){el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:260px;color:#9ba3b8;font-size:13px">Map unavailable</div>';return;}try{MapInline.render(el,dA.lat,dA.lon,dep,aA.lat,aA.lon,arr,S.dark);}catch(e){el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:260px;color:#9ba3b8">'+dep+' to '+arr+'</div>';}}
 // ═══ ROUTE PICKER ═══
 function apOpts(){return Object.entries(AP).sort(function(a,b){return a[0].localeCompare(b[0]);}).map(function(e){return '<option value="'+e[0]+'">'+e[0]+' - '+e[1].cy+'</option>';}).join('');}
-function showPicker(parsed){collapseHero();var opts=apOpts();var sv=ls.gj('ff_rt_'+parsed.full);g('dash').innerHTML='<div class="rpc"><div class="rph"><div class="rpic">📍</div><div><div class="rptl">Where is '+parsed.full+' flying?</div><div class="rpst">No API key yet - select airports for demo</div></div></div><div class="rpgr"><div><label class="rplb">From</label><select id="dSel" class="rpsl"><option value="">Select...</option>'+opts+'</select></div><div><label class="rplb">To</label><select id="aSel" class="rpsl"><option value="">Select...</option>'+opts+'</select></div></div><button class="cfb" onclick="cfRT(\''+parsed.code+'\',\''+parsed.num+'\',\''+parsed.full+'\')">Show flight</button></div>';if(sv){if(g('dSel'))g('dSel').value=sv.dep;if(g('aSel'))g('aSel').value=sv.arr;}}
+function showPicker(parsed){
+  collapseHero();
+  var opts=apOpts();var sv=ls.gj('ff_rt_'+parsed.full);
+  var subtitle=S_lastFetchErr
+    ? '<span style="color:#f59e0b;font-weight:600">'+S_lastFetchErr+'</span> Showing demo airports below instead.'
+    : (getAK()||getAVK() ? 'No live match for this flight — select airports for demo' : 'No API key yet - select airports for demo');
+  g('dash').innerHTML='<div class="rpc"><div class="rph"><div class="rpic">📍</div><div><div class="rptl">Where is '+parsed.full+' flying?</div><div class="rpst">'+subtitle+'</div></div></div><div class="rpgr"><div><label class="rplb">From</label><select id="dSel" class="rpsl"><option value="">Select...</option>'+opts+'</select></div><div><label class="rplb">To</label><select id="aSel" class="rpsl"><option value="">Select...</option>'+opts+'</select></div></div><button class="cfb" onclick="cfRT(\''+parsed.code+'\',\''+parsed.num+'\',\''+parsed.full+'\')">Show flight</button></div>';
+  if(sv){if(g('dSel'))g('dSel').value=sv.dep;if(g('aSel'))g('aSel').value=sv.arr;}
+}
 function cfRT(code,num,full){var dep=g('dSel')&&g('dSel').value,arr=g('aSel')&&g('aSel').value;if(!dep||!arr){alert('Please select both airports.');return;}if(dep===arr){alert('Cannot be the same airport.');return;}ls.sj('ff_rt_'+full,{dep:dep,arr:arr});var parsed={code:code,num:num,full:full};S.parsed=parsed;doWithRoutes(parsed,dep,arr);}
 function doWithRoutes(parsed,dep,arr,todayFd){g('dash').innerHTML='<div class="ldc"><div class="spn"></div><div class="ldt">Loading flight dates...</div></div>';bldFDates(parsed,dep,arr,todayFd).then(function(dates){S.fdates=dates;S.selDate=0;var td=dates.find(function(d){return d.offset===0;});if(td&&td.fd){S.fd=td.fd;sSav(parsed,td.fd);aHst(parsed,td.fd);rDash(parsed,td.fd);}});}
 // ═══ PARSE FLIGHT ═══
