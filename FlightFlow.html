@@ -451,6 +451,14 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
   <div id="kidWarning" style="display:none;background:#fef3c7;border:2px solid #f59e0b;border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:14px;font-weight:600;color:#5c4400">
     ⭐ Hey! This part has API keys. Ask a grown-up to help you with this section!
   </div>
+  <div class="msc">🛫 FlightStats (Cirium) — Live Flight Data</div>
+  <p class="mds">Free at <a href="https://developer.flightstats.com" target="_blank">developer.flightstats.com</a> — sign up → create an app → copy the <strong>App ID</strong> and <strong>App Key</strong> shown on your app's page. Used ahead of AeroDataBox below if both are set.</p>
+  <label class="mlb">App ID</label>
+  <div class="ir"><input type="text" id="fsIdIn" class="mi mono" placeholder="Paste App ID here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="autoSaveFS()" onblur="autoSaveFS()"/></div>
+  <label class="mlb">App Key</label>
+  <div class="ir"><input type="text" id="fsKeyIn" class="mi mono" placeholder="Paste App Key here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;text-security:disc" oninput="autoSaveFS()" onblur="autoSaveFS()"/><button class="icob" onclick="tPW('fsKeyIn','e4')" id="e4">👁</button></div>
+  <div class="mas"><button class="ms2" onclick="clrFS()">🗑 Clear</button><button class="mp" onclick="savFS()">✓ Save and connect</button></div>
+  <div class="mdv"></div>
   <div class="msc">✈️ AeroDataBox — Live Flight Data</div>
   <p class="mds">Free at <a href="https://rapidapi.com/aedbx-aedbx/api/aerodatabox" target="_blank">rapidapi.com → AeroDataBox</a> — sign up → Subscribe Basic (free) → copy your RapidAPI key. Works on Codecademy ✅<br><br><strong>Which key?</strong> After subscribing on RapidAPI, go to your app → "Authorization" → copy the <strong>X-RapidAPI-Key</strong> value. It looks like: <code style="font-family:monospace;background:var(--s2);padding:2px 6px;border-radius:4px">a1b2c3d4e5f6...</code></p>
   <div class="ir"><input type="text" id="akIn" class="mi mono" placeholder="Paste RapidAPI key here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;text-security:disc" oninput="autoSaveAK()" onblur="autoSaveAK()"/><button class="icob" onclick="tPW('akIn','e1')" id="e1">👁</button></div>
@@ -1168,10 +1176,15 @@ function fPP(){rPP(g('ppSrch')&&g('ppSrch').value||'');}
 function savPP(){var v=g('ppSel')&&g('ppSel').value;if(v)ls.s('ff_pp',v);}
 function getPP(){return ls.g('ff_pp')||'US';}
 function getAK(){return ls.g('ff_ak')||'';}
+function getFSId(){return ls.g('ff_fs_id')||'';}
+function getFSKey(){return ls.g('ff_fs_key')||'';}
 function getWK(){return ls.g('ff_wk')||'';}
 function autoSaveAK(){ls.s('ff_ak',g('akIn').value.trim());uBadge();}
 function savAK(){autoSaveAK();CM('mSet');if(S.parsed)doLkp();}
 function clrAK(){ls.s('ff_ak','');if(g('akIn'))g('akIn').value='';uBadge();}
+function autoSaveFS(){ls.s('ff_fs_id',g('fsIdIn').value.trim());ls.s('ff_fs_key',g('fsKeyIn').value.trim());uBadge();}
+function savFS(){autoSaveFS();CM('mSet');if(S.parsed)doLkp();}
+function clrFS(){ls.s('ff_fs_id','');ls.s('ff_fs_key','');if(g('fsIdIn'))g('fsIdIn').value='';if(g('fsKeyIn'))g('fsKeyIn').value='';uBadge();}
 function autoSaveWK(){ls.s('ff_wk',g('wkIn').value.trim());}
 function savWK(){autoSaveWK();CM('mSet');if(S.fd)swxR(S.fd.arr);}
 function clrWK(){ls.s('ff_wk','');if(g('wkIn'))g('wkIn').value='';}
@@ -1183,12 +1196,15 @@ function tPW(id,bid){
 }
 function uBadge(){
   var b=g('apiBdg');if(!b)return;
-  if(getAK()){
+  if(getFSId()&&getFSKey()){
+    b.innerHTML='✅ Live';b.className='nbdg lbdg';
+    b.title='Live data from FlightStats (Cirium). Click Settings to manage key.';
+  }else if(getAK()){
     b.innerHTML='✅ Live';b.className='nbdg lbdg';
     b.title='Live data from AeroDataBox. Click Settings to manage key.';
   }else{
     b.innerHTML='Demo mode';b.className='nbdg dbdg';
-    b.title='No API key. Click Settings to add a free AeroDataBox key.';
+    b.title='No API key. Click Settings to add a free flight-data key.';
     b.style.cursor='pointer';b.onclick=function(){OM('mSet');};
   }
 }
@@ -1319,6 +1335,75 @@ function mapLive(raw,parsed){
   var acData=acIata?ACF[acIata]:null;
   return{airline:airline,dep:depAp.iata||dep.iata||'???',arr:arrAp.iata||arr.iata||'???',status:status,depTime:dL?fmtT(dL.h,dL.min):'--',arrTime:aL?fmtT(aL.h,aL.min):'--',depTimeTag:dIsEstimated?'Estimated':'Scheduled',arrTimeTag:aIsEstimated?'Estimated':'Scheduled',depDate:dL?fmtD(dL.mo,dL.d):'',arrDate:aL?fmtD(aL.mo,aL.d):'',depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:dep.terminal||'--',arrT:arr.terminal||'--',depG:dep.gate||'--',arrG:arr.gate||'--',acName:acData?acData.n:(raw.aircraft&&raw.aircraft.model)||'Unknown',acIata:acIata,acData:acData,baggage:arr.baggageBelt?'Belt '+arr.baggageBelt:(arr.baggage||'--'),dur:dur,dlyMins:dep.delay||0,dIso:dIso,aIso:aIso,live:true,codeshare:null};
 }
+// ═══ FLIGHTSTATS (Cirium) — alternative provider, tried before AeroDataBox if configured ═══
+// NOTE: implemented from best recollection of the v2 Flight Status JSON schema without a
+// live key to verify against. If field names are off, S_lastFetchErr / a malformed response
+// will surface as "FlightStats: no matching flight" rather than silently misparsing — report
+// back exactly what breaks and it's a quick fix.
+function fetchFlightStats(code,num,dateStr){
+  var appId=getFSId(),appKey=getFSKey();if(!appId||!appKey)return Promise.resolve(null);
+  var parts=dateStr.split('-');var y=parts[0],mo=parseInt(parts[1],10),d=parseInt(parts[2],10);
+  var url='https://api.flightstats.com/flex/flightstatus/rest/v2/json/flight/status/'+encodeURIComponent(code)+'/'+encodeURIComponent(num)+'/dep/'+y+'/'+mo+'/'+d+'?appId='+encodeURIComponent(appId)+'&appKey='+encodeURIComponent(appKey)+'&utc=false';
+  S_lastFetchErr=null;
+  return fetch(url)
+    .then(function(r){
+      if(!r.ok){
+        var reason=r.status===401||r.status===403?'invalid App ID/Key or not authorized':r.status===429?'rate limited — out of quota':'HTTP '+r.status;
+        S_lastFetchErr='FlightStats request failed: '+reason+'.';
+        return null;
+      }
+      return r.json();
+    })
+    .then(function(j){
+      if(j&&j.error){S_lastFetchErr='FlightStats request failed: '+(j.error.errorMessage||j.error.errorId||'invalid request')+'.';return null;}
+      if(!j||!j.flightStatuses||!j.flightStatuses.length){S_lastFetchErr='FlightStats: no matching flight for this date.';return null;}
+      return{statuses:j.flightStatuses,airports:(j.appendix&&j.appendix.airports)||[]};
+    })
+    .catch(function(e){
+      S_lastFetchErr='FlightStats request failed: network or CORS error ('+((e&&e.message)||'request blocked')+').';
+      return null;
+    });
+}
+function pickFlightStats(result,dep,arr){
+  if(!result||!result.statuses||!result.statuses.length)return null;
+  var candidates=result.statuses.filter(function(r){return(r.status||'')!=='C';});
+  if(!candidates.length)candidates=result.statuses;
+  if(dep&&arr){
+    var match=candidates.find(function(r){return r.departureAirportFsCode===dep&&r.arrivalAirportFsCode===arr;});
+    if(match)return match;
+  }
+  return candidates[0];
+}
+function mapFlightStats(raw,result,parsed){
+  var airline=AL[parsed.code]||{n:parsed.code,c:'#1a1a2e'};
+  var stmap={S:'Scheduled',A:'In Air',L:'Landed',C:'Cancelled',D:'Delayed',NO:'Scheduled',R:'Scheduled'};
+  var status=stmap[raw.status]||'Scheduled';
+  function findAp(fs){return(result.airports||[]).find(function(a){return a.fs===fs;})||{};}
+  var depApInfo=findAp(raw.departureAirportFsCode),arrApInfo=findAp(raw.arrivalAirportFsCode);
+  var dTz=depApInfo.timeZoneRegionName||(AP[raw.departureAirportFsCode]||{}).tz||'UTC';
+  var aTz=arrApInfo.timeZoneRegionName||(AP[raw.arrivalAirportFsCode]||{}).tz||'UTC';
+  var ot=raw.operationalTimes||{};
+  var dRaw=(ot.estimatedGateDeparture&&ot.estimatedGateDeparture.dateLocal)||(ot.scheduledGateDeparture&&ot.scheduledGateDeparture.dateLocal)||null;
+  var aRaw=(ot.estimatedGateArrival&&ot.estimatedGateArrival.dateLocal)||(ot.scheduledGateArrival&&ot.scheduledGateArrival.dateLocal)||null;
+  var dSchedRaw=ot.scheduledGateDeparture&&ot.scheduledGateDeparture.dateLocal;
+  var aSchedRaw=ot.scheduledGateArrival&&ot.scheduledGateArrival.dateLocal;
+  var dL=parseISOLocal(dRaw),aL=parseISOLocal(aRaw);
+  var dIso=dRaw?isoToDate(dRaw):null,aIso=aRaw?isoToDate(aRaw):null;
+  var dur='--';
+  if(dIso&&aIso){var ms=aIso-dIso;if(ms>0&&ms<48*3600000){var mn=Math.round(ms/60000);dur=Math.floor(mn/60)+'h '+mn%60+'m';}}
+  var res=raw.airportResources||{};
+  return{airline:airline,dep:raw.departureAirportFsCode||'???',arr:raw.arrivalAirportFsCode||'???',status:status,
+    depTime:dL?fmtT(dL.h,dL.min):'--',arrTime:aL?fmtT(aL.h,aL.min):'--',
+    depTimeTag:(dRaw&&dSchedRaw&&dRaw!==dSchedRaw)?'Estimated':'Scheduled',
+    arrTimeTag:(aRaw&&aSchedRaw&&aRaw!==aSchedRaw)?'Estimated':'Scheduled',
+    depDate:dL?fmtD(dL.mo,dL.d):'',arrDate:aL?fmtD(aL.mo,aL.d):'',
+    depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,
+    depT:res.departureTerminal||'--',arrT:res.arrivalTerminal||'--',depG:res.departureGate||'--',arrG:res.arrivalGate||'--',
+    acName:'Unknown',acIata:null,acData:null,
+    baggage:res.baggageClaim||'--',dur:dur,
+    dlyMins:(raw.delays&&raw.delays.departureGateDelayMinutes)||0,
+    dIso:dIso,aIso:aIso,live:true,codeshare:null};
+}
 // ═══ DEMO — correct UTC offset approach ═══
 function bDemo(code,num,dep,arr,offset){
   var airline=AL[code]||{n:code,c:'#1a1a2e'};
@@ -1387,6 +1472,12 @@ function localDateLabel(daysOff){
   return new Date(iso+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
 }
 function fetchTodayFlight(parsed,dep,arr){
+  if(getFSId()&&getFSKey()){
+    return fetchFlightStats(parsed.code,parsed.num,localDateStr(0)).then(function(result){
+      var raw=pickFlightStats(result,dep,arr);
+      return raw?mapFlightStats(raw,result,parsed):null;
+    });
+  }
   if(!getAK())return Promise.resolve(null);
   return fetchFl(parsed.full.replace(' ',''),null).then(function(rawArr){
     var raw=pickFlight(rawArr,dep,arr);
@@ -1399,6 +1490,14 @@ function bldFDates(parsed,dep,arr,todayFd){
     var iso=localDateStr(o),lbl=localDateLabel(o);
     var demo=bDemo(parsed.code,parsed.num,dep,arr,o);
     if(o===0&&todayFd)return Promise.resolve({offset:o,date:iso,label:lbl,fd:todayFd,all:null});
+    if(getFSId()&&getFSKey()){
+      return fetchFlightStats(parsed.code,parsed.num,iso).then(function(result){
+        var raw=pickFlightStats(result,dep,arr);
+        var fd=raw?mapFlightStats(raw,result,parsed):demo;
+        var all=result&&result.statuses&&result.statuses.length>1?result.statuses.map(function(r){return mapFlightStats(r,result,parsed);}):null;
+        return{offset:o,date:iso,label:lbl,fd:fd,all:all};
+      });
+    }
     if(getAK()){
       return fetchFl(parsed.full.replace(' ',''),iso).then(function(rawArr){
         var raw=pickFlight(rawArr,dep,arr);
@@ -1635,7 +1734,7 @@ function showPicker(parsed){
   var opts=apOpts();var sv=ls.gj('ff_rt_'+parsed.full);
   var subtitle=S_lastFetchErr
     ? '<span style="color:#f59e0b;font-weight:600">'+S_lastFetchErr+'</span> Showing demo airports below instead.'
-    : (getAK() ? 'No live match for this flight — select airports for demo' : 'No API key yet - select airports for demo');
+    : (((getFSId()&&getFSKey())||getAK()) ? 'No live match for this flight — select airports for demo' : 'No API key yet - select airports for demo');
   g('dash').innerHTML='<div class="rpc"><div class="rph"><div class="rpic">📍</div><div><div class="rptl">Where is '+parsed.full+' flying?</div><div class="rpst">'+subtitle+'</div></div></div><div class="rpgr"><div><label class="rplb">From</label><select id="dSel" class="rpsl"><option value="">Select...</option>'+opts+'</select></div><div><label class="rplb">To</label><select id="aSel" class="rpsl"><option value="">Select...</option>'+opts+'</select></div></div><button class="cfb" onclick="cfRT(\''+parsed.code+'\',\''+parsed.num+'\',\''+parsed.full+'\')">Show flight</button></div>';
   if(sv){if(g('dSel'))g('dSel').value=sv.dep;if(g('aSel'))g('aSel').value=sv.arr;}
 }
@@ -1655,7 +1754,7 @@ function doLkp(){
     fetchTodayFlight(parsed,sr.dep,sr.arr).then(function(fd){doWithRoutes(parsed,sr.dep,sr.arr,fd);});
     return;
   }
-  if(getAK()){
+  if((getFSId()&&getFSKey())||getAK()){
     showLd();
     fetchTodayFlight(parsed,null,null).then(function(fd){
       if(fd){ls.sj('ff_rt_'+parsed.full,{dep:fd.dep,arr:fd.arr});doWithRoutes(parsed,fd.dep,fd.arr,fd);}
@@ -1683,11 +1782,12 @@ function rDash(parsed,fd){
   var dsMap={AA:'81%',DL:'84%',UA:'82%',WN:'83%',B6:'78%',AS:'86%',F9:'74%',NK:'72%',BA:'79%',LH:'82%',AF:'77%',KL:'83%',EK:'85%',QR:'88%',SQ:'91%',AC:'80%'};
   var ds=S.liveOT!=null?S.liveOT+'%':(dsMap[parsed.code]||null);
   var dstat=ds?'<span id="otStat" style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--s2);color:var(--t2);display:inline-block;margin-top:3px">'+ds+' on-time</span>':'<span id="otStat" style="font-size:11px;color:var(--tM);display:inline-block;margin-top:3px">Fetching on-time stats...</span>';
+  var provName=(getFSId()&&getFSKey())?'FlightStats':(getAK()?'AeroDataBox':null);
   var livBnr=fd.live
-  ?'<div class="blive"><span class="ldot"></span>Live data via AeroDataBox &mdash; updated '+new Date().toLocaleTimeString()+'<button class="bref" onclick="doLkp()">&#x21bb; Refresh</button></div>'
-  :(getAK()
-    ?'<div class="bdemo" style="background:#fef3c7;border-color:#f59e0b">No live data for this date via AeroDataBox &mdash; showing estimated schedule. <span onclick="showPicker(S.parsed)" style="cursor:pointer;font-weight:700;text-decoration:underline">Wrong airports?</span></div>'
-    :'<div class="bdemo">No API key &mdash; showing estimated times. <a onclick="OM(&apos;mSet&apos;)" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Add an AeroDataBox key in Settings</a> for live data.</div>');
+  ?'<div class="blive"><span class="ldot"></span>Live data via '+provName+' &mdash; updated '+new Date().toLocaleTimeString()+'<button class="bref" onclick="doLkp()">&#x21bb; Refresh</button></div>'
+  :(provName
+    ?'<div class="bdemo" style="background:#fef3c7;border-color:#f59e0b">No live data for this date via '+provName+' &mdash; showing estimated schedule. <span onclick="showPicker(S.parsed)" style="cursor:pointer;font-weight:700;text-decoration:underline">Wrong airports?</span></div>'
+    :'<div class="bdemo">No API key &mdash; showing estimated times. <a onclick="OM(&apos;mSet&apos;)" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Add a flight-data key in Settings</a> for live data.</div>');
   var dlyBnr=fd.dlyMins>0?'<div class="bdly">Delayed +'+fd.dlyMins+' min</div>':'';
   var kidBnr=S.kid?'<div class="bkid">Kid Mode ON - made just for you!</div>':'';
   var arrTm=offTm(fd.dIso,-120),brdTm=offTm(fd.dIso,-40);
@@ -2490,7 +2590,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var haEl=g('homeAP');if(haEl)haEl.value=ls.g('ff_home')||'';
   try{var tz=Intl.DateTimeFormat().resolvedOptions().timeZone;if(tz){S.uTz=tz;S.uCity=tz.split('/').pop().replace(/_/g,' ');}}catch(e){}
   sClk();
-  var ak=g('akIn'),wk=g('wkIn');if(ak)ak.value=getAK();if(wk)wk.value=getWK();
+  var ak=g('akIn'),wk=g('wkIn'),fsId=g('fsIdIn'),fsKey=g('fsKeyIn');if(ak)ak.value=getAK();if(wk)wk.value=getWK();if(fsId)fsId.value=getFSId();if(fsKey)fsKey.value=getFSKey();
   if(ls.g('ff_nt')==='1'&&typeof Notification!=='undefined'&&Notification.permission==='granted'){S.notif=true;var b=g('ntBtn');if(b){b.textContent='On';b.classList.add('on');}}
   S.rc=ls.gj('ff_rc')||[];rRc();
   var bgs=document.querySelectorAll('.mbg');for(var i=0;i<bgs.length;i++){(function(el){el.addEventListener('click',function(e){if(e.target===el)CM(el.id);});})(bgs[i]);}
