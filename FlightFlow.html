@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>FlightFlow ✈️</title>
+<title>FlightFlow by PlayGames ✈️</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <style>
@@ -533,7 +533,7 @@ create policy "public read" on public.feedback for select to anon using (true);<
 <div id="mSav" class="mbg"><div class="modal"><div class="mhd"><div class="mic">🔖</div><div><div class="mtl" data-i18n="m_saved_title">Saved Flights</div><div class="mst" data-i18n="m_saved_sub">Tap to reload</div></div><button class="mcl" onclick="CM('mSav')">✕</button></div><div class="mbd"><div id="savL"></div></div></div></div>
 <div id="mHst" class="mbg"><div class="modal"><div class="mhd"><div class="mic">🕐</div><div><div class="mtl" data-i18n="m_history_title">Flight History</div><div class="mst" data-i18n="m_history_sub">All tracked flights</div></div><button class="mcl" onclick="CM('mHst')">✕</button></div><div class="mbd"><div id="hstL"></div></div></div></div>
 <div id="mShr" class="mbg"><div class="modal"><div class="mhd"><div class="mic">📤</div><div><div class="mtl" data-i18n="m_share_title">Share Flight</div><div class="mst" data-i18n="m_share_sub">Send details to someone</div></div><button class="mcl" onclick="CM('mShr')">✕</button></div><div class="mbd"><div id="shrC"></div><div class="shbs"><button class="shb" onclick="cpyShr()">📋 Copy</button><button class="shb shsms" onclick="smsShr()">💬 SMS</button><button class="shb shml" onclick="emlShr()">✉️ Email</button></div><div id="shrOK" class="shok" style="display:none">✅ Copied!</div></div></div></div>
-<div id="mCur" class="mbg"><div class="modal"><div class="mhd"><div class="mic">💱</div><div><div class="mtl" data-i18n="m_currency_title">Currency Converter</div><div class="mst" data-i18n="m_currency_sub">Live rates via open.er-api.com</div></div><button class="mcl" onclick="CM('mCur')">✕</button></div><div class="mbd"><div class="cur"><div class="curf"><label class="mlb">Amount</label><input type="number" id="curAmt" class="mi" value="100" min="0" oninput="cvtCur()"/></div><div class="curf"><label class="mlb">From</label><select id="curFr" class="mi" onchange="cvtCur()"></select></div><div class="curs"><button class="icob" onclick="swpCur()">⇄</button></div><div class="curf"><label class="mlb">To</label><select id="curTo" class="mi" onchange="cvtCur()"></select></div></div><div id="curR" class="curr">—</div><div id="curI" class="curi"></div></div></div></div>
+<div id="mCur" class="mbg"><div class="modal"><div class="mhd"><div class="mic">💱</div><div><div class="mtl" data-i18n="m_currency_title">Currency Converter</div><div class="mst" data-i18n="m_currency_sub">Live rates via open.er-api.com</div></div><button class="mcl" onclick="CM('mCur')">✕</button></div><div class="mbd"><div class="cur"><div class="curf"><label class="mlb">Amount</label><input type="number" id="curAmt" class="mi" value="100" min="0" oninput="cvtCur()"/></div><div class="curf"><label class="mlb">From</label><select id="curFr" class="mi" onchange="cvtCur()"></select></div><div class="curs"><button class="icob" onclick="swpCur()">⇄</button></div><div class="curf"><label class="mlb">To</label><select id="curTo" class="mi" onchange="cvtCur()"></select></div></div><div class="curf" style="margin-bottom:10px"><label class="mlb">Round to nearest</label><select id="curRound" class="mi" onchange="cvtCur()"><option value="0">Exact</option><option value="1">1</option><option value="5">5</option><option value="10">10</option><option value="50">50</option><option value="100">100</option></select></div><div id="curR" class="curr">—</div><div id="curI" class="curi"></div></div></div></div>
 <div id="mAP" class="mbg"><div class="modal"><div class="mhd"><div class="mic">🛫</div><div><div class="mtl" id="apTtl">Airport Info</div><div class="mst" id="apSub"></div></div><button class="mcl" onclick="CM('mAP')">✕</button></div><div class="mbd" id="apBd"></div></div></div>
 <div id="mQR" class="mbg"><div class="modal"><div class="mhd"><div class="mic">📱</div><div><div class="mtl" data-i18n="m_qr_title">QR Code</div><div class="mst" data-i18n="m_qr_sub">Scan to open on FlightAware</div></div><button class="mcl" onclick="CM('mQR')">✕</button></div><div class="mbd" style="text-align:center"><div id="qrWrap" style="display:inline-block;padding:16px;background:#fff;border-radius:16px;border:3px solid #1a1a2e;margin-bottom:12px"></div><p class="mds">Scan with your camera app to track this flight live.</p></div></div></div>
 <div id="mCmp" class="mbg"><div class="modal" style="max-width:560px"><div class="mhd"><div class="mic">⚖️</div><div><div class="mtl" data-i18n="m_compare_title">Compare Flights</div><div class="mst" data-i18n="m_compare_sub">Side-by-side</div></div><button class="mcl" onclick="CM('mCmp')">✕</button></div><div class="mbd"><div class="ir" style="margin-bottom:12px"><input type="text" id="cmpIn" class="mi mono" placeholder="Second flight e.g. AA 101..." style="text-transform:uppercase;font-weight:600"/><button class="mp" style="flex-shrink:0;border-radius:var(--r8)" onclick="doCmp()">🔍</button></div><div id="cmpR"></div></div></div></div>
@@ -586,7 +586,7 @@ create policy "public read" on public.feedback for select to anon using (true);<
 
 <!-- NAVBAR -->
 <nav class="navbar"><div class="nav-in">
-  <div class="brand"><div class="bico">✈️</div><div><span class="bnm">FlightFlow</span><span class="btg" data-i18n="brand_tag">Global flight assistant</span></div></div>
+  <div class="brand"><div class="bico">✈️</div><div><span class="bnm">FlightFlow<span style="font-size:10px;font-weight:600;opacity:.55;margin-left:6px">by PlayGames</span></span><span class="btg" data-i18n="brand_tag">Global flight assistant</span></div></div>
   <div class="nav-r">
     <span id="apiBdg" class="nbdg dbdg">📡 Demo</span>
     <button class="nbt" onclick="OM('mSav');rSav()" data-i18n-title="nav_saved" title="Saved">🔖</button>
@@ -605,7 +605,7 @@ create policy "public read" on public.feedback for select to anon using (true);<
       <button class="moreItem" onclick="closeMore();openDocs()"><span class="moreIco">📋</span><span data-i18n="nav_docs">Travel Docs</span></button>
       <button class="moreItem" onclick="closeMore();openStamps()"><span class="moreIco">🌍</span><span data-i18n="nav_countries">Countries</span></button>
       <button class="moreItem" onclick="closeMore();openBucket()"><span class="moreIco">🪣</span><span data-i18n="nav_bucket">Bucket List</span></button>
-      <button class="moreItem" onclick="closeMore();OM('mKeys')"><span class="moreIco">⌨️</span><span data-i18n="nav_shortcuts">Keyboard Shortcuts</span></button>
+      <button class="moreItem" onclick="closeMore();OM('mKeys');kbSync()"><span class="moreIco">⌨️</span><span data-i18n="nav_shortcuts">Keyboard Shortcuts</span></button>
     </div>
   </div>
 </div></nav>
@@ -1205,6 +1205,7 @@ function setDkMode(m){
   if(g('dkOff'))g('dkOff').classList.toggle('on',m==='off');
 }
 function tDark(){setDkMode(S.dark?'off':'on');}
+function kbSync(){var el=g('kbDarkLbl');if(el)el.textContent=document.body.classList.contains('dark')?'Toggle light mode':'Toggle dark mode';}
 function iDark(){
   var saved=ls.g('ff_dk');
   if(saved==='1'){S.dark=true;}
@@ -1279,13 +1280,20 @@ function isoToDate(iso){
   if(!iso)return null;
   try{if(typeof iso==='object')return iso;var s=iso.trim().replace(/^(\d{4}-\d{2}-\d{2})\s+/,'$1T');var d=new Date(s);return isNaN(d)?null:d;}catch(e){return null;}
 }
-function cdTxt(dIso,status){
+function cdTxt(dIso,status,dTz){
   var st=(status||'').toLowerCase();
   if(st==='landed')return 'Landed';
   if(st==='cancelled')return 'Cancelled';
   if(st==='active'||st==='in air')return 'Currently in the air';
-  var dt=isoToDate(dIso);if(!dt)return '';
-  var diff=dt-Date.now();
+  var p=parseISOLocal(dIso);if(!p)return '';
+  var depMs=Date.UTC(p.y,p.mo-1,p.d,p.h,p.min);
+  var nowMs;
+  try{
+    var nowStr=dTz?new Date().toLocaleString('sv-SE',{timeZone:dTz}):null;
+    var np=nowStr?parseISOLocal(nowStr.replace(' ','T')):null;
+    nowMs=np?Date.UTC(np.y,np.mo-1,np.d,np.h,np.min):Date.now();
+  }catch(e){nowMs=Date.now();}
+  var diff=depMs-nowMs;
   if(diff<-3*3600000)return 'Departed - check arrival status';
   if(diff<0)return 'Boarding now or just departed';
   var m=Math.round(diff/60000),days=Math.floor(m/1440),hrs=Math.floor(m%1440/60),mins=m%60;
@@ -1294,9 +1302,9 @@ function cdTxt(dIso,status){
   return 'Departs in '+mins+'m';
 }
 function offTm(dIso,mins){
-  var dt=isoToDate(dIso);if(!dt)return '--';
-  var d2=new Date(dt.getTime()+mins*60000);
-  return fmtT(d2.getUTCHours(),d2.getUTCMinutes());
+  var p=parseISOLocal(dIso);if(!p)return '--';
+  var total=((p.h*60+p.min+mins)%1440+1440)%1440;
+  return fmtT(Math.floor(total/60),total%60);
 }
 function addRc(full){S.rc=[full].concat(S.rc.filter(function(f){return f!==full;})).slice(0,6);ls.sj('ff_rc',S.rc);rRc();}
 function rRc(){var bar=g('rcBar'),chips=g('rcChp');if(!bar||!chips)return;if(!S.rc.length){bar.style.display='none';return;}bar.style.display='block';chips.innerHTML='<span class="rclb">Recent:</span>'+S.rc.map(function(f){return '<button class="chip" onclick="qLd(\''+f+'\')">'+f+'</button>';}).join('');}
@@ -1608,7 +1616,7 @@ function emlShr(){window.open('mailto:?subject='+encodeURIComponent('Flight: '+S
 function popCur(fr,to){var opts=Object.entries(CUR).sort(function(a,b){return a[0].localeCompare(b[0]);}).map(function(e){return '<option value="'+e[0]+'">'+e[0]+' - '+e[1]+'</option>';}).join('');['curFr','curTo'].forEach(function(id){var el=g(id);if(el)el.innerHTML=opts;});if(g('curFr'))g('curFr').value=fr||'USD';if(g('curTo'))g('curTo').value=to||'EUR';}
 function openCur(){var dA=AP[S.fd&&S.fd.dep]||{},aA=AP[S.curAp]||{};popCur(dA.cu||ls.g('ff_hcur')||'USD',aA.cu||'EUR');OM('mCur');fRatesCached().then(cvtCur);}
 function fRates(){if(S.rates&&S.rTS&&(Date.now()-S.rTS<3600000))return Promise.resolve();return fetch('https://open.er-api.com/v6/latest/USD').then(function(r){return r.json();}).then(function(j){if(j.rates){S.rates=j.rates;S.rTS=Date.now();}}).catch(function(){});}
-function cvtCur(){var amt=parseFloat(g('curAmt')&&g('curAmt').value)||0,fr=g('curFr')&&g('curFr').value,to=g('curTo')&&g('curTo').value,r=S.rates;if(!r){if(g('curR'))g('curR').textContent='Loading...';return;}if(!r[fr]||!r[to]){if(g('curR'))g('curR').textContent='Rate unavailable';return;}var res=(amt/r[fr])*r[to];if(g('curR'))g('curR').textContent=new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:4}).format(res)+' '+to;if(g('curI'))g('curI').textContent='1 '+fr+' = '+(r[to]/r[fr]).toFixed(4)+' '+to+' via open.er-api.com';}
+function cvtCur(){var amt=parseFloat(g('curAmt')&&g('curAmt').value)||0,fr=g('curFr')&&g('curFr').value,to=g('curTo')&&g('curTo').value,r=S.rates;if(!r){if(g('curR'))g('curR').textContent='Loading...';return;}if(!r[fr]||!r[to]){if(g('curR'))g('curR').textContent='Rate unavailable';return;}var res=(amt/r[fr])*r[to];var rnd=parseFloat(g('curRound')&&g('curRound').value)||0;var disp=rnd>0?Math.round(res/rnd)*rnd:res;var fopts=rnd>0?{maximumFractionDigits:0}:{minimumFractionDigits:2,maximumFractionDigits:4};if(g('curR'))g('curR').textContent=new Intl.NumberFormat('en-US',fopts).format(disp)+' '+to;if(g('curI'))g('curI').textContent='1 '+fr+' = '+(r[to]/r[fr]).toFixed(4)+' '+to+' via open.er-api.com';}
 function swpCur(){var f=g('curFr'),t=g('curTo');if(!f||!t)return;var tmp=f.value;f.value=t.value;t.value=tmp;cvtCur();}
 // ═══ COMPARE ═══
 function doCmp(){var raw2=g('cmpIn')&&g('cmpIn').value.trim();var fd1=S.fd,p1=S.parsed;if(!fd1||!p1){if(g('cmpR'))g('cmpR').innerHTML='<div class="erm">Track a flight first.</div>';return;}var p2=pFL(raw2||'');if(!p2||!AL[p2.code]){if(g('cmpR'))g('cmpR').innerHTML='<div class="erm">Enter a valid second flight number.</div>';return;}if(g('cmpR'))g('cmpR').innerHTML='<div class="ldinl"><div class="spn" style="width:20px;height:20px;border-width:2px;margin:0 8px 0 0"></div>Loading...</div>';var sr=ls.gj('ff_rt_'+p2.full);fetchFl(p2.full.replace(' ',''),null).then(function(raw){var fd2=raw?mapLive(raw,p2):(sr&&sr.dep&&sr.arr?bDemo(p2.code,p2.num,sr.dep,sr.arr,0):null);if(!fd2){if(g('cmpR'))g('cmpR').innerHTML='<div class="erm">No data for '+p2.full+'. Track it first to set the route.</div>';return;}var rows=[['Flight','<b>'+p1.full+'</b>','<b>'+p2.full+'</b>'],['Airline',fd1.airline.n,fd2.airline.n],['Route',fd1.dep+' to '+fd1.arr,fd2.dep+' to '+fd2.arr],['Departs',fd1.depTime+' '+fd1.depTz,fd2.depTime+' '+fd2.depTz],['Arrives',fd1.arrTime+' '+fd1.arrTz,fd2.arrTime+' '+fd2.arrTz],['Duration',fd1.dur,fd2.dur],['Aircraft',fd1.acName||'--',fd2.acName||'--'],['Status','<span class="sb '+sbc(fd1.status)+'">'+fd1.status+'</span>','<span class="sb '+sbc(fd2.status)+'">'+fd2.status+'</span>']];if(g('cmpR'))g('cmpR').innerHTML='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="background:var(--s2);padding:8px;text-align:left;border-bottom:2px solid var(--bor)"></th><th style="background:var(--s2);padding:8px;text-align:left;border-bottom:2px solid var(--bor)">'+p1.full+'</th><th style="background:var(--s2);padding:8px;text-align:left;border-bottom:2px solid var(--bor)">'+p2.full+'</th></tr></thead><tbody>'+rows.map(function(r){return '<tr><td style="padding:8px;border-bottom:1px solid var(--borL);font-weight:600;color:var(--t2);font-size:11px">'+r[0]+'</td><td style="padding:8px;border-bottom:1px solid var(--borL)">'+r[1]+'</td><td style="padding:8px;border-bottom:1px solid var(--borL)">'+r[2]+'</td></tr>';}).join('')+'</tbody></table>';});}
@@ -1649,7 +1657,7 @@ function rFbk(){
     fetch(getSbUrl()+'/rest/v1/feedback?select=*&order=created_at.desc&limit=50',{headers:{'apikey':getSbKey(),'Authorization':'Bearer '+getSbKey()}})
       .then(function(r){return r.ok?r.json():Promise.reject(new Error('http '+r.status));})
       .then(function(rows){renderFbList(rows.map(function(r){return{nm:r.name||'Anonymous',rat:r.rating,txt:r.msg,ts:new Date(r.created_at).getTime()};}));})
-      .catch(function(){el.innerHTML='<div class="erm">Could not load community feedback — check your Supabase URL/key in Settings.</div>';});
+      .catch(function(){renderFbList(ls.gj('ff_fb_shared')||[]);el.insertAdjacentHTML('afterbegin','<div class="erm" style="margin-bottom:10px">Could not reach Supabase — showing feedback saved on this device instead. Check your Supabase URL/key in Settings.</div>');});
   }else{renderFbList(ls.gj('ff_fb_shared')||[]);}
 }
 // ═══ NOTIFICATIONS ═══
@@ -1801,7 +1809,7 @@ function rDash(parsed,fd){
   S.curAp=fd.arr;
   var dI=AP[fd.dep]||{cy:fd.dep,n:fd.dep};
   var aI=AP[fd.arr]||{cy:fd.arr,n:fd.arr};
-  var cd=cdTxt(fd.dIso,fd.status);
+  var cd=cdTxt(fd.dIso,fd.status,fd.dTz);
   var dsMap={AA:'81%',DL:'84%',UA:'82%',WN:'83%',B6:'78%',AS:'86%',F9:'74%',NK:'72%',BA:'79%',LH:'82%',AF:'77%',KL:'83%',EK:'85%',QR:'88%',SQ:'91%',AC:'80%'};
   var ds=S.liveOT!=null?S.liveOT+'%':(dsMap[parsed.code]||null);
   var dstat=ds?'<span id="otStat" style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--s2);color:var(--t2);display:inline-block;margin-top:3px">'+ds+' '+t('ontime_stat')+'</span>':'<span id="otStat" style="font-size:11px;color:var(--tM);display:inline-block;margin-top:3px">'+t('fetching_stats')+'</span>';
@@ -1809,7 +1817,7 @@ function rDash(parsed,fd){
   var livBnr=fd.live
   ?'<div class="blive"><span class="ldot"></span>Live data via '+provName+' &mdash; updated '+new Date().toLocaleTimeString()+'<button class="bref" onclick="doLkp()">&#x21bb; Refresh</button></div>'
   :(provName
-    ?'<div class="bdemo" style="background:#fef3c7;border-color:#f59e0b">No live data for this date via '+provName+' &mdash; showing estimated schedule. <span onclick="showPicker(S.parsed)" style="cursor:pointer;font-weight:700;text-decoration:underline">Wrong airports?</span></div>'
+    ?'<div class="bdemo" style="background:#fef3c7;border-color:#f59e0b">⚠️ '+provName+' has no live data for this date — every time, terminal, gate, aircraft and status below is a placeholder estimate, not real. <span onclick="showPicker(S.parsed)" style="cursor:pointer;font-weight:700;text-decoration:underline">Wrong airports?</span></div>'
     :'<div class="bdemo">'+t('banner_nokey')+' <a onclick="OM(&apos;mSet&apos;)" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Add a flight-data key in Settings</a> for live data.</div>');
   var dlyBnr=fd.dlyMins>0?'<div class="bdly">'+t('banner_delayed')+' +'+fd.dlyMins+' min</div>':'';
   var kidBnr=S.kid?'<div class="bkid">'+t('banner_kidmode')+'</div>':'';
@@ -1824,7 +1832,7 @@ function rDash(parsed,fd){
       +'<div class="alico" style="background:'+fd.airline.c+'">'+parsed.code+'</div>'
       +'<div class="alinf"><div class="fnum">'+parsed.full+'</div><div class="aln">'+fd.airline.n+'</div><div>'+dstat+'</div></div>'
       +'<div class="alr">'
-        +'<span class="sb '+sbc(fd.status)+'">'+fd.status+(fd.dlyMins?' +'+fd.dlyMins+'m':'')+'</span>'
+        +'<span class="sb '+sbc(fd.status)+'">'+fd.status+(fd.dlyMins?' +'+fd.dlyMins+'m':'')+(fd.live?'':' (est.)')+'</span>'
       +'</div>'
     +'</div>'
     +'<div class="rr">'
@@ -1835,7 +1843,7 @@ function rDash(parsed,fd){
         +(fd.depTimeTag&&fd.depTimeTag==='Estimated'?'<div style="font-size:10px;font-weight:700;color:#f59e0b;letter-spacing:.3px">EST</div>':'')
         +'<div class="aptz">'+fd.depTz+'</div>'
         +'<div class="apdt">'+fd.depDate+'</div>'
-        +'<div class="apnw">Now: '+nowAt(fd.dTz)+'</div>'
+        +'<div class="apnw">Local now: '+nowAt(fd.dTz)+'</div>'
       +'</div>'
       +'<div class="rrmid"><div class="pico">✈️</div><div class="rdur">'+fd.dur+'</div></div>'
       +'<div class="apb r">'
@@ -1845,7 +1853,7 @@ function rDash(parsed,fd){
         +(fd.arrTimeTag&&fd.arrTimeTag==='Estimated'?'<div style="font-size:10px;font-weight:700;color:#f59e0b;letter-spacing:.3px">EST</div>':'')
         +'<div class="aptz">'+fd.arrTz+'</div>'
         +'<div class="apdt">'+fd.arrDate+'</div>'
-        +'<div class="apnw">Now: '+nowAt(fd.aTz)+'</div>'
+        +'<div class="apnw">Local now: '+nowAt(fd.aTz)+'</div>'
       +'</div>'
     +'</div>'
     +'<div class="ig">'
@@ -2014,9 +2022,10 @@ function renderMeetGrid(){
 }
 
 // ═══ WEIGHT CALCULATOR ═══
-var wtUnit='lbs',wtLimit=50,wtLimitUnit='lbs';
-function setWtUnit(u){wtUnit=u;g('wtLbs').classList.toggle('on',u==='lbs');g('wtKg').classList.toggle('on',u==='kg');calcWt();}
-function setWtLimit(v,u){wtLimit=v;wtLimitUnit=u;['50','70','23','32'].forEach(function(x){var b=g('wt'+x);if(b)b.classList.remove('on');});var b=g('wt'+v);if(b)b.classList.add('on');calcWt();}
+var wtUnit='lbs',wtLimit=50,wtLimitUnit='lbs',wtTier='eco';
+function setWtUnit(u){wtUnit=u;g('wtLbs').classList.toggle('on',u==='lbs');g('wtKg').classList.toggle('on',u==='kg');applyWtLimit();}
+function setWtTier(tier){wtTier=tier;if(g('wtEco'))g('wtEco').classList.toggle('on',tier==='eco');if(g('wtPrem'))g('wtPrem').classList.toggle('on',tier==='prem');applyWtLimit();}
+function applyWtLimit(){if(wtTier==='eco'){wtLimit=wtUnit==='lbs'?50:23;}else{wtLimit=wtUnit==='lbs'?70:32;}wtLimitUnit=wtUnit;calcWt();}
 function calcWt(){
   var val=parseFloat(g('wtBag')&&g('wtBag').value)||0;
   if(!val){g('wtResult').textContent='Enter your bag weight above';return;}
@@ -2056,9 +2065,9 @@ function openCarbon(){
   g('carbonBd').innerHTML=
     '<div style="background:'+(km<500?'#dcfce7':km<2000?'#fef3c7':km<6000?'#fef0c7':'#fee2e2')+';border-radius:12px;padding:14px;margin-bottom:14px;text-align:center">'
       +'<div style="font-size:36px">'+sev.e+'</div>'
-      +'<div style="font-size:20px;font-weight:800;color:var(--txt);margin:4px 0">'+co2PerPax.toLocaleString()+' kg CO₂</div>'
-      +'<div style="font-size:13px;color:var(--t2)">per passenger &bull; '+sev.l+'</div>'
-      +(pax>1?'<div style="font-size:12px;color:var(--tM);margin-top:4px">'+co2Total.toLocaleString()+' kg total for '+pax+' passengers</div>':'')
+      +'<div style="font-size:20px;font-weight:800;color:#1a1a2e;margin:4px 0">'+co2PerPax.toLocaleString()+' kg CO₂</div>'
+      +'<div style="font-size:13px;color:#3f3f52">per passenger &bull; '+sev.l+'</div>'
+      +(pax>1?'<div style="font-size:12px;color:#5c5c70;margin-top:4px">'+co2Total.toLocaleString()+' kg total for '+pax+' passengers</div>':'')
     +'</div>'
     +'<div style="font-size:13px;color:var(--t2);margin-bottom:12px">'+sev.d+'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">'
@@ -2535,7 +2544,14 @@ function openLiveMap(){
   if(!fd||!p){alert('Track a flight first.');return;}
   var fn=(p.code+p.num).replace(/ /g,'');
   var el=g('liveMapFrame');if(!el){OM('mLiveMap');return;}
-  el.innerHTML='<iframe src="https://www.flightradar24.com/simple_index.php?lat='+(((AP[fd.dep]||{lat:40}).lat+(AP[fd.arr]||{lat:40}).lat)/2)+'&lon='+(((AP[fd.dep]||{lon:-74}).lon+(AP[fd.arr]||{lon:-74}).lon)/2)+'&z=4&flight='+fn+'" style="width:100%;height:100%;border:none" allowfullscreen></iframe>';
+  var fr24Url='https://www.flightradar24.com/'+fn;
+  var faUrl='https://flightaware.com/live/flight/'+fn;
+  el.innerHTML='<div style="padding:24px 20px;text-align:center">'
+    +'<div style="font-size:13px;color:var(--t2);margin-bottom:16px">FlightRadar24 and FlightAware block being shown inside other sites, so live position opens in a new tab instead.</div>'
+    +'<a href="'+fr24Url+'" target="_blank" class="ms2" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;margin-bottom:10px;text-decoration:none">📡 Open on FlightRadar24</a>'
+    +'<a href="'+faUrl+'" target="_blank" class="ms2" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;text-decoration:none">✈ Open on FlightAware</a>'
+    +(fd.status&&fd.status.toLowerCase()==='landed'?'<div style="font-size:11px;color:var(--tM);margin-top:14px">This flight has already landed — live position won\'t be available on either site anymore.</div>':'')
+  +'</div>';
   OM('mLiveMap');
 }
 
@@ -2549,6 +2565,7 @@ function openWeatherCompare(){
   var base='https://api.openweathermap.org/data/2.5/weather?appid='+key+'&units='+unit;
   var el=document.getElementById('wxC');if(!el)return;
   el.innerHTML='<div class="ldinl"><div class="spn" style="width:18px;height:18px;border-width:2px;margin:0 8px 0 0"></div>Loading comparison...</div>';
+  el.scrollIntoView({behavior:'smooth',block:'center'});
   Promise.all([
     fetch(base+'&lat='+dA.lat+'&lon='+dA.lon).then(function(r){return r.json();}),
     fetch(base+'&lat='+aA.lat+'&lon='+aA.lon).then(function(r){return r.json();})
@@ -2636,7 +2653,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if(e.key==='Escape'){var open=document.querySelectorAll('.mbg.open');for(var i=0;i<open.length;i++)CM(open[i].id);return;}
     var tag=document.activeElement&&document.activeElement.tagName;
     if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
-    if(e.key==='?' ){OM('mKeys');return;}
+    if(e.key==='?' ){OM('mKeys');kbSync();return;}
     if(e.key==='d'||e.key==='D'){setDkMode(S.dark?'off':'on');return;}
     if(e.key==='s'||e.key==='S'){OM('mSet');return;}
     if(e.key==='h'||e.key==='H'){OM('mHst');rHst();return;}
@@ -2692,8 +2709,8 @@ document.addEventListener('DOMContentLoaded',function(){
 <div class="mhd"><div class="mic">🕐</div><div><div class="mtl" data-i18n="m_meeting_title">Time Zone Meeting Planner</div><div class="mst" data-i18n="m_meeting_sub">Find a time that works at both ends</div></div><button class="mcl" onclick="CM('mMeet')">✕</button></div>
 <div class="mbd">
   <div class="rpgr" style="margin-bottom:12px">
-    <div><label class="mlb">Your timezone</label><select id="meetTz1" class="mi"></select></div>
-    <div><label class="mlb">Their timezone</label><select id="meetTz2" class="mi"></select></div>
+    <div><label class="mlb">Your timezone</label><select id="meetTz1" class="mi" onchange="renderMeetGrid()"></select></div>
+    <div><label class="mlb">Their timezone</label><select id="meetTz2" class="mi" onchange="renderMeetGrid()"></select></div>
   </div>
   <div id="meetGrid" style="overflow-x:auto"></div>
 </div></div></div>
@@ -2705,12 +2722,10 @@ document.addEventListener('DOMContentLoaded',function(){
     <div><label class="mlb">Your bag weight</label><input type="number" id="wtBag" class="mi" placeholder="0" min="0" max="100" oninput="calcWt()"/></div>
     <div><label class="mlb">Unit</label><div class="tg" style="margin-top:6px"><button id="wtLbs" class="tb on" onclick="setWtUnit('lbs')">lbs</button><button id="wtKg" class="tb" onclick="setWtUnit('kg')">kg</button></div></div>
   </div>
-  <div style="margin-bottom:10px"><label class="mlb">Airline limit type</label>
+  <div style="margin-bottom:10px"><label class="mlb">Airline limit — most economy tickets use the first, business/first or some international carriers use the second</label>
   <div class="tg" style="flex-wrap:wrap;gap:4px">
-    <button class="tb on" id="wt50" onclick="setWtLimit(50,'lbs')">Domestic 50 lbs</button>
-    <button class="tb" id="wt70" onclick="setWtLimit(70,'lbs')">Intl 70 lbs</button>
-    <button class="tb" id="wt23" onclick="setWtLimit(23,'kg')">23 kg</button>
-    <button class="tb" id="wt32" onclick="setWtLimit(32,'kg')">32 kg</button>
+    <button class="tb on" id="wtEco" onclick="setWtTier('eco')">Standard (50 lbs / 23 kg)</button>
+    <button class="tb" id="wtPrem" onclick="setWtTier('prem')">Premium (70 lbs / 32 kg)</button>
   </div></div>
   <div id="wtResult" style="padding:16px;border-radius:12px;text-align:center;background:var(--s2);font-size:15px;font-weight:700"></div>
 </div></div></div>
@@ -2784,7 +2799,7 @@ document.addEventListener('DOMContentLoaded',function(){
 <div class="mbd">
   <div style="display:flex;flex-direction:column;gap:6px">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--s2);border-radius:8px"><span style="font-size:13px;color:var(--t2)">Focus search</span><kbd style="background:var(--bor);border-radius:4px;padding:3px 8px;font-size:12px;font-weight:700">Ctrl + K</kbd></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--s2);border-radius:8px"><span style="font-size:13px;color:var(--t2)">Toggle dark mode</span><kbd style="background:var(--bor);border-radius:4px;padding:3px 8px;font-size:12px;font-weight:700">D</kbd></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--s2);border-radius:8px"><span id="kbDarkLbl" style="font-size:13px;color:var(--t2)">Toggle dark mode</span><kbd style="background:var(--bor);border-radius:4px;padding:3px 8px;font-size:12px;font-weight:700">D</kbd></div>
     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--s2);border-radius:8px"><span style="font-size:13px;color:var(--t2)">Open settings</span><kbd style="background:var(--bor);border-radius:4px;padding:3px 8px;font-size:12px;font-weight:700">S</kbd></div>
     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--s2);border-radius:8px"><span style="font-size:13px;color:var(--t2)">Open history</span><kbd style="background:var(--bor);border-radius:4px;padding:3px 8px;font-size:12px;font-weight:700">H</kbd></div>
     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--s2);border-radius:8px"><span style="font-size:13px;color:var(--t2)">Open stats</span><kbd style="background:var(--bor);border-radius:4px;padding:3px 8px;font-size:12px;font-weight:700">P</kbd></div>
