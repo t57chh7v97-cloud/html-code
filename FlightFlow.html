@@ -642,6 +642,7 @@ function setUnit(k,v){
     if(S.wIV)clearInterval(S.wIV);
     S.wIV=setInterval(function(){if(wxLastAP)doWx(wxLastAP);},parseInt(v)*60000);
   }
+  if((k==='temp'||k==='wind'||k==='pres'||k==='dist')&&wxLastAP)doWx(wxLastAP);
 }
 function syncUnits(){
   var pairs=[
