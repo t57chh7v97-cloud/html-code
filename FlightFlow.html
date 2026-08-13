@@ -61,6 +61,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .dbdg{background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);border-color:rgba(255,255,255,.1)}
 .nbt{width:32px;height:32px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:rgba(255,255,255,.8);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:background .15s;flex-shrink:0}
 .nbt:hover{background:rgba(255,255,255,.25)}
+.moreWrap{position:relative;flex-shrink:0}
+.moreMenu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--sur);border:1px solid var(--bor);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.3);padding:6px;min-width:210px;max-height:70vh;overflow-y:auto;z-index:200}
+.moreMenu.open{display:block}
+.moreItem{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:none;background:transparent;color:var(--txt);font-size:13px;font-weight:600;text-align:left;cursor:pointer;border-radius:8px;white-space:nowrap}
+.moreItem:hover{background:var(--s2)}
+.moreIco{font-size:16px;flex-shrink:0}
 /* CLOCK */
 .ckb{background:#16163a;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06)}
 .ckb .w{display:flex;align-items:center;overflow-x:auto;scrollbar-width:none}
@@ -94,7 +100,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .hnt{background:rgba(255,255,255,.1);color:rgba(255,255,255,.65);font-size:12px;padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.12)}
 /* MAIN */
 .main{padding:1.25rem 0 4rem}
-.card{background:var(--sur);border:1px solid var(--bor);border-radius:var(--r18);padding:1.25rem;margin-bottom:12px;box-shadow:var(--sh)}
+.card{background:var(--sur);border:1px solid var(--bor);border-radius:var(--r18);padding:var(--card-pad,1.25rem);margin-bottom:12px;box-shadow:var(--sh)}
 /* BANNERS */
 .bdemo{background:#fffbea;border:1px solid #f6d860;border-radius:var(--r8);padding:9px 13px;display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;color:#5c4400}
 .blive{background:#f0fdf4;border:1px solid #86efac;border-radius:var(--r8);padding:9px 13px;display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;color:#15803d}
@@ -294,7 +300,7 @@ select[size].mi{background-image:none;padding-right:12px}
 .mrs{font-size:12px;color:var(--t2);margin-top:2px}
 .tg{display:flex;background:var(--s2);border:1px solid var(--bor);border-radius:8px;padding:3px;gap:3px;flex-shrink:0}
 .tb{padding:6px 11px;font-size:13px;font-weight:600;border:none;border-radius:6px;cursor:pointer;background:transparent;color:var(--t2);transition:all .15s}
-.tb.on{background:var(--sur);color:var(--txt);box-shadow:var(--sh)}
+.tb.on{background:var(--acc);color:#fff;box-shadow:var(--sh)}
 .tgl{padding:8px 14px;font-size:13px;font-weight:600;border:1.5px solid var(--bor);border-radius:8px;cursor:pointer;background:var(--s2);color:var(--t2);transition:all .15s;flex-shrink:0}
 .tgl.on{background:#dcfce7;color:#166634;border-color:#86efac}
 /* SAVED */
@@ -497,16 +503,15 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
   <select id="ppSel" class="mi" size="5" style="height:auto;padding:4px" onchange="savPP()"></select></div>
   <div class="mdv"></div>
   <div class="msc" data-i18n="s_home_title">🏠 Home and defaults</div>
-  <div class="mrw" style="margin-bottom:10px"><div><div class="mrl" data-i18n="s_homeairport">Home airport</div><div class="mrs">Your main departure airport</div></div></div>
+  <div class="mrw" style="margin-bottom:10px"><div><div class="mrl" data-i18n="s_homeairport">Home airport</div><div class="mrs">Pre-fills "From" when you search flights by route</div></div></div>
   <input type="text" id="homeAP" class="mi" placeholder="e.g. JFK, LAX, MCO..." maxlength="3" style="text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:10px;font-size:18px" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z]/g,'')" onblur="saveHomeAP(this.value)" onchange="saveHomeAP(this.value)"/>
   <div id="homeAPStatus" style="font-size:12px;color:var(--tM);margin-top:-6px;margin-bottom:10px"></div>
   <div class="mrw" style="margin-bottom:6px"><div><div class="mrl" data-i18n="s_defaultcurrency">Default currency</div><div class="mrs">Your home currency</div></div></div>
   <select id="homeCur" class="mi" style="margin-bottom:10px" onchange="ls.s('ff_hcur',this.value)"></select>
   <div class="mdv"></div>
   <div class="msc" data-i18n="s_more_title">💡 More features</div>
-  <div class="mrw" style="margin-bottom:10px"><div><div class="mrl" data-i18n="s_density">📊 Display density</div><div class="mrs">Comfortable or compact layout</div></div><div class="tg"><button id="bDenC" class="tb" onclick="setDensity('comfortable')" data-i18n="btn_cozy">Cozy</button><button id="bDenK" class="tb" onclick="setDensity('compact')" data-i18n="btn_compact">Compact</button></div></div>
-  <div class="mrw" style="margin-bottom:10px"><div><div class="mrl" data-i18n="s_shareformat">💬 Share format</div><div class="mrs">What gets included when you share a flight</div></div><div class="tg"><button id="bShFull" class="tb" onclick="setUnit('share','full')" data-i18n="btn_full">Full</button><button id="bShMin" class="tb" onclick="setUnit('share','min')" data-i18n="btn_short">Short</button></div></div>
-  <div class="mrw" style="margin-bottom:10px"><div><div class="mrl">🔄 Auto-refresh weather</div><div class="mrs">How often to update live weather</div></div><div class="tg"><button id="bR5" class="tb" onclick="setUnit('ref','5')">5m</button><button id="bR10" class="tb" onclick="setUnit('ref','10')">10m</button><button id="bR30" class="tb" onclick="setUnit('ref','30')">30m</button></div></div>
+  <div class="mrw" style="margin-bottom:10px"><div><div class="mrl" data-i18n="s_density">📊 Display density</div><div class="mrs">Cozy = more spacing, larger touch targets. Compact = tighter cards, more fits on screen.</div></div><div class="tg"><button id="bDenC" class="tb" onclick="setDensity('comfortable')" data-i18n="btn_cozy">Cozy</button><button id="bDenK" class="tb" onclick="setDensity('compact')" data-i18n="btn_compact">Compact</button></div></div>
+  <div class="mrw" style="margin-bottom:10px"><div><div class="mrl" data-i18n="s_shareformat">💬 Share format</div><div class="mrs">Full = every detail (times, duration, aircraft, status). Short = one line, good for texting.</div></div><div class="tg"><button id="bShFull" class="tb" onclick="setUnit('share','full')" data-i18n="btn_full">Full</button><button id="bShMin" class="tb" onclick="setUnit('share','min')" data-i18n="btn_short">Short</button></div></div>
   <div class="mdv"></div>
   <div class="msc" data-i18n="s_data_title">💾 Data</div>
   <div class="mrw" style="margin-bottom:8px"><div><div class="mrl" data-i18n="s_export">Export all data</div><div class="mrs" data-i18n="s_export_desc">Download API keys, saved flights, notes and settings as JSON — keep this to restore in seconds if your browser ever clears its storage</div></div><button class="tgl" onclick="exportData()">📥 Export</button></div>
@@ -562,11 +567,11 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
   <textarea id="fbTxt" class="mi" rows="4" style="resize:vertical;font-family:inherit;font-size:14px;line-height:1.6;margin-bottom:10px" placeholder="e.g. Add more airlines, fix times, I would love lounge info..."></textarea>
   <label class="mlb">Your name (optional)</label>
   <input type="text" id="fbNm" class="mi" placeholder="Anonymous" style="margin-bottom:12px"/>
-  <div style="font-size:12px;color:var(--tM);background:var(--s2);border-radius:8px;padding:10px 12px;margin-bottom:12px;line-height:1.6;border-left:3px solid var(--acc)"><strong style="color:var(--txt)">Note:</strong> We will add features you ask for! Most-requested suggestions get built first. Feedback is shared with the FlightFlow community.</div>
+  <div style="font-size:12px;color:var(--tM);background:var(--s2);border-radius:8px;padding:10px 12px;margin-bottom:12px;line-height:1.6;border-left:3px solid var(--acc)"><strong style="color:var(--txt)">Note:</strong> This saves on your device only — it isn't sent anywhere or visible to other users yet.</div>
   <button class="mp" style="width:100%" onclick="subFb()">📨 Submit feedback</button>
   <div id="fbOK" class="shok" style="display:none;margin-top:12px">✅ Thank you! Feedback saved.</div>
   <div class="mdv"></div>
-  <div class="msc" style="margin-bottom:8px">Community feedback</div>
+  <div class="msc" style="margin-bottom:8px">Your feedback history</div>
   <div id="fbList"></div>
 </div></div></div>
 
@@ -576,19 +581,23 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
   <div class="nav-r">
     <span id="apiBdg" class="nbdg dbdg">📡 Demo</span>
     <button class="nbt" onclick="OM('mSav');rSav()" data-i18n-title="nav_saved" title="Saved">🔖</button>
-    <button class="nbt" onclick="OM('mHst');rHst()" data-i18n-title="nav_history" title="History">🕐</button>
-    <button class="nbt" onclick="openStats()" data-i18n-title="nav_stats" title="Your stats">📊</button>
-    <button class="nbt" onclick="OM('mCmp')" data-i18n-title="nav_compare" title="Compare">⚖️</button>
-    <button class="nbt" onclick="OM('mML');initML()" data-i18n-title="nav_multileg" title="Multi-leg">🛫</button>
-    <button class="nbt" onclick="openMeet()" data-i18n-title="nav_meeting" title="Meeting planner">🕐</button>
-    <button class="nbt" onclick="openWt()" data-i18n-title="nav_bagweight" title="Bag weight">⚖️</button>
-    <button class="nbt" onclick="openFlightSearch()" data-i18n-title="nav_search" title="Search flights">🔍</button>
-    <button class="nbt" onclick="openDocs()" data-i18n-title="nav_docs" title="Travel docs">📋</button>
-    <button class="nbt" onclick="openStamps()" data-i18n-title="nav_countries" title="Countries visited">🌍</button>
-    <button class="nbt" onclick="openBucket()" data-i18n-title="nav_bucket" title="Bucket list">🪣</button>
-    <button class="nbt" onclick="OM('mKeys')" data-i18n-title="nav_shortcuts" title="Keyboard shortcuts">⌨️</button>
     <button class="nbt" onclick="OM('mFbk');rFbk()" data-i18n-title="nav_feedback" title="Feedback">💬</button>
     <button class="nbt" onclick="OM('mSet')" data-i18n-title="nav_settings" title="Settings">⚙️</button>
+    <div class="moreWrap">
+      <button class="nbt" onclick="tglMore(event)" title="More">⋯</button>
+      <div class="moreMenu" id="moreMenu">
+        <button class="moreItem" onclick="closeMore();OM('mHst');rHst()"><span class="moreIco">🕐</span><span data-i18n="nav_history">History</span></button>
+        <button class="moreItem" onclick="closeMore();openStats()"><span class="moreIco">📊</span><span data-i18n="nav_stats">Stats</span></button>
+        <button class="moreItem" onclick="closeMore();OM('mCmp')"><span class="moreIco">⚖️</span><span data-i18n="nav_compare">Compare</span></button>
+        <button class="moreItem" onclick="closeMore();OM('mML');initML()"><span class="moreIco">🛫</span><span data-i18n="nav_multileg">Multi-leg</span></button>
+        <button class="moreItem" onclick="closeMore();openMeet()"><span class="moreIco">🕐</span><span data-i18n="nav_meeting">Meeting Planner</span></button>
+        <button class="moreItem" onclick="closeMore();openWt()"><span class="moreIco">⚖️</span><span data-i18n="nav_bagweight">Bag Weight</span></button>
+        <button class="moreItem" onclick="closeMore();openDocs()"><span class="moreIco">📋</span><span data-i18n="nav_docs">Travel Docs</span></button>
+        <button class="moreItem" onclick="closeMore();openStamps()"><span class="moreIco">🌍</span><span data-i18n="nav_countries">Countries</span></button>
+        <button class="moreItem" onclick="closeMore();openBucket()"><span class="moreIco">🪣</span><span data-i18n="nav_bucket">Bucket List</span></button>
+        <button class="moreItem" onclick="closeMore();OM('mKeys')"><span class="moreIco">⌨️</span><span data-i18n="nav_shortcuts">Keyboard Shortcuts</span></button>
+      </div>
+    </div>
   </div>
 </div></nav>
 <!-- CLOCK -->
@@ -607,6 +616,7 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
     <button class="trk" onclick="doLkp()" data-i18n="hero_track">📡 Track</button>
   </div>
   <div class="hnts" id="heroHints"><span class="hnt" data-i18n="hint_jetblue">JetBlue: B6</span><span class="hnt" data-i18n="hint_american">American: AA</span><span class="hnt" data-i18n="hint_delta">Delta: DL</span><span class="hnt" data-i18n="hint_united">United: UA</span><span class="hnt" data-i18n="hint_emirates">Emirates: EK</span><span class="hnt" data-i18n="hint_british">British: BA</span><span class="hnt" data-i18n="hint_southwest">Southwest: WN</span></div>
+  <div style="text-align:center;margin-top:10px"><a onclick="openFlightSearch()" style="cursor:pointer;font-size:12px;font-weight:700;color:rgba(255,255,255,.75);text-decoration:underline">🔍 <span data-i18n="nav_search">Search Flights</span></a></div>
 </div></section>
 <!-- DASHBOARD -->
 <main class="main"><div class="w"><div id="dash"></div></div></main>
@@ -1120,7 +1130,7 @@ return{t:'required',tx:'A visa may be required. Check with the official embassy 
 // 11 languages as Emergency Phrases. Deep modal body content (checklist items,
 // long descriptive paragraphs) is intentionally left in English for now — see
 // LANG_LIST for the full covered set.
-var LANG_LIST=[['en','English','🇬🇧'],['fr','Français','🇫🇷'],['es','Español','🇪🇸'],['de','Deutsch','🇩🇪'],['ja','日本語','🇯🇵'],['ar','العربية','🇸🇦'],['pt','Português','🇵🇹'],['zh','中文','🇨🇳'],['ko','한국어','🇰🇷'],['hi','हिन्दी','🇮🇳'],['it','Italiano','🇮🇹']];
+var LANG_LIST=[['en','English','🇺🇸🇬🇧'],['fr','Français','🇫🇷'],['es','Español','🇪🇸'],['de','Deutsch','🇩🇪'],['ja','日本語','🇯🇵'],['ar','العربية','🇸🇦'],['pt','Português','🇵🇹'],['zh','中文','🇨🇳'],['ko','한국어','🇰🇷'],['hi','हिन्दी','🇮🇳'],['it','Italiano','🇮🇹']];
 var I18N={
 en:{nav_saved:'Saved',nav_history:'History',nav_stats:'Stats',nav_compare:'Compare',nav_multileg:'Multi-leg',nav_meeting:'Meeting Planner',nav_bagweight:'Bag Weight',nav_search:'Search Flights',nav_docs:'Travel Docs',nav_countries:'Countries',nav_bucket:'Bucket List',nav_shortcuts:'Keyboard Shortcuts',nav_feedback:'Feedback',nav_settings:'Settings',brand_tag:'Global flight assistant',status_live:'Live',status_demo:'Demo mode',clock_now:'Now',recent_label:'Recent:',hero_h1:'Track your flight ✈️',hero_p:'Real-time dashboard — live data, weather, seat maps, multiple dates, checklists and more',hero_placeholder:'B6 1368, AA 100, DL 220, EK 202...',hero_track:'📡 Track',hint_jetblue:'JetBlue: B6',hint_american:'American: AA',hint_delta:'Delta: DL',hint_united:'United: UA',hint_emirates:'Emirates: EK',hint_british:'British: BA',hint_southwest:'Southwest: WN',welcome_title:'Ready for takeoff',welcome_desc:'Enter any flight number above for live times, seat maps, weather, currency, jet lag calc, visa check, multi-leg journey, and more.',welcome_addkeys:'🔑 Add API keys',welcome_saved:'🔖 Saved',welcome_history:'🕐 History',welcome_multileg:'🛫 Multi-leg',welcome_feedback:'💬 Feedback',settings_title:'Settings',settings_subtitle:'API keys, display and preferences',kid_warning:'⭐ Hey! This part has API keys. Ask a grown-up to help you with this section!',s_language_title:'🌐 Language',s_language_desc:'Changes the app\'s own interface, not just Emergency Phrases',s_display_title:'⚡ Display',s_timeformat:'🕐 Time format',s_temperature:'🌡 Temperature',s_windspeed:'💨 Wind speed',s_distance:'📏 Distance',s_pressure:'🗺 Pressure',s_theme_title:'🎨 Theme',s_mode_title:'🎨 Mode',s_darkmode:'🌙 Dark mode',s_darkmode_desc:'Auto follows your device setting',s_kidmode:'⭐ Kid Mode',s_kidmode_desc:'Fun lists and reminders for young travelers',s_alerts_title:'🔔 Alerts',s_push:'🔔 Push notifications',s_push_desc:'3-hour departure reminder (needs HTTPS + Chrome/Safari)',s_passengers_title:'👥 Passengers and passport',s_passengers_label:'Passengers (1–20) — scales packing list',s_passport_label:'🛂 Passport country — for visa checks',s_home_title:'🏠 Home and defaults',s_homeairport:'Home airport',s_defaultcurrency:'Default currency',s_more_title:'💡 More features',s_density:'📊 Display density',s_shareformat:'💬 Share format',s_refresh:'🔄 Auto-refresh weather',s_data_title:'💾 Data',s_export:'Export all data',s_export_desc:'Download API keys, saved flights, notes and settings as JSON',s_import:'Import data',s_import_desc:'Restore from a previously exported file',s_clearrecents:'Clear search history',s_clearall:'Clear all data',btn_clear:'🗑 Clear',btn_save:'✓ Save',btn_saveconnect:'✓ Save and connect',btn_enable:'Enable',btn_cozy:'Cozy',btn_compact:'Compact',btn_full:'Full',btn_short:'Short',banner_nokey:'No API key — showing estimated times.',banner_delayed:'Delayed',banner_kidmode:'Kid Mode ON - made just for you!',date_yesterday:'Yesterday',date_today:'Today',date_tomorrow:'Tomorrow',ontime_stat:'on-time',fetching_stats:'Fetching on-time stats...',act_share:'Share',act_currency:'Currency',act_calendar:'Calendar',act_qr:'QR',act_jetlag:'Jet lag',act_visa:'Visa',act_notes:'📝 Notes',act_carbon:'🌱 Carbon',act_connection:'🔄 Connection',act_phrases:'💬 Phrases',act_shareimg:'🖼️ Share img',act_seats:'💺 Seats',act_livemap:'📡 Live map',act_layover:'🏙️ Layover',act_sleepplan:'😴 Sleep plan',act_print:'🖨️ Print',act_wxcompare:'🌤️ Wx compare',act_prices:'💰 Prices',info_depterminal:'Dep Terminal',info_depgate:'Dep Gate',info_aircraft:'Aircraft',info_arrterminal:'Arr Terminal',info_arrgate:'Arr Gate',info_baggage:'Baggage',cabin_title:'Cabin and Amenities',weather_title:'Weather at',reminders_title:'Key reminders',reminders_title_kid:'Things to remember',tab_packing:'Packing',tab_security:'Security',tab_transport:'Transport',flightpath_title:'Flight path',footer_tagline:'FlightFlow ✈️',m_saved_title:'Saved Flights',m_saved_sub:'Tap to reload',m_history_title:'Flight History',m_history_sub:'All tracked flights',m_stats_title:'Your Flight Stats',m_stats_sub:'Personal travel history',m_compare_title:'Compare Flights',m_compare_sub:'Side-by-side',m_multileg_title:'Multi-Leg Journey',m_multileg_sub:'Track connecting flights',m_meeting_title:'Time Zone Meeting Planner',m_meeting_sub:'Find a time that works at both ends',m_bagweight_title:'Baggage Weight Calculator',m_bagweight_sub:'Stay under the limit',m_search_title:'Search Flights by Route',m_search_sub:'Find flight numbers for any route',m_docs_title:'Travel Documents',m_docs_sub:'Everything you need to board',m_stamps_title:'Passport Stamps',m_stamps_sub:'Countries you have visited',m_bucket_title:'Travel Bucket List',m_bucket_sub:'Routes you want to fly someday',m_shortcuts_title:'Keyboard Shortcuts',m_shortcuts_sub:'Power user tips',m_feedback_title:'Feedback and Suggestions',m_feedback_sub:'Help make FlightFlow better',m_share_title:'Share Flight',m_share_sub:'Send details to someone',m_currency_title:'Currency Converter',m_currency_sub:'Live rates via open.er-api.com',m_calendar_title:'Add to Calendar',m_calendar_sub:'Export flight as event',m_qr_title:'QR Code',m_qr_sub:'Scan to open on FlightAware',m_jetlag_title:'Jet Lag Calculator',m_jetlag_sub:'Visual timezone comparison and tips',m_visa_title:'Visa Requirements',m_visa_sub:'Entry requirements by passport',m_notes_title:'Trip Notes',m_notes_sub:'Personal reminders for this flight',m_carbon_title:'Carbon Footprint',m_carbon_sub:'Environmental impact of your flight',m_connection_title:'Connection Time Check',m_connection_sub:'Is your layover long enough?',m_phrases_title:'Emergency Phrases',m_phrases_sub:'Key phrases in the local language',m_shareimg_title:'Share as Image',m_shareimg_sub:'Download a flight card',m_seats_title:'Seat Selection Assistant',m_seats_sub:'Best seats for your flight',m_livemap_title:'Live Flight Tracker',m_livemap_sub:'Real-time position via FlightRadar24',m_layover_title:'Layover City Guide',m_layover_sub:'What to do with your time',m_sleep_title:'Sleep Schedule Optimizer',m_sleep_sub:'Beat jet lag before you fly',m_bingo_title:'Flight Bingo!',m_bingo_sub:'Spot things on your flight',m_deploy_title:'Deploy FlightFlow',m_deploy_sub:'Free hosting and app store options'},
 fr:{nav_saved:'Enregistrés',nav_history:'Historique',nav_stats:'Statistiques',nav_compare:'Comparer',nav_multileg:'Plusieurs vols',nav_meeting:'Planificateur de réunion',nav_bagweight:'Poids des bagages',nav_search:'Rechercher des vols',nav_docs:'Documents de voyage',nav_countries:'Pays',nav_bucket:'Liste de rêves',nav_shortcuts:'Raccourcis clavier',nav_feedback:'Retour',nav_settings:'Paramètres',brand_tag:'Assistant de vol mondial',status_live:'En direct',status_demo:'Mode démo',clock_now:'Maintenant',recent_label:'Récents :',hero_h1:'Suivez votre vol ✈️',hero_p:'Tableau de bord en temps réel — données en direct, météo, plans de sièges, plusieurs dates, listes de contrôle et plus',hero_placeholder:'B6 1368, AA 100, DL 220, EK 202...',hero_track:'📡 Suivre',hint_jetblue:'JetBlue : B6',hint_american:'American : AA',hint_delta:'Delta : DL',hint_united:'United : UA',hint_emirates:'Emirates : EK',hint_british:'British : BA',hint_southwest:'Southwest : WN',welcome_title:'Prêt au décollage',welcome_desc:'Entrez un numéro de vol ci-dessus pour les horaires en direct, plans de sièges, météo, devises, décalage horaire, visa, vols multiples et plus.',welcome_addkeys:'🔑 Ajouter des clés API',welcome_saved:'🔖 Enregistrés',welcome_history:'🕐 Historique',welcome_multileg:'🛫 Plusieurs vols',welcome_feedback:'💬 Retour',settings_title:'Paramètres',settings_subtitle:'Clés API, affichage et préférences',kid_warning:'⭐ Cette section contient des clés API. Demande à un adulte de t\'aider ici !',s_language_title:'🌐 Langue',s_language_desc:'Change l\'interface de l\'application, pas seulement les phrases d\'urgence',s_display_title:'⚡ Affichage',s_timeformat:'🕐 Format horaire',s_temperature:'🌡 Température',s_windspeed:'💨 Vitesse du vent',s_distance:'📏 Distance',s_pressure:'🗺 Pression',s_theme_title:'🎨 Thème',s_mode_title:'🎨 Mode',s_darkmode:'🌙 Mode sombre',s_darkmode_desc:'Suit automatiquement le réglage de votre appareil',s_kidmode:'⭐ Mode enfant',s_kidmode_desc:'Listes ludiques et rappels pour les jeunes voyageurs',s_alerts_title:'🔔 Alertes',s_push:'🔔 Notifications push',s_push_desc:'Rappel de départ 3 heures avant (nécessite HTTPS + Chrome/Safari)',s_passengers_title:'👥 Passagers et passeport',s_passengers_label:'Passagers (1–20) — ajuste la liste de bagages',s_passport_label:'🛂 Pays du passeport — pour les vérifications de visa',s_home_title:'🏠 Domicile et valeurs par défaut',s_homeairport:'Aéroport de départ habituel',s_defaultcurrency:'Devise par défaut',s_more_title:'💡 Plus de fonctionnalités',s_density:'📊 Densité d\'affichage',s_shareformat:'💬 Format de partage',s_refresh:'🔄 Actualisation météo auto',s_data_title:'💾 Données',s_export:'Exporter toutes les données',s_export_desc:'Télécharger les clés API, vols enregistrés, notes et paramètres en JSON',s_import:'Importer des données',s_import_desc:'Restaurer depuis un fichier exporté précédemment',s_clearrecents:'Effacer l\'historique de recherche',s_clearall:'Effacer toutes les données',btn_clear:'🗑 Effacer',btn_save:'✓ Enregistrer',btn_saveconnect:'✓ Enregistrer et connecter',btn_enable:'Activer',btn_cozy:'Confortable',btn_compact:'Compact',btn_full:'Complet',btn_short:'Court',banner_nokey:'Pas de clé API — heures estimées affichées.',banner_delayed:'Retardé',banner_kidmode:'Mode enfant activé - fait juste pour toi !',date_yesterday:'Hier',date_today:'Aujourd\'hui',date_tomorrow:'Demain',ontime_stat:'à l\'heure',fetching_stats:'Récupération des statistiques...',act_share:'Partager',act_currency:'Devise',act_calendar:'Calendrier',act_qr:'QR',act_jetlag:'Décalage horaire',act_visa:'Visa',act_notes:'📝 Notes',act_carbon:'🌱 Carbone',act_connection:'🔄 Correspondance',act_phrases:'💬 Phrases',act_shareimg:'🖼️ Partager image',act_seats:'💺 Sièges',act_livemap:'📡 Carte en direct',act_layover:'🏙️ Escale',act_sleepplan:'😴 Plan de sommeil',act_print:'🖨️ Imprimer',act_wxcompare:'🌤️ Comparer météo',act_prices:'💰 Prix',info_depterminal:'Terminal départ',info_depgate:'Porte départ',info_aircraft:'Avion',info_arrterminal:'Terminal arrivée',info_arrgate:'Porte arrivée',info_baggage:'Bagages',cabin_title:'Cabine et commodités',weather_title:'Météo à',reminders_title:'Rappels importants',reminders_title_kid:'À ne pas oublier',tab_packing:'Bagages',tab_security:'Sécurité',tab_transport:'Transport',flightpath_title:'Trajet de vol',footer_tagline:'FlightFlow ✈️',m_saved_title:'Vols enregistrés',m_saved_sub:'Touchez pour recharger',m_history_title:'Historique des vols',m_history_sub:'Tous les vols suivis',m_stats_title:'Vos statistiques de vol',m_stats_sub:'Historique de voyage personnel',m_compare_title:'Comparer des vols',m_compare_sub:'Côte à côte',m_multileg_title:'Voyage à plusieurs vols',m_multileg_sub:'Suivre les correspondances',m_meeting_title:'Planificateur de fuseaux horaires',m_meeting_sub:'Trouvez une heure qui convient aux deux',m_bagweight_title:'Calculateur de poids de bagages',m_bagweight_sub:'Restez sous la limite',m_search_title:'Rechercher des vols par itinéraire',m_search_sub:'Trouvez les numéros de vol pour tout trajet',m_docs_title:'Documents de voyage',m_docs_sub:'Tout ce qu\'il vous faut pour embarquer',m_stamps_title:'Tampons de passeport',m_stamps_sub:'Pays que vous avez visités',m_bucket_title:'Liste de voyages de rêve',m_bucket_sub:'Trajets que vous rêvez de faire un jour',m_shortcuts_title:'Raccourcis clavier',m_shortcuts_sub:'Astuces pour utilisateurs avancés',m_feedback_title:'Retour et suggestions',m_feedback_sub:'Aidez à améliorer FlightFlow',m_share_title:'Partager le vol',m_share_sub:'Envoyer les détails à quelqu\'un',m_currency_title:'Convertisseur de devises',m_currency_sub:'Taux en direct via open.er-api.com',m_calendar_title:'Ajouter au calendrier',m_calendar_sub:'Exporter le vol comme événement',m_qr_title:'Code QR',m_qr_sub:'Scannez pour ouvrir sur FlightAware',m_jetlag_title:'Calculateur de décalage horaire',m_jetlag_sub:'Comparaison visuelle des fuseaux et conseils',m_visa_title:'Exigences de visa',m_visa_sub:'Conditions d\'entrée selon le passeport',m_notes_title:'Notes de voyage',m_notes_sub:'Rappels personnels pour ce vol',m_carbon_title:'Empreinte carbone',m_carbon_sub:'Impact environnemental de votre vol',m_connection_title:'Vérification du temps de correspondance',m_connection_sub:'Votre escale est-elle assez longue ?',m_phrases_title:'Phrases d\'urgence',m_phrases_sub:'Phrases clés dans la langue locale',m_shareimg_title:'Partager en image',m_shareimg_sub:'Télécharger une carte de vol',m_seats_title:'Assistant de sélection de siège',m_seats_sub:'Meilleurs sièges pour votre vol',m_livemap_title:'Suivi de vol en direct',m_livemap_sub:'Position en temps réel via FlightRadar24',m_layover_title:'Guide de la ville d\'escale',m_layover_sub:'Quoi faire pendant votre temps libre',m_sleep_title:'Optimiseur de sommeil',m_sleep_sub:'Battez le décalage horaire avant de partir',m_bingo_title:'Bingo du vol !',m_bingo_sub:'Repérez des choses pendant votre vol',m_deploy_title:'Déployer FlightFlow',m_deploy_sub:'Options d\'hébergement gratuit et app stores'},
@@ -1171,6 +1181,10 @@ var ls={g:function(k){try{return localStorage.getItem(k);}catch(e){return null;}
 function g(id){return document.getElementById(id);}
 function OM(id){var el=g(id);if(el)el.classList.add('open');}
 function CM(id){var el=g(id);if(el)el.classList.remove('open');}
+function tglMore(e){if(e)e.stopPropagation();var el=g('moreMenu');if(el)el.classList.toggle('open');}
+function closeMore(){var el=g('moreMenu');if(el)el.classList.remove('open');}
+document.addEventListener('click',function(e){var el=g('moreMenu');if(el&&el.classList.contains('open')&&!el.contains(e.target)&&!e.target.closest('.moreWrap'))closeMore();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeMore();});
 // ═══ DARK/KID ═══
 function setDkMode(m){
   ls.s('ff_dk',m==='auto'?'auto':m==='on'?'1':'0');
@@ -1571,7 +1585,7 @@ function openAP(code){var ap=AP[code];if(!ap)return;var em=ap.emb||{police:ap.em
 function doICal(){var fd=S.fd,p=S.parsed;if(!fd||!p)return;var dep=AP[fd.dep]||{cy:fd.dep},arr=AP[fd.arr]||{cy:fd.arr};function f2(d){return d?d.toISOString().replace(/[-:]/g,'').split('.')[0]+'Z':'';}var ical='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//FlightFlow//EN\r\nBEGIN:VEVENT\r\nUID:'+p.full.replace(' ','')+'@ff\r\nSUMMARY:Flight '+p.full+'\r\nDTSTART:'+f2(fd.dIso)+'\r\nDTEND:'+f2(fd.aIso)+'\r\nLOCATION:'+fd.dep+' to '+fd.arr+'\r\nDESCRIPTION:'+fd.airline.n+' T'+fd.depT+' Gate '+fd.depG+'\r\nEND:VEVENT\r\nEND:VCALENDAR';var a=document.createElement('a');a.href='data:text/calendar;charset=utf-8,'+encodeURIComponent(ical);a.download=p.full.replace(' ','')+'.ics';a.click();}
 function doGCal(){var fd=S.fd,p=S.parsed;if(!fd||!p)return;function f2(d){return d?d.toISOString().replace(/[-:]/g,'').split('.')[0]+'Z':'';}window.open('https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent('Flight '+p.full)+'&dates='+f2(fd.dIso)+'/'+f2(fd.aIso)+'&location='+encodeURIComponent(fd.dep+' to '+fd.arr),'_blank');}
 // ═══ SHARE ═══
-function openShr(){if(!S.fd||!S.parsed)return;var fd=S.fd,p=S.parsed;var dep=AP[fd.dep]||{cy:fd.dep},arr=AP[fd.arr]||{cy:fd.arr};var txt='Flight '+p.full+' - '+fd.airline.n+'\n'+fd.dep+' '+dep.cy+' -> '+fd.arr+' '+arr.cy+'\nDeparts: '+fd.depTime+' '+fd.depTz+' '+fd.depDate+'\nArrives: '+fd.arrTime+' '+fd.arrTz+' '+fd.arrDate+'\nDuration: '+fd.dur+' - '+fd.acName+'\nStatus: '+fd.status+(fd.dlyMins?' +'+fd.dlyMins+'m':'')+'\n\nTracked with FlightFlow';if(g('shrC'))g('shrC').innerHTML='<div class="shpr">'+txt+'</div>';S.shrTxt=txt;if(g('shrOK'))g('shrOK').style.display='none';OM('mShr');}
+function openShr(){if(!S.fd||!S.parsed)return;var fd=S.fd,p=S.parsed;var dep=AP[fd.dep]||{cy:fd.dep},arr=AP[fd.arr]||{cy:fd.arr};var txt=getU('share','full')==='min'?(p.full+' '+fd.dep+'→'+fd.arr+' · '+fd.depTime+' '+fd.depTz+' · '+fd.status+(fd.dlyMins?' +'+fd.dlyMins+'m':'')):('Flight '+p.full+' - '+fd.airline.n+'\n'+fd.dep+' '+dep.cy+' -> '+fd.arr+' '+arr.cy+'\nDeparts: '+fd.depTime+' '+fd.depTz+' '+fd.depDate+'\nArrives: '+fd.arrTime+' '+fd.arrTz+' '+fd.arrDate+'\nDuration: '+fd.dur+' - '+fd.acName+'\nStatus: '+fd.status+(fd.dlyMins?' +'+fd.dlyMins+'m':'')+'\n\nTracked with FlightFlow');if(g('shrC'))g('shrC').innerHTML='<div class="shpr">'+txt+'</div>';S.shrTxt=txt;if(g('shrOK'))g('shrOK').style.display='none';OM('mShr');}
 function cpyShr(){navigator.clipboard?navigator.clipboard.writeText(S.shrTxt).then(function(){if(g('shrOK')){g('shrOK').style.display='flex';setTimeout(function(){g('shrOK').style.display='none';},2500);}}):alert(S.shrTxt);}
 function smsShr(){window.open('sms:?body='+encodeURIComponent(S.shrTxt));}
 function emlShr(){window.open('mailto:?subject='+encodeURIComponent('Flight: '+S.parsed.full)+'&body='+encodeURIComponent(S.shrTxt));}
@@ -1923,28 +1937,37 @@ function openMeet(){
   renderMeetGrid();
   OM('mMeet');
 }
+function tzOffsetMin(tz,date){
+  var dtf=new Intl.DateTimeFormat('en-US',{timeZone:tz,hour12:false,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  var p=dtf.formatToParts(date).reduce(function(acc,x){acc[x.type]=x.value;return acc;},{});
+  var h=p.hour==='24'?0:parseInt(p.hour,10);
+  var asUTC=Date.UTC(parseInt(p.year,10),parseInt(p.month,10)-1,parseInt(p.day,10),h,parseInt(p.minute,10),parseInt(p.second,10));
+  return Math.round((asUTC-date.getTime())/60000);
+}
 function renderMeetGrid(){
   var tz1=g('meetTz1')&&g('meetTz1').value,tz2=g('meetTz2')&&g('meetTz2').value;
   if(!tz1||!tz2)return;
   var el=g('meetGrid');if(!el)return;
+  var now=new Date();
+  var diffMin=tzOffsetMin(tz2,now)-tzOffsetMin(tz1,now);
+  var fmtHM=function(totalMin){var m=((totalMin%1440)+1440)%1440;return{h:Math.floor(m/60),m:m%60};};
   var hours=[];
   for(var h=0;h<24;h++){
-    var t1=new Date();t1.setHours(h,0,0,0);
-    var h1=parseInt(new Date().toLocaleTimeString('en-US',{timeZone:tz1,hour:'2-digit',hour12:false}),10);
-    var h2=parseInt(new Date().toLocaleTimeString('en-US',{timeZone:tz2,hour:'2-digit',hour12:false}),10);
-    hours.push({h:h,t1:h,t2:(h+24+h2-h1)%24});
+    var t2=fmtHM(h*60+diffMin);
+    hours.push({h:h,t2h:t2.h,t2m:t2.m});
   }
-  var good=function(h){return h>=8&&h<=18;};
+  var good=function(h,m){var t=h+m/60;return t>=8&&t<=18;};
+  var lbl=function(h,m){return(h%12||12)+(m?':'+String(m).padStart(2,'0'):':00')+' '+(h>=12?'PM':'AM');};
   el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'
     +'<th style="padding:6px;background:var(--s2);border-bottom:2px solid var(--bor)">'+tz1.split('/')[1]+'</th>'
     +'<th style="padding:6px;background:var(--s2);border-bottom:2px solid var(--bor)">'+tz2.split('/')[1]+'</th>'
     +'<th style="padding:6px;background:var(--s2);border-bottom:2px solid var(--bor)">Status</th>'
     +'</tr></thead><tbody>'
     +hours.map(function(r){
-      var both=good(r.h)&&good(r.t2);var one=good(r.h)||good(r.t2);
+      var both=good(r.h,0)&&good(r.t2h,r.t2m);var one=good(r.h,0)||good(r.t2h,r.t2m);
       var bg=both?'#dcfce7':one?'#fef3c7':'var(--s2)';
       var ico=both?'✅ Great':one?'⚠️ One side off':'❌ Too early/late';
-      return'<tr style="background:'+bg+'"><td style="padding:6px;text-align:center;font-weight:600">'+(r.h%12||12)+':00 '+(r.h>=12?'PM':'AM')+'</td><td style="padding:6px;text-align:center;font-weight:600">'+(r.t2%12||12)+':00 '+(r.t2>=12?'PM':'AM')+'</td><td style="padding:6px;text-align:center;font-size:11px">'+ico+'</td></tr>';
+      return'<tr style="background:'+bg+'"><td style="padding:6px;text-align:center;font-weight:600">'+lbl(r.h,0)+'</td><td style="padding:6px;text-align:center;font-weight:600">'+lbl(r.t2h,r.t2m)+'</td><td style="padding:6px;text-align:center;font-size:11px">'+ico+'</td></tr>';
     }).join('')+'</tbody></table>';
 }
 
@@ -2238,6 +2261,7 @@ function openFlightSearch(){
   if(s1&&!s1.innerHTML){s1.innerHTML=opts;}
   if(s2&&!s2.innerHTML){s2.innerHTML=opts;}
   if(S.fd){if(g('srchDep'))g('srchDep').value=S.fd.dep;if(g('srchArr'))g('srchArr').value=S.fd.arr;}
+  else{var home=ls.g('ff_home');if(home&&g('srchDep'))g('srchDep').value=home;}
   var d=g('srchDate');if(d){d.value=localDateStr(0);}
   if(g('srchResults'))g('srchResults').innerHTML='';
   OM('mSearch');
@@ -2409,7 +2433,7 @@ function openBucket(){
   var list=ls.gj('ff_bucket')||[];
   g('bucketBd').innerHTML=
     '<div style="display:flex;gap:8px;margin-bottom:12px">'
-      +'<input type="text" id="bucketIn" class="mi" placeholder="e.g. LHR to SIN, Tokyo, Safari in NBO..." style="flex:1"/>'
+      +'<input type="text" id="bucketIn" class="mi" placeholder="e.g. LHR to SIN, Tokyo, Safari in NBO..." style="flex:1" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addBucket();}"/>'
       +'<button class="mp" onclick="addBucket()" style="flex-shrink:0;border-radius:var(--r8);padding:10px 14px">Add</button>'
     +'</div>'
     +(list.length?list.map(function(item,i){
@@ -2556,7 +2580,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var langOptsHtml=LANG_LIST.map(function(l){return'<option value="'+l[0]+'">'+l[2]+' '+l[1]+'</option>';}).join('');
   var langSel=g('langSel');if(langSel){langSel.innerHTML=langOptsHtml;langSel.value=S.lang;}
   applyI18n();
-  iDark();iKid();iPax();rPP('');sFmt();uBadge();syncUnits();iTheme();loadCustomPack();
+  iDark();iKid();iPax();rPP('');sFmt();uBadge();syncUnits();iTheme();loadCustomPack();setDensity(ls.g('ff_density')||'comfortable');
   var hcSel=g('homeCur');if(hcSel){hcSel.innerHTML=Object.entries(CUR).sort(function(a,b){return a[0].localeCompare(b[0]);}).map(function(e){return '<option value="'+e[0]+'">'+e[0]+' - '+e[1]+'</option>';}).join('');hcSel.value=ls.g('ff_hcur')||'USD';}
   var haEl=g('homeAP');if(haEl)haEl.value=ls.g('ff_home')||'';
   try{var tz=Intl.DateTimeFormat().resolvedOptions().timeZone;if(tz){S.uTz=tz;S.uCity=tz.split('/').pop().replace(/_/g,' ');}}catch(e){}
