@@ -471,6 +471,15 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
   <div class="ir"><input type="text" id="wkIn" class="mi mono" placeholder="Paste OpenWeatherMap key here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;text-security:disc" oninput="autoSaveWK()" onblur="autoSaveWK()"/><button class="icob" onclick="tPW('wkIn','e2')" id="e2">👁</button></div>
   <div class="mas"><button class="ms2" onclick="clrWK()">🗑 Clear</button><button class="mp" onclick="savWK()">✓ Save</button></div>
   <div class="mdv"></div>
+  <div class="msc">💬 Community Feedback — optional</div>
+  <p class="mds">Without this, feedback saves only on your device. To make it visible to everyone: free at <a href="https://supabase.com" target="_blank">supabase.com</a> → New project → SQL Editor → paste and run:<br><code style="display:block;font-family:monospace;background:var(--s2);padding:8px 10px;border-radius:6px;margin:8px 0;white-space:pre-wrap;font-size:11px">create table public.feedback (id bigint generated always as identity primary key, name text, rating int, msg text, created_at timestamptz default now());
+alter table public.feedback enable row level security;
+create policy "public insert" on public.feedback for insert to anon with check (true);
+create policy "public read" on public.feedback for select to anon using (true);</code>Then Project Settings → API → copy the <strong>Project URL</strong> and <strong>anon public</strong> key below.</p>
+  <div class="ir"><input type="text" id="sbUrlIn" class="mi mono" placeholder="https://xxxx.supabase.co" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="autoSaveSbUrl()" onblur="autoSaveSbUrl()"/></div>
+  <div class="ir" style="margin-top:8px"><input type="text" id="sbKeyIn" class="mi mono" placeholder="Paste anon public key here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;text-security:disc" oninput="autoSaveSbKey()" onblur="autoSaveSbKey()"/><button class="icob" onclick="tPW('sbKeyIn','e3')" id="e3">👁</button></div>
+  <div class="mas"><button class="ms2" onclick="clrSb()">🗑 Clear</button><button class="mp" onclick="savSb()">✓ Save and connect</button></div>
+  <div class="mdv"></div>
   <div class="msc" data-i18n="s_display_title">⚡ Display</div>
   <div class="mrw" style="margin-bottom:10px"><div><div class="mrl" data-i18n="s_timeformat">🕐 Time format</div><div class="mrs">12-hour or 24-hour clock</div></div><div class="tg"><button id="b12" class="tb" onclick="setFmt(false)">12hr</button><button id="b24" class="tb" onclick="setFmt(true)">24hr</button></div></div>
   <div class="mrw" style="margin-bottom:10px"><div><div class="mrl" data-i18n="s_temperature">🌡 Temperature</div><div class="mrs">Fahrenheit or Celsius</div></div><div class="tg"><button id="bF" class="tb" onclick="setUnit('temp','F')">°F</button><button id="bC" class="tb" onclick="setUnit('temp','C')">°C</button></div></div>
@@ -567,11 +576,11 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
   <textarea id="fbTxt" class="mi" rows="4" style="resize:vertical;font-family:inherit;font-size:14px;line-height:1.6;margin-bottom:10px" placeholder="e.g. Add more airlines, fix times, I would love lounge info..."></textarea>
   <label class="mlb">Your name (optional)</label>
   <input type="text" id="fbNm" class="mi" placeholder="Anonymous" style="margin-bottom:12px"/>
-  <div style="font-size:12px;color:var(--tM);background:var(--s2);border-radius:8px;padding:10px 12px;margin-bottom:12px;line-height:1.6;border-left:3px solid var(--acc)"><strong style="color:var(--txt)">Note:</strong> This saves on your device only — it isn't sent anywhere or visible to other users yet.</div>
+  <div style="font-size:12px;color:var(--tM);background:var(--s2);border-radius:8px;padding:10px 12px;margin-bottom:12px;line-height:1.6;border-left:3px solid var(--acc)"><strong style="color:var(--txt)">Note:</strong> Saved on this device only, unless a Supabase key is set in Settings — then it's shared with everyone.</div>
   <button class="mp" style="width:100%" onclick="subFb()">📨 Submit feedback</button>
   <div id="fbOK" class="shok" style="display:none;margin-top:12px">✅ Thank you! Feedback saved.</div>
   <div class="mdv"></div>
-  <div class="msc" style="margin-bottom:8px">Your feedback history</div>
+  <div class="msc" style="margin-bottom:8px">Feedback</div>
   <div id="fbList"></div>
 </div></div></div>
 
@@ -1228,6 +1237,12 @@ function clrAK(){ls.s('ff_ak','');if(g('akIn'))g('akIn').value='';uBadge();}
 function autoSaveWK(){ls.s('ff_wk',g('wkIn').value.trim());}
 function savWK(){autoSaveWK();CM('mSet');if(S.fd)swxR(S.fd.arr);}
 function clrWK(){ls.s('ff_wk','');if(g('wkIn'))g('wkIn').value='';}
+function getSbUrl(){return(ls.g('ff_sb_url')||'').replace(/\/+$/,'');}
+function getSbKey(){return ls.g('ff_sb_key')||'';}
+function autoSaveSbUrl(){ls.s('ff_sb_url',g('sbUrlIn').value.trim());}
+function autoSaveSbKey(){ls.s('ff_sb_key',g('sbKeyIn').value.trim());}
+function savSb(){autoSaveSbUrl();autoSaveSbKey();CM('mSet');rFbk();}
+function clrSb(){ls.s('ff_sb_url','');ls.s('ff_sb_key','');if(g('sbUrlIn'))g('sbUrlIn').value='';if(g('sbKeyIn'))g('sbKeyIn').value='';}
 function tPW(id,bid){
   var el=g(id),b=g(bid);if(!el)return;
   var masked=el.style.webkitTextSecurity!=='none';
@@ -1608,8 +1623,35 @@ function savNts(){if(!S.parsed)return;ls.s('ff_nt_'+S.parsed.full.replace(' ','_
 // ═══ FEEDBACK ═══
 function setFbT(t){var el=g('fbTxt');if(el){el.value=t;el.focus();}}
 function selFb(n){S.fbRat=n;[1,2,3,4,5].forEach(function(i){var b=g('fb'+i);if(b)b.classList.toggle('on',i<=n);});}
-function subFb(){var txt=g('fbTxt')&&g('fbTxt').value.trim(),nm=(g('fbNm')&&g('fbNm').value.trim())||'Anonymous';if(!txt&&!S.fbRat){alert('Please rate or leave a comment!');return;}var entry={nm:nm,rat:S.fbRat,txt:txt,ts:Date.now()};var list=ls.gj('ff_fb_shared')||[];list.unshift(entry);if(list.length>50)list=list.slice(0,50);ls.sj('ff_fb_shared',list);if(g('fbTxt'))g('fbTxt').value='';if(g('fbNm'))g('fbNm').value='';S.fbRat=0;[1,2,3,4,5].forEach(function(i){var b=g('fb'+i);if(b)b.classList.remove('on');});if(g('fbOK')){g('fbOK').style.display='flex';setTimeout(function(){if(g('fbOK'))g('fbOK').style.display='none';},3000);}rFbk();}
-function rFbk(){var el=g('fbList');if(!el)return;var list=ls.gj('ff_fb_shared')||[];el.innerHTML=list.length?list.map(function(f){return '<div style="padding:11px 0;border-bottom:1px solid var(--borL)"><div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span style="font-size:18px">'+(f.rat?['','😤','😐','🙂','😊','🤩'][f.rat]:'💬')+'</span><div><div style="font-weight:700;font-size:13px;color:var(--txt)">'+f.nm+(f.rat?' '+'⭐'.repeat(f.rat):'')+'</div><div style="font-size:11px;color:var(--tM)">'+new Date(f.ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</div></div></div>'+(f.txt?'<div style="font-size:13px;color:var(--t2);background:var(--s2);border-radius:8px;padding:8px 10px">'+f.txt+'</div>':'')+'</div>';}).join(''):'<div style="color:var(--tM);font-size:13px;padding:16px 0;text-align:center">No feedback yet - be the first!</div>';}
+function subFb(){
+  var txt=g('fbTxt')&&g('fbTxt').value.trim(),nm=(g('fbNm')&&g('fbNm').value.trim())||'Anonymous';
+  if(!txt&&!S.fbRat){alert('Please rate or leave a comment!');return;}
+  var entry={nm:nm,rat:S.fbRat,txt:txt,ts:Date.now()};
+  function done(){
+    if(g('fbTxt'))g('fbTxt').value='';if(g('fbNm'))g('fbNm').value='';S.fbRat=0;
+    [1,2,3,4,5].forEach(function(i){var b=g('fb'+i);if(b)b.classList.remove('on');});
+    if(g('fbOK')){g('fbOK').style.display='flex';setTimeout(function(){if(g('fbOK'))g('fbOK').style.display='none';},3000);}
+    rFbk();
+  }
+  function saveLocal(){var list=ls.gj('ff_fb_shared')||[];list.unshift(entry);if(list.length>50)list=list.slice(0,50);ls.sj('ff_fb_shared',list);}
+  if(getSbUrl()&&getSbKey()){
+    fetch(getSbUrl()+'/rest/v1/feedback',{method:'POST',headers:{'apikey':getSbKey(),'Authorization':'Bearer '+getSbKey(),'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({name:nm,rating:S.fbRat||null,msg:txt||null})})
+      .then(function(r){if(!r.ok)throw new Error('http '+r.status);done();})
+      .catch(function(){saveLocal();done();});
+  }else{saveLocal();done();}
+}
+function fbRow(f){return '<div style="padding:11px 0;border-bottom:1px solid var(--borL)"><div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span style="font-size:18px">'+(f.rat?['','😤','😐','🙂','😊','🤩'][f.rat]:'💬')+'</span><div><div style="font-weight:700;font-size:13px;color:var(--txt)">'+f.nm+(f.rat?' '+'⭐'.repeat(f.rat):'')+'</div><div style="font-size:11px;color:var(--tM)">'+new Date(f.ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</div></div></div>'+(f.txt?'<div style="font-size:13px;color:var(--t2);background:var(--s2);border-radius:8px;padding:8px 10px">'+f.txt+'</div>':'')+'</div>';}
+function renderFbList(list){var el=g('fbList');if(!el)return;el.innerHTML=list.length?list.map(fbRow).join(''):'<div style="color:var(--tM);font-size:13px;padding:16px 0;text-align:center">No feedback yet - be the first!</div>';}
+function rFbk(){
+  var el=g('fbList');if(!el)return;
+  if(getSbUrl()&&getSbKey()){
+    el.innerHTML='<div class="ldinl"><div class="spn" style="width:18px;height:18px;border-width:2px;margin:0 8px 0 0"></div>Loading community feedback...</div>';
+    fetch(getSbUrl()+'/rest/v1/feedback?select=*&order=created_at.desc&limit=50',{headers:{'apikey':getSbKey(),'Authorization':'Bearer '+getSbKey()}})
+      .then(function(r){return r.ok?r.json():Promise.reject(new Error('http '+r.status));})
+      .then(function(rows){renderFbList(rows.map(function(r){return{nm:r.name||'Anonymous',rat:r.rating,txt:r.msg,ts:new Date(r.created_at).getTime()};}));})
+      .catch(function(){el.innerHTML='<div class="erm">Could not load community feedback — check your Supabase URL/key in Settings.</div>';});
+  }else{renderFbList(ls.gj('ff_fb_shared')||[]);}
+}
 // ═══ NOTIFICATIONS ═══
 function reqNt(){
   if(!('Notification' in window)){
@@ -2586,6 +2628,7 @@ document.addEventListener('DOMContentLoaded',function(){
   try{var tz=Intl.DateTimeFormat().resolvedOptions().timeZone;if(tz){S.uTz=tz;S.uCity=tz.split('/').pop().replace(/_/g,' ');}}catch(e){}
   sClk();
   var ak=g('akIn'),wk=g('wkIn');if(ak)ak.value=getAK();if(wk)wk.value=getWK();
+  var sbu=g('sbUrlIn'),sbk=g('sbKeyIn');if(sbu)sbu.value=getSbUrl();if(sbk)sbk.value=getSbKey();
   if(ls.g('ff_nt')==='1'&&typeof Notification!=='undefined'&&Notification.permission==='granted'){S.notif=true;var b=g('ntBtn');if(b){b.textContent='On';b.classList.add('on');}}
   S.rc=ls.gj('ff_rc')||[];rRc();
   var bgs=document.querySelectorAll('.mbg');for(var i=0;i<bgs.length;i++){(function(el){el.addEventListener('click',function(e){if(e.target===el)CM(el.id);});})(bgs[i]);}
