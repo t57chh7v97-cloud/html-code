@@ -1844,7 +1844,7 @@ function rDash(parsed,fd){
   var livBnr=fd.live
   ?'<div class="blive"><span class="ldot"></span>Live data via '+provName+' &mdash; updated '+new Date().toLocaleTimeString()+'<button class="bref" onclick="doLkp()">&#x21bb; Refresh</button></div>'
   :(provName
-    ?'<div class="bdemo" style="background:#fef3c7;border-color:#f59e0b">⚠️ '+provName+' has no live data for this date — every time, terminal, gate, aircraft and status below is a placeholder estimate, not real. <span onclick="showPicker(S.parsed)" style="cursor:pointer;font-weight:700;text-decoration:underline">Wrong airports?</span></div>'
+    ?'<div class="bdemo" style="background:#fef3c7;border-color:#f59e0b">⚠️ '+(S_lastFetchErr||(provName+' has no live data for this date'))+' — every time, terminal, gate, aircraft and status below is a placeholder estimate, not real. <span onclick="showPicker(S.parsed)" style="cursor:pointer;font-weight:700;text-decoration:underline">Wrong airports?</span></div>'
     :'<div class="bdemo">'+t('banner_nokey')+' <a onclick="OM(&apos;mSet&apos;)" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Add a flight-data key in Settings</a> for live data.</div>');
   var dlyBnr=fd.dlyMins>0?'<div class="bdly">'+t('banner_delayed')+' +'+fd.dlyMins+' min</div>':'';
   var kidBnr=S.kid?'<div class="bkid">'+t('banner_kidmode')+'</div>':'';
