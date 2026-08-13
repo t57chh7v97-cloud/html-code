@@ -1280,20 +1280,13 @@ function isoToDate(iso){
   if(!iso)return null;
   try{if(typeof iso==='object')return iso;var s=iso.trim().replace(/^(\d{4}-\d{2}-\d{2})\s+/,'$1T');var d=new Date(s);return isNaN(d)?null:d;}catch(e){return null;}
 }
-function cdTxt(dIso,status,dTz){
+function cdTxt(dIso,status){
   var st=(status||'').toLowerCase();
   if(st==='landed')return 'Landed';
   if(st==='cancelled')return 'Cancelled';
   if(st==='active'||st==='in air')return 'Currently in the air';
-  var p=parseISOLocal(dIso);if(!p)return '';
-  var depMs=Date.UTC(p.y,p.mo-1,p.d,p.h,p.min);
-  var nowMs;
-  try{
-    var nowStr=dTz?new Date().toLocaleString('sv-SE',{timeZone:dTz}):null;
-    var np=nowStr?parseISOLocal(nowStr.replace(' ','T')):null;
-    nowMs=np?Date.UTC(np.y,np.mo-1,np.d,np.h,np.min):Date.now();
-  }catch(e){nowMs=Date.now();}
-  var diff=depMs-nowMs;
+  var dt=isoToDate(dIso);if(!dt)return '';
+  var diff=dt-Date.now();
   if(diff<-3*3600000)return 'Departed - check arrival status';
   if(diff<0)return 'Boarding now or just departed';
   var m=Math.round(diff/60000),days=Math.floor(m/1440),hrs=Math.floor(m%1440/60),mins=m%60;
@@ -1301,9 +1294,20 @@ function cdTxt(dIso,status,dTz){
   if(hrs>0)return 'Departs in '+hrs+'h '+mins+'m';
   return 'Departs in '+mins+'m';
 }
-function offTm(dIso,mins){
-  var p=parseISOLocal(dIso);if(!p)return '--';
-  var total=((p.h*60+p.min+mins)%1440+1440)%1440;
+// offTm: dIso is the correctly-anchored absolute-instant Date built by mapLive/bDemo.
+// We need the departure AIRPORT's local wall-clock hour, not the UTC hour, or the
+// result silently drifts by however far the viewer's own clock is from that airport
+// (this was the "arrive by" time landing after departure instead of before it).
+function offTm(dIso,mins,tz){
+  var dt=isoToDate(dIso);if(!dt)return '--';
+  var h,min;
+  if(tz){
+    try{
+      var parts=new Intl.DateTimeFormat('en-US',{timeZone:tz,hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(dt).reduce(function(acc,p){acc[p.type]=p.value;return acc;},{});
+      h=parts.hour==='24'?0:parseInt(parts.hour,10);min=parseInt(parts.minute,10);
+    }catch(e){h=dt.getUTCHours();min=dt.getUTCMinutes();}
+  }else{h=dt.getUTCHours();min=dt.getUTCMinutes();}
+  var total=((h*60+min+mins)%1440+1440)%1440;
   return fmtT(Math.floor(total/60),total%60);
 }
 function addRc(full){S.rc=[full].concat(S.rc.filter(function(f){return f!==full;})).slice(0,6);ls.sj('ff_rc',S.rc);rRc();}
@@ -1809,7 +1813,7 @@ function rDash(parsed,fd){
   S.curAp=fd.arr;
   var dI=AP[fd.dep]||{cy:fd.dep,n:fd.dep};
   var aI=AP[fd.arr]||{cy:fd.arr,n:fd.arr};
-  var cd=cdTxt(fd.dIso,fd.status,fd.dTz);
+  var cd=cdTxt(fd.dIso,fd.status);
   var dsMap={AA:'81%',DL:'84%',UA:'82%',WN:'83%',B6:'78%',AS:'86%',F9:'74%',NK:'72%',BA:'79%',LH:'82%',AF:'77%',KL:'83%',EK:'85%',QR:'88%',SQ:'91%',AC:'80%'};
   var ds=S.liveOT!=null?S.liveOT+'%':(dsMap[parsed.code]||null);
   var dstat=ds?'<span id="otStat" style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--s2);color:var(--t2);display:inline-block;margin-top:3px">'+ds+' '+t('ontime_stat')+'</span>':'<span id="otStat" style="font-size:11px;color:var(--tM);display:inline-block;margin-top:3px">'+t('fetching_stats')+'</span>';
@@ -1821,7 +1825,7 @@ function rDash(parsed,fd){
     :'<div class="bdemo">'+t('banner_nokey')+' <a onclick="OM(&apos;mSet&apos;)" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Add a flight-data key in Settings</a> for live data.</div>');
   var dlyBnr=fd.dlyMins>0?'<div class="bdly">'+t('banner_delayed')+' +'+fd.dlyMins+' min</div>':'';
   var kidBnr=S.kid?'<div class="bkid">'+t('banner_kidmode')+'</div>':'';
-  var arrTm=offTm(fd.dIso,-120),brdTm=offTm(fd.dIso,-40);
+  var arrTm=offTm(fd.dIso,-120,fd.dTz),brdTm=offTm(fd.dIso,-40,fd.dTz);
   var seatSec=fd.acIata&&fd.acData?'<div class="card"><div class="slbl">'+t('cabin_title')+'</div>'+rSeat(fd.acIata,fd.acData)+wifiCard(parsed.code)+'</div>':'';
   var fdBar=S.fdates&&S.fdates.length?'<div style="margin-bottom:8px"><div class="slbl" style="margin-bottom:6px">Flight dates</div><div class="fdbar">'+rFDateBar(S.fdates,S.selDate)+'</div></div>':'';
   var isKid=S.kid;
