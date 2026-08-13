@@ -547,22 +547,22 @@ create policy "public read" on public.feedback for select to anon using (true);<
 <div class="mbd">
   <div class="msc" style="margin-bottom:8px">💡 Quick suggestions — tap to fill</div>
   <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">
-    <button class="chip" onclick="setFbT('Add live flight delay alerts by SMS or email')">📲 Delay alerts</button>
-    <button class="chip" onclick="setFbT('Add baggage tracking with airline bag claim numbers')">🧳 Bag tracking</button>
-    <button class="chip" onclick="setFbT('Show airport lounge access by credit card type')">🛋️ Lounge access</button>
-    <button class="chip" onclick="setFbT('Add flight price comparison between airlines on same route')">💰 Compare prices</button>
-    <button class="chip" onclick="setFbT('Add real-time airport security wait times')">⏳ Security wait</button>
-    <button class="chip" onclick="setFbT('Show restaurant and food options at the airport with ratings')">🍽️ Airport food</button>
-    <button class="chip" onclick="setFbT('Add hotel recommendations near destination airport with prices')">🏨 Hotels nearby</button>
-    <button class="chip" onclick="setFbT('Add more UI themes beyond kid mode and dark mode')">🎨 More themes</button>
-    <button class="chip" onclick="setFbT('Add live airport webcams to watch runways and terminals')">📷 Airport cams</button>
-    <button class="chip" onclick="setFbT('Add passport renewal reminders before expiry date')">🛂 Passport alerts</button>
-    <button class="chip" onclick="setFbT('Show nearby airport parking options with prices and distance')">🅿️ Parking</button>
-    <button class="chip" onclick="setFbT('Add connection time calculator for layovers')">🔄 Layover calc</button>
-    <button class="chip" onclick="setFbT('Add airline miles and points tracker integration')">✈️ Miles tracker</button>
-    <button class="chip" onclick="setFbT('Show what is allowed through TSA security by item type')">🔒 TSA rules</button>
-    <button class="chip" onclick="setFbT('Add real-time weather at 5-day forecast for destination')">🌤️ Forecast</button>
-    <button class="chip" onclick="setFbT('Add family travel mode for multiple passengers per booking')">👨‍👩‍👧 Family mode</button>
+    <button class="chip" onclick="setFbT('Add pet travel requirements — in-cabin rules and documents needed by airline and destination country')">🐾 Pet travel</button>
+    <button class="chip" onclick="setFbT('Add a checklist specific to flying with an infant or toddler')">👶 Flying with a baby</button>
+    <button class="chip" onclick="setFbT('Estimate walking time between gates for tight connections')">🏃 Gate walking time</button>
+    <button class="chip" onclick="setFbT('Suggest which travel credit card gives the best perks for this specific route')">💳 Best card for this route</button>
+    <button class="chip" onclick="setFbT('Compare travel insurance quotes for this trip')">🩺 Insurance quotes</button>
+    <button class="chip" onclick="setFbT('Show estimated rideshare or taxi cost from the airport to downtown')">🚕 Rideshare estimate</button>
+    <button class="chip" onclick="setFbT('Add live translation for foreign airport announcements')">🗣️ Announcement translation</button>
+    <button class="chip" onclick="setFbT('Let me export my packing or travel-docs checklist as a PDF')">📄 Export checklist as PDF</button>
+    <button class="chip" onclick="setFbT('Add a push notification specifically for gate changes, separate from delay alerts')">🔔 Gate-change alert</button>
+    <button class="chip" onclick="setFbT('Show typical security line crowd levels by hour')">🧍 Security crowd levels</button>
+    <button class="chip" onclick="setFbT('Check if my bag dimensions meet this specific airline carry-on rules')">🎒 Carry-on size checker</button>
+    <button class="chip" onclick="setFbT('Coordinate seat assignments for a group traveling together')">👥 Group seat coordinator</button>
+    <button class="chip" onclick="setFbT('Show the nearest hospital or pharmacy near the arrival airport')">🏥 Nearest hospital/pharmacy</button>
+    <button class="chip" onclick="setFbT('Add a charging-station locator by terminal')">🔋 Charging stations</button>
+    <button class="chip" onclick="setFbT('Show what movies and shows are on this specific aircraft in-flight entertainment system')">🎬 In-flight entertainment</button>
+    <button class="chip" onclick="setFbT('Auto-generate an expense report from my flight and receipts for business travel')">🧾 Expense report</button>
   </div>
   <div class="msc">How is your experience?</div>
   <div class="fbst">
@@ -1635,6 +1635,15 @@ function savNts(){if(!S.parsed)return;ls.s('ff_nt_'+S.parsed.full.replace(' ','_
 // ═══ FEEDBACK ═══
 function setFbT(t){var el=g('fbTxt');if(el){el.value=t;el.focus();}}
 function selFb(n){S.fbRat=n;[1,2,3,4,5].forEach(function(i){var b=g('fb'+i);if(b)b.classList.toggle('on',i<=n);});}
+// Seed feedback so the list isn't empty on first load — these were the old
+// "quick suggestion" chips, now logged as suggestions and replaced by a
+// fresh set of chips so the two lists don't just duplicate each other.
+var DEFAULT_FB=(function(){
+  var seedTxt=['Add live flight delay alerts by SMS or email','Add baggage tracking with airline bag claim numbers','Show airport lounge access by credit card type','Add flight price comparison between airlines on same route','Add real-time airport security wait times','Show restaurant and food options at the airport with ratings','Add hotel recommendations near destination airport with prices','Add more UI themes beyond kid mode and dark mode','Add live airport webcams to watch runways and terminals','Add passport renewal reminders before expiry date','Show nearby airport parking options with prices and distance','Add connection time calculator for layovers','Add airline miles and points tracker integration','Show what is allowed through TSA security by item type','Add real-time weather at 5-day forecast for destination','Add family travel mode for multiple passengers per booking'];
+  var base=Date.now()-seedTxt.length*86400000;
+  return seedTxt.map(function(t,i){return{nm:'FlightFlow Team',rat:0,txt:t,ts:base+i*86400000};}).reverse();
+})();
+function fbBaseList(){return ls.gj('ff_fb_shared')||DEFAULT_FB.slice();}
 function subFb(){
   var txt=g('fbTxt')&&g('fbTxt').value.trim(),nm=(g('fbNm')&&g('fbNm').value.trim())||'Anonymous';
   if(!txt&&!S.fbRat){alert('Please rate or leave a comment!');return;}
@@ -1645,7 +1654,7 @@ function subFb(){
     if(g('fbOK')){g('fbOK').style.display='flex';setTimeout(function(){if(g('fbOK'))g('fbOK').style.display='none';},3000);}
     rFbk();
   }
-  function saveLocal(){var list=ls.gj('ff_fb_shared')||[];list.unshift(entry);if(list.length>50)list=list.slice(0,50);ls.sj('ff_fb_shared',list);}
+  function saveLocal(){var list=fbBaseList();list.unshift(entry);if(list.length>50)list=list.slice(0,50);ls.sj('ff_fb_shared',list);}
   if(getSbUrl()&&getSbKey()){
     fetch(getSbUrl()+'/rest/v1/feedback',{method:'POST',headers:{'apikey':getSbKey(),'Authorization':'Bearer '+getSbKey(),'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({name:nm,rating:S.fbRat||null,msg:txt||null})})
       .then(function(r){if(!r.ok)throw new Error('http '+r.status);done();})
@@ -1661,8 +1670,8 @@ function rFbk(){
     fetch(getSbUrl()+'/rest/v1/feedback?select=*&order=created_at.desc&limit=50',{headers:{'apikey':getSbKey(),'Authorization':'Bearer '+getSbKey()}})
       .then(function(r){return r.ok?r.json():Promise.reject(new Error('http '+r.status));})
       .then(function(rows){renderFbList(rows.map(function(r){return{nm:r.name||'Anonymous',rat:r.rating,txt:r.msg,ts:new Date(r.created_at).getTime()};}));})
-      .catch(function(){renderFbList(ls.gj('ff_fb_shared')||[]);el.insertAdjacentHTML('afterbegin','<div class="erm" style="margin-bottom:10px">Could not reach Supabase — showing feedback saved on this device instead. Check your Supabase URL/key in Settings.</div>');});
-  }else{renderFbList(ls.gj('ff_fb_shared')||[]);}
+      .catch(function(){renderFbList(fbBaseList());el.insertAdjacentHTML('afterbegin','<div class="erm" style="margin-bottom:10px">Could not reach Supabase — showing feedback saved on this device instead. Check your Supabase URL/key in Settings.</div>');});
+  }else{renderFbList(fbBaseList());}
 }
 // ═══ NOTIFICATIONS ═══
 function reqNt(){
