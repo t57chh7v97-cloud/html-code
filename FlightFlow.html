@@ -1412,7 +1412,7 @@ function mapLive(raw,parsed){
   var depAp=dep.airport||{},arrAp=arr.airport||{};
   var airline=AL[parsed.code]||{n:(raw.airline&&raw.airline.name)||parsed.code,c:'#1a1a2e'};
   var rs=(raw.status||'').toLowerCase();
-  var stmap={arrived:'Landed',departed:'In Air',enroute:'In Air','en route':'In Air',delayed:'Delayed',cancelled:'Cancelled',scheduled:'Scheduled',unknown:'Scheduled',boarding:'Boarding'};
+  var stmap={arrived:'Landed',departed:'In Air',enroute:'In Air','en route':'In Air',approaching:'In Air',delayed:'Delayed',cancelled:'Cancelled',canceled:'Cancelled',diverted:'Delayed',redirected:'Delayed',scheduled:'Scheduled',expected:'Scheduled',checkin:'Scheduled','check-in':'Scheduled',unknown:'Scheduled',boarding:'Boarding',gateclosed:'Boarding','gate closed':'Boarding'};
   var status=stmap[rs]||'Scheduled';
   // Only use revisedTime when there is an actual delay (> 2 min diff from scheduled)
   // This prevents stale/incorrect revisedTime from overriding correct scheduled times
@@ -1989,6 +1989,22 @@ function rDash(parsed,fd){
   swxR(fd.arr);
   S.liveOT=null;if(getAK())fetchLiveOT(fd.dep);
   if(S.notif&&fd.dIso)sAlert(fd.dIso,parsed.full);
+  startStatusRefresh(parsed,fd);
+}
+// Keeps the tracked flight's status current — otherwise a flight fetched
+// while "In Air" stays showing "In Air" forever after it actually lands,
+// since nothing else re-polls flight status once the dashboard is up.
+function startStatusRefresh(parsed,fd){
+  if(S.stIV)clearInterval(S.stIV);
+  if(!getAK()||!fd.live||S.selDate!==0)return;
+  if(fd.status==='Landed'||fd.status==='Cancelled')return;
+  S.stIV=setInterval(function(){
+    if(!S.fd||!S.parsed||S.selDate!==0){clearInterval(S.stIV);return;}
+    if(S.fd.status==='Landed'||S.fd.status==='Cancelled'){clearInterval(S.stIV);return;}
+    fetchTodayFlight(S.parsed,S.fd.dep,S.fd.arr).then(function(nfd){
+      if(nfd&&S.selDate===0){S.fd=nfd;rDash(S.parsed,nfd);}
+    });
+  },5*60000);
 }
 // ═══ TABS ═══
 function swTab(t,btn){S.tab=t;var tabs=document.querySelectorAll('.tab');for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('on');if(btn)btn.classList.add('on');if(g('tabC'))g('tabC').innerHTML=rTab();}
