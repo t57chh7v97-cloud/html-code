@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>FlightFlow by PlayGames ✈️</title>
+<title>FlightFlow by Playgamez ✈️</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <style>
@@ -592,7 +592,7 @@ create policy "public read" on public.feedback for select to anon using (true);<
 
 <!-- NAVBAR -->
 <nav class="navbar"><div class="nav-in">
-  <div class="brand"><div class="bico">✈️</div><div><span class="bnm">FlightFlow<span style="font-size:10px;font-weight:600;opacity:.55;margin-left:6px">by PlayGames</span></span><span class="btg" data-i18n="brand_tag">Global flight assistant</span></div></div>
+  <div class="brand"><div class="bico">✈️</div><div><span class="bnm">FlightFlow<span style="font-size:10px;font-weight:600;opacity:.55;margin-left:6px">by Playgamez</span></span><span class="btg" data-i18n="brand_tag">Global flight assistant</span></div></div>
   <div class="nav-r">
     <span id="apiBdg" class="nbdg dbdg">📡 Demo</span>
     <button class="nbt" onclick="OM('mSav');rSav()" data-i18n-title="nav_saved" title="Saved">🔖</button>
@@ -1373,7 +1373,7 @@ function fetchFl(iata,date){
   var dt=date||localDateStr(0);
   var url='https://aerodatabox.p.rapidapi.com/flights/number/'+encodeURIComponent(iata.replace(' ',''))+'/'+dt+'?withAircraftImage=false&withLocation=false';
   S_lastFetchErr=null;
-  return fetch(url,{headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}})
+  return fetch(url,{cache:'no-store',headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}})
     .then(function(r){
       if(!r.ok){
         var reason=r.status===401?'invalid key':r.status===403?'not subscribed to AeroDataBox, or quota exceeded':r.status===429?'rate limited — out of monthly/per-minute quota':'HTTP '+r.status;
@@ -1697,15 +1697,7 @@ function savNts(){if(!S.parsed)return;ls.s('ff_nt_'+S.parsed.full.replace(' ','_
 // ═══ FEEDBACK ═══
 function setFbT(t){var el=g('fbTxt');if(el){el.value=t;el.focus();}}
 function selFb(n){S.fbRat=n;[1,2,3,4,5].forEach(function(i){var b=g('fb'+i);if(b)b.classList.toggle('on',i<=n);});}
-// Seed feedback so the list isn't empty on first load — these were the old
-// "quick suggestion" chips, now logged as suggestions and replaced by a
-// fresh set of chips so the two lists don't just duplicate each other.
-var DEFAULT_FB=(function(){
-  var seedTxt=['Add live flight delay alerts by SMS or email','Add baggage tracking with airline bag claim numbers','Show airport lounge access by credit card type','Add flight price comparison between airlines on same route','Add real-time airport security wait times','Show restaurant and food options at the airport with ratings','Add hotel recommendations near destination airport with prices','Add more UI themes beyond kid mode and dark mode','Add live airport webcams to watch runways and terminals','Add passport renewal reminders before expiry date','Show nearby airport parking options with prices and distance','Add connection time calculator for layovers','Add airline miles and points tracker integration','Show what is allowed through TSA security by item type','Add real-time weather at 5-day forecast for destination','Add family travel mode for multiple passengers per booking'];
-  var base=Date.now()-seedTxt.length*86400000;
-  return seedTxt.map(function(t,i){return{nm:'FlightFlow Team',rat:0,txt:t,ts:base+i*86400000};}).reverse();
-})();
-function fbBaseList(){return ls.gj('ff_fb_shared')||DEFAULT_FB.slice();}
+function fbBaseList(){return ls.gj('ff_fb_shared')||[];}
 function subFb(){
   var txt=g('fbTxt')&&g('fbTxt').value.trim(),nm=(g('fbNm')&&g('fbNm').value.trim())||'Anonymous';
   if(!txt&&!S.fbRat){alert('Please rate or leave a comment!');return;}
@@ -1869,7 +1861,7 @@ function doLkp(){
   }else{showPicker(parsed);}
 }
 // ═══ LIVE ON-TIME ═══
-function fetchLiveOT(depIata){var key=getAK();if(!key)return;fetch('https://aerodatabox.p.rapidapi.com/airports/iata/'+depIata+'/stats/flights/departure?withTime=false',{headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}}).then(function(r){return r.ok?r.json():null;}).then(function(j){if(!j||j.onTimePercent==null)return;S.liveOT=Math.round(j.onTimePercent);var el=g('otStat');if(el){var pct=S.liveOT;el.style.background=pct>=85?'#dcfce7':pct>=75?'#fef9c3':'#fee2e2';el.style.color=pct>=85?'#166534':pct>=75?'#5c4400':'#991b1b';el.textContent='Live: '+pct+'% on-time';}}).catch(function(){});}
+function fetchLiveOT(depIata){var key=getAK();if(!key)return;fetch('https://aerodatabox.p.rapidapi.com/airports/iata/'+depIata+'/stats/flights/departure?withTime=false',{cache:'no-store',headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}}).then(function(r){return r.ok?r.json():null;}).then(function(j){if(!j||j.onTimePercent==null)return;S.liveOT=Math.round(j.onTimePercent);var el=g('otStat');if(el){var pct=S.liveOT;el.style.background=pct>=85?'#dcfce7':pct>=75?'#fef9c3':'#fee2e2';el.style.color=pct>=85?'#166534':pct>=75?'#5c4400':'#991b1b';el.textContent='Live: '+pct+'% on-time';}}).catch(function(){});}
 
 // ═══ RENDER DASHBOARD ═══
 function collapseHero(){
@@ -1892,7 +1884,9 @@ function rDash(parsed,fd){
   var livBnr=fd.live
   ?'<div class="blive"><span class="ldot"></span>Live data via '+provName+' &mdash; updated '+new Date().toLocaleTimeString()+'<button class="bref" onclick="doLkp()">&#x21bb; Refresh</button></div>'
   :(provName
-    ?'<div class="bdemo" style="background:#fef3c7;border-color:#f59e0b">⚠️ These are estimated, we apologize if they are not right; please <span onclick="OM(&apos;mFbk&apos;);rFbk()" style="cursor:pointer;font-weight:700;text-decoration:underline">contact us in the community page</span> if it\'s over 20 minutes delay. <span onclick="showPicker(S.parsed)" style="cursor:pointer;font-weight:700;text-decoration:underline">Wrong airports?</span></div>'
+    ?'<div class="bdemo" style="background:#fef3c7;border-color:#f59e0b">⚠️ These are estimated, we apologize if they are not right; please <span onclick="OM(&apos;mFbk&apos;);rFbk()" style="cursor:pointer;font-weight:700;text-decoration:underline">contact us in the community page</span> if it\'s over 20 minutes delay. <span onclick="showPicker(S.parsed)" style="cursor:pointer;font-weight:700;text-decoration:underline">Wrong airports?</span>'
+      +(S_lastFetchErr?' <span onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===&apos;none&apos;?&apos;block&apos;:&apos;none&apos;" style="cursor:pointer;text-decoration:underline;opacity:.75;font-size:11px">(why?)</span><div style="display:none;font-size:11px;margin-top:4px;opacity:.85">'+S_lastFetchErr+'</div>':'')
+    +'</div>'
     :'<div class="bdemo">'+t('banner_nokey')+' <a onclick="OM(&apos;mSet&apos;)" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Add a flight-data key in Settings</a> for live data.</div>');
   var dlyBnr=fd.dlyMins>0?'<div class="bdly">'+t('banner_delayed')+' +'+fd.dlyMins+' min</div>':'';
   var kidBnr=S.kid?'<div class="bkid">'+t('banner_kidmode')+'</div>':'';
@@ -2428,7 +2422,7 @@ function doFlightSearch(){
   el.innerHTML='<div class="ldinl"><div class="spn" style="width:20px;height:20px;border-width:2px;margin:0 8px 0 0"></div>Searching...</div>';
   var dt=date||localDateStr(0);
   var url='https://aerodatabox.p.rapidapi.com/flights/airports/iata/'+dep+'/'+dt+'T00:00/'+dt+'T23:59?direction=Departure&withAircraftImage=false&withLocation=false';
-  fetch(url,{headers:{'X-RapidAPI-Key':getAK(),'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}})
+  fetch(url,{cache:'no-store',headers:{'X-RapidAPI-Key':getAK(),'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}})
     .then(function(r){
       if(!r.ok){
         var reason=r.status===401?'Invalid API key.':r.status===403?'Not subscribed to this AeroDataBox endpoint, or quota exceeded.':r.status===429?'Rate limited — out of monthly/per-minute quota.':'Request failed (HTTP '+r.status+').';
@@ -2734,6 +2728,7 @@ function printSummary(){
 
 // ═══ INIT ═══
 document.addEventListener('DOMContentLoaded',function(){
+  (function(){var fb=ls.gj('ff_fb_shared');if(fb&&fb.some(function(f){return f.nm==='FlightFlow Team';})){ls.sj('ff_fb_shared',fb.filter(function(f){return f.nm!=='FlightFlow Team';}));}})();
   S.lang=ls.g('ff_lang')||'auto';
   var langOptsHtml=LANG_LIST.map(function(l){return l[0]==='auto'?'<option value="auto" data-i18n="lang_system_default">'+l[2]+' '+l[1]+'</option>':'<option value="'+l[0]+'">'+l[2]+' '+l[1]+'</option>';}).join('');
   var langSel=g('langSel');if(langSel){langSel.innerHTML=langOptsHtml;langSel.value=S.lang;}
