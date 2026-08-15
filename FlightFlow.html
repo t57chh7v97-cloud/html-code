@@ -672,7 +672,33 @@ function syncUnits(){
 
 // ═══ LEAFLET / OPENSTREETMAP FLIGHT PATH MAP ═══
 var MapInline=(function(){
-  var mapInst=null;
+  var mapInst=null,planeMk=null,flownLn=null,gcCache=null;
+  function bearing(lat1,lon1,lat2,lon2){
+    var r=function(d){return d*Math.PI/180;},deg=function(r){return r*180/Math.PI;};
+    var y=Math.sin(r(lon2-lon1))*Math.cos(r(lat2));
+    var x=Math.cos(r(lat1))*Math.sin(r(lat2))-Math.sin(r(lat1))*Math.cos(r(lat2))*Math.cos(r(lon2-lon1));
+    return (deg(Math.atan2(y,x))+360)%360;
+  }
+  function planeIcon(hdg){
+    return L.divIcon({
+      className:'',
+      html:'<div style="font-size:22px;line-height:1;transform:rotate('+(hdg-45)+'deg);filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))">✈️</div>',
+      iconSize:[24,24],
+      iconAnchor:[12,12]
+    });
+  }
+  function placePlane(progress){
+    if(!mapInst||!gcCache)return;
+    if(planeMk){mapInst.removeLayer(planeMk);planeMk=null;}
+    if(flownLn){mapInst.removeLayer(flownLn);flownLn=null;}
+    if(progress==null)return;
+    var idx=Math.max(0,Math.min(gcCache.length-1,Math.round(progress*(gcCache.length-1))));
+    var pt=gcCache[idx];
+    var nb=idx<gcCache.length-1?gcCache[idx+1]:gcCache[idx],pb=idx>0?gcCache[idx-1]:pt;
+    var hdg=bearing(pb[0],pb[1],nb[0],nb[1]);
+    if(idx>0)flownLn=L.polyline(gcCache.slice(0,idx+1),{color:'#4f6ef7',weight:4,opacity:1,lineCap:'round'}).addTo(mapInst);
+    planeMk=L.marker(pt,{icon:planeIcon(hdg),zIndexOffset:1000}).addTo(mapInst);
+  }
   function gcPoints(lo1,la1,lo2,la2,n){
     var r=function(d){return d*Math.PI/180;},deg=function(r){return r*180/Math.PI;};
     var f1=r(la1),l1=r(lo1),f2=r(la2),l2=r(lo2);
@@ -690,9 +716,9 @@ var MapInline=(function(){
       iconAnchor:[20,12]
     });
   }
-  function render(el,dLat,dLon,dCode,aLat,aLon,aCode,dark){
+  function render(el,dLat,dLon,dCode,aLat,aLon,aCode,dark,progress){
     if(typeof L==='undefined'){el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ba3b8;font-size:13px">Map library failed to load — check your connection.</div>';return;}
-    if(mapInst){mapInst.remove();mapInst=null;}
+    if(mapInst){mapInst.remove();mapInst=null;planeMk=null;flownLn=null;}
     el.innerHTML='';
     el.style.background='transparent';
     var mapId='lmap-'+Date.now();
@@ -708,14 +734,17 @@ var MapInline=(function(){
       attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
       maxZoom:18
     }).addTo(map);
-    var gc=gcPoints(dLon,dLat,aLon,aLat,64);
-    var line=L.polyline(gc,{color:'#4f6ef7',weight:3,opacity:.9,dashArray:'7,6',lineCap:'round'}).addTo(map);
+    var gc=gcPoints(dLon,dLat,aLon,aLat,96);
+    gcCache=gc;
+    var line=L.polyline(gc,{color:'#4f6ef7',weight:3,opacity:.5,dashArray:'7,6',lineCap:'round'}).addTo(map);
     L.marker([dLat,dLon],{icon:airportIcon(dCode,'#4f6ef7')}).addTo(map);
     L.marker([aLat,aLon],{icon:airportIcon(aCode,'#22c55e')}).addTo(map);
+    placePlane(progress);
     map.fitBounds(line.getBounds(),{padding:[36,36]});
     setTimeout(function(){map.invalidateSize();},80);
   }
-  return{render:render};
+  function updateProgress(progress){placePlane(progress);}
+  return{render:render,updateProgress:updateProgress};
 })();
 
 // ═══ QR CODE via QR Server API (works on CodePen/Codecademy) ═══
@@ -1824,7 +1853,31 @@ function importData(file){
 }
 function clearAll(){if(!confirm('Clear ALL FlightFlow data? Cannot be undone.'))return;var keys=[];for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.startsWith('ff_'))keys.push(k);}keys.forEach(function(k){localStorage.removeItem(k);});location.reload();}
 // ═══ MAP ═══
-function rMap(dep,arr){var dA=AP[dep],aA=AP[arr],el=g('fmap');if(!el)return;if(!dA||!aA){el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:260px;color:#9ba3b8;font-size:13px">Map unavailable</div>';return;}try{MapInline.render(el,dA.lat,dA.lon,dep,aA.lat,aA.lon,arr,S.dark);}catch(e){el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:260px;color:#9ba3b8">'+dep+' to '+arr+'</div>';}}
+var S_mapIV=null;
+// Progress along the route (0-1) based on real elapsed time between the
+// correctly-anchored departure/arrival instants — see the offTm/cdTxt fix
+// notes on why dIso/aIso (not the status string) are the reliable source.
+function flightProgress(fd){
+  if(!fd||!fd.dIso||!fd.aIso)return null;
+  if((fd.status||'').toLowerCase()==='cancelled')return null;
+  var now=Date.now(),dep=fd.dIso.getTime(),arr=fd.aIso.getTime();
+  if(arr<=dep)return null;
+  if(now<=dep)return null;
+  if(now>=arr)return 1;
+  return (now-dep)/(arr-dep);
+}
+function rMap(fd){
+  var dep=fd.dep,arr=fd.arr,dA=AP[dep],aA=AP[arr],el=g('fmap');if(!el)return;
+  if(S_mapIV){clearInterval(S_mapIV);S_mapIV=null;}
+  if(!dA||!aA){el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:260px;color:#9ba3b8;font-size:13px">Map unavailable</div>';return;}
+  try{
+    var progress=fd.live?flightProgress(fd):null;
+    MapInline.render(el,dA.lat,dA.lon,dep,aA.lat,aA.lon,arr,S.dark,progress);
+    if(fd.live&&(fd.status||'').toLowerCase()!=='cancelled'){
+      S_mapIV=setInterval(function(){MapInline.updateProgress(flightProgress(fd));},60000);
+    }
+  }catch(e){el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:260px;color:#9ba3b8">'+dep+' to '+arr+'</div>';}
+}
 // ═══ ROUTE PICKER ═══
 function apOpts(){return Object.entries(AP).sort(function(a,b){return a[0].localeCompare(b[0]);}).map(function(e){return '<option value="'+e[0]+'">'+e[0]+' - '+e[1].cy+'</option>';}).join('');}
 function showPicker(parsed){
@@ -1979,7 +2032,7 @@ function rDash(parsed,fd){
       +(isKid?'':'<button class="tab'+(S.tab==='tr'?' on':'')+'" onclick="swTab(\'tr\',this)">'+t('tab_transport')+'</button>')
     +'</div><div id="tabC">'+rTab()+'</div></div>'
     +'<div class="card mpc"><div class="slbl" style="margin-bottom:10px">'+t('flightpath_title')+' - '+fd.dep+' to '+fd.arr+'</div><div id="fmap" class="fmap"></div></div>';
-  setTimeout(function(){rMap(fd.dep,fd.arr);},60);
+  setTimeout(function(){rMap(fd);},60);
   swxR(fd.arr);
   S.liveOT=null;if(getAK())fetchLiveOT(fd.dep);
   if(S.notif&&fd.dIso)sAlert(fd.dIso,parsed.full);
