@@ -2608,6 +2608,31 @@ function stayCityList(){
   Object.keys(AP).forEach(function(code){var cy=AP[code].cy;if(cy&&!seen[cy]){seen[cy]=true;list.push(cy);}});
   return list.sort();
 }
+// Live worldwide place search — a hardcoded list can never cover every
+// village/resort area, so this pulls real suggestions from OpenStreetMap's
+// free Nominatim geocoder (no API key needed) as the user types, merged
+// with the always-available offline airport-city list.
+var S_cityDebounce=null;
+function stayCityInput(val){
+  ls.sj(stayKey(),Object.assign(ls.gj(stayKey())||{},{cityOverride:val}));
+  if(S_cityDebounce)clearTimeout(S_cityDebounce);
+  if(!val||val.trim().length<3)return;
+  S_cityDebounce=setTimeout(function(){
+    fetch('https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&q='+encodeURIComponent(val))
+      .then(function(r){return r.ok?r.json():[];})
+      .then(function(results){
+        var dl=g('stayCityDatalist');if(!dl)return;
+        var names=(results||[]).map(function(r){
+          var a=r.address||{};
+          var place=a.city||a.town||a.village||a.hamlet||a.suburb||(r.display_name?r.display_name.split(',')[0]:'');
+          var region=a.state||a.country||'';
+          return place?(region?place+', '+region:place):null;
+        }).filter(Boolean);
+        var merged=names.concat(stayCityList()).filter(function(n,i,arr){return arr.indexOf(n)===i;});
+        dl.innerHTML=merged.map(function(c){return'<option value="'+c.replace(/"/g,'&quot;')+'">';}).join('');
+      }).catch(function(){});
+  },400);
+}
 function saveStayName(){
   var v=ls.gj(stayKey())||{};v.name=(g('stayName')&&g('stayName').value)||'';ls.sj(stayKey(),v);
   rStayBd();
@@ -2620,7 +2645,7 @@ function rStayBd(){
   var cy=v.cityOverride||(destAp?destAp.cy:'');
   var cityOpts=stayCityList();
   var cityDropdown='<label class="mlb">City, town, or village you\'re staying in — type anything, or pick a suggestion</label>'
-    +'<input type="text" id="stayCity" class="mi" list="stayCityDatalist" value="'+(cy?cy.replace(/"/g,'&quot;'):'')+'" placeholder="e.g. Playa del Carmen, your resort town..." oninput="ls.sj(stayKey(),Object.assign(ls.gj(stayKey())||{},{cityOverride:this.value}))" onblur="selStayCity(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()" style="margin-bottom:10px"/>'
+    +'<input type="text" id="stayCity" class="mi" list="stayCityDatalist" value="'+(cy?cy.replace(/"/g,'&quot;'):'')+'" placeholder="e.g. Playa del Carmen, Negril, your resort town..." oninput="stayCityInput(this.value)" onblur="selStayCity(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()" style="margin-bottom:10px"/>'
     +'<datalist id="stayCityDatalist">'+cityOpts.map(function(c){return'<option value="'+c+'">';}).join('')+'</datalist>';
   var types=['hotel','resort','friends','rental','hostel'];
   var lookupLink=v.name&&v.name.trim()
