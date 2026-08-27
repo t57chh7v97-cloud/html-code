@@ -2619,11 +2619,9 @@ function rStayBd(){
   var destAp=destCode?AP[destCode]:null;
   var cy=v.cityOverride||(destAp?destAp.cy:'');
   var cityOpts=stayCityList();
-  var cityDropdown='<label class="mlb">City you\'re staying in — pick a different one if it\'s not right by the airport</label>'
-    +'<select id="stayCity" class="mi" onchange="selStayCity(this.value)" style="margin-bottom:10px">'
-    +(cy&&cityOpts.indexOf(cy)<0?'<option value="'+cy+'" selected>'+cy+'</option>':'')
-    +cityOpts.map(function(c){return'<option value="'+c+'"'+(c===cy?' selected':'')+'>'+c+'</option>';}).join('')
-    +'</select>';
+  var cityDropdown='<label class="mlb">City, town, or village you\'re staying in — type anything, or pick a suggestion</label>'
+    +'<input type="text" id="stayCity" class="mi" list="stayCityDatalist" value="'+(cy?cy.replace(/"/g,'&quot;'):'')+'" placeholder="e.g. Playa del Carmen, your resort town..." oninput="ls.sj(stayKey(),Object.assign(ls.gj(stayKey())||{},{cityOverride:this.value}))" onblur="selStayCity(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()" style="margin-bottom:10px"/>'
+    +'<datalist id="stayCityDatalist">'+cityOpts.map(function(c){return'<option value="'+c+'">';}).join('')+'</datalist>';
   var types=['hotel','resort','friends','rental','hostel'];
   var lookupLink=v.name&&v.name.trim()
     ?'<div style="display:flex;gap:8px;margin-bottom:14px">'
