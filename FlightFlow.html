@@ -1747,7 +1747,14 @@ function savNts(){if(!S.parsed)return;ls.s('ff_nt_'+S.parsed.full.replace(' ','_
 // ═══ FEEDBACK ═══
 function setFbT(t){var el=g('fbTxt');if(el){el.value=t;el.focus();}}
 function selFb(n){S.fbRat=n;[1,2,3,4,5].forEach(function(i){var b=g('fb'+i);if(b)b.classList.toggle('on',i<=n);});}
-function fbBaseList(){return ls.gj('ff_fb_shared')||[];}
+// Seed feedback so the list isn't empty on first load — these are the
+// current "quick suggestion" chip texts, logged as example suggestions.
+var DEFAULT_FB=(function(){
+  var seedTxt=['Add pet travel requirements — in-cabin rules and documents needed by airline and destination country','Add a checklist specific to flying with an infant or toddler','Estimate walking time between gates for tight connections','Suggest which travel credit card gives the best perks for this specific route','Compare travel insurance quotes for this trip','Show estimated rideshare or taxi cost from the airport to downtown','Add live translation for foreign airport announcements','Let me export my packing or travel-docs checklist as a PDF','Add a push notification specifically for gate changes, separate from delay alerts','Show typical security line crowd levels by hour','Check if my bag dimensions meet this specific airline carry-on rules','Coordinate seat assignments for a group traveling together','Show the nearest hospital or pharmacy near the arrival airport','Add a charging-station locator by terminal','Show what movies and shows are on this specific aircraft in-flight entertainment system','Auto-generate an expense report from my flight and receipts for business travel'];
+  var base=Date.now()-seedTxt.length*86400000;
+  return seedTxt.map(function(t,i){return{nm:'FlightFlow Team',rat:0,txt:t,ts:base+i*86400000};}).reverse();
+})();
+function fbBaseList(){return ls.gj('ff_fb_shared')||DEFAULT_FB.slice();}
 function subFb(){
   var txt=g('fbTxt')&&g('fbTxt').value.trim(),nm=(g('fbNm')&&g('fbNm').value.trim())||'Anonymous';
   if(!txt&&!S.fbRat){alert('Please rate or leave a comment!');return;}
@@ -2915,7 +2922,6 @@ function printSummary(){
 
 // ═══ INIT ═══
 document.addEventListener('DOMContentLoaded',function(){
-  (function(){var fb=ls.gj('ff_fb_shared');if(fb&&fb.some(function(f){return f.nm==='FlightFlow Team';})){ls.sj('ff_fb_shared',fb.filter(function(f){return f.nm!=='FlightFlow Team';}));}})();
   S.lang=ls.g('ff_lang')||'auto';
   var langOptsHtml=LANG_LIST.map(function(l){return l[0]==='auto'?'<option value="auto" data-i18n="lang_system_default">'+l[2]+' '+l[1]+'</option>':'<option value="'+l[0]+'">'+l[2]+' '+l[1]+'</option>';}).join('');
   var langSel=g('langSel');if(langSel){langSel.innerHTML=langOptsHtml;langSel.value=S.lang;}
