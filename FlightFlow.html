@@ -1555,23 +1555,19 @@ function fetchTodayFlight(parsed,dep,arr){
     return fd;
   });
 }
+// Builds the 5 date-tab entries WITHOUT fetching each one from AeroDataBox —
+// only today's date (already fetched by the caller) is real on load. The
+// other 4 tabs fetch on demand in selDt() when actually tapped. Eagerly
+// fetching all 5 in parallel on every single flight lookup was burning
+// 5-6 API calls per lookup, which is what was exhausting free-tier quotas.
 function bldFDates(parsed,dep,arr,todayFd){
   var offsets=[-1,0,1,2,3];
-  var proms=offsets.map(function(o){
+  return offsets.map(function(o){
     var iso=localDateStr(o),lbl=localDateLabel(o);
     var demo=bDemo(parsed.code,parsed.num,dep,arr,o);
-    if(o===0&&todayFd)return Promise.resolve({offset:o,date:iso,label:lbl,fd:todayFd,all:todayFd._all||null});
-    if(getAK()){
-      return fetchFl(parsed.full.replace(' ',''),iso).then(function(rawArr){
-        var raw=pickFlight(rawArr,dep,arr);
-        var fd=raw?mapLive(raw,parsed):demo;
-        var all=rawArr&&rawArr.length>1?rawArr.map(function(r){return mapLive(r,parsed);}):null;
-        return{offset:o,date:iso,label:lbl,fd:fd,all:all};
-      });
-    }
-    return Promise.resolve({offset:o,date:iso,label:lbl,fd:demo,all:null});
+    if(o===0&&todayFd)return{offset:o,date:iso,label:lbl,fd:todayFd,all:todayFd._all||null,fetched:true};
+    return{offset:o,date:iso,label:lbl,fd:demo,all:null,fetched:false};
   });
-  return Promise.all(proms);
 }
 function rFDateBar(dates,selOff){
   return dates.map(function(d){
@@ -1588,7 +1584,23 @@ function rFDateBar(dates,selOff){
     +'</button>';
   }).join('');
 }
-function selDt(offset){var d=S.fdates.find(function(x){return x.offset===offset;});if(!d||!d.fd)return;S.selDate=offset;rDash(S.parsed,d.fd);}
+function selDt(offset){
+  var d=S.fdates&&S.fdates.find(function(x){return x.offset===offset;});
+  if(!d||!d.fd)return;
+  S.selDate=offset;
+  rDash(S.parsed,d.fd);
+  if(d.fetched||!getAK())return;
+  var dep=d.fd.dep,arr=d.fd.arr;
+  fetchFl(S.parsed.full.replace(' ',''),d.date).then(function(rawArr){
+    d.fetched=true;
+    var raw=pickFlight(rawArr,dep,arr);
+    if(raw){
+      d.fd=mapLive(raw,S.parsed);
+      d.all=rawArr&&rawArr.length>1?rawArr.map(function(r){return mapLive(r,S.parsed);}):null;
+    }
+    if(S.selDate===offset){S.fd=d.fd;rDash(S.parsed,d.fd);}
+  });
+}
 // ═══ MULTIPLE DAILY DEPARTURES PICKER ═══
 function openMultiPicker(offset){
   var d=S.fdates.find(function(x){return x.offset===offset;});
@@ -1899,7 +1911,12 @@ function showPicker(parsed){
   if(sv){if(g('dSel'))g('dSel').value=sv.dep;if(g('aSel'))g('aSel').value=sv.arr;}
 }
 function cfRT(code,num,full){var dep=g('dSel')&&g('dSel').value,arr=g('aSel')&&g('aSel').value;if(!dep||!arr){alert('Please select both airports.');return;}if(dep===arr){alert('Cannot be the same airport.');return;}ls.sj('ff_rt_'+full,{dep:dep,arr:arr});var parsed={code:code,num:num,full:full};S.parsed=parsed;doWithRoutes(parsed,dep,arr);}
-function doWithRoutes(parsed,dep,arr,todayFd){g('dash').innerHTML='<div class="ldc"><div class="spn"></div><div class="ldt">Loading flight dates...</div></div>';bldFDates(parsed,dep,arr,todayFd).then(function(dates){S.fdates=dates;S.selDate=0;var td=dates.find(function(d){return d.offset===0;});if(td&&td.fd){S.fd=td.fd;sSav(parsed,td.fd);aHst(parsed,td.fd);rDash(parsed,td.fd);}});}
+function doWithRoutes(parsed,dep,arr,todayFd){
+  var dates=bldFDates(parsed,dep,arr,todayFd);
+  S.fdates=dates;S.selDate=0;
+  var td=dates.find(function(d){return d.offset===0;});
+  if(td&&td.fd){S.fd=td.fd;sSav(parsed,td.fd);aHst(parsed,td.fd);rDash(parsed,td.fd);}
+}
 // ═══ PARSE FLIGHT ═══
 function pFL(raw){var s=raw.replace(/\s+/g,'').toUpperCase();var m=s.match(/^([A-Z0-9]{2})(\d{1,5}[A-Z]?)$/);if(!m)return null;return{code:m[1],num:m[2],full:m[1]+' '+m[2]};}
 function showLd(){g('dash').innerHTML='<div class="ldc"><div class="spn"></div><div class="ldt">Fetching flight data...</div><div class="lds">Connecting to AeroDataBox</div></div>';}
@@ -1923,7 +1940,7 @@ function doLkp(){
   }else{showPicker(parsed);}
 }
 // ═══ LIVE ON-TIME ═══
-function fetchLiveOT(depIata){var key=getAK();if(!key)return;fetch('https://aerodatabox.p.rapidapi.com/airports/iata/'+depIata+'/stats/flights/departure?withTime=false',{cache:'no-store',headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}}).then(function(r){return r.ok?r.json():null;}).then(function(j){if(!j||j.onTimePercent==null)return;S.liveOT=Math.round(j.onTimePercent);var el=g('otStat');if(el){var pct=S.liveOT;el.style.background=pct>=85?'#dcfce7':pct>=75?'#fef9c3':'#fee2e2';el.style.color=pct>=85?'#166534':pct>=75?'#5c4400':'#991b1b';el.textContent='Live: '+pct+'% on-time';}}).catch(function(){});}
+function fetchLiveOT(depIata){var key=getAK();if(!key)return;fetch('https://aerodatabox.p.rapidapi.com/airports/iata/'+depIata+'/stats/flights/departure?withTime=false',{cache:'no-store',headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}}).then(function(r){return r.ok?r.json():null;}).then(function(j){if(!j||j.onTimePercent==null)return;S.liveOT=Math.round(j.onTimePercent);if(!S.otCache)S.otCache={};S.otCache[depIata]={pct:S.liveOT,ts:Date.now()};var el=g('otStat');if(el){var pct=S.liveOT;el.style.background=pct>=85?'#dcfce7':pct>=75?'#fef9c3':'#fee2e2';el.style.color=pct>=85?'#166534':pct>=75?'#5c4400':'#991b1b';el.textContent='Live: '+pct+'% on-time';}}).catch(function(){});}
 
 // ═══ RENDER DASHBOARD ═══
 function collapseHero(){
@@ -2039,7 +2056,11 @@ function rDash(parsed,fd){
     +'<div class="card mpc"><div class="slbl" style="margin-bottom:10px">'+t('flightpath_title')+' - '+fd.dep+' to '+fd.arr+'</div><div id="fmap" class="fmap"></div></div>';
   setTimeout(function(){rMap(fd);},60);
   swxR(fd.arr);
-  S.liveOT=null;if(getAK())fetchLiveOT(fd.dep);
+  var otCached=S.otCache&&S.otCache[fd.dep];
+  if(otCached&&Date.now()-otCached.ts<15*60000){
+    S.liveOT=otCached.pct;
+    var otEl=g('otStat');if(otEl){var pct=otCached.pct;otEl.style.background=pct>=85?'#dcfce7':pct>=75?'#fef9c3':'#fee2e2';otEl.style.color=pct>=85?'#166534':pct>=75?'#5c4400':'#991b1b';otEl.textContent='Live: '+pct+'% on-time';}
+  }else{S.liveOT=null;if(getAK())fetchLiveOT(fd.dep);}
   if(S.notif&&fd.dIso)sAlert(fd.dIso,parsed.full);
   startStatusRefresh(parsed,fd);
 }
