@@ -553,22 +553,22 @@ create policy "public read" on public.feedback for select to anon using (true);<
 <div class="mbd">
   <div class="msc" style="margin-bottom:8px">💡 Quick suggestions — tap to fill</div>
   <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">
-    <button class="chip" onclick="setFbT('Add pet travel requirements — in-cabin rules and documents needed by airline and destination country')">🐾 Pet travel</button>
-    <button class="chip" onclick="setFbT('Add a checklist specific to flying with an infant or toddler')">👶 Flying with a baby</button>
-    <button class="chip" onclick="setFbT('Estimate walking time between gates for tight connections')">🏃 Gate walking time</button>
-    <button class="chip" onclick="setFbT('Suggest which travel credit card gives the best perks for this specific route')">💳 Best card for this route</button>
-    <button class="chip" onclick="setFbT('Compare travel insurance quotes for this trip')">🩺 Insurance quotes</button>
-    <button class="chip" onclick="setFbT('Show estimated rideshare or taxi cost from the airport to downtown')">🚕 Rideshare estimate</button>
-    <button class="chip" onclick="setFbT('Add live translation for foreign airport announcements')">🗣️ Announcement translation</button>
-    <button class="chip" onclick="setFbT('Let me export my packing or travel-docs checklist as a PDF')">📄 Export checklist as PDF</button>
-    <button class="chip" onclick="setFbT('Add a push notification specifically for gate changes, separate from delay alerts')">🔔 Gate-change alert</button>
-    <button class="chip" onclick="setFbT('Show typical security line crowd levels by hour')">🧍 Security crowd levels</button>
-    <button class="chip" onclick="setFbT('Check if my bag dimensions meet this specific airline carry-on rules')">🎒 Carry-on size checker</button>
-    <button class="chip" onclick="setFbT('Coordinate seat assignments for a group traveling together')">👥 Group seat coordinator</button>
-    <button class="chip" onclick="setFbT('Show the nearest hospital or pharmacy near the arrival airport')">🏥 Nearest hospital/pharmacy</button>
-    <button class="chip" onclick="setFbT('Add a charging-station locator by terminal')">🔋 Charging stations</button>
-    <button class="chip" onclick="setFbT('Show what movies and shows are on this specific aircraft in-flight entertainment system')">🎬 In-flight entertainment</button>
-    <button class="chip" onclick="setFbT('Auto-generate an expense report from my flight and receipts for business travel')">🧾 Expense report</button>
+    <button class="chip" onclick="setFbT('Show pet relief area locations at this airport')">🐕 Pet relief areas</button>
+    <button class="chip" onclick="setFbT('Show duty-free deals and prices at this airport')">🍾 Duty-free deals</button>
+    <button class="chip" onclick="setFbT('Show nursing or family room locations at the airport')">👶 Nursing/family rooms</button>
+    <button class="chip" onclick="setFbT('Show water bottle refill station locations at the airport')">💧 Water refill stations</button>
+    <button class="chip" onclick="setFbT('Add an airport WiFi network name and password directory')">📶 WiFi directory</button>
+    <button class="chip" onclick="setFbT('Add a calculator for whether priority boarding is worth it for this flight')">🎫 Priority boarding calc</button>
+    <button class="chip" onclick="setFbT('Add a lost luggage claim helper and tracker')">🧳 Lost luggage helper</button>
+    <button class="chip" onclick="setFbT('Let me request wheelchair or accessibility services ahead of time')">♿ Accessibility services</button>
+    <button class="chip" onclick="setFbT('Suggest an eSIM or roaming data plan for the destination country')">📱 eSIM suggestions</button>
+    <button class="chip" onclick="setFbT('Add an airport nap pod or quiet area locator')">😴 Nap pod locator</button>
+    <button class="chip" onclick="setFbT('Show medication and prescription travel rules by country')">💊 Medication rules</button>
+    <button class="chip" onclick="setFbT('Add an airport gym or walking track locator')">🏋️ Airport gym locator</button>
+    <button class="chip" onclick="setFbT('Show duty-free liquor and perfume limits by destination country')">🥂 Duty-free limits</button>
+    <button class="chip" onclick="setFbT('Show smoking or vape area locations at the airport')">🚬 Smoking areas</button>
+    <button class="chip" onclick="setFbT('Add a nearest restroom locator by terminal and gate')">🚻 Restroom locator</button>
+    <button class="chip" onclick="setFbT('Suggest best photo spots at this airport or destination')">📸 Best photo spots</button>
   </div>
   <div class="msc">How is your experience?</div>
   <div class="fbst">
@@ -1482,7 +1482,6 @@ function mapLive(raw,parsed){
 function bDemo(code,num,dep,arr,offset){
   var airline=AL[code]||{n:code,c:'#1a1a2e'};
   var seed=parseInt(num,10)||1,off=offset||0;
-  var status=off<0?'Landed':off===0?(['Scheduled','On Time','Scheduled','Delayed','On Time'][seed%5]):'Scheduled';
   var dTz=(AP[dep]||{}).tz||'UTC',aTz=(AP[arr]||{}).tz||'UTC';
   function tzOff(tz){
     try{
@@ -1510,7 +1509,7 @@ function bDemo(code,num,dep,arr,offset){
   var dOff=tzOff(dTz),aOff=tzOff(aTz);
   // Desired LOCAL departure hour/min
   var baseH=6+(seed*7)%14,baseM=(seed*13)%60;
-  var dateVar=Math.abs(off*(seed%7+3))%25;
+  var dateVar=off===0?0:Math.abs(off*(seed%7+3)*23)%150+15;
   var dLH=(baseH+(off<0&&dateVar>12?-1:0)+24)%24,dLM=(baseM+dateVar)%60;
   // Great-circle distance for realistic duration
   var dA=AP[dep]||{lat:40,lon:-74},aA=AP[arr]||{lat:33,lon:-84};
@@ -1530,6 +1529,13 @@ function bDemo(code,num,dep,arr,offset){
   var ay=aDt.getFullYear(),amo=aDt.getMonth()+1,ad=aDt.getDate();
   var dIso=new Date(y+'-'+p2(mo)+'-'+p2(d)+'T'+p2(dUtcH)+':'+p2(dUtcM)+':00Z');
   var aIso=new Date(ay+'-'+p2(amo)+'-'+p2(ad)+'T'+p2(aUtcH)+':'+p2(aUtcM)+':00Z');
+  // Status is derived from real elapsed time against the estimated schedule
+  // (not a random pick) so a demo/estimated fallback still correctly shows
+  // "Landed" once the estimated arrival time has passed, "In Air" mid-flight,
+  // etc. — this matters because whenever a live fetch fails (rate limit,
+  // no historical coverage) the app falls back to this exact data.
+  var nowMs=Date.now();
+  var status=nowMs>=aIso.getTime()?'Landed':nowMs>=dIso.getTime()?'In Air':(off===0&&seed%5===3?'Delayed':'Scheduled');
   var acPools={B6:['32A','32B','32N','321','320'],WN:['738','7M8','7M9'],AA:['738','7M8','321','32B','788'],DL:['738','321','32A','788','333'],UA:['738','7M9','321','789'],AS:['738','7M9'],F9:['32A','32N'],NK:['32A','32N'],G4:['320','32A'],HA:['332','789'],BA:['77W','789','333'],LH:['333','359','788','32A'],AF:['333','359','388'],KL:['333','789','738'],EK:['77W','388','359'],QR:['77W','789','359','388'],SQ:['388','359','77W','789'],CX:['359','77W','333'],QF:['789','388'],AC:['789','333','738'],TK:['32B','789','77W'],EY:['789','359'],IB:['32A','359'],AY:['32A','789']};
   var pool=acPools[code]||['738','321','32A','789'];
   var acIata=pool[seed%pool.length];var acData=ACF[acIata];
@@ -2088,18 +2094,53 @@ function startStatusRefresh(parsed,fd){
 }
 // ═══ TABS ═══
 function swTab(t,btn){S.tab=t;var tabs=document.querySelectorAll('.tab');for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('on');if(btn)btn.classList.add('on');if(g('tabC'))g('tabC').innerHTML=rTab();}
-function rTab(){if(S.tab==='pack')return rCL(S.kid?KPK:APK,S.pCk,'pk');if(S.tab==='sec')return rCL(S.kid?KSC:ASC,S.sCk,'sc');if(S.tab==='tr')return rTr();return '';}
-function rCL(items,ck,key){
+// Per-person packing: when passenger names are set, each named person gets
+// their own checklist state instead of one shared list with a xN suffix.
+// S_packPerson is null for the shared "All" view.
+var S_packPerson=null;
+function selPackPerson(name){S_packPerson=name||null;if(g('tabC'))g('tabC').innerHTML=rTab();}
+function packCkFor(person){
+  if(!person)return S.pCk;
+  if(!S.pCkByPerson)S.pCkByPerson={};
+  if(!S.pCkByPerson[person])S.pCkByPerson[person]={};
+  return S.pCkByPerson[person];
+}
+function rPackPersonSel(names){
+  var chips=['All'].concat(names);
+  return '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">'
+    +chips.map(function(n){
+      var isAll=n==='All';
+      var active=isAll?!S_packPerson:S_packPerson===n;
+      return '<button onclick="selPackPerson('+(isAll?'null':'\''+n.replace(/'/g,"\\'")+'\'')+')" style="padding:6px 12px;border-radius:20px;border:2px solid '+(active?'var(--acc)':'var(--bor)')+';background:'+(active?'var(--accL)':'var(--s2)')+';cursor:pointer;font-size:12px;font-weight:700;color:var(--txt)">'+n+'</button>';
+    }).join('')
+  +'</div>';
+}
+function rTab(){
+  if(S.tab==='pack'){
+    var names=getPaxNames();
+    if(!names.length)S_packPerson=null;
+    var ck=names.length?packCkFor(S_packPerson):S.pCk;
+    return (names.length?rPackPersonSel(names):'')+rCL(S.kid?KPK:APK,ck,'pk',!!S_packPerson);
+  }
+  if(S.tab==='sec')return rCL(S.kid?KSC:ASC,S.sCk,'sc',false);
+  if(S.tab==='tr')return rTr();
+  return '';
+}
+function rCL(items,ck,key,perPerson){
   var pax=S.pax,isKid=S.kid;
   var done=items.filter(function(_,i){return ck[i];}).length,pct=Math.round(done/items.length*100);
-  var names=key==='pk'?getPaxNames():[];
+  var names=key==='pk'&&!perPerson?getPaxNames():[];
   var h=names.length?'<div style="font-size:12px;color:var(--t2);margin-bottom:8px">👨‍👩‍👧‍👦 Packing for: '+names.join(', ')+'</div>':'';
   h+='<div style="display:flex;justify-content:space-between;margin-bottom:7px;font-size:13px;color:var(--t2)"><span>'+done+' of '+items.length+' done</span><span style="font-weight:700;color:var(--txt)">'+pct+'%</span></div><div class="prb"><div class="prf" style="width:'+pct+'%"></div></div>';
   if(pct===100&&isKid)h+='<div style="background:#dcfce7;border:2px solid #22c55e;border-radius:12px;padding:14px;margin:10px 0;text-align:center;font-size:15px;font-weight:700;color:#166534">You packed everything! Ready to fly!</div>';
-  h+=items.map(function(item,i){return '<div class="cli" onclick="tgCL(\''+key+'\','+i+');haptic()"><div class="cbox'+(ck[i]?' on':'')+'"><span class="cchk">✓</span></div>'+(isKid?'<span class="cem">'+item.e+'</span>':'')+'<span class="clbl'+(ck[i]?' dn':'')+'">'+item.l+(pax>1&&!isKid&&key==='pk'&&item.c!=='documents'?' x'+pax:'')+'</span><span class="ccat" style="'+(item.c==='required'||item.c==='must-have'?'background:#fee2e2;color:#991b1b':item.c==='safety'||item.c==='important'?'background:#fef3c7;color:#5c4400':'background:var(--s2);color:#5c4400')+'">'+item.c+'</span></div>';}).join('');
+  h+=items.map(function(item,i){return '<div class="cli" onclick="tgCL(\''+key+'\','+i+');haptic()"><div class="cbox'+(ck[i]?' on':'')+'"><span class="cchk">✓</span></div>'+(isKid?'<span class="cem">'+item.e+'</span>':'')+'<span class="clbl'+(ck[i]?' dn':'')+'">'+item.l+(pax>1&&!isKid&&key==='pk'&&!perPerson&&item.c!=='documents'?' x'+pax:'')+'</span><span class="ccat" style="'+(item.c==='required'||item.c==='must-have'?'background:#fee2e2;color:#991b1b':item.c==='safety'||item.c==='important'?'background:#fef3c7;color:#5c4400':'background:var(--s2);color:#5c4400')+'">'+item.c+'</span></div>';}).join('');
   return h;
 }
-function tgCL(type,idx){if(type==='pk')S.pCk[idx]=!S.pCk[idx];else if(type==='sc')S.sCk[idx]=!S.sCk[idx];if(g('tabC'))g('tabC').innerHTML=rTab();}
+function tgCL(type,idx){
+  if(type==='pk'){var ck=S_packPerson?packCkFor(S_packPerson):S.pCk;ck[idx]=!ck[idx];}
+  else if(type==='sc')S.sCk[idx]=!S.sCk[idx];
+  if(g('tabC'))g('tabC').innerHTML=rTab();
+}
 function rTr(){var arr=AP[S.curAp];var cy=arr?arr.cy:'your destination';var atAirport=arr&&arr.nt?'<a class="trb" href="https://www.google.com/maps/search/'+encodeURIComponent(cy+' airport public transit')+'" target="_blank"><div class="trlo" style="background:#16a34a">🚆</div><div><div class="trnm">At '+S.curAp+'</div><div class="trds">'+arr.nt+'</div></div></a>':'';return '<div class="trgr">'+atAirport+'<a class="trb" href="https://m.uber.com/ul/" target="_blank"><div class="trlo" style="background:#000">🚗</div><div><div class="trnm">Uber</div><div class="trds">Book a ride</div></div></a><a class="trb" href="https://lyft.com" target="_blank"><div class="trlo" style="background:#ea0b8c">🚕</div><div><div class="trnm">Lyft</div><div class="trds">Book a ride</div></div></a><a class="trb" href="https://www.rome2rio.com" target="_blank"><div class="trlo" style="background:#ff6319">🚌</div><div><div class="trnm">Rome2Rio</div><div class="trds">All transport options</div></div></a><a class="trb" href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(cy+' airport')+'" target="_blank"><div class="trlo" style="background:#4285f4">🗺️</div><div><div class="trnm">Google Maps</div><div class="trds">Directions</div></div></a></div>';}
 
 // ═══ FLIGHT STATS ═══
