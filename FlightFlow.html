@@ -1509,8 +1509,9 @@ function bDemo(code,num,dep,arr,offset){
   var dOff=tzOff(dTz),aOff=tzOff(aTz);
   // Desired LOCAL departure hour/min
   var baseH=6+(seed*7)%14,baseM=(seed*13)%60;
-  var dateVar=off===0?0:Math.abs(off*(seed%7+3)*23)%150+15;
-  var dLH=(baseH+(off<0&&dateVar>12?-1:0)+24)%24,dLM=(baseM+dateVar)%60;
+  var shiftMin=off===0?0:(off<0?-1:1)*(Math.abs(off*(seed%7+3)*23)%150+15);
+  var depTotalMin=((baseH*60+baseM+shiftMin)%1440+1440)%1440;
+  var dLH=Math.floor(depTotalMin/60),dLM=depTotalMin%60;
   // Great-circle distance for realistic duration
   var dA=AP[dep]||{lat:40,lon:-74},aA=AP[arr]||{lat:33,lon:-84};
   function gcD(la1,lo1,la2,lo2){var R=6371,r=function(d){return d*Math.PI/180;};var a=Math.pow(Math.sin(r(la2-la1)/2),2)+Math.cos(r(la1))*Math.cos(r(la2))*Math.pow(Math.sin(r(lo2-lo1)/2),2);return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
