@@ -1324,16 +1324,28 @@ function tPW(id,bid){
   el.style.webkitTextSecurity=masked?'none':'disc';
   if(b)b.textContent=masked?'🙈':'👁';
 }
+// The badge used to just mean "a key is saved" — it said Live the moment
+// you entered a key and then never changed again, even when the flight
+// actually being shown had fallen back to estimated data. Now it reflects
+// whichever flight is currently on screen, so it can't contradict the
+// yellow "these are estimated" banner right below it.
 function uBadge(){
   var b=g('apiBdg');if(!b)return;
-  if(getAK()){
-    b.innerHTML='✅ '+t('status_live');b.className='nbdg lbdg';
-    b.title='Live data from AeroDataBox. Click Settings to manage key.';
-  }else{
+  if(!getAK()){
     b.innerHTML=t('status_demo');b.className='nbdg dbdg';
     b.title='No API key. Click Settings to add a free AeroDataBox key.';
     b.style.cursor='pointer';b.onclick=function(){OM('mSet');};
+    return;
   }
+  if(S.fd&&!S.fd.live){
+    b.innerHTML='⚠️ '+t('status_demo');b.className='nbdg dbdg';
+    b.title='This flight is showing estimated data — the live fetch failed. Check the yellow banner\'s "(why?)" link.';
+    b.style.cursor='pointer';b.onclick=function(){OM('mSet');};
+    return;
+  }
+  b.innerHTML='✅ '+t('status_live');b.className='nbdg lbdg';
+  b.title='Live data from AeroDataBox. Click Settings to manage key.';
+  b.style.cursor='';b.onclick=null;
 }
 function is24(){return ls.g('ff_24')==='true';}
 function setFmt(v){ls.s('ff_24',v?'true':'false');if(g('b24'))g('b24').classList.toggle('on',v);if(g('b12'))g('b12').classList.toggle('on',!v);if(S.parsed&&S.fd)rDash(S.parsed,S.fd);rClk();}
@@ -2092,6 +2104,7 @@ function rDash(parsed,fd){
   }else{S.liveOT=null;if(getAK())fetchLiveOT(fd.dep);}
   if(S.notif&&fd.dIso)sAlert(fd.dIso,parsed.full);
   startStatusRefresh(parsed,fd);
+  uBadge();
 }
 // Keeps the tracked flight's status current — otherwise a flight fetched
 // while "In Air" stays showing "In Air" forever after it actually lands,
