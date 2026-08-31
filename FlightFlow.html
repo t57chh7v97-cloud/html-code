@@ -1320,14 +1320,27 @@ function autoSaveAK(){
 // flight tracking (not just any AeroDataBox endpoint — RapidAPI plans can
 // grant access to some endpoint groups but not others, so testing the
 // wrong one gives a false "it works" when flight lookups still fail).
+// A 429 here means AeroDataBox's own server is enforcing a rate limit on
+// this specific endpoint — no client-side throttle can make that respond
+// faster. Retesting immediately just trips it again, so we cool down.
+var S_akCooldownUntil=0;
 function verifyAK(){
   var key=getAK(),st=g('akSaveStatus');if(!key||!st)return;
+  if(Date.now()<S_akCooldownUntil){
+    st.style.color='#991b1b';st.innerHTML='⏳ Please wait '+Math.ceil((S_akCooldownUntil-Date.now())/1000)+'s before testing again — retesting immediately just trips the same rate limit again.';
+    return;
+  }
   st.style.color='var(--t2)';st.innerHTML='⏳ Testing the flight-lookup endpoint (AA 100, today)...';
   var testUrl='https://aerodatabox.p.rapidapi.com/flights/number/AA100/'+localDateStr(0)+'?withAircraftImage=false&withLocation=false';
   adbThrottled(function(){return fetch(testUrl,{cache:'no-store',headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}});})
     .then(function(r){
       if(r.ok){st.style.color='#166534';st.innerHTML='✅ Flight-lookup endpoint works — test request succeeded.';return;}
-      var reason=r.status===401?'Invalid key.':r.status===403?'Not subscribed to the Flight Status (single day) endpoint specifically — this is the one flight tracking needs, even if other AeroDataBox endpoints work on this key.':r.status===429?'Rate limited right now — wait a minute and try again.':'HTTP '+r.status+'.';
+      if(r.status===429){
+        S_akCooldownUntil=Date.now()+65000;
+        st.style.color='#991b1b';st.innerHTML='❌ Rate limited on this specific endpoint — enforced by AeroDataBox/RapidAPI itself, not something the app can bypass. Check your plan\'s per-minute limit for this endpoint on rapidapi.com, or wait and try again.';
+        return;
+      }
+      var reason=r.status===401?'Invalid key.':r.status===403?'Not subscribed to the Flight Status (single day) endpoint specifically — this is the one flight tracking needs, even if other AeroDataBox endpoints work on this key.':'HTTP '+r.status+'.';
       st.style.color='#991b1b';st.innerHTML='❌ Test failed: '+reason;
     })
     .catch(function(){st.style.color='#991b1b';st.innerHTML='❌ Test failed: network or CORS error — the request never reached AeroDataBox.';});
@@ -1453,12 +1466,17 @@ function adbThrottled(fn){
 }
 function fetchFl(iata,date){
   var key=getAK();if(!key)return Promise.resolve(null);
+  if(Date.now()<S_akCooldownUntil){
+    S_lastFetchErr='AeroDataBox rate limit still cooling down — waiting '+Math.ceil((S_akCooldownUntil-Date.now())/1000)+'s before trying this endpoint again (retrying immediately just trips it again).';
+    return Promise.resolve(null);
+  }
   var dt=date||localDateStr(0);
   var url='https://aerodatabox.p.rapidapi.com/flights/number/'+encodeURIComponent(iata.replace(' ',''))+'/'+dt+'?withAircraftImage=false&withLocation=false';
   S_lastFetchErr=null;
   return adbThrottled(function(){return fetch(url,{cache:'no-store',headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}})
     .then(function(r){
       if(!r.ok){
+        if(r.status===429)S_akCooldownUntil=Date.now()+65000;
         var reason=r.status===401?'invalid key':r.status===403?'not subscribed to AeroDataBox, or quota exceeded':r.status===429?'rate limited — out of monthly/per-minute quota':'HTTP '+r.status;
         S_lastFetchErr='AeroDataBox request failed: '+reason+'.';
         return null;
