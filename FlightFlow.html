@@ -1316,16 +1316,18 @@ function autoSaveAK(){
   st.style.display='block';st.style.color='var(--t2)';
   st.innerHTML='✅ Saved locally ('+v.length+' characters). <span onclick="verifyAK()" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Test this key now</span>';
 }
-// Makes one real, lightweight AeroDataBox request right when you save a
-// key, so you know immediately whether it actually works — instead of
-// finding out only after tracking a flight and reading a banner.
+// Makes one real request against the EXACT endpoint fetchFl() uses for
+// flight tracking (not just any AeroDataBox endpoint — RapidAPI plans can
+// grant access to some endpoint groups but not others, so testing the
+// wrong one gives a false "it works" when flight lookups still fail).
 function verifyAK(){
   var key=getAK(),st=g('akSaveStatus');if(!key||!st)return;
-  st.style.color='var(--t2)';st.innerHTML='⏳ Testing your key against AeroDataBox...';
-  adbThrottled(function(){return fetch('https://aerodatabox.p.rapidapi.com/airports/iata/JFK',{cache:'no-store',headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}});})
+  st.style.color='var(--t2)';st.innerHTML='⏳ Testing the flight-lookup endpoint (AA 100, today)...';
+  var testUrl='https://aerodatabox.p.rapidapi.com/flights/number/AA100/'+localDateStr(0)+'?withAircraftImage=false&withLocation=false';
+  adbThrottled(function(){return fetch(testUrl,{cache:'no-store',headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}});})
     .then(function(r){
-      if(r.ok){st.style.color='#166534';st.innerHTML='✅ Key works — test request succeeded.';return;}
-      var reason=r.status===401?'Invalid key.':r.status===403?'Not subscribed to AeroDataBox on this key, or quota exceeded.':r.status===429?'Rate limited right now — wait a minute and try again.':'HTTP '+r.status+'.';
+      if(r.ok){st.style.color='#166534';st.innerHTML='✅ Flight-lookup endpoint works — test request succeeded.';return;}
+      var reason=r.status===401?'Invalid key.':r.status===403?'Not subscribed to the Flight Status (single day) endpoint specifically — this is the one flight tracking needs, even if other AeroDataBox endpoints work on this key.':r.status===429?'Rate limited right now — wait a minute and try again.':'HTTP '+r.status+'.';
       st.style.color='#991b1b';st.innerHTML='❌ Test failed: '+reason;
     })
     .catch(function(){st.style.color='#991b1b';st.innerHTML='❌ Test failed: network or CORS error — the request never reached AeroDataBox.';});
