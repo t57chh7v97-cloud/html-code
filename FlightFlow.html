@@ -1401,12 +1401,25 @@ function dSav(fl){ls.sj('ff_sv',gSav().filter(function(f){return f.fl!==fl;}));r
 function sbc(s){var m={Delayed:'sdl',Cancelled:'scx',Boarding:'sbd','In Air':'sia',Landed:'sln',Scheduled:'ssc','On Time':'sot'};return m[s]||'sot';}
 // ═══ AERODATABOX ═══
 var S_lastFetchErr=null;
+// AeroDataBox calls across the whole app share this gate so they're never
+// fired closer together than ADB_MIN_GAP — a per-minute/per-second burst
+// limit can reject requests even when the monthly quota still has room,
+// and rapid clicks/tab switches were the likeliest way to trip that.
+var S_adbGate=Promise.resolve(),S_adbLastCall=0;
+var ADB_MIN_GAP=1500;
+function adbThrottled(fn){
+  S_adbGate=S_adbGate.then(function(){
+    var wait=Math.max(0,ADB_MIN_GAP-(Date.now()-S_adbLastCall));
+    return new Promise(function(resolve){setTimeout(resolve,wait);});
+  }).then(function(){S_adbLastCall=Date.now();return fn();});
+  return S_adbGate;
+}
 function fetchFl(iata,date){
   var key=getAK();if(!key)return Promise.resolve(null);
   var dt=date||localDateStr(0);
   var url='https://aerodatabox.p.rapidapi.com/flights/number/'+encodeURIComponent(iata.replace(' ',''))+'/'+dt+'?withAircraftImage=false&withLocation=false';
   S_lastFetchErr=null;
-  return fetch(url,{cache:'no-store',headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}})
+  return adbThrottled(function(){return fetch(url,{cache:'no-store',headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}})
     .then(function(r){
       if(!r.ok){
         var reason=r.status===401?'invalid key':r.status===403?'not subscribed to AeroDataBox, or quota exceeded':r.status===429?'rate limited — out of monthly/per-minute quota':'HTTP '+r.status;
@@ -1425,6 +1438,7 @@ function fetchFl(iata,date){
       S_lastFetchErr='AeroDataBox request failed: network or CORS error ('+((e&&e.message)||'request blocked')+').';
       return null;
     });
+  });
 }
 // A flight number can return multiple entries (codeshares, multiple daily
 // departures). Once we know the real route, prefer the entry that matches it
@@ -1954,7 +1968,7 @@ function doLkp(){
   }else{showPicker(parsed);}
 }
 // ═══ LIVE ON-TIME ═══
-function fetchLiveOT(depIata){var key=getAK();if(!key)return;fetch('https://aerodatabox.p.rapidapi.com/airports/iata/'+depIata+'/stats/flights/departure?withTime=false',{cache:'no-store',headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}}).then(function(r){return r.ok?r.json():null;}).then(function(j){if(!j||j.onTimePercent==null)return;S.liveOT=Math.round(j.onTimePercent);if(!S.otCache)S.otCache={};S.otCache[depIata]={pct:S.liveOT,ts:Date.now()};var el=g('otStat');if(el){var pct=S.liveOT;el.style.background=pct>=85?'#dcfce7':pct>=75?'#fef9c3':'#fee2e2';el.style.color=pct>=85?'#166534':pct>=75?'#5c4400':'#991b1b';el.textContent='Live: '+pct+'% on-time';}}).catch(function(){});}
+function fetchLiveOT(depIata){var key=getAK();if(!key)return;adbThrottled(function(){return fetch('https://aerodatabox.p.rapidapi.com/airports/iata/'+depIata+'/stats/flights/departure?withTime=false',{cache:'no-store',headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}});}).then(function(r){return r.ok?r.json():null;}).then(function(j){if(!j||j.onTimePercent==null)return;S.liveOT=Math.round(j.onTimePercent);if(!S.otCache)S.otCache={};S.otCache[depIata]={pct:S.liveOT,ts:Date.now()};var el=g('otStat');if(el){var pct=S.liveOT;el.style.background=pct>=85?'#dcfce7':pct>=75?'#fef9c3':'#fee2e2';el.style.color=pct>=85?'#166534':pct>=75?'#5c4400':'#991b1b';el.textContent='Live: '+pct+'% on-time';}}).catch(function(){});}
 
 // ═══ RENDER DASHBOARD ═══
 function collapseHero(){
@@ -2550,7 +2564,7 @@ function doFlightSearch(){
   el.innerHTML='<div class="ldinl"><div class="spn" style="width:20px;height:20px;border-width:2px;margin:0 8px 0 0"></div>Searching...</div>';
   var dt=date||localDateStr(0);
   var url='https://aerodatabox.p.rapidapi.com/flights/airports/iata/'+dep+'/'+dt+'T00:00/'+dt+'T23:59?direction=Departure&withAircraftImage=false&withLocation=false';
-  fetch(url,{cache:'no-store',headers:{'X-RapidAPI-Key':getAK(),'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}})
+  adbThrottled(function(){return fetch(url,{cache:'no-store',headers:{'X-RapidAPI-Key':getAK(),'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}});})
     .then(function(r){
       if(!r.ok){
         var reason=r.status===401?'Invalid API key.':r.status===403?'Not subscribed to this AeroDataBox endpoint, or quota exceeded.':r.status===429?'Rate limited — out of monthly/per-minute quota.':'Request failed (HTTP '+r.status+').';
