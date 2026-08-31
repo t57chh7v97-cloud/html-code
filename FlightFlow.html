@@ -468,6 +468,12 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
   <div id="akSaveStatus" style="display:none;font-size:12px;margin-top:6px;margin-bottom:4px"></div>
   <div class="mas"><button class="ms2" onclick="clrAK()">🗑 Clear</button><button class="mp" onclick="savAK()">✓ Save and connect</button></div>
   <div class="mdv"></div>
+  <div class="msc">🛫 FlightAPI.io — Alternate Flight Data (optional)</div>
+  <p class="mds">Free at <a href="https://flightapi.io" target="_blank">flightapi.io</a> — sign up → copy your API key. Free tier is very limited (roughly 20-100 total lookups, not renewing monthly), so this is only worth adding if AeroDataBox above is rate-limited. <strong>If both keys are saved, this one is tried first</strong> and AeroDataBox is used as the fallback.</p>
+  <div class="ir"><input type="text" id="fakIn" class="mi mono" placeholder="Paste FlightAPI.io key here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;text-security:disc" oninput="autoSaveFAK()" onblur="autoSaveFAK()"/><button class="icob" onclick="tPW('fakIn','e4')" id="e4">👁</button></div>
+  <div id="fakSaveStatus" style="display:none;font-size:12px;margin-top:6px;margin-bottom:4px"></div>
+  <div class="mas"><button class="ms2" onclick="clrFAK()">🗑 Clear</button><button class="mp" onclick="savFAK()">✓ Save and connect</button></div>
+  <div class="mdv"></div>
   <div class="msc" data-i18n="s_openweather_title">🌤 OpenWeatherMap — Weather and Air Quality</div>
   <p class="mds">Free at <a href="https://openweathermap.org/api" target="_blank">openweathermap.org</a> — 1,000 calls/day, no CORS issues, works on Codecademy ✅</p>
   <div class="ir"><input type="text" id="wkIn" class="mi mono" data-i18n-ph="ph_pasteopenweather" placeholder="Paste OpenWeatherMap key here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;text-security:disc" oninput="autoSaveWK()" onblur="autoSaveWK()"/><button class="icob" onclick="tPW('wkIn','e2')" id="e2">👁</button></div>
@@ -1306,6 +1312,7 @@ function fPP(){rPP(g('ppSrch')&&g('ppSrch').value||'');}
 function savPP(){var v=g('ppSel')&&g('ppSel').value;if(v)ls.s('ff_pp',v);}
 function getPP(){return ls.g('ff_pp')||'US';}
 function getAK(){return ls.g('ff_ak')||'';}
+function getFAK(){return ls.g('ff_fak')||'';}
 function getWK(){return ls.g('ff_wk')||'';}
 function autoSaveAK(){
   var v=g('akIn').value.trim();
@@ -1347,6 +1354,35 @@ function verifyAK(){
 }
 function savAK(){autoSaveAK();CM('mSet');if(S.parsed)doLkp();}
 function clrAK(){ls.s('ff_ak','');if(g('akIn'))g('akIn').value='';uBadge();}
+function autoSaveFAK(){
+  var v=g('fakIn').value.trim();
+  ls.s('ff_fak',v);
+  uBadge();
+  var st=g('fakSaveStatus');if(!st)return;
+  if(!v){st.style.display='none';return;}
+  st.style.display='block';st.style.color='var(--t2)';
+  st.innerHTML='✅ Saved locally ('+v.length+' characters). <span onclick="verifyFAK()" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Test this key now</span>';
+}
+// Tests against the same /airline endpoint fetchFAIo() uses, with a real
+// flight number/date so a bad key or an exhausted free-tier quota surfaces
+// immediately instead of silently falling back to AeroDataBox or demo data.
+function verifyFAK(){
+  var key=getFAK(),st=g('fakSaveStatus');if(!key||!st)return;
+  st.style.color='var(--t2)';st.innerHTML='⏳ Testing FlightAPI.io (AA 100, today)...';
+  var url='https://api.flightapi.io/airline/'+encodeURIComponent(key)+'?num=100&name=AA&date='+localDateStr(0).replace(/-/g,'');
+  fetch(url,{cache:'no-store'}).then(function(r){
+    return r.text().then(function(txt){return{ok:r.ok,status:r.status,txt:txt};});
+  }).then(function(res){
+    var j=null;try{j=JSON.parse(res.txt);}catch(e){}
+    if(res.ok&&j&&j.departure&&j.arrival){st.style.color='#166534';st.innerHTML='✅ FlightAPI.io works — test request succeeded.';return;}
+    if(res.status===401||res.status===403){st.style.color='#991b1b';st.innerHTML='❌ Invalid key, or your free-tier quota is exhausted (FlightAPI.io\'s free tier is a fixed number of total calls, it does not renew monthly).';return;}
+    if(res.status===429){st.style.color='#991b1b';st.innerHTML='❌ Rate limited by FlightAPI.io — wait and try again.';return;}
+    if(j&&j.message){st.style.color='#991b1b';st.innerHTML='❌ '+j.message;return;}
+    st.style.color='#991b1b';st.innerHTML='❌ Test failed: HTTP '+res.status+', no usable flight data returned.';
+  }).catch(function(){st.style.color='#991b1b';st.innerHTML='❌ Test failed: network or CORS error — the request never reached FlightAPI.io.';});
+}
+function savFAK(){autoSaveFAK();CM('mSet');if(S.parsed)doLkp();}
+function clrFAK(){ls.s('ff_fak','');if(g('fakIn'))g('fakIn').value='';uBadge();}
 function autoSaveWK(){ls.s('ff_wk',g('wkIn').value.trim());}
 function savWK(){autoSaveWK();CM('mSet');if(S.fd)swxR(S.fd.arr);}
 function clrWK(){ls.s('ff_wk','');if(g('wkIn'))g('wkIn').value='';}
@@ -1369,7 +1405,7 @@ function tPW(id,bid){
 // yellow "these are estimated" banner right below it.
 function uBadge(){
   var b=g('apiBdg');if(!b)return;
-  if(!getAK()){
+  if(!getAK()&&!getFAK()){
     b.innerHTML=t('status_demo');b.className='nbdg dbdg';
     b.title='No API key. Click Settings to add a free AeroDataBox key.';
     b.style.cursor='pointer';b.onclick=function(){OM('mSet');};
@@ -1547,6 +1583,122 @@ function mapLive(raw,parsed){
   var acData=acIata?ACF[acIata]:null;
   return{airline:airline,dep:depAp.iata||dep.iata||'???',arr:arrAp.iata||arr.iata||'???',status:status,depTime:dL?fmtT(dL.h,dL.min):'--',arrTime:aL?fmtT(aL.h,aL.min):'--',depTimeTag:dIsEstimated?'Estimated':'Scheduled',arrTimeTag:aIsEstimated?'Estimated':'Scheduled',depDate:dL?fmtD(dL.mo,dL.d):'',arrDate:aL?fmtD(aL.mo,aL.d):'',depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:dep.terminal||'--',arrT:arr.terminal||'--',depG:dep.gate||'--',arrG:arr.gate||'--',acName:acData?acData.n:(raw.aircraft&&raw.aircraft.model)||'Unknown',acIata:acIata,acData:acData,baggage:arr.baggageBelt?'Belt '+arr.baggageBelt:(arr.baggage||'--'),dur:dur,dlyMins:dep.delay||0,dIso:dIso,aIso:aIso,live:true,codeshare:null};
 }
+// ═══ FLIGHTAPI.IO — alternate provider (very limited free tier: user's
+// explicit choice to try it as a workaround for AeroDataBox rate limits) ═══
+function fetchFAIo(code,num,dep,dateIso){
+  var key=getFAK();if(!key)return Promise.resolve(null);
+  var dt=(dateIso||localDateStr(0)).replace(/-/g,'');
+  var url='https://api.flightapi.io/airline/'+encodeURIComponent(key)+'?num='+encodeURIComponent(num)+'&name='+encodeURIComponent(code)+'&date='+dt+(dep?'&depap='+encodeURIComponent(dep):'');
+  S_lastFetchErr=null;
+  return fetch(url,{cache:'no-store'}).then(function(r){
+    return r.text().then(function(txt){
+      var j=null;try{j=JSON.parse(txt);}catch(e){}
+      if(!r.ok){
+        var reason=r.status===401||r.status===403?'invalid key, or free-tier quota exhausted (FlightAPI.io\'s free tier is a fixed number of total calls, it does not renew monthly)':r.status===429?'FlightAPI.io rate limit hit':'HTTP '+r.status;
+        S_lastFetchErr='FlightAPI.io request failed: '+reason+'.';
+        return null;
+      }
+      if(j&&j.departure&&j.arrival)return j;
+      if(j&&j.message)S_lastFetchErr='FlightAPI.io: '+j.message;
+      else S_lastFetchErr='FlightAPI.io returned no usable flight data for this date.';
+      return null;
+    });
+  }).catch(function(){
+    S_lastFetchErr='FlightAPI.io request failed: network or CORS error.';
+    return null;
+  });
+}
+// Converts a desired LOCAL wall-clock date/time in a given timezone into the
+// correct UTC instant, accounting for that specific date's DST offset (not
+// just "now"'s offset) via a couple of Intl-based correction passes.
+function localWallToUtc(y,mo,d,h,min,tz){
+  var target=Date.UTC(y,mo-1,d,h,min,0);
+  var guess=target;
+  for(var i=0;i<2;i++){
+    var parts=new Intl.DateTimeFormat('en-US',{timeZone:tz,hour12:false,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).formatToParts(new Date(guess)).reduce(function(acc,p){acc[p.type]=p.value;return acc;},{});
+    var shownH=parts.hour==='24'?0:parseInt(parts.hour,10);
+    var shownMs=Date.UTC(parseInt(parts.year,10),parseInt(parts.month,10)-1,parseInt(parts.day,10),shownH,parseInt(parts.minute,10),0);
+    guess+=(target-shownMs);
+  }
+  return new Date(guess);
+}
+// Parses FlightAPI.io's "HH:MM, Mon DD" wall-clock strings (no year, no
+// timezone offset given) using the query date to infer the year, including
+// the Dec/Jan rollover case.
+function parseFAIoStamp(str,refDate){
+  if(!str)return null;
+  var m=str.match(/(\d{1,2}):(\d{2}),\s*([A-Za-z]{3})\s*(\d{1,2})/);
+  if(!m)return null;
+  var months={Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
+  var h=parseInt(m[1],10),min=parseInt(m[2],10),mo=months[m[3]],d=parseInt(m[4],10);
+  if(!mo)return null;
+  var refMo=refDate.getMonth()+1,y=refDate.getFullYear();
+  if(refMo===12&&mo===1)y+=1;else if(refMo===1&&mo===12)y-=1;
+  return{y:y,mo:mo,d:d,h:h,min:min};
+}
+// Maps FlightAPI.io's response shape into the same internal fd object shape
+// mapLive()/bDemo() produce. FlightAPI.io doesn't document an explicit
+// status enum (Scheduled/In Air/Landed/Delayed) the way AeroDataBox does, so
+// status here is inferred from elapsed real time vs. the flight's own
+// schedule — same approach already used by the demo fallback (bDemo()).
+function mapFAIo(raw,parsed,dep,arr,refDate){
+  var d=raw.departure||{},a=raw.arrival||{};
+  var airline=AL[parsed.code]||{n:(raw.airline&&raw.airline.name)||parsed.code,c:'#1a1a2e'};
+  var depIata=d.airportCode||dep||'???',arrIata=a.airportCode||arr||'???';
+  var dTz=(AP[depIata]||{}).tz||'UTC',aTz=(AP[arrIata]||{}).tz||'UTC';
+  var rf=refDate||new Date();
+  function toIso(directIso,estStr,schedStr,tz){
+    var iso=isoToDate(directIso);
+    if(iso)return iso;
+    var p=parseFAIoStamp(estStr||schedStr,rf);
+    return p?localWallToUtc(p.y,p.mo,p.d,p.h,p.min,tz):null;
+  }
+  var dIso=toIso(d.departureDateTime,d.estimatedTime,d.scheduledTime,dTz);
+  var aIso=toIso(a.arrivalDateTime,a.estimatedTime,a.scheduledTime,aTz);
+  var dSchedP=parseFAIoStamp(d.scheduledTime,rf),aSchedP=parseFAIoStamp(a.scheduledTime,rf);
+  var dSchedIso=dSchedP?localWallToUtc(dSchedP.y,dSchedP.mo,dSchedP.d,dSchedP.h,dSchedP.min,dTz):dIso;
+  var aSchedIso=aSchedP?localWallToUtc(aSchedP.y,aSchedP.mo,aSchedP.d,aSchedP.h,aSchedP.min,aTz):aIso;
+  var isEstDep=!!(d.estimatedTime&&d.scheduledTime&&d.estimatedTime!==d.scheduledTime);
+  var isEstArr=!!(a.estimatedTime&&a.scheduledTime&&a.estimatedTime!==a.scheduledTime);
+  var nowMs=Date.now(),status='Scheduled';
+  if(aIso&&nowMs>=aIso.getTime())status='Landed';
+  else if(dIso&&nowMs>=dIso.getTime())status='In Air';
+  else if((isEstDep||isEstArr)&&dIso&&dSchedIso&&Math.abs(dIso.getTime()-dSchedIso.getTime())>10*60000)status='Delayed';
+  var durTxt='--';
+  if(dIso&&aIso){var ms=aIso-dIso;if(ms>0&&ms<48*3600000){var mn=Math.round(ms/60000);durTxt=Math.floor(mn/60)+'h '+mn%60+'m';}}
+  function localParts(iso,tz){
+    if(!iso)return{time:'--',date:''};
+    try{
+      var parts=new Intl.DateTimeFormat('en-US',{timeZone:tz,hour12:false,hour:'2-digit',minute:'2-digit',month:'short',day:'numeric'}).formatToParts(iso).reduce(function(acc,p){acc[p.type]=p.value;return acc;},{});
+      var h=parts.hour==='24'?0:parseInt(parts.hour,10);
+      return{time:fmtT(h,parseInt(parts.minute,10)),date:parts.month+' '+parts.day};
+    }catch(e){return{time:'--',date:''};}
+  }
+  var dP=localParts(dIso,dTz),aP=localParts(aIso,aTz);
+  return{airline:airline,dep:depIata,arr:arrIata,status:status,depTime:dP.time,arrTime:aP.time,depTimeTag:isEstDep?'Estimated':'Scheduled',arrTimeTag:isEstArr?'Estimated':'Scheduled',depDate:dP.date,arrDate:aP.date,depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:d.terminal||'--',arrT:a.terminal||'--',depG:d.gate||'--',arrG:'--',acName:'Unknown',acIata:null,acData:null,baggage:a.baggage?'Belt '+a.baggage:'--',dur:durTxt,dlyMins:0,dIso:dIso,aIso:aIso,live:true,codeshare:null,provider:'flightapi'};
+}
+// Shared lookup used by both the initial fetch and each date-tab's lazy
+// fetch: tries FlightAPI.io first when a key is configured (the user's
+// explicit choice, to work around AeroDataBox's stricter free-tier rate
+// limit), then falls back to AeroDataBox. Returns {fd,all} or null.
+function fetchAnyProvider(parsed,dep,arr,dateIso){
+  var adbFallback=function(){
+    if(!getAK())return Promise.resolve(null);
+    return fetchFl(parsed.full.replace(' ',''),dateIso).then(function(rawArr){
+      var raw=pickFlight(rawArr,dep,arr);
+      if(!raw)return null;
+      return{fd:mapLive(raw,parsed),all:rawArr&&rawArr.length>1?rawArr.map(function(r){return mapLive(r,parsed);}):null};
+    });
+  };
+  if(getFAK()){
+    var refDate=dateIso?new Date(dateIso+'T12:00:00'):new Date();
+    return fetchFAIo(parsed.code,parsed.num,dep,dateIso).then(function(raw){
+      if(raw)return{fd:mapFAIo(raw,parsed,dep,arr,refDate),all:null};
+      return adbFallback();
+    });
+  }
+  return adbFallback();
+}
 // ═══ DEMO — correct UTC offset approach ═══
 function bDemo(code,num,dep,arr,offset){
   var airline=AL[code]||{n:code,c:'#1a1a2e'};
@@ -1622,13 +1774,11 @@ function localDateLabel(daysOff){
   return new Date(iso+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
 }
 function fetchTodayFlight(parsed,dep,arr){
-  if(!getAK())return Promise.resolve(null);
-  return fetchFl(parsed.full.replace(' ',''),null).then(function(rawArr){
-    var raw=pickFlight(rawArr,dep,arr);
-    if(!raw)return null;
-    var fd=mapLive(raw,parsed);
-    fd._all=rawArr&&rawArr.length>1?rawArr.map(function(r){return mapLive(r,parsed);}):null;
-    return fd;
+  if(!getAK()&&!getFAK())return Promise.resolve(null);
+  return fetchAnyProvider(parsed,dep,arr,null).then(function(res){
+    if(!res)return null;
+    res.fd._all=res.all;
+    return res.fd;
   });
 }
 // Builds the 5 date-tab entries WITHOUT fetching each one from AeroDataBox —
@@ -1665,15 +1815,11 @@ function selDt(offset){
   if(!d||!d.fd)return;
   S.selDate=offset;
   rDash(S.parsed,d.fd);
-  if(d.fetched||!getAK())return;
+  if(d.fetched||(!getAK()&&!getFAK()))return;
   var dep=d.fd.dep,arr=d.fd.arr;
-  fetchFl(S.parsed.full.replace(' ',''),d.date).then(function(rawArr){
+  fetchAnyProvider(S.parsed,dep,arr,d.date).then(function(res){
     d.fetched=true;
-    var raw=pickFlight(rawArr,dep,arr);
-    if(raw){
-      d.fd=mapLive(raw,S.parsed);
-      d.all=rawArr&&rawArr.length>1?rawArr.map(function(r){return mapLive(r,S.parsed);}):null;
-    }
+    if(res){d.fd=res.fd;d.all=res.all;}
     if(S.selDate===offset){S.fd=d.fd;rDash(S.parsed,d.fd);}
   });
 }
@@ -1989,7 +2135,7 @@ function showPicker(parsed){
   var opts=apOpts();var sv=ls.gj('ff_rt_'+parsed.full);
   var subtitle=S_lastFetchErr
     ? '<span style="color:#f59e0b;font-weight:600">'+S_lastFetchErr+'</span> Showing demo airports below instead.'
-    : (getAK() ? 'No live match for this flight — select airports for demo' : 'No API key yet - select airports for demo');
+    : ((getAK()||getFAK()) ? 'No live match for this flight — select airports for demo' : 'No API key yet - select airports for demo');
   g('dash').innerHTML='<div class="rpc"><div class="rph"><div class="rpic">📍</div><div><div class="rptl">Where is '+parsed.full+' flying?</div><div class="rpst">'+subtitle+'</div></div></div><div class="rpgr"><div><label class="rplb">From</label><select id="dSel" class="rpsl"><option value="">Select...</option>'+opts+'</select></div><div><label class="rplb">To</label><select id="aSel" class="rpsl"><option value="">Select...</option>'+opts+'</select></div></div><button class="cfb" onclick="cfRT(\''+parsed.code+'\',\''+parsed.num+'\',\''+parsed.full+'\')">Show flight</button></div>';
   if(sv){if(g('dSel'))g('dSel').value=sv.dep;if(g('aSel'))g('aSel').value=sv.arr;}
 }
@@ -2014,7 +2160,7 @@ function doLkp(){
     fetchTodayFlight(parsed,sr.dep,sr.arr).then(function(fd){doWithRoutes(parsed,sr.dep,sr.arr,fd);});
     return;
   }
-  if(getAK()){
+  if(getAK()||getFAK()){
     showLd();
     fetchTodayFlight(parsed,null,null).then(function(fd){
       if(fd){ls.sj('ff_rt_'+parsed.full,{dep:fd.dep,arr:fd.arr});doWithRoutes(parsed,fd.dep,fd.arr,fd);}
@@ -2042,7 +2188,7 @@ function rDash(parsed,fd){
   var dsMap={AA:'81%',DL:'84%',UA:'82%',WN:'83%',B6:'78%',AS:'86%',F9:'74%',NK:'72%',BA:'79%',LH:'82%',AF:'77%',KL:'83%',EK:'85%',QR:'88%',SQ:'91%',AC:'80%'};
   var ds=S.liveOT!=null?S.liveOT+'%':(dsMap[parsed.code]||null);
   var dstat=ds?'<span id="otStat" style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--s2);color:var(--t2);display:inline-block;margin-top:3px">'+ds+' '+t('ontime_stat')+'</span>':'<span id="otStat" style="font-size:11px;color:var(--tM);display:inline-block;margin-top:3px">'+t('fetching_stats')+'</span>';
-  var provName=getAK()?'AeroDataBox':null;
+  var provName=fd.provider==='flightapi'?'FlightAPI.io':(getAK()?'AeroDataBox':(getFAK()?'FlightAPI.io':null));
   var livBnr=fd.live
   ?'<div class="blive"><span class="ldot"></span>Live data via '+provName+' &mdash; updated '+new Date().toLocaleTimeString()+'<button class="bref" onclick="doLkp()">&#x21bb; Refresh</button></div>'
   :(provName
@@ -2152,15 +2298,25 @@ function rDash(parsed,fd){
 // Keeps the tracked flight's status current — otherwise a flight fetched
 // while "In Air" stays showing "In Air" forever after it actually lands,
 // since nothing else re-polls flight status once the dashboard is up.
+// Auto re-poll only runs against AeroDataBox. FlightAPI.io's free tier is
+// only ~20-100 calls total (not renewing monthly), so silently burning
+// through it every 5 minutes in the background would exhaust it almost
+// immediately — a FlightAPI.io-sourced flight still gets the manual
+// "Refresh" button in the live banner instead.
 function startStatusRefresh(parsed,fd){
   if(S.stIV)clearInterval(S.stIV);
-  if(!getAK()||!fd.live||S.selDate!==0)return;
+  if(!getAK()||fd.provider==='flightapi'||!fd.live||S.selDate!==0)return;
   if(fd.status==='Landed'||fd.status==='Cancelled')return;
   S.stIV=setInterval(function(){
     if(!S.fd||!S.parsed||S.selDate!==0){clearInterval(S.stIV);return;}
     if(S.fd.status==='Landed'||S.fd.status==='Cancelled'){clearInterval(S.stIV);return;}
-    fetchTodayFlight(S.parsed,S.fd.dep,S.fd.arr).then(function(nfd){
-      if(nfd&&S.selDate===0){S.fd=nfd;rDash(S.parsed,nfd);}
+    fetchFl(S.parsed.full.replace(' ',''),null).then(function(rawArr){
+      var raw=pickFlight(rawArr,S.fd.dep,S.fd.arr);
+      if(raw&&S.selDate===0){
+        var nfd=mapLive(raw,S.parsed);
+        nfd._all=rawArr&&rawArr.length>1?rawArr.map(function(r){return mapLive(r,S.parsed);}):null;
+        S.fd=nfd;rDash(S.parsed,nfd);
+      }
     });
   },5*60000);
 }
@@ -3068,8 +3224,9 @@ document.addEventListener('DOMContentLoaded',function(){
   var haEl=g('homeAP');if(haEl)haEl.value=ls.g('ff_home')||'';
   try{var tz=Intl.DateTimeFormat().resolvedOptions().timeZone;if(tz){S.uTz=tz;S.uCity=tz.split('/').pop().replace(/_/g,' ');}}catch(e){}
   sClk();
-  var ak=g('akIn'),wk=g('wkIn');if(ak)ak.value=getAK();if(wk)wk.value=getWK();
+  var ak=g('akIn'),wk=g('wkIn'),fak=g('fakIn');if(ak)ak.value=getAK();if(wk)wk.value=getWK();if(fak)fak.value=getFAK();
   if(ak&&ak.value){var st0=g('akSaveStatus');if(st0){st0.style.display='block';st0.style.color='var(--t2)';st0.innerHTML='✅ Saved locally ('+ak.value.length+' characters). <span onclick="verifyAK()" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Test this key now</span>';}}
+  if(fak&&fak.value){var st1=g('fakSaveStatus');if(st1){st1.style.display='block';st1.style.color='var(--t2)';st1.innerHTML='✅ Saved locally ('+fak.value.length+' characters). <span onclick="verifyFAK()" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Test this key now</span>';}}
   var sbu=g('sbUrlIn'),sbk=g('sbKeyIn');if(sbu)sbu.value=getSbUrl();if(sbk)sbk.value=getSbKey();
   if(ls.g('ff_nt')==='1'&&typeof Notification!=='undefined'&&Notification.permission==='granted'){S.notif=true;var b=g('ntBtn');if(b){b.textContent=t('dkmode_on');b.classList.add('on');}}
   S.rc=ls.gj('ff_rc')||[];rRc();
