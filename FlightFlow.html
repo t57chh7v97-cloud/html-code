@@ -465,6 +465,7 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
   <p class="mds">Free at <a href="https://rapidapi.com/aedbx-aedbx/api/aerodatabox" target="_blank">rapidapi.com → AeroDataBox</a> — sign up → Subscribe Basic (free) → copy your RapidAPI key. Works on Codecademy ✅<br><br><strong>Which key?</strong> After subscribing on RapidAPI, go to your app → "Authorization" → copy the <strong>X-RapidAPI-Key</strong> value. It looks like: <code style="font-family:monospace;background:var(--s2);padding:2px 6px;border-radius:4px">a1b2c3d4e5f6...</code></p>
   <div style="font-size:12px;color:var(--tM);background:var(--s2);border-radius:8px;padding:10px 12px;margin-bottom:12px;line-height:1.6;border-left:3px solid var(--acc)" data-i18n="aerodatabox_tier_note">Note: For the AeroDataBox API key, use the "Airport departures and arrivals (by time range) / TIER 2" key in the Flight API section.</div>
   <div class="ir"><input type="text" id="akIn" class="mi mono" data-i18n-ph="ph_pasteaerodatabox" placeholder="Paste RapidAPI key here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;text-security:disc" oninput="autoSaveAK()" onblur="autoSaveAK()"/><button class="icob" onclick="tPW('akIn','e1')" id="e1">👁</button></div>
+  <div id="akSaveStatus" style="display:none;font-size:12px;margin-top:6px;margin-bottom:4px"></div>
   <div class="mas"><button class="ms2" onclick="clrAK()">🗑 Clear</button><button class="mp" onclick="savAK()">✓ Save and connect</button></div>
   <div class="mdv"></div>
   <div class="msc" data-i18n="s_openweather_title">🌤 OpenWeatherMap — Weather and Air Quality</div>
@@ -1306,7 +1307,29 @@ function savPP(){var v=g('ppSel')&&g('ppSel').value;if(v)ls.s('ff_pp',v);}
 function getPP(){return ls.g('ff_pp')||'US';}
 function getAK(){return ls.g('ff_ak')||'';}
 function getWK(){return ls.g('ff_wk')||'';}
-function autoSaveAK(){ls.s('ff_ak',g('akIn').value.trim());uBadge();}
+function autoSaveAK(){
+  var v=g('akIn').value.trim();
+  ls.s('ff_ak',v);
+  uBadge();
+  var st=g('akSaveStatus');if(!st)return;
+  if(!v){st.style.display='none';return;}
+  st.style.display='block';st.style.color='var(--t2)';
+  st.innerHTML='✅ Saved locally ('+v.length+' characters). <span onclick="verifyAK()" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Test this key now</span>';
+}
+// Makes one real, lightweight AeroDataBox request right when you save a
+// key, so you know immediately whether it actually works — instead of
+// finding out only after tracking a flight and reading a banner.
+function verifyAK(){
+  var key=getAK(),st=g('akSaveStatus');if(!key||!st)return;
+  st.style.color='var(--t2)';st.innerHTML='⏳ Testing your key against AeroDataBox...';
+  adbThrottled(function(){return fetch('https://aerodatabox.p.rapidapi.com/airports/iata/JFK',{cache:'no-store',headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}});})
+    .then(function(r){
+      if(r.ok){st.style.color='#166534';st.innerHTML='✅ Key works — test request succeeded.';return;}
+      var reason=r.status===401?'Invalid key.':r.status===403?'Not subscribed to AeroDataBox on this key, or quota exceeded.':r.status===429?'Rate limited right now — wait a minute and try again.':'HTTP '+r.status+'.';
+      st.style.color='#991b1b';st.innerHTML='❌ Test failed: '+reason;
+    })
+    .catch(function(){st.style.color='#991b1b';st.innerHTML='❌ Test failed: network or CORS error — the request never reached AeroDataBox.';});
+}
 function savAK(){autoSaveAK();CM('mSet');if(S.parsed)doLkp();}
 function clrAK(){ls.s('ff_ak','');if(g('akIn'))g('akIn').value='';uBadge();}
 function autoSaveWK(){ls.s('ff_wk',g('wkIn').value.trim());}
@@ -3026,6 +3049,7 @@ document.addEventListener('DOMContentLoaded',function(){
   try{var tz=Intl.DateTimeFormat().resolvedOptions().timeZone;if(tz){S.uTz=tz;S.uCity=tz.split('/').pop().replace(/_/g,' ');}}catch(e){}
   sClk();
   var ak=g('akIn'),wk=g('wkIn');if(ak)ak.value=getAK();if(wk)wk.value=getWK();
+  if(ak&&ak.value){var st0=g('akSaveStatus');if(st0){st0.style.display='block';st0.style.color='var(--t2)';st0.innerHTML='✅ Saved locally ('+ak.value.length+' characters). <span onclick="verifyAK()" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Test this key now</span>';}}
   var sbu=g('sbUrlIn'),sbk=g('sbKeyIn');if(sbu)sbu.value=getSbUrl();if(sbk)sbk.value=getSbKey();
   if(ls.g('ff_nt')==='1'&&typeof Notification!=='undefined'&&Notification.permission==='granted'){S.notif=true;var b=g('ntBtn');if(b){b.textContent=t('dkmode_on');b.classList.add('on');}}
   S.rc=ls.gj('ff_rc')||[];rRc();
