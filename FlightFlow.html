@@ -1434,11 +1434,20 @@ function isoToDate(iso){
   if(!iso)return null;
   try{if(typeof iso==='object')return iso;var s=iso.trim().replace(/^(\d{4}-\d{2}-\d{2})\s+/,'$1T');var d=new Date(s);return isNaN(d)?null:d;}catch(e){return null;}
 }
-function cdTxt(dIso,status){
+// Turns a signed arrival-delay-in-minutes into a plain "was it on time"
+// phrase. threshold=5 min of slack either side reads as "on time" — real
+// schedules aren't precise to the minute, so don't nag about a 2-min gap.
+function arrDlyLabel(mins){
+  var m=mins||0;
+  if(m>5)return m+' min late';
+  if(m<-5)return Math.abs(m)+' min early';
+  return 'on time';
+}
+function cdTxt(dIso,status,arrDlyMins){
   var st=(status||'').toLowerCase();
-  if(st==='landed')return 'Landed';
+  if(st==='landed')return 'Landed — '+arrDlyLabel(arrDlyMins);
   if(st==='cancelled')return 'Cancelled';
-  if(st==='active'||st==='in air')return 'Currently in the air';
+  if(st==='active'||st==='in air')return 'Currently in the air — expected to land '+arrDlyLabel(arrDlyMins);
   var dt=isoToDate(dIso);if(!dt)return '';
   var diff=dt-Date.now();
   if(diff<-3*3600000)return 'Departed - check arrival status';
@@ -1575,7 +1584,7 @@ function mapLive(raw,parsed){
   if(dur==='--'&&raw.greatCircleDistance&&raw.greatCircleDistance.km){var km=raw.greatCircleDistance.km;var mn2=Math.max(45,Math.round(km/850*60)+35);dur=Math.floor(mn2/60)+'h '+mn2%60+'m';}
   var acIata=(raw.aircraft&&(raw.aircraft.iata||raw.aircraft.icaoType))||null;
   var acData=acIata?ACF[acIata]:null;
-  return{airline:airline,dep:depAp.iata||dep.iata||'???',arr:arrAp.iata||arr.iata||'???',status:status,depTime:dL?fmtT(dL.h,dL.min):'--',arrTime:aL?fmtT(aL.h,aL.min):'--',depTimeTag:dIsEstimated?'Estimated':'Scheduled',arrTimeTag:aIsEstimated?'Estimated':'Scheduled',depDate:dL?fmtD(dL.mo,dL.d):'',arrDate:aL?fmtD(aL.mo,aL.d):'',depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:dep.terminal||'--',arrT:arr.terminal||'--',depG:dep.gate||'--',arrG:arr.gate||'--',acName:acData?acData.n:(raw.aircraft&&raw.aircraft.model)||'Unknown',acIata:acIata,acData:acData,baggage:arr.baggageBelt?'Belt '+arr.baggageBelt:(arr.baggage||'--'),dur:dur,dlyMins:dep.delay||0,dIso:dIso,aIso:aIso,live:true,codeshare:null};
+  return{airline:airline,dep:depAp.iata||dep.iata||'???',arr:arrAp.iata||arr.iata||'???',status:status,depTime:dL?fmtT(dL.h,dL.min):'--',arrTime:aL?fmtT(aL.h,aL.min):'--',depTimeTag:dIsEstimated?'Estimated':'Scheduled',arrTimeTag:aIsEstimated?'Estimated':'Scheduled',depDate:dL?fmtD(dL.mo,dL.d):'',arrDate:aL?fmtD(aL.mo,aL.d):'',depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:dep.terminal||'--',arrT:arr.terminal||'--',depG:dep.gate||'--',arrG:arr.gate||'--',acName:acData?acData.n:(raw.aircraft&&raw.aircraft.model)||'Unknown',acIata:acIata,acData:acData,baggage:arr.baggageBelt?'Belt '+arr.baggageBelt:(arr.baggage||'--'),dur:dur,dlyMins:dep.delay||0,arrDlyMins:arr.delay||0,dIso:dIso,aIso:aIso,live:true,codeshare:null};
 }
 // ═══ FLIGHTAPI.IO — alternate provider (very limited free tier: user's
 // explicit choice to try it as a workaround for AeroDataBox rate limits) ═══
@@ -1654,6 +1663,9 @@ function mapFAIo(raw,parsed,dep,arr,refDate){
   var aSchedIso=aSchedP?localWallToUtc(aSchedP.y,aSchedP.mo,aSchedP.d,aSchedP.h,aSchedP.min,aTz):aIso;
   var isEstDep=!!(d.estimatedTime&&d.scheduledTime&&d.estimatedTime!==d.scheduledTime);
   var isEstArr=!!(a.estimatedTime&&a.scheduledTime&&a.estimatedTime!==a.scheduledTime);
+  // Arrival delay in minutes vs. scheduled — positive = late, negative = early,
+  // 0 = on time. Lets a "Landed" flight say how it actually landed, not just that it did.
+  var arrDlyMins=(aIso&&aSchedIso)?Math.round((aIso.getTime()-aSchedIso.getTime())/60000):0;
   var nowMs=Date.now(),status='Scheduled';
   if(aIso&&nowMs>=aIso.getTime())status='Landed';
   else if(dIso&&nowMs>=dIso.getTime())status='In Air';
@@ -1669,7 +1681,7 @@ function mapFAIo(raw,parsed,dep,arr,refDate){
     }catch(e){return{time:'--',date:''};}
   }
   var dP=localParts(dIso,dTz),aP=localParts(aIso,aTz);
-  return{airline:airline,dep:depIata,arr:arrIata,status:status,depTime:dP.time,arrTime:aP.time,depTimeTag:isEstDep?'Estimated':'Scheduled',arrTimeTag:isEstArr?'Estimated':'Scheduled',depDate:dP.date,arrDate:aP.date,depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:d.terminal||'--',arrT:a.terminal||'--',depG:d.gate||'--',arrG:'--',acName:'Unknown',acIata:null,acData:null,baggage:a.baggage?'Belt '+a.baggage:'--',dur:durTxt,dlyMins:0,dIso:dIso,aIso:aIso,live:true,codeshare:null,provider:'flightapi'};
+  return{airline:airline,dep:depIata,arr:arrIata,status:status,depTime:dP.time,arrTime:aP.time,depTimeTag:isEstDep?'Estimated':'Scheduled',arrTimeTag:isEstArr?'Estimated':'Scheduled',depDate:dP.date,arrDate:aP.date,depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:d.terminal||'--',arrT:a.terminal||'--',depG:d.gate||'--',arrG:'--',acName:'Unknown',acIata:null,acData:null,baggage:a.baggage?'Belt '+a.baggage:'--',dur:durTxt,dlyMins:0,arrDlyMins:arrDlyMins,dIso:dIso,aIso:aIso,live:true,codeshare:null,provider:'flightapi'};
 }
 // Shared lookup used by both the initial fetch and each date-tab's lazy
 // fetch: tries FlightAPI.io first when a key is configured (the user's
@@ -1752,10 +1764,19 @@ function bDemo(code,num,dep,arr,offset){
   // no historical coverage) the app falls back to this exact data.
   var nowMs=Date.now();
   var status=nowMs>=aIso.getTime()?'Landed':nowMs>=dIso.getTime()?'In Air':(off===0&&seed%5===3?'Delayed':'Scheduled');
+  // Synthesize a plausible arrival delay (minutes, signed) so "Landed" demo
+  // data can still say early/on-time/late instead of just "Landed" bare —
+  // most flights land close to on time, a smaller share land meaningfully
+  // early or late, matching a realistic real-world distribution.
+  var arrDlyMins=0;
+  if(status==='Landed'||status==='Delayed'||status==='In Air'){
+    var dlyRoll=seed%10;
+    arrDlyMins=dlyRoll<5?0:dlyRoll<8?(seed%4+1)*7:-(seed%3+1)*6;
+  }
   var acPools={B6:['32A','32B','32N','321','320'],WN:['738','7M8','7M9'],AA:['738','7M8','321','32B','788'],DL:['738','321','32A','788','333'],UA:['738','7M9','321','789'],AS:['738','7M9'],F9:['32A','32N'],NK:['32A','32N'],G4:['320','32A'],HA:['332','789'],BA:['77W','789','333'],LH:['333','359','788','32A'],AF:['333','359','388'],KL:['333','789','738'],EK:['77W','388','359'],QR:['77W','789','359','388'],SQ:['388','359','77W','789'],CX:['359','77W','333'],QF:['789','388'],AC:['789','333','738'],TK:['32B','789','77W'],EY:['789','359'],IB:['32A','359'],AY:['32A','789']};
   var pool=acPools[code]||['738','321','32A','789'];
   var acIata=pool[seed%pool.length];var acData=ACF[acIata];
-  return{airline:airline,dep:dep,arr:arr,status:status,depTime:fmtT(dLH,dLM),arrTime:fmtT(aLH,aLM),depDate:dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}),arrDate:aDt.toLocaleDateString('en-US',{month:'short',day:'numeric'}),depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:String(1+seed%4),arrT:String(1+(seed+2)%3),depG:'ABCDE'[seed%5]+(10+seed%30),arrG:'ABCDE'[(seed+2)%5]+(5+seed%20),acName:acData?acData.n:'Type '+acIata,acIata:acIata,acData:acData,baggage:'Carousel '+['3','7','12','4'][seed%4],dlyMins:status==='Delayed'?(seed%3+1)*15:0,dur:Math.floor(durMins/60)+'h '+durMins%60+'m',dIso:dIso,aIso:aIso,live:false,codeshare:null};
+  return{airline:airline,dep:dep,arr:arr,status:status,depTime:fmtT(dLH,dLM),arrTime:fmtT(aLH,aLM),depDate:dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}),arrDate:aDt.toLocaleDateString('en-US',{month:'short',day:'numeric'}),depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:String(1+seed%4),arrT:String(1+(seed+2)%3),depG:'ABCDE'[seed%5]+(10+seed%30),arrG:'ABCDE'[(seed+2)%5]+(5+seed%20),acName:acData?acData.n:'Type '+acIata,acIata:acIata,acData:acData,baggage:'Carousel '+['3','7','12','4'][seed%4],dlyMins:status==='Delayed'?(seed%3+1)*15:0,arrDlyMins:arrDlyMins,dur:Math.floor(durMins/60)+'h '+durMins%60+'m',dIso:dIso,aIso:aIso,live:false,codeshare:null};
 }
 // ═══ FLIGHT DATES ═══
 function localDateStr(daysOff){
@@ -2178,7 +2199,7 @@ function rDash(parsed,fd){
   S.curAp=fd.arr;
   var dI=AP[fd.dep]||{cy:fd.dep,n:fd.dep};
   var aI=AP[fd.arr]||{cy:fd.arr,n:fd.arr};
-  var cd=cdTxt(fd.dIso,fd.status);
+  var cd=cdTxt(fd.dIso,fd.status,fd.arrDlyMins);
   var dsMap={AA:'81%',DL:'84%',UA:'82%',WN:'83%',B6:'78%',AS:'86%',F9:'74%',NK:'72%',BA:'79%',LH:'82%',AF:'77%',KL:'83%',EK:'85%',QR:'88%',SQ:'91%',AC:'80%'};
   var ds=S.liveOT!=null?S.liveOT+'%':(dsMap[parsed.code]||null);
   var dstat=ds?'<span id="otStat" style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--s2);color:var(--t2);display:inline-block;margin-top:3px">'+ds+' '+t('ontime_stat')+'</span>':'<span id="otStat" style="font-size:11px;color:var(--tM);display:inline-block;margin-top:3px">'+t('fetching_stats')+'</span>';
@@ -2204,7 +2225,7 @@ function rDash(parsed,fd){
       +'<div class="alico" style="background:'+fd.airline.c+'">'+parsed.code+'</div>'
       +'<div class="alinf"><div class="fnum">'+parsed.full+'</div><div class="aln">'+fd.airline.n+'</div><div>'+dstat+'</div></div>'
       +'<div class="alr">'
-        +'<span class="sb '+sbc(fd.status)+'">'+fd.status+(fd.dlyMins?' +'+fd.dlyMins+'m':'')+(fd.live?'':' (est.)')+'</span>'
+        +'<span class="sb '+sbc(fd.status)+'">'+(fd.status==='Landed'?'Landed'+(fd.arrDlyMins>5?' +'+fd.arrDlyMins+'m':fd.arrDlyMins<-5?' '+fd.arrDlyMins+'m':''):fd.status+(fd.dlyMins?' +'+fd.dlyMins+'m':''))+(fd.live?'':' (est.)')+'</span>'
       +'</div>'
     +'</div>'
     +'<div class="rr">'
