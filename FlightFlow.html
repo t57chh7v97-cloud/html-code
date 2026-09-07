@@ -1372,7 +1372,12 @@ function verifyFAK(){
     if(res.status===401||res.status===403){st.style.color='#991b1b';st.innerHTML='❌ Invalid key, or your free-tier quota is exhausted (FlightAPI.io\'s free tier is a fixed number of total calls, it does not renew monthly).';return;}
     if(res.status===429){st.style.color='#991b1b';st.innerHTML='❌ Rate limited by FlightAPI.io — wait and try again.';return;}
     if(j&&j.message){st.style.color='#991b1b';st.innerHTML='❌ '+j.message;return;}
-    st.style.color='#991b1b';st.innerHTML='❌ Test failed: HTTP '+res.status+', no usable flight data returned.';
+    // Shows the actual raw response instead of a generic message — the live
+    // response shape doesn't always match FlightAPI.io's own docs, so seeing
+    // the real body is the only reliable way to fix the mapping.
+    var esc=function(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+    var snippet=esc(res.txt).slice(0,500);
+    st.style.color='#991b1b';st.innerHTML='❌ HTTP '+res.status+' but the response wasn\'t shaped as expected. Raw response (copy this to report it):<div style="margin-top:6px;padding:8px;background:var(--s2);border-radius:6px;font-family:monospace;font-size:10px;white-space:pre-wrap;word-break:break-all;max-height:150px;overflow:auto;user-select:all">'+snippet+(res.txt.length>500?'…':'')+'</div>';
   }).catch(function(){st.style.color='#991b1b';st.innerHTML='❌ Test failed: network or CORS error — the request never reached FlightAPI.io.';});
 }
 function savFAK(){autoSaveFAK();CM('mSet');if(S.parsed)doLkp();}
@@ -1603,7 +1608,10 @@ function fetchFAIo(code,num,dep,dateIso){
       }
       if(j&&j.departure&&j.arrival)return j;
       if(j&&j.message)S_lastFetchErr='FlightAPI.io: '+j.message;
-      else S_lastFetchErr='FlightAPI.io returned no usable flight data for this date.';
+      else{
+        var escTxt=txt.slice(0,300).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        S_lastFetchErr='FlightAPI.io returned no usable flight data for this date. Raw response: '+escTxt;
+      }
       return null;
     });
   }).catch(function(){
