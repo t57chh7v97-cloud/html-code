@@ -1609,10 +1609,17 @@ function normFAIo(j){
   }
   return(out.departure||out.arrival)?out:null;
 }
+// NOTE: depap (departure airport) is deliberately NOT sent. FlightAPI.io
+// only needs it to disambiguate duplicate flight numbers, and the value we
+// have is often wrong — on the date tabs it comes from demo data, and on a
+// saved route it may have been picked by hand in the airport picker. A
+// mismatched depap returns an empty result, which silently degraded every
+// lookup to estimated data. The key-test request omitted it and worked,
+// which is what isolated this.
 function fetchFAIo(code,num,dep,dateIso){
   var key=getFAK();if(!key)return Promise.resolve(null);
   var dt=(dateIso||localDateStr(0)).replace(/-/g,'');
-  var url='https://api.flightapi.io/airline/'+encodeURIComponent(key)+'?num='+encodeURIComponent(num)+'&name='+encodeURIComponent(code)+'&date='+dt+(dep?'&depap='+encodeURIComponent(dep):'');
+  var url='https://api.flightapi.io/airline/'+encodeURIComponent(key)+'?num='+encodeURIComponent(num)+'&name='+encodeURIComponent(code)+'&date='+dt;
   S_lastFetchErr=null;
   return fetch(url,{cache:'no-store'}).then(function(r){
     return r.text().then(function(txt){
@@ -2214,7 +2221,12 @@ function doLkp(){
   var sr=ls.gj('ff_rt_'+parsed.full);
   if(sr&&sr.dep&&sr.arr){
     showLd();
-    fetchTodayFlight(parsed,sr.dep,sr.arr).then(function(fd){doWithRoutes(parsed,sr.dep,sr.arr,fd);});
+    fetchTodayFlight(parsed,sr.dep,sr.arr).then(function(fd){
+      // Trust the live route over the saved one — a saved route can be a
+      // stale hand-picked guess from before live data was working.
+      if(fd&&fd.dep&&fd.arr&&fd.dep!=='???'&&fd.arr!=='???'&&(fd.dep!==sr.dep||fd.arr!==sr.arr))ls.sj('ff_rt_'+parsed.full,{dep:fd.dep,arr:fd.arr});
+      doWithRoutes(parsed,fd&&fd.dep&&fd.dep!=='???'?fd.dep:sr.dep,fd&&fd.arr&&fd.arr!=='???'?fd.arr:sr.arr,fd);
+    });
     return;
   }
   if(getAK()||getFAK()){
