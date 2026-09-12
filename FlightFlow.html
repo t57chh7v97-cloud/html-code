@@ -1368,7 +1368,7 @@ function verifyFAK(){
     return r.text().then(function(txt){return{ok:r.ok,status:r.status,txt:txt};});
   }).then(function(res){
     var j=null;try{j=JSON.parse(res.txt);}catch(e){}
-    if(res.ok&&j&&j.departure&&j.arrival){st.style.color='#166534';st.innerHTML='✅ FlightAPI.io works — test request succeeded.';return;}
+    if(res.ok&&normFAIo(j)){st.style.color='#166534';st.innerHTML='✅ FlightAPI.io works — test request succeeded.';return;}
     if(res.status===401||res.status===403){st.style.color='#991b1b';st.innerHTML='❌ Invalid key, or your free-tier quota is exhausted (FlightAPI.io\'s free tier is a fixed number of total calls, it does not renew monthly).';return;}
     if(res.status===429){st.style.color='#991b1b';st.innerHTML='❌ Rate limited by FlightAPI.io — wait and try again.';return;}
     if(j&&j.message){st.style.color='#991b1b';st.innerHTML='❌ '+j.message;return;}
@@ -1593,6 +1593,22 @@ function mapLive(raw,parsed){
 }
 // ═══ FLIGHTAPI.IO — alternate provider (very limited free tier: user's
 // explicit choice to try it as a workaround for AeroDataBox rate limits) ═══
+// FlightAPI.io's live response is an ARRAY of single-key wrapper objects —
+// [{departure:{...}},{arrival:{...}}] — NOT the flat {departure,arrival}
+// object their own documentation describes. Flatten whatever arrives into
+// one object so the mapper has a single shape to work against.
+function normFAIo(j){
+  if(!j||typeof j!=='object')return null;
+  if(!Array.isArray(j))return(j.departure||j.arrival)?j:null;
+  var out={};
+  for(var i=0;i<j.length;i++){
+    var el=j[i];
+    if(!el||typeof el!=='object')continue;
+    if(el.departure&&!out.departure)out.departure=el.departure;
+    if(el.arrival&&!out.arrival)out.arrival=el.arrival;
+  }
+  return(out.departure||out.arrival)?out:null;
+}
 function fetchFAIo(code,num,dep,dateIso){
   var key=getFAK();if(!key)return Promise.resolve(null);
   var dt=(dateIso||localDateStr(0)).replace(/-/g,'');
@@ -1606,7 +1622,8 @@ function fetchFAIo(code,num,dep,dateIso){
         S_lastFetchErr='FlightAPI.io request failed: '+reason+'.';
         return null;
       }
-      if(j&&j.departure&&j.arrival)return j;
+      var norm=normFAIo(j);
+      if(norm)return norm;
       if(j&&j.message)S_lastFetchErr='FlightAPI.io: '+j.message;
       else{
         var escTxt=txt.slice(0,300).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1669,17 +1686,34 @@ function mapFAIo(raw,parsed,dep,arr,refDate){
   var dSchedP=parseFAIoStamp(d.scheduledTime,rf),aSchedP=parseFAIoStamp(a.scheduledTime,rf);
   var dSchedIso=dSchedP?localWallToUtc(dSchedP.y,dSchedP.mo,dSchedP.d,dSchedP.h,dSchedP.min,dTz):dIso;
   var aSchedIso=aSchedP?localWallToUtc(aSchedP.y,aSchedP.mo,aSchedP.d,aSchedP.h,aSchedP.min,aTz):aIso;
-  var isEstDep=!!(d.estimatedTime&&d.scheduledTime&&d.estimatedTime!==d.scheduledTime);
-  var isEstArr=!!(a.estimatedTime&&a.scheduledTime&&a.estimatedTime!==a.scheduledTime);
-  // Arrival delay in minutes vs. scheduled — positive = late, negative = early,
+  // estimatedTime is frequently null even when the real time has moved, so
+  // derive "this is a revised time" from the actual-vs-scheduled gap instead.
+  var isEstDep=!!(dIso&&dSchedIso&&Math.abs(dIso.getTime()-dSchedIso.getTime())>2*60000);
+  var isEstArr=!!(aIso&&aSchedIso&&Math.abs(aIso.getTime()-aSchedIso.getTime())>2*60000);
+  // Delay in minutes vs. scheduled — positive = late, negative = early,
   // 0 = on time. Lets a "Landed" flight say how it actually landed, not just that it did.
   var arrDlyMins=(aIso&&aSchedIso)?Math.round((aIso.getTime()-aSchedIso.getTime())/60000):0;
-  var nowMs=Date.now(),status='Scheduled';
-  if(aIso&&nowMs>=aIso.getTime())status='Landed';
+  var depDlyMins=(dIso&&dSchedIso)?Math.round((dIso.getTime()-dSchedIso.getTime())/60000):0;
+  // Real movement timestamps beat guessing from the clock: onGroundTime /
+  // inGateTime only exist once the flight has actually arrived, and
+  // offGroundTime only once it has actually taken off. outGateTime is NOT
+  // used as a departure signal — it can carry a predicted pushback time for
+  // a flight that hasn't moved yet, which would falsely read as "In Air".
+  var hasLanded=!!(a.onGroundTime||a.inGateTime),hasTakenOff=!!d.offGroundTime;
+  var nowMs=Date.now(),status;
+  if(hasLanded)status='Landed';
+  else if(hasTakenOff)status='In Air';
+  else if(aIso&&nowMs>=aIso.getTime())status='Landed';
   else if(dIso&&nowMs>=dIso.getTime())status='In Air';
-  else if((isEstDep||isEstArr)&&dIso&&dSchedIso&&Math.abs(dIso.getTime()-dSchedIso.getTime())>10*60000)status='Delayed';
+  else status=depDlyMins>10?'Delayed':'Scheduled';
   var durTxt='--';
   if(dIso&&aIso){var ms=aIso-dIso;if(ms>0&&ms<48*3600000){var mn=Math.round(ms/60000);durTxt=Math.floor(mn/60)+'h '+mn%60+'m';}}
+  // Fall back to the API's own "7 hr 5 min" duration string when the two
+  // timestamps can't produce one.
+  if(durTxt==='--'&&d.duration){
+    var dh=d.duration.match(/(\d+)\s*hr/),dm=d.duration.match(/(\d+)\s*min/);
+    if(dh||dm)durTxt=(dh?parseInt(dh[1],10):0)+'h '+(dm?parseInt(dm[1],10):0)+'m';
+  }
   function localParts(iso,tz){
     if(!iso)return{time:'--',date:''};
     try{
@@ -1689,7 +1723,7 @@ function mapFAIo(raw,parsed,dep,arr,refDate){
     }catch(e){return{time:'--',date:''};}
   }
   var dP=localParts(dIso,dTz),aP=localParts(aIso,aTz);
-  return{airline:airline,dep:depIata,arr:arrIata,status:status,depTime:dP.time,arrTime:aP.time,depTimeTag:isEstDep?'Estimated':'Scheduled',arrTimeTag:isEstArr?'Estimated':'Scheduled',depDate:dP.date,arrDate:aP.date,depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:d.terminal||'--',arrT:a.terminal||'--',depG:d.gate||'--',arrG:'--',acName:'Unknown',acIata:null,acData:null,baggage:a.baggage?'Belt '+a.baggage:'--',dur:durTxt,dlyMins:0,arrDlyMins:arrDlyMins,dIso:dIso,aIso:aIso,live:true,codeshare:null,provider:'flightapi'};
+  return{airline:airline,dep:depIata,arr:arrIata,status:status,depTime:dP.time,arrTime:aP.time,depTimeTag:isEstDep?'Estimated':'Scheduled',arrTimeTag:isEstArr?'Estimated':'Scheduled',depDate:dP.date,arrDate:aP.date,depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:d.terminal||'--',arrT:a.terminal||'--',depG:d.gate||'--',arrG:a.gate||'--',acName:'Unknown',acIata:null,acData:null,baggage:a.baggage?'Belt '+a.baggage:'--',dur:durTxt,dlyMins:depDlyMins>0?depDlyMins:0,arrDlyMins:arrDlyMins,dIso:dIso,aIso:aIso,live:true,codeshare:null,provider:'flightapi'};
 }
 // Shared lookup used by both the initial fetch and each date-tab's lazy
 // fetch: tries FlightAPI.io first when a key is configured (the user's
