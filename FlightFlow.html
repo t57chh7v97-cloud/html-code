@@ -116,6 +116,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .fnum{font-size:20px;font-weight:800;color:var(--txt);letter-spacing:1px}
 .aln{font-size:13px;color:var(--t2);margin-top:1px}
 .alr{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
+.aldw{margin:-8px 0 16px}
+.aldt{width:100%;display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--bor);border-radius:9px;padding:8px 11px;font-size:12px;font-weight:700;color:var(--t2);cursor:pointer;font-family:inherit;text-align:left}
+.aldt:hover{border-color:var(--acc);color:var(--txt)}
+.aldc{margin-left:auto;font-size:10px;transition:transform .18s}
+.aldb{padding:11px 12px 2px;font-size:12.5px;color:var(--t2);line-height:1.62}
+.aldm{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
+.aldp{background:var(--s2);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;color:var(--t2);white-space:nowrap}
 .sb{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;display:inline-block}
 .sot{background:#dcfce7;color:#166534}
 .sdl{background:#fef3c7;color:#5c4400}
@@ -778,6 +785,61 @@ function drawQR(el,text){
 
 // ═══ DATA ═══
 var AL={AA:{n:'American Airlines',c:'#c8102e'},DL:{n:'Delta Air Lines',c:'#003087'},UA:{n:'United Airlines',c:'#005daa'},WN:{n:'Southwest Airlines',c:'#304cb2'},B6:{n:'JetBlue Airways',c:'#003876'},AS:{n:'Alaska Airlines',c:'#0074c8'},F9:{n:'Frontier Airlines',c:'#11754e'},NK:{n:'Spirit Airlines',c:'#c4932a'},G4:{n:'Allegiant Air',c:'#ff6900'},HA:{n:'Hawaiian Airlines',c:'#6b1c6b'},BA:{n:'British Airways',c:'#003087'},LH:{n:'Lufthansa',c:'#05164d'},AF:{n:'Air France',c:'#002157'},KL:{n:'KLM',c:'#00a1de'},EK:{n:'Emirates',c:'#c60c30'},QR:{n:'Qatar Airways',c:'#5c0632'},SQ:{n:'Singapore Airlines',c:'#2b3595'},CX:{n:'Cathay Pacific',c:'#006564'},QF:{n:'Qantas',c:'#e40000'},AC:{n:'Air Canada',c:'#d22730'},AM:{n:'Aeromexico',c:'#006699'},IB:{n:'Iberia',c:'#c00c18'},TK:{n:'Turkish Airlines',c:'#c8102e'},LX:{n:'Swiss International',c:'#e63329'},OS:{n:'Austrian Airlines',c:'#c8102e'},SK:{n:'SAS',c:'#003087'},AY:{n:'Finnair',c:'#003087'},FR:{n:'Ryanair',c:'#073590'},U2:{n:'easyJet',c:'#ff6600'},JL:{n:'Japan Airlines',c:'#c8102e'},NH:{n:'ANA',c:'#003087'},KE:{n:'Korean Air',c:'#00256c'},OZ:{n:'Asiana Airlines',c:'#e40000'},MH:{n:'Malaysia Airlines',c:'#003087'},TG:{n:'Thai Airways',c:'#6b0072'},AI:{n:'Air India',c:'#c8102e'},ET:{n:'Ethiopian Airlines',c:'#1a6b1a'},VS:{n:'Virgin Atlantic',c:'#e50000'},EY:{n:'Etihad Airways',c:'#bd8b13'},MS:{n:'EgyptAir',c:'#003087'},SV:{n:'Saudia',c:'#006600'},CA:{n:'Air China',c:'#cc0000'},MU:{n:'China Eastern',c:'#00529b'},CZ:{n:'China Southern',c:'#0070bb'},WS:{n:'WestJet',c:'#0e6db4'},CM:{n:'Copa Airlines',c:'#003087'},AV:{n:'Avianca',c:'#e40000'},LA:{n:'LATAM Airlines',c:'#2b6cb0'},VN:{n:'Vietnam Airlines',c:'#006633'},PR:{n:'Philippine Airlines',c:'#003087'}};
+
+// Airline profiles shown in the "About this airline" panel on the flight card.
+// f=founded, h=main hub, a=alliance, d=short description.
+var ALD={
+AA:{f:'1930',h:'Dallas/Fort Worth (DFW)',a:'oneworld',d:'The largest airline in the world by fleet size and passengers carried. Formed from a merger of dozens of small carriers, it grew again through its 2013 merger with US Airways.'},
+DL:{f:'1925',h:'Atlanta (ATL)',a:'SkyTeam',d:'Started as a crop-dusting outfit in Georgia before becoming one of the big three US carriers. Its Atlanta hub is the busiest airport in the world.'},
+UA:{f:'1926',h:'Chicago O\'Hare (ORD)',a:'Star Alliance',d:'Traces its roots to some of the earliest US airmail routes. Operates the most extensive global route network of any American carrier, with strong Pacific coverage.'},
+WN:{f:'1967',h:'Dallas Love Field (DAL)',a:'None',d:'The airline that invented the modern low-cost model, flying only Boeing 737s to keep costs down. Long known for free checked bags and a famously informal cabin culture.'},
+B6:{f:'1998',h:'New York JFK',a:'None',d:'A New York-based carrier that built its reputation on more legroom than rivals, free WiFi, and its premium Mint cabin on transcontinental and transatlantic routes.'},
+AS:{f:'1932',h:'Seattle-Tacoma (SEA)',a:'oneworld',d:'The dominant carrier on the US West Coast, with deep Alaska service from its bush-flying origins. Acquired Hawaiian Airlines in 2024.'},
+F9:{f:'1994',h:'Denver (DEN)',a:'None',d:'An ultra-low-cost carrier selling cheap base fares and charging separately for nearly everything else. Recognisable for the animal portraits painted on its tails.'},
+NK:{f:'1983',h:'Fort Lauderdale (FLL)',a:'None',d:'The most aggressively ultra-low-cost airline in the US, packing seats tightly and unbundling every extra. Filed for bankruptcy protection in 2024.'},
+G4:{f:'1997',h:'Las Vegas (LAS)',a:'None',d:'A leisure-focused carrier connecting small US cities directly to holiday destinations, often just a few times a week, avoiding the big hubs entirely.'},
+HA:{f:'1929',h:'Honolulu (HNL)',a:'None',d:'Hawaii\'s flag carrier and one of the oldest US airlines, linking the islands with the mainland, Asia and Oceania. Now part of Alaska Air Group.'},
+BA:{f:'1974',h:'London Heathrow (LHR)',a:'oneworld',d:'The UK flag carrier, created by merging BOAC and BEA, though its lineage reaches back to 1919. Once operated Concorde on supersonic transatlantic routes.'},
+LH:{f:'1953',h:'Frankfurt (FRA)',a:'Star Alliance',d:'Germany\'s flag carrier and the anchor of a group that also owns Swiss, Austrian and Brussels Airlines. A founding member of Star Alliance.'},
+AF:{f:'1933',h:'Paris Charles de Gaulle (CDG)',a:'SkyTeam',d:'France\'s flag carrier, merged with KLM in 2004 to form Europe\'s largest airline group. Flew Concorde alongside British Airways until 2003.'},
+KL:{f:'1919',h:'Amsterdam Schiphol (AMS)',a:'SkyTeam',d:'The oldest airline still flying under its original name. Its Amsterdam hub is built around efficiently connecting passengers between continents.'},
+EK:{f:'1985',h:'Dubai (DXB)',a:'None',d:'Built Dubai into a global connecting point in a single generation. The world\'s largest operator of the Airbus A380 and an all-widebody fleet.'},
+QR:{f:'1993',h:'Doha Hamad (DOH)',a:'oneworld',d:'Qatar\'s state carrier, repeatedly rated among the world\'s best. Its Qsuite business class introduced double beds and closing doors to the cabin.'},
+SQ:{f:'1947',h:'Singapore Changi (SIN)',a:'Star Alliance',d:'A byword for premium service, consistently near the top of global airline rankings. Operates the world\'s longest scheduled flight, Singapore to New York.'},
+CX:{f:'1946',h:'Hong Kong (HKG)',a:'oneworld',d:'Hong Kong\'s flag carrier and a major cargo operator, founded by an American and an Australian flying surplus war transports.'},
+QF:{f:'1920',h:'Sydney (SYD)',a:'oneworld',d:'One of the oldest airlines in the world, nicknamed the Flying Kangaroo. Pioneered ultra-long-haul flying, including nonstop Perth to London.'},
+AC:{f:'1937',h:'Toronto Pearson (YYZ)',a:'Star Alliance',d:'Canada\'s flag carrier, founded as Trans-Canada Air Lines, serving more destinations than any other Canadian airline.'},
+AM:{f:'1934',h:'Mexico City (MEX)',a:'SkyTeam',d:'Mexico\'s flag carrier and one of Latin America\'s oldest airlines, with a joint venture tying its US network closely to Delta.'},
+IB:{f:'1927',h:'Madrid Barajas (MAD)',a:'oneworld',d:'Spain\'s flag carrier and the traditional bridge between Europe and Latin America. Part of IAG alongside British Airways.'},
+TK:{f:'1933',h:'Istanbul (IST)',a:'Star Alliance',d:'Flies to more countries than any other airline, using Istanbul\'s position between Europe, Asia and Africa as a connecting hub.'},
+LX:{f:'2002',h:'Zurich (ZRH)',a:'Star Alliance',d:'Switzerland\'s national airline, formed from the remains of Swissair after its 2001 collapse and now owned by the Lufthansa Group.'},
+OS:{f:'1957',h:'Vienna (VIE)',a:'Star Alliance',d:'Austria\'s flag carrier, specialising in connections to Central and Eastern Europe. Part of the Lufthansa Group.'},
+SK:{f:'1946',h:'Copenhagen (CPH)',a:'SkyTeam',d:'The joint flag carrier of Sweden, Denmark and Norway. Left Star Alliance for SkyTeam in 2024 after Air France-KLM took a stake.'},
+AY:{f:'1923',h:'Helsinki (HEL)',a:'oneworld',d:'One of the world\'s oldest continuously operating airlines. Its Helsinki hub offers unusually short Europe-to-Asia routings over the polar region.'},
+FR:{f:'1984',h:'Dublin (DUB)',a:'None',d:'Europe\'s largest airline by passengers, famous for rock-bottom fares, secondary airports, and charging for nearly every extra.'},
+U2:{f:'1995',h:'London Luton (LTN)',a:'None',d:'A British low-cost carrier and Ryanair\'s main rival, differing by flying mostly into major primary airports across Europe.'},
+JL:{f:'1951',h:'Tokyo Haneda (HND)',a:'oneworld',d:'Japan\'s first postwar airline, known for meticulous service and punctuality. Restructured after a 2010 bankruptcy into one of the most profitable carriers in Asia.'},
+NH:{f:'1952',h:'Tokyo Haneda (HND)',a:'Star Alliance',d:'Japan\'s largest airline by fleet, and the launch customer for the Boeing 787 Dreamliner. Consistently holds a five-star service rating.'},
+KE:{f:'1969',h:'Seoul Incheon (ICN)',a:'SkyTeam',d:'South Korea\'s flag carrier and a SkyTeam founding member, with a large transpacific network and a major cargo arm.'},
+OZ:{f:'1988',h:'Seoul Incheon (ICN)',a:'Star Alliance',d:'South Korea\'s second carrier, long a service-award winner. Being absorbed into Korean Air following a multi-year merger approval process.'},
+MH:{f:'1947',h:'Kuala Lumpur (KUL)',a:'oneworld',d:'Malaysia\'s flag carrier, serving Southeast Asia, Australia and beyond from its Kuala Lumpur base.'},
+TG:{f:'1960',h:'Bangkok Suvarnabhumi (BKK)',a:'Star Alliance',d:'Thailand\'s flag carrier, known for its orchid-purple livery and traditional Thai cabin service.'},
+AI:{f:'1932',h:'Delhi (DEL)',a:'Star Alliance',d:'India\'s flag carrier, founded by J.R.D. Tata. Returned to Tata Group ownership in 2022 and has since placed some of the largest aircraft orders in history.'},
+ET:{f:'1945',h:'Addis Ababa (ADD)',a:'Star Alliance',d:'Africa\'s largest and most profitable airline, running a hub that connects much of the continent to Asia, Europe and the Americas.'},
+VS:{f:'1984',h:'London Heathrow (LHR)',a:'SkyTeam',d:'Founded by Richard Branson to challenge British Airways on transatlantic routes, with a long record of cabin innovations including the onboard bar.'},
+EY:{f:'2003',h:'Abu Dhabi (AUH)',a:'None',d:'The UAE\'s second major carrier, which once offered The Residence, a three-room private suite with a butler on the A380.'},
+MS:{f:'1932',h:'Cairo (CAI)',a:'Star Alliance',d:'The first airline founded in Africa and the Middle East, and the seventh in the world. Egypt\'s flag carrier.'},
+SV:{f:'1945',h:'Jeddah (JED)',a:'SkyTeam',d:'Saudi Arabia\'s flag carrier, which began with a single DC-3 gifted by the US. Carries huge pilgrim traffic to Jeddah and Medina.'},
+CA:{f:'1988',h:'Beijing Capital (PEK)',a:'Star Alliance',d:'China\'s designated flag carrier and the only one permitted to operate state VIP flights for the country\'s leadership.'},
+MU:{f:'1988',h:'Shanghai Pudong (PVG)',a:'SkyTeam',d:'One of China\'s big three state carriers, built around Shanghai, the country\'s main commercial gateway.'},
+CZ:{f:'1988',h:'Guangzhou (CAN)',a:'None',d:'The largest Chinese airline by fleet and passengers, with a major hub linking China to Southeast Asia and Oceania. Left SkyTeam in 2019.'},
+WS:{f:'1996',h:'Calgary (YYC)',a:'None',d:'Canada\'s main low-cost challenger to Air Canada, started by a small group of Calgary entrepreneurs modelling Southwest.'},
+CM:{f:'1947',h:'Panama City (PTY)',a:'Star Alliance',d:'Operates the Hub of the Americas, using Panama\'s central geography to connect North and South America with unusually reliable punctuality.'},
+AV:{f:'1919',h:'Bogota (BOG)',a:'Star Alliance',d:'The second-oldest airline still operating, founded in Colombia as SCADTA. Now part of the Abra Group with GOL.'},
+LA:{f:'1929',h:'Santiago (SCL)',a:'None',d:'Latin America\'s largest airline group, formed by the 2012 merger of Chile\'s LAN and Brazil\'s TAM. Left oneworld in 2020 after a Delta investment.'},
+VN:{f:'1956',h:'Hanoi (HAN)',a:'SkyTeam',d:'Vietnam\'s flag carrier, which grew rapidly from a small state fleet into a modern operator of 787s and A350s.'},
+PR:{f:'1941',h:'Manila (MNL)',a:'None',d:'Asia\'s first commercial airline, serving the large Filipino diaspora with long-haul routes to North America and the Middle East.'}
+};
 
 var AP={
   JFK:{cy:'New York',n:'JFK Intl',lat:40.6413,lon:-73.7789,cu:'USD',tz:'America/New_York',lg:'English',pl:'Type A/B',tp:'18-20%',em:'911',emb:{police:'911',fire:'911',med:'911',intl:'911'},wf:'Free WiFi',nt:'AirTrain to subway. Uber/Lyft curbside Level 1.'},
@@ -2053,6 +2115,31 @@ function doLkp(){
 function fetchLiveOT(depIata){var key=getAK();if(!key)return;adbThrottled(function(){return fetch('https://aerodatabox.p.rapidapi.com/airports/iata/'+depIata+'/stats/flights/departure?withTime=false',{cache:'no-store',headers:{'X-RapidAPI-Key':key,'X-RapidAPI-Host':'aerodatabox.p.rapidapi.com'}});}).then(function(r){return r.ok?r.json():null;}).then(function(j){if(!j||j.onTimePercent==null)return;S.liveOT=Math.round(j.onTimePercent);if(!S.otCache)S.otCache={};S.otCache[depIata]={pct:S.liveOT,ts:Date.now()};var el=g('otStat');if(el){var pct=S.liveOT;el.style.background=pct>=85?'#dcfce7':pct>=75?'#fef9c3':'#fee2e2';el.style.color=pct>=85?'#166534':pct>=75?'#5c4400':'#991b1b';el.textContent='Live: '+pct+'% on-time';}}).catch(function(){});}
 
 // ═══ RENDER DASHBOARD ═══
+// Collapsed by default so it never pushes the flight times below the fold;
+// the open/closed choice persists so someone who wants it always sees it.
+function rAlDesc(code,name){
+  var a=ALD[code];if(!a)return '';
+  var open=ls.g('ff_aldopen')==='true';
+  var esc=function(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+  return '<div class="aldw">'
+    +'<button class="aldt" onclick="tgAlDesc()">&#8505;&#65039; About '+esc(name)+'<span class="aldc" id="aldChev" style="transform:rotate('+(open?'180deg':'0deg')+')">&#9662;</span></button>'
+    +'<div class="aldb" id="aldBody" style="display:'+(open?'block':'none')+'">'
+      +'<div class="aldm">'
+        +'<span class="aldp">Founded '+esc(a.f)+'</span>'
+        +'<span class="aldp">Hub: '+esc(a.h)+'</span>'
+        +'<span class="aldp">'+(a.a==='None'?'No alliance':esc(a.a))+'</span>'
+      +'</div>'
+      +esc(a.d)
+    +'</div>'
+  +'</div>';
+}
+function tgAlDesc(){
+  var b=g('aldBody'),c=g('aldChev');if(!b)return;
+  var open=b.style.display==='none';
+  b.style.display=open?'block':'none';
+  if(c)c.style.transform='rotate('+(open?'180deg':'0deg')+')';
+  ls.s('ff_aldopen',open?'true':'false');
+}
 function collapseHero(){
   var ckb=g('ckbWrap');if(ckb)ckb.style.display='none';
   var hi=g('heroIntro');if(hi)hi.style.display='none';
@@ -2094,6 +2181,7 @@ function rDash(parsed,fd){
         +'<span class="sb '+sbc(fd.status)+'">'+(fd.status==='Landed'?'Landed'+(fd.arrDlyMins>5?' +'+fd.arrDlyMins+'m':fd.arrDlyMins<-5?' '+fd.arrDlyMins+'m':''):fd.status+(fd.dlyMins?' +'+fd.dlyMins+'m':''))+(fd.live?'':' (est.)')+'</span>'
       +'</div>'
     +'</div>'
+    +rAlDesc(parsed.code,fd.airline.n)
     +'<div class="rr">'
       +'<div class="apb">'
         +'<div class="iata" onclick="openAP(\''+fd.dep+'\')" title="Airport info">'+fd.dep+'</div>'
