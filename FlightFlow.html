@@ -1421,16 +1421,28 @@ function rPP(q){var sel=g('ppSel');if(!sel)return;var f=q.toLowerCase();var list
 function fPP(){rPP(g('ppSrch')&&g('ppSrch').value||'');}
 function savPP(){var v=g('ppSel')&&g('ppSel').value;if(v)ls.s('ff_pp',v);}
 function getPP(){return ls.g('ff_pp')||'US';}
-function getAK(){return ls.g('ff_ak')||'';}
+// Copy-pasting a key from a web page can drag in invisible characters
+// (zero-width spaces, non-breaking spaces, stray newlines). Those are
+// invalid in an HTTP header value, so fetch() throws BEFORE sending
+// anything — which looks exactly like the network being down. An API key is
+// always printable ASCII, so anything outside that range is paste debris.
+function cleanKey(v){return String(v||'').replace(/[^\x21-\x7E]/g,'');}
+// Sanitising on read as well as write means a key saved by an older version
+// (or with debris already in it) is repaired without the user re-pasting it.
+function getAK(){return cleanKey(ls.g('ff_ak'));}
 function getWK(){return ls.g('ff_wk')||'';}
 function autoSaveAK(){
-  var v=g('akIn').value.trim();
+  var rawV=g('akIn').value;
+  var v=cleanKey(rawV);
+  var stripped=rawV.trim().length-v.length;
   ls.s('ff_ak',v);
   uBadge();
   var st=g('akSaveStatus');if(!st)return;
   if(!v){st.style.display='none';return;}
   st.style.display='block';st.style.color='var(--t2)';
-  st.innerHTML='✅ Saved locally ('+v.length+' characters). <span onclick="verifyAK()" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Test this key now</span>';
+  st.innerHTML='✅ Saved locally ('+v.length+' characters).'
+    +(stripped>0?' <span style="color:#b45309">Removed '+stripped+' invisible character'+(stripped===1?'':'s')+' from the paste.</span>':'')
+    +' <span onclick="verifyAK()" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Test this key now</span>';
 }
 // Makes one real request against the EXACT endpoint fetchFl() uses for
 // flight tracking (not just any AeroDataBox endpoint — RapidAPI plans can
@@ -1482,7 +1494,15 @@ function verifyAK(){
       var reason=r.status===401?'Invalid key.':r.status===403?'Not subscribed to the Flight Status (single day) endpoint specifically — this is the one flight tracking needs, even if other AeroDataBox endpoints work on this key.':'HTTP '+r.status+'.';
       st.style.color='#991b1b';st.innerHTML='❌ Test failed: '+reason+quotaLine(q);
     })
-    .catch(function(){st.style.color='#991b1b';st.innerHTML='❌ Test failed: network or CORS error — the request never reached AeroDataBox.';});
+    .catch(function(e){
+      st.style.color='#991b1b';
+      // A TypeError here is usually an invalid header value (paste debris in
+      // the key), not connectivity — saying "network error" sends people
+      // hunting their wifi for a problem that is in the key field.
+      st.innerHTML=(e&&e.name==='TypeError'&&/header/i.test(e.message||''))
+        ?'❌ The key contains characters that are not valid in a request, so it was never sent. Clear the field and re-type or re-paste the key.'
+        :'❌ Test failed: the request never reached AeroDataBox. Usually an ad blocker or privacy extension blocking rapidapi.com, or a network that filters it — try a private window, or mobile data instead of WiFi.';
+    });
 }
 function savAK(){autoSaveAK();CM('mSet');if(S.parsed)doLkp();}
 function clrAK(){ls.s('ff_ak','');if(g('akIn'))g('akIn').value='';uBadge();}
@@ -1695,7 +1715,9 @@ function fetchFl(iata,date,force){
       return null;
     })
     .catch(function(e){
-      S_lastFetchErr='AeroDataBox request failed: network or CORS error ('+((e&&e.message)||'request blocked')+').';
+      S_lastFetchErr=(e&&e.name==='TypeError'&&/header/i.test(e.message||''))
+        ?'Your saved API key contains characters that are not valid in a request, so it was never sent. Re-enter the key in Settings.'
+        :'AeroDataBox request failed: the request never reached them — usually an ad blocker or privacy extension blocking rapidapi.com, or a network that filters it ('+((e&&e.message)||'request blocked')+').';
       return null;
     });
   });
