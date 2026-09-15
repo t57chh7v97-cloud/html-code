@@ -1568,6 +1568,31 @@ function isoToDate(iso){
   if(!iso)return null;
   try{if(typeof iso==='object')return iso;var s=iso.trim().replace(/^(\d{4}-\d{2}-\d{2})\s+/,'$1T');var d=new Date(s);return isNaN(d)?null:d;}catch(e){return null;}
 }
+// Resolves a LOCAL wall-clock time in a given timezone to the correct UTC
+// instant, honouring that date's DST via Intl correction passes.
+function wallToUtc(y,mo,d,h,min,tz){
+  var target=Date.UTC(y,mo-1,d,h,min,0),guess=target;
+  try{
+    for(var i=0;i<2;i++){
+      var pt=new Intl.DateTimeFormat('en-US',{timeZone:tz,hour12:false,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).formatToParts(new Date(guess)).reduce(function(a,p){a[p.type]=p.value;return a;},{});
+      var sh=pt.hour==='24'?0:parseInt(pt.hour,10);
+      guess+=(target-Date.UTC(parseInt(pt.year,10),parseInt(pt.month,10)-1,parseInt(pt.day,10),sh,parseInt(pt.minute,10),0));
+    }
+  }catch(e){return new Date(target);}
+  return new Date(guess);
+}
+// AeroDataBox local times usually carry a UTC offset, but not always. Without
+// one, new Date() interprets the wall time in the VIEWER's timezone instead of
+// the airport's — which silently shifts the anchor and made flight durations
+// wildly wrong for any route crossing timezones.
+function apTimeToDate(raw,tz){
+  if(!raw)return null;
+  var s=String(raw).trim().replace(/^(\d{4}-\d{2}-\d{2})\s+/,'$1T');
+  if(/(Z|[+-]\d{2}:?\d{2})$/.test(s))return isoToDate(s);
+  var m=s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if(!m)return isoToDate(s);
+  return wallToUtc(+m[1],+m[2],+m[3],+m[4],+m[5],tz||'UTC');
+}
 // Turns a signed arrival-delay-in-minutes into a plain "was it on time"
 // phrase. threshold=5 min of slack either side reads as "on time" — real
 // schedules aren't precise to the minute, so don't nag about a 2-min gap.
@@ -1770,8 +1795,14 @@ function mapLive(raw,parsed){
   var aL=parseISOLocal(aRaw);
   var dTz=depAp.timeZone||(AP[depAp.iata]||{}).tz||'UTC';
   var aTz=arrAp.timeZone||(AP[arrAp.iata]||{}).tz||'UTC';
-  var dIso=dRaw?isoToDate(dRaw.trim().replace(/^(\d{4}-\d{2}-\d{2})\s+/,'$1T')):null;
-  var aIso=aRaw?isoToDate(aRaw.trim().replace(/^(\d{4}-\d{2}-\d{2})\s+/,'$1T')):null;
+  var dIso=apTimeToDate(dRaw,dTz);
+  var aIso=apTimeToDate(aRaw,aTz);
+  // Providers often leave a flight marked Departed/EnRoute long after it has
+  // actually landed. Claiming a flight is still airborne hours past its
+  // arrival is worse than being slightly cautious, so trust the clock once
+  // the arrival time is comfortably past.
+  if((status==='In Air'||status==='Boarding')&&aIso&&Date.now()-aIso.getTime()>30*60000)status='Landed';
+  if(status==='Scheduled'&&dIso&&aIso&&Date.now()>=dIso.getTime()&&Date.now()<aIso.getTime())status='In Air';
   var dur='--';
   if(dIso&&aIso){var ms=aIso-dIso;if(ms>0&&ms<48*3600000){var mn=Math.round(ms/60000);dur=Math.floor(mn/60)+'h '+mn%60+'m';}}
   if(dur==='--'&&raw.greatCircleDistance&&raw.greatCircleDistance.km){var km=raw.greatCircleDistance.km;var mn2=Math.max(45,Math.round(km/850*60)+35);dur=Math.floor(mn2/60)+'h '+mn2%60+'m';}
@@ -1781,12 +1812,26 @@ function mapLive(raw,parsed){
 }
 // Shared lookup used by both the initial fetch and each date-tab's lazy
 // fetch. Returns {fd,all} or null.
+// Guards against a provider answering a dated request with a different day's
+// flight. Without this the app would happily show today's flight under
+// yesterday's tab, so every date looked identical to today.
+function fdOnDate(fd,dateIso){
+  if(!dateIso||!fd||!fd.dIso)return true;
+  try{
+    return new Intl.DateTimeFormat('en-CA',{timeZone:fd.dTz||'UTC',year:'numeric',month:'2-digit',day:'2-digit'}).format(fd.dIso)===dateIso;
+  }catch(e){return true;}
+}
 function fetchAnyProvider(parsed,dep,arr,dateIso,force){
   if(!getAK())return Promise.resolve(null);
   return fetchFl(parsed.full.replace(' ',''),dateIso,force).then(function(rawArr){
     var raw=pickFlight(rawArr,dep,arr);
     if(!raw)return null;
-    return{fd:mapLive(raw,parsed),all:rawArr&&rawArr.length>1?rawArr.map(function(r){return mapLive(r,parsed);}):null};
+    var fd=mapLive(raw,parsed);
+    if(!fdOnDate(fd,dateIso)){
+      S_lastFetchErr='AeroDataBox returned a flight for a different date than the one requested ('+dateIso+'), so estimated times are shown for this date instead of another day\'s real flight.';
+      return null;
+    }
+    return{fd:fd,all:rawArr&&rawArr.length>1?rawArr.map(function(r){return mapLive(r,parsed);}).filter(function(f){return fdOnDate(f,dateIso);}):null};
   });
 }
 // ═══ DEMO — correct UTC offset approach ═══
