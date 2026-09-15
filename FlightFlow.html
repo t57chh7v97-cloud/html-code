@@ -1451,7 +1451,12 @@ function autoSaveAK(){
 // A 429 here means AeroDataBox's own server is enforcing a rate limit on
 // this specific endpoint — no client-side throttle can make that respond
 // faster. Retesting immediately just trips it again, so we cool down.
-var S_akCooldownUntil=0;
+// The cooldown is persisted, not just held in memory. It used to reset on
+// every page load, and since the app auto-looks-up your last flight on load,
+// a reload would immediately fire a request, trip the same 429, and restart
+// the cooldown — so refreshing to "try again" actively prolonged the block.
+var S_akCooldownUntil=(function(){var v=parseInt(ls.g('ff_cool')||'0',10);return isNaN(v)?0:v;})();
+function setCooldown(ms){S_akCooldownUntil=Date.now()+ms;try{ls.s('ff_cool',String(S_akCooldownUntil));}catch(e){}}
 // RapidAPI reports remaining monthly quota in response headers. A 429 can
 // mean either "too many per minute" (clears shortly) or "monthly allowance
 // gone" (does not clear until the plan resets), and those are otherwise
@@ -1485,7 +1490,7 @@ function verifyAK(){
       var q=readQuota(r);
       if(r.ok){st.style.color='#166534';st.innerHTML='✅ Flight-lookup endpoint works — test request succeeded.'+quotaLine(q);return;}
       if(r.status===429){
-        S_akCooldownUntil=Date.now()+65000;
+        setCooldown(65000);
         st.style.color='#991b1b';
         st.innerHTML='❌ Rate limited — enforced by AeroDataBox/RapidAPI, not something the app can bypass.'
           +(q?quotaLine(q):'<div style="margin-top:6px">AeroDataBox did not report your remaining quota, so check usage on rapidapi.com to see whether your monthly 600 is used up or this is just a per-minute limit.</div>');
@@ -1688,7 +1693,7 @@ function fetchFl(iata,date,force){
     .then(function(r){
       var q=readQuota(r);
       if(!r.ok){
-        if(r.status===429)S_akCooldownUntil=Date.now()+65000;
+        if(r.status===429)setCooldown(65000);
         var reason=r.status===401?'invalid key':r.status===403?'not subscribed to AeroDataBox, or quota exceeded':r.status===429?'rate limited':'HTTP '+r.status;
         S_lastFetchErr='AeroDataBox request failed: '+reason+'.';
         if(q&&q.rem!==null&&!isNaN(q.rem)){
