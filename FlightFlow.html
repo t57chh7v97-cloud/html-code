@@ -61,6 +61,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .dbdg{background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);border-color:rgba(255,255,255,.1)}
 .nbt{width:32px;height:32px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:rgba(255,255,255,.8);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:background .15s;flex-shrink:0}
 .nbt:hover{background:rgba(255,255,255,.25)}
+.nshare{display:flex;align-items:center;gap:5px;height:32px;padding:0 12px;background:#fff;border:none;border-radius:8px;color:#1a1a2e;font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.nshare:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.26)}
+.nshare:active{transform:translateY(0)}
+@media(max-width:560px){.nshareT{display:none}.nshare{padding:0 10px}}
 .moreWrap{position:relative;flex-shrink:0}
 .moreMenu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--sur);border:1px solid var(--bor);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.3);padding:6px;min-width:210px;max-height:70vh;overflow-y:auto;z-index:200}
 .moreMenu.open{display:block}
@@ -608,6 +612,7 @@ create policy "public read" on public.feedback for select to anon using (true);<
     <button class="nbt" onclick="OM('mSav');rSav()" data-i18n-title="nav_saved" title="Saved">🔖</button>
     <button class="nbt" onclick="OM('mFbk');rFbk()" data-i18n-title="nav_feedback" title="Feedback">💬</button>
     <button class="nbt" onclick="OM('mSet')" data-i18n-title="nav_settings" title="Settings">⚙️</button>
+    <button class="nshare" onclick="shareApp()" title="Share FlightFlow"><span>🔗</span><span class="nshareT" data-i18n="nav_shareapp">Share</span></button>
   </div>
   <div class="moreWrap">
     <button class="nbt" onclick="tglMore(event)" title="More">⋯</button>
@@ -622,7 +627,6 @@ create policy "public read" on public.feedback for select to anon using (true);<
       <button class="moreItem" onclick="closeMore();openStamps()"><span class="moreIco">🌍</span><span data-i18n="nav_countries">Countries</span></button>
       <button class="moreItem" onclick="closeMore();openBucket()"><span class="moreIco">🪣</span><span data-i18n="nav_bucket">Bucket List</span></button>
       <button class="moreItem" onclick="closeMore();OM('mKeys');kbSync()"><span class="moreIco">⌨️</span><span data-i18n="nav_shortcuts">Keyboard Shortcuts</span></button>
-      <button class="moreItem" onclick="closeMore();shareApp()"><span class="moreIco">🔗</span><span data-i18n="nav_shareapp">Share App</span></button>
     </div>
   </div>
 </div></nav>
