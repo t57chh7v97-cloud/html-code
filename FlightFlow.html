@@ -2414,11 +2414,25 @@ function showRaw(){
     if(f&&(f.departure||f.arrival)){
       var d=f.departure||{},a=f.arrival||{};
       var row=function(k,v){return '<div>'+k+': <strong>'+(v===undefined||v===null||v===''?'<span style="color:#b45309">not sent by provider</span>':esc(String(v)))+'</strong></div>';};
+      // Put the provider's raw time strings next to what the app renders from
+      // them, so "the times are off" can be pinned on either the upstream data
+      // or our own mapping instead of being argued about.
+      var tRow=function(k,v){return '<div>'+k+': <strong>'+(v===undefined||v===null||v===''?'<span style="color:#b45309">not sent</span>':esc(String(v)))+'</strong></div>';};
+      var shown=(S.fd&&S.fd.live)?S.fd:null;
       probe='<div style="font-size:12px;background:var(--s2);border-radius:8px;padding:9px 11px;margin-bottom:8px;line-height:1.7">'
         +row('Departure terminal',d.terminal)+row('Departure gate',d.gate)
         +row('Arrival terminal',a.terminal)+row('Arrival gate',a.gate)
         +row('Baggage belt',a.baggageBelt)
         +row('Status',f.status)
+        +'<div style="height:7px"></div><div style="font-weight:800;color:var(--txt)">Times the provider sent</div>'
+        +tRow('Departure scheduled',d.scheduledTime&&d.scheduledTime.local)
+        +tRow('Departure revised',d.revisedTime&&d.revisedTime.local)
+        +tRow('Arrival scheduled',a.scheduledTime&&a.scheduledTime.local)
+        +tRow('Arrival revised',a.revisedTime&&a.revisedTime.local)
+        +(shown?('<div style="height:7px"></div><div style="font-weight:800;color:var(--txt)">What the app is showing</div>'
+            +tRow('Departure',shown.depTime+' '+shown.depTz+' ('+shown.depTimeTag+')')
+            +tRow('Arrival',shown.arrTime+' '+shown.arrTz+' ('+shown.arrTimeTag+')')
+            +tRow('Flight time',shown.dur)):'')
         +'</div>';
     }
   }catch(e){}
