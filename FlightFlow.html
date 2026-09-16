@@ -474,6 +474,8 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
   <div class="ir"><input type="text" id="akIn" class="mi mono" data-i18n-ph="ph_pasteaerodatabox" placeholder="Paste RapidAPI key here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;text-security:disc" oninput="autoSaveAK()" onblur="autoSaveAK()"/><button class="icob" onclick="tPW('akIn','e1')" id="e1">👁</button></div>
   <div id="akSaveStatus" style="display:none;font-size:12px;margin-top:6px;margin-bottom:4px"></div>
   <div class="mas"><button class="ms2" onclick="clrAK()">🗑 Clear</button><button class="mp" onclick="savAK()">✓ Save and connect</button></div>
+  <div style="margin-top:10px"><button class="ms2" style="width:100%" onclick="showRaw()">🔍 Show exactly what AeroDataBox sent back</button></div>
+  <div id="rawOut" style="display:none;margin-top:8px"></div>
   <div class="mdv"></div>
   <div class="msc" data-i18n="s_openweather_title">🌤 OpenWeatherMap — Weather and Air Quality</div>
   <p class="mds">Free at <a href="https://openweathermap.org/api" target="_blank">openweathermap.org</a> — 1,000 calls/day, no CORS issues, works on Codecademy ✅</p>
@@ -1653,6 +1655,9 @@ function dSav(fl){ls.sj('ff_sv',gSav().filter(function(f){return f.fl!==fl;}));r
 function sbc(s){var m={Delayed:'sdl',Cancelled:'scx',Boarding:'sbd','In Air':'sia',Landed:'sln',Scheduled:'ssc','On Time':'sot'};return m[s]||'sot';}
 // ═══ AERODATABOX ═══
 var S_lastFetchErr=null;
+// Keeps the most recent raw provider response so missing fields (gates,
+// baggage) can be confirmed as absent from the data rather than guessed at.
+var S_lastRaw=null;
 // AeroDataBox calls across the whole app share this gate so they're never
 // fired closer together than ADB_MIN_GAP — a per-minute/per-second burst
 // limit can reject requests even when the monthly quota still has room,
@@ -1725,6 +1730,7 @@ function fetchFl(iata,date,force){
         if(r.status===429)setCooldown(65000);
         var reason=r.status===401?'invalid key':r.status===403?'not subscribed to AeroDataBox, or quota exceeded':r.status===429?'rate limited':'HTTP '+r.status;
         S_lastFetchErr='AeroDataBox request failed: '+reason+'.';
+        try{S_lastRaw={url:url,when:Date.now(),status:r.status,body:'(request failed: '+reason+')'};}catch(e){}
         if(q&&q.rem!==null&&!isNaN(q.rem)){
           S_lastFetchErr+=q.rem<=0
             ?' Your monthly allowance is used up (0 of '+(q.lim||'?')+' left) — waiting will not help until your RapidAPI billing period resets.'
@@ -1732,7 +1738,10 @@ function fetchFl(iata,date,force){
         }
         return {_failed:true};
       }
-      return r.json();
+      return r.text().then(function(txt){
+        try{S_lastRaw={url:url,when:Date.now(),status:r.status,body:txt.slice(0,4000)};}catch(e){}
+        try{return JSON.parse(txt);}catch(e){return null;}
+      });
     })
     .then(function(j){
       if(j&&j._failed){
@@ -2384,6 +2393,38 @@ function tgAlDesc(){
 function nsp(v){
   if(v===undefined||v===null||v==='--'||v==='')return '<span style="font-size:11px;font-weight:600;color:var(--tM)">Not published yet</span>';
   return v;
+}
+// Shows the provider's actual response. When a field like a gate is missing
+// from the UI, this is the difference between "the app failed to read it" and
+// "the airline never sent it" — worth being able to check rather than assume.
+function showRaw(){
+  var el=g('rawOut');if(!el)return;
+  el.style.display='block';
+  if(!S_lastRaw){
+    el.innerHTML='<div style="font-size:12px;color:var(--t2);padding:8px;background:var(--s2);border-radius:8px">No request made yet this session. Look up a flight first, then come back.</div>';
+    return;
+  }
+  var esc=function(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+  var b=S_lastRaw.body||'';
+  var pretty=b;try{pretty=JSON.stringify(JSON.parse(b),null,1);}catch(e){}
+  // Call out the fields people ask about, so it is obvious at a glance.
+  var probe='';
+  try{
+    var j=JSON.parse(b),f=Array.isArray(j)?j[0]:j;
+    if(f&&(f.departure||f.arrival)){
+      var d=f.departure||{},a=f.arrival||{};
+      var row=function(k,v){return '<div>'+k+': <strong>'+(v===undefined||v===null||v===''?'<span style="color:#b45309">not sent by provider</span>':esc(String(v)))+'</strong></div>';};
+      probe='<div style="font-size:12px;background:var(--s2);border-radius:8px;padding:9px 11px;margin-bottom:8px;line-height:1.7">'
+        +row('Departure terminal',d.terminal)+row('Departure gate',d.gate)
+        +row('Arrival terminal',a.terminal)+row('Arrival gate',a.gate)
+        +row('Baggage belt',a.baggageBelt)
+        +row('Status',f.status)
+        +'</div>';
+    }
+  }catch(e){}
+  el.innerHTML=probe
+    +'<div style="font-size:11px;color:var(--tM);margin-bottom:4px">HTTP '+S_lastRaw.status+' &middot; '+new Date(S_lastRaw.when).toLocaleTimeString()+'</div>'
+    +'<div style="padding:8px;background:var(--s2);border-radius:8px;font-family:monospace;font-size:10px;white-space:pre-wrap;word-break:break-all;max-height:260px;overflow:auto;user-select:all">'+esc(pretty)+'</div>';
 }
 function collapseHero(){
   var ckb=g('ckbWrap');if(ckb)ckb.style.display='none';
