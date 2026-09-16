@@ -1823,12 +1823,24 @@ function mapLive(raw,parsed){
   if((status==='In Air'||status==='Boarding')&&aIso&&Date.now()-aIso.getTime()>30*60000)status='Landed';
   if(status==='Scheduled'&&dIso&&aIso&&Date.now()>=dIso.getTime()&&Date.now()<aIso.getTime())status='In Air';
   if((status==='Scheduled'||status==='Boarding')&&depDly>10)status='Delayed';
-  var dur='--';
-  if(dIso&&aIso){var ms=aIso-dIso;if(ms>0&&ms<48*3600000){var mn=Math.round(ms/60000);dur=Math.floor(mn/60)+'h '+mn%60+'m';}}
+  // Duration must come from a CONSISTENT pair of times. It used to be measured
+  // between whichever value each end happened to display, so a delayed
+  // departure (revised) paired against an unrevised arrival (scheduled) made
+  // the flight look shorter by exactly the delay — the "total flight time is
+  // way off" report. Scheduled-to-scheduled is the planned block time, which
+  // is what "total flight time" means; revised-to-revised is the fallback.
+  var dSchedIso=apTimeToDate(dSched,dTz),aSchedIso=apTimeToDate(aSched,aTz);
+  var dRevIso=apTimeToDate(dRevRaw,dTz),aRevIso=apTimeToDate(aRevRaw,aTz);
+  function durTxt(a,b){
+    if(!a||!b)return null;
+    var ms=b-a;if(!(ms>0&&ms<48*3600000))return null;
+    var mn=Math.round(ms/60000);return Math.floor(mn/60)+'h '+mn%60+'m';
+  }
+  var dur=durTxt(dSchedIso,aSchedIso)||durTxt(dRevIso,aRevIso)||durTxt(dIso,aIso)||'--';
   if(dur==='--'&&raw.greatCircleDistance&&raw.greatCircleDistance.km){var km=raw.greatCircleDistance.km;var mn2=Math.max(45,Math.round(km/850*60)+35);dur=Math.floor(mn2/60)+'h '+mn2%60+'m';}
   var acIata=(raw.aircraft&&(raw.aircraft.iata||raw.aircraft.icaoType))||null;
   var acData=acIata?ACF[acIata]:null;
-  return{airline:airline,dep:depAp.iata||dep.iata||'???',arr:arrAp.iata||arr.iata||'???',status:status,depTime:dL?fmtT(dL.h,dL.min):'--',arrTime:aL?fmtT(aL.h,aL.min):'--',depTimeTag:dIsEstimated?'Estimated':'Scheduled',arrTimeTag:aIsEstimated?'Estimated':'Scheduled',depDate:dL?fmtD(dL.mo,dL.d):'',arrDate:aL?fmtD(aL.mo,aL.d):'',depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:dep.terminal||'--',arrT:arr.terminal||'--',depG:dep.gate||'--',arrG:arr.gate||'--',acName:acData?acData.n:(raw.aircraft&&raw.aircraft.model)||'Unknown',acIata:acIata,acData:acData,baggage:arr.baggageBelt?'Belt '+arr.baggageBelt:(arr.baggage||'--'),dur:dur,dlyMins:depDly>0?depDly:0,arrDlyMins:arrDly,arrDlyApprox:arrApprox,dIso:dIso,aIso:aIso,live:true,codeshare:null};
+  return{airline:airline,dep:depAp.iata||dep.iata||'???',arr:arrAp.iata||arr.iata||'???',status:status,depTime:dL?fmtT(dL.h,dL.min):'--',arrTime:aL?fmtT(aL.h,aL.min):'--',depTimeTag:dIsEstimated?'Estimated':'Scheduled',arrTimeTag:aIsEstimated?'Estimated':'Scheduled',depSchedTime:(function(){var x=parseISOLocal(dSched);return x?fmtT(x.h,x.min):null;})(),arrSchedTime:(function(){var x=parseISOLocal(aSched);return x?fmtT(x.h,x.min):null;})(),depDate:dL?fmtD(dL.mo,dL.d):'',arrDate:aL?fmtD(aL.mo,aL.d):'',depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:dep.terminal||'--',arrT:arr.terminal||'--',depG:dep.gate||'--',arrG:arr.gate||'--',acName:acData?acData.n:(raw.aircraft&&raw.aircraft.model)||'Unknown',acIata:acIata,acData:acData,baggage:arr.baggageBelt?'Belt '+arr.baggageBelt:(arr.baggage||'--'),dur:dur,dlyMins:depDly>0?depDly:0,arrDlyMins:arrDly,arrDlyApprox:arrApprox,dIso:dIso,aIso:aIso,live:true,codeshare:null};
 }
 // Shared lookup used by both the initial fetch and each date-tab's lazy
 // fetch. Returns {fd,all} or null.
@@ -2366,6 +2378,13 @@ function tgAlDesc(){
   if(c)c.style.transform='rotate('+(open?'180deg':'0deg')+')';
   ls.s('ff_aldopen',open?'true':'false');
 }
+// A bare "--" looks like the app broke. Gates and baggage belts are often
+// simply not published by the airline until shortly before the flight, so say
+// that rather than showing a dash.
+function nsp(v){
+  if(v===undefined||v===null||v==='--'||v==='')return '<span style="font-size:11px;font-weight:600;color:var(--tM)">Not published yet</span>';
+  return v;
+}
 function collapseHero(){
   var ckb=g('ckbWrap');if(ckb)ckb.style.display='none';
   var hi=g('heroIntro');if(hi)hi.style.display='none';
@@ -2413,7 +2432,7 @@ function rDash(parsed,fd){
         +'<div class="iata" onclick="openAP(\''+fd.dep+'\')" title="Airport info">'+fd.dep+'</div>'
         +'<div class="apcy">'+dI.cy+'</div>'
         +'<div class="aptm">'+fd.depTime+'</div>'
-        +(fd.depTimeTag&&fd.depTimeTag==='Estimated'?'<div style="font-size:10px;font-weight:700;color:#f59e0b;letter-spacing:.3px">EST</div>':'')
+        +(fd.depTimeTag&&fd.depTimeTag==='Estimated'?'<div style="font-size:10px;font-weight:700;color:#f59e0b;letter-spacing:.3px">EST'+(fd.depSchedTime?' &middot; was '+fd.depSchedTime:'')+'</div>':'')
         +'<div class="aptz">'+fd.depTz+'</div>'
         +'<div class="apdt">'+fd.depDate+'</div>'
         +'<div class="apnw">Local now: '+nowAt(fd.dTz)+'</div>'
@@ -2423,19 +2442,19 @@ function rDash(parsed,fd){
         +'<div class="iata" onclick="openAP(\''+fd.arr+'\')" title="Airport info">'+fd.arr+'</div>'
         +'<div class="apcy">'+aI.cy+'</div>'
         +'<div class="aptm">'+fd.arrTime+'</div>'
-        +(fd.arrTimeTag&&fd.arrTimeTag==='Estimated'?'<div style="font-size:10px;font-weight:700;color:#f59e0b;letter-spacing:.3px">EST</div>':'')
+        +(fd.arrTimeTag&&fd.arrTimeTag==='Estimated'?'<div style="font-size:10px;font-weight:700;color:#f59e0b;letter-spacing:.3px">EST'+(fd.arrSchedTime?' &middot; was '+fd.arrSchedTime:'')+'</div>':'')
         +'<div class="aptz">'+fd.arrTz+'</div>'
         +'<div class="apdt">'+fd.arrDate+'</div>'
         +'<div class="apnw">Local now: '+nowAt(fd.aTz)+'</div>'
       +'</div>'
     +'</div>'
     +'<div class="ig">'
-      +'<div class="ic icd"><div class="icl">'+t('info_depterminal')+'</div><div class="icv">'+fd.depT+'</div></div>'
-      +'<div class="ic icd"><div class="icl">'+t('info_depgate')+'</div><div class="icv">'+fd.depG+'</div></div>'
+      +'<div class="ic icd"><div class="icl">'+t('info_depterminal')+'</div><div class="icv">'+nsp(fd.depT)+'</div></div>'
+      +'<div class="ic icd"><div class="icl">'+t('info_depgate')+'</div><div class="icv">'+nsp(fd.depG)+'</div></div>'
       +'<div class="ic"><div class="icl">'+t('info_aircraft')+'</div><div class="icv icsm">'+(fd.acName||'Unknown')+'</div></div>'
-      +'<div class="ic ica"><div class="icl">'+t('info_arrterminal')+'</div><div class="icv">'+fd.arrT+'</div></div>'
-      +'<div class="ic ica"><div class="icl">'+t('info_arrgate')+'</div><div class="icv">'+fd.arrG+'</div></div>'
-      +'<div class="ic"><div class="icl">'+t('info_baggage')+'</div><div class="icv">'+fd.baggage+'</div></div>'
+      +'<div class="ic ica"><div class="icl">'+t('info_arrterminal')+'</div><div class="icv">'+nsp(fd.arrT)+'</div></div>'
+      +'<div class="ic ica"><div class="icl">'+t('info_arrgate')+'</div><div class="icv">'+nsp(fd.arrG)+'</div></div>'
+      +'<div class="ic"><div class="icl">'+t('info_baggage')+'</div><div class="icv">'+nsp(fd.baggage)+'</div></div>'
     +'</div>'
     +(cd?'<div class="cdr">'+cd+'</div>':'')
     +'<div class="abs">'
