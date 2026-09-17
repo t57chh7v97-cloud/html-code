@@ -598,7 +598,7 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
 
 <!-- NAVBAR -->
 <nav class="navbar"><div class="nav-in">
-  <div class="brand"><div class="bico">✈️</div><div><span class="bnm">FlightFlow<span style="font-size:10px;font-weight:600;opacity:.55;margin-left:6px">by Playgamez</span></span><span class="btg" data-i18n="brand_tag">Global flight assistant</span></div></div>
+  <div class="brand"><div class="bico">✈️</div><div><span class="bnm">FlightFlow<span style="font-size:10px;font-weight:600;opacity:.55;margin-left:6px">by Playgamez</span><span style="font-size:9px;font-weight:700;opacity:.4;margin-left:5px">v1.2</span></span><span class="btg" data-i18n="brand_tag">Global flight assistant</span></div></div>
   <div class="nav-r">
     <span id="apiBdg" class="nbdg dbdg">📡 Demo</span>
     <button class="nbt" onclick="OM('mSav');rSav()" data-i18n-title="nav_saved" title="Saved">🔖</button>
@@ -2564,12 +2564,15 @@ var S_mapIV=null;
 // Progress along the route (0-1) based on real elapsed time between the
 // correctly-anchored departure/arrival instants — see the offTm/cdTxt fix
 // notes on why dIso/aIso (not the status string) are the reliable source.
+// Returns 0 rather than null before departure so the aircraft is drawn sitting
+// at the origin airport. Returning null hid it entirely, which made a flight
+// that simply had not left yet look like it was not being tracked at all.
 function flightProgress(fd){
   if(!fd||!fd.dIso||!fd.aIso)return null;
   if((fd.status||'').toLowerCase()==='cancelled')return null;
   var now=Date.now(),dep=fd.dIso.getTime(),arr=fd.aIso.getTime();
   if(arr<=dep)return null;
-  if(now<=dep)return null;
+  if(now<=dep)return 0;
   if(now>=arr)return 1;
   return (now-dep)/(arr-dep);
 }
@@ -2578,9 +2581,10 @@ function rMap(fd){
   if(S_mapIV){clearInterval(S_mapIV);S_mapIV=null;}
   if(!dA||!aA){el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:260px;color:#9ba3b8;font-size:13px">Map unavailable</div>';return;}
   try{
-    var progress=fd.live?flightProgress(fd):null;
+    var progress=flightProgress(fd);
     MapInline.render(el,dA.lat,dA.lon,dep,aA.lat,aA.lon,arr,S.dark,progress);
-    if(fd.live&&(fd.status||'').toLowerCase()!=='cancelled'){
+    var airborne=progress!==null&&progress>0&&progress<1;
+    if(airborne&&(fd.status||'').toLowerCase()!=='cancelled'){
       S_mapIV=setInterval(function(){MapInline.updateProgress(flightProgress(fd));},60000);
     }
   }catch(e){el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:260px;color:#9ba3b8">'+dep+' to '+arr+'</div>';}
@@ -2888,12 +2892,122 @@ function rPackPersonSel(names){
     }).join('')
   +'</div>';
 }
+// ═══ INTEREST-BASED PACKING ═══
+// Layered on top of the base list rather than replacing it: the base covers
+// what every traveller needs, these add what a particular trip needs. Items
+// are de-duplicated by label, so overlapping interests do not produce two
+// entries for the same towel.
+var TRIP_INTERESTS=[
+ {k:'beach',n:'Beach / resort',e:'🏖️',items:[
+   {l:'Swimsuit (pack two so one can dry)',c:'trip',e:'🩱'},{l:'Reef-safe sunscreen SPF 30+',c:'trip',e:'🧴'},
+   {l:'After-sun or aloe gel',c:'trip',e:'🧊'},{l:'Flip-flops or water shoes',c:'trip',e:'🩴'},
+   {l:'Quick-dry towel',c:'trip',e:'🏖️'},{l:'Dry bag for phone and cash',c:'trip',e:'💧'},
+   {l:'Sun hat and sunglasses',c:'trip',e:'🕶️'}]},
+ {k:'hike',n:'Hiking / outdoors',e:'🥾',items:[
+   {l:'Broken-in hiking boots (never pack new ones)',c:'trip',e:'🥾'},{l:'Moisture-wicking socks',c:'trip',e:'🧦'},
+   {l:'Rain shell',c:'trip',e:'🧥'},{l:'Refillable water bottle',c:'trip',e:'🚰'},
+   {l:'Blister plasters and basic first aid',c:'trip',e:'🩹'},{l:'Headtorch with spare batteries',c:'trip',e:'🔦'},
+   {l:'Offline maps downloaded',c:'trip',e:'🗺️'},{l:'Insect repellent',c:'trip',e:'🦟'}]},
+ {k:'business',n:'Business',e:'💼',items:[
+   {l:'Laptop and charger',c:'trip',e:'💻'},{l:'Presentation backed up offline',c:'trip',e:'📊'},
+   {l:'Business cards',c:'trip',e:'🪪'},{l:'Suit or blazer in a garment bag',c:'trip',e:'👔'},
+   {l:'Travel steamer or wrinkle spray',c:'trip',e:'🧺'},{l:'Expense receipts folder',c:'trip',e:'🧾'},
+   {l:'Backup HDMI / USB-C adapter',c:'trip',e:'🔌'}]},
+ {k:'photo',n:'Photography',e:'📷',items:[
+   {l:'Camera body and lenses',c:'trip',e:'📷'},{l:'Spare batteries in carry-on (never checked)',c:'trip',e:'🔋'},
+   {l:'Memory cards, more than you think',c:'trip',e:'💾'},{l:'Lens cloth and blower',c:'trip',e:'🧽'},
+   {l:'Compact tripod',c:'trip',e:'🔻'},{l:'Portable drive for backups',c:'trip',e:'💿'}]},
+ {k:'kids',n:'Travelling with kids',e:'🧸',items:[
+   {l:'Snacks for the flight',c:'trip',e:'🍎'},{l:'Tablet loaded with downloads, plus headphones',c:'trip',e:'📱'},
+   {l:'Comfort toy or blanket',c:'trip',e:'🧸'},{l:'Spare change of clothes in the cabin bag',c:'trip',e:'👕'},
+   {l:'Wipes and nappies / pull-ups',c:'trip',e:'🧻'},{l:'Child paracetamol and thermometer',c:'trip',e:'🌡️'},
+   {l:'Lollipops or drinks for ear pressure on descent',c:'trip',e:'🍭'},
+   {l:'Birth certificate copy if travelling alone with them',c:'trip',e:'📄'}]},
+ {k:'winter',n:'Cold weather / ski',e:'🎿',items:[
+   {l:'Thermal base layers',c:'trip',e:'🧥'},{l:'Waterproof gloves',c:'trip',e:'🧤'},
+   {l:'Hat and neck warmer',c:'trip',e:'🧣'},{l:'Lip balm and heavy moisturiser',c:'trip',e:'💄'},
+   {l:'Goggles or sunglasses — snow glare is brutal',c:'trip',e:'🥽'},{l:'Hand warmers',c:'trip',e:'🔥'},
+   {l:'Grippy waterproof boots',c:'trip',e:'🥾'}]},
+ {k:'food',n:'Food and drink',e:'🍽️',items:[
+   {l:'Restaurant reservations confirmed',c:'trip',e:'📅'},{l:'Antacids and indigestion tablets',c:'trip',e:'💊'},
+   {l:'Allergy card written in the local language',c:'trip',e:'🗣️'},
+   {l:'Bubble wrap for bringing bottles home',c:'trip',e:'🍷'}]},
+ {k:'city',n:'City break / sightseeing',e:'🏛️',items:[
+   {l:'Comfortable broken-in walking shoes',c:'trip',e:'👟'},{l:'Day bag that closes properly (pickpockets)',c:'trip',e:'🎒'},
+   {l:'Power bank for long days out',c:'trip',e:'🔋'},{l:'Museum or transit passes booked',c:'trip',e:'🎟️'},
+   {l:'Compact umbrella',c:'trip',e:'☂️'},{l:'Scarf for dress codes at religious sites',c:'trip',e:'🧣'}]},
+ {k:'fitness',n:'Gym / running',e:'🏃',items:[
+   {l:'Running shoes',c:'trip',e:'👟'},{l:'Workout kit',c:'trip',e:'🩳'},
+   {l:'Resistance bands (pack flat)',c:'trip',e:'🎽'},{l:'Laundry bag for sweaty clothes',c:'trip',e:'🧺'}]},
+ {k:'medical',n:'Medical needs',e:'💊',items:[
+   {l:'Prescriptions in original labelled packaging',c:'trip',e:'💊'},
+   {l:'Doctor letter for syringes, liquids or controlled medication',c:'trip',e:'📄'},
+   {l:'Enough medication for the trip plus several spare days',c:'trip',e:'📆'},
+   {l:'Medication split between cabin and checked bags',c:'trip',e:'🧳'},
+   {l:'Insurance policy number saved offline',c:'trip',e:'🏥'}]},
+ {k:'longhaul',n:'Long-haul comfort',e:'🛌',items:[
+   {l:'Neck pillow',c:'trip',e:'🛌'},{l:'Eye mask and earplugs',c:'trip',e:'😴'},
+   {l:'Compression socks',c:'trip',e:'🧦'},{l:'Empty bottle to fill after security',c:'trip',e:'🚰'},
+   {l:'Moisturiser and lip balm — cabin air is very dry',c:'trip',e:'🧴'},
+   {l:'Downloaded films and music',c:'trip',e:'🎬'},{l:'Spare layer, cabins run cold',c:'trip',e:'🧥'}]}
+];
+function getInterests(){return ls.gj('ff_interests')||[];}
+function tgInterest(k){
+  var cur=getInterests(),i=cur.indexOf(k);
+  if(i>-1)cur.splice(i,1);else cur.push(k);
+  ls.sj('ff_interests',cur);
+  if(g('tabC'))g('tabC').innerHTML=rTab();
+}
+// Interests the trip itself implies, so the list is useful before anyone
+// touches a toggle — latitude for beach vs ski, block time for long-haul,
+// a currency change for a city break abroad.
+function suggestedInterests(){
+  var out=[],fd=S.fd;
+  if(S.kid)out.push('kids');
+  if(fd){
+    if(fd.dIso&&fd.aIso){var h=(fd.aIso-fd.dIso)/3600000;if(h>=6)out.push('longhaul');}
+    var aI=AP[fd.arr]||{},dI=AP[fd.dep]||{};
+    if(aI.lat!==undefined&&Math.abs(aI.lat)<25)out.push('beach');
+    if(aI.lat!==undefined&&Math.abs(aI.lat)>55)out.push('winter');
+    if(dI.cu&&aI.cu&&dI.cu!==aI.cu)out.push('city');
+  }
+  return out;
+}
+function rInterestPicker(){
+  var sel=getInterests(),sug=suggestedInterests();
+  var sugNames=sug.map(function(k){var t=TRIP_INTERESTS.filter(function(x){return x.k===k;})[0];return t?t.n:k;});
+  return '<div style="background:var(--s2);border-radius:10px;padding:10px 12px;margin-bottom:11px">'
+    +'<div style="font-size:12px;font-weight:800;color:var(--txt);margin-bottom:3px">What is this trip for?</div>'
+    +'<div style="font-size:11px;color:var(--tM);margin-bottom:8px;line-height:1.5">Pick any that apply and the matching gear is added to the list below.'
+      +(sugNames.length&&!sel.length?' Suggested for this flight: '+sugNames.join(', ')+'.':'')+'</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:6px">'
+    +TRIP_INTERESTS.map(function(t){
+      var on=sel.indexOf(t.k)>-1,isSug=!on&&sug.indexOf(t.k)>-1;
+      return '<button onclick="tgInterest(\''+t.k+'\')" style="border:1.5px solid '+(on||isSug?'var(--acc)':'var(--bor)')+';background:'+(on?'var(--acc)':'var(--sur)')+';color:'+(on?'#fff':'var(--t2)')+';border-radius:20px;padding:5px 11px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit">'+t.e+' '+t.n+(isSug?' •':'')+'</button>';
+    }).join('')
+    +'</div></div>';
+}
+function packItems(){
+  var base=(S.kid?KPK:APK).slice(),sel=getInterests(),seen={};
+  base.forEach(function(it){seen[it.l.toLowerCase()]=1;});
+  sel.forEach(function(k){
+    var t=TRIP_INTERESTS.filter(function(x){return x.k===k;})[0];
+    if(!t)return;
+    t.items.forEach(function(it){
+      var key=it.l.toLowerCase();
+      if(seen[key])return;
+      seen[key]=1;base.push(it);
+    });
+  });
+  return base;
+}
+
 function rTab(){
   if(S.tab==='pack'){
     var names=getPaxNames();
     if(!names.length)S_packPerson=null;
     var ck=names.length?packCkFor(S_packPerson):S.pCk;
-    return (names.length?rPackPersonSel(names):'')+rCL(S.kid?KPK:APK,ck,'pk',!!S_packPerson);
+    return (names.length?rPackPersonSel(names):'')+rInterestPicker()+rCL(packItems(),ck,'pk',!!S_packPerson);
   }
   if(S.tab==='sec')return rCL(S.kid?KSC:ASC,S.sCk,'sc',false);
   if(S.tab==='tr')return rTr();
@@ -3379,6 +3493,59 @@ function suggestAirlines(dep,dep2){
 // rather than one generic checklist for everywhere. Falls back to a country-
 // agnostic version when the destination cannot be resolved, and always points
 // at official sources, since these rules change without notice.
+// ═══ AIRLINE DOCUMENT RULES ═══
+// What the carrier itself demands, as opposed to what the destination country
+// demands — the two get conflated and they are different failure modes. Missing
+// a country requirement gets you refused at immigration; missing an airline one
+// gets you refused at the gate, before you ever board.
+// ci = check-in / bag-drop cutoffs, id = accepted identification, bag = the
+// baggage rule most likely to catch someone out, note = anything else.
+var AIRDOC={
+ AA:{ci:'Bag drop closes 45 min before domestic departures, 60 min international. Online check-in opens 24 h ahead.',id:'REAL ID-compliant ID or passport for US domestic. Passport for international.',bag:'Basic Economy includes a carry-on, but no seat selection and no changes.',note:'Boarding doors close 15 min before departure — being at the airport is not the same as being at the gate.'},
+ DL:{ci:'Bag drop closes 45 min before domestic, 60 min international. Check-in opens 24 h ahead.',id:'REAL ID or passport for US domestic; passport for international.',bag:'Basic Economy includes a carry-on. Checked bags are charged unless you hold status or a Delta card.',note:'Doors close 15 min before departure.'},
+ UA:{ci:'Bag drop closes 45 min before domestic, 60 min international.',id:'REAL ID or passport for US domestic; passport for international.',bag:'Basic Economy allows NO overhead bin bag on most routes — only a personal item under the seat. This catches people constantly.',note:'Doors close 15 min before departure.'},
+ WN:{ci:'Check in exactly 24 h ahead — boarding position is assigned in check-in order and directly affects where you sit.',id:'REAL ID or passport for US domestic.',bag:'Two free checked bags, which is unusual in the US.',note:'Doors close 10 min before departure, tighter than most US carriers.'},
+ B6:{ci:'Bag drop closes 40 min before domestic departures, 60 min international.',id:'REAL ID or passport for US domestic.',bag:'Blue Basic boards last and has restrictions; check whether your fare includes an overhead bag.',note:''},
+ NK:{ci:'Bag drop closes 45 min before departure.',id:'REAL ID or passport for US domestic.',bag:'Only a personal item is included. Carry-on and checked bags are paid extras and are far cheaper booked online than at the airport — paying at the gate is the most expensive option.',note:''},
+ F9:{ci:'Bag drop closes 45 min before departure.',id:'REAL ID or passport for US domestic.',bag:'Only a personal item is included; carry-on costs extra and is cheapest online, dearest at the gate.',note:''},
+ FR:{ci:'Check in online before you get to the airport — airport check-in carries a large fee. Bag drop closes 40 min before departure.',id:'Passport or national ID. Non-EU passengers may need their documents stamped at the visa desk before boarding.',bag:'Only a small under-seat bag is included. Cabin bag sizers are enforced strictly and gate fees are steep.',note:'Gate closes 20 min before departure and they do not wait.'},
+ U2:{ci:'Online check-in required; bag drop typically closes 40 min before departure.',id:'Passport or national ID.',bag:'One small under-seat bag included. Larger cabin bags need Plus or an add-on.',note:'Gate closes 30 min before departure.'},
+ W6:{ci:'Online check-in required or an airport fee applies.',id:'Passport or national ID.',bag:'Only a small under-seat bag is included, and sizers are enforced.',note:'Gate closes 30 min before departure.'},
+ BA:{ci:'Bag drop closes 45 min before short-haul, 60 min long-haul.',id:'Passport for international travel.',bag:'Hand baggage allowance is generous compared with low-cost rivals.',note:'Gate closes 20 min before departure.'},
+ LH:{ci:'Bag drop closes 45 min before European departures, 60 min intercontinental.',id:'Passport or EU national ID as applicable.',bag:'Economy Light fares exclude a checked bag.',note:'Gate closes 20-30 min before departure.'},
+ AF:{ci:'Bag drop closes 40 min before domestic, 60 min long-haul.',id:'Passport for international travel.',bag:'Light fares exclude checked baggage.',note:''},
+ KL:{ci:'Bag drop closes 40 min before European departures, 60 min intercontinental.',id:'Passport for international travel.',bag:'Light fares exclude checked baggage.',note:''},
+ EK:{ci:'Check-in opens 24 h ahead and closes 60 min before departure. Dubai bag drop can be busy — allow extra.',id:'Passport with the validity the destination requires.',bag:'Generous allowances, often 25-35 kg in economy.',note:'Gate closes 45-60 min before departure at DXB, earlier than many travellers expect.'},
+ QR:{ci:'Check-in closes 60 min before departure.',id:'Passport with the validity the destination requires.',bag:'Generous allowances; many fares are weight-based rather than piece-based.',note:''},
+ SQ:{ci:'Check-in closes 60 min before departure.',id:'Passport with the validity the destination requires.',bag:'Generous allowances in all cabins.',note:''},
+ TK:{ci:'Check-in closes 60 min before international departures.',id:'Passport with the validity the destination requires.',bag:'Generous allowances. Free stopover hotel on long Istanbul layovers — ask at transfer.',note:''},
+ QF:{ci:'Bag drop closes 30 min before domestic, 60 min international.',id:'Photo ID for domestic; passport for international.',bag:'Domestic allowances are generous compared with US carriers.',note:''},
+ AC:{ci:'Bag drop closes 45 min before domestic, 60 min international.',id:'Government photo ID for domestic; passport for international.',bag:'Basic fares exclude seat selection and are non-refundable.',note:''},
+ '6E':{ci:'Check-in closes 45 min before domestic, 60 min international.',id:'Government photo ID for domestic Indian travel; passport for international.',bag:'One 7 kg cabin bag. Weight limits are enforced at the gate.',note:''},
+ NH:{ci:'Check-in closes 45-60 min before departure.',id:'Passport for international travel.',bag:'Generous allowances, usually two pieces on long-haul.',note:''},
+ JL:{ci:'Check-in closes 45-60 min before departure.',id:'Passport for international travel.',bag:'Generous allowances, usually two pieces on long-haul.',note:''}
+};
+function rAirlineDocs(){
+  var p=S.parsed;if(!p)return '';
+  var a=AIRDOC[p.code],name=(AL[p.code]?AL[p.code].n:p.code);
+  var q=encodeURIComponent(name+' baggage allowance check-in requirements');
+  var row=function(ico,label,val){
+    if(!val)return '';
+    return '<div style="padding:8px 0;border-bottom:1px solid var(--borL)">'
+      +'<div style="font-size:12px;font-weight:800;color:var(--txt);margin-bottom:2px">'+ico+' '+label+'</div>'
+      +'<div style="font-size:12.5px;color:var(--t2);line-height:1.6">'+val+'</div></div>';
+  };
+  var body=a
+    ? row('⏰','Check-in and bag drop',a.ci)+row('🪪','Accepted ID',a.id)+row('🧳','Baggage catch',a.bag)+row('🚪','At the gate',a.note)
+    : '<div style="font-size:12.5px;color:var(--t2);line-height:1.6;padding:8px 0">The app does not hold detailed rules for this carrier yet. Check '+name+'’s own page for bag sizes, check-in cutoffs and accepted ID — cutoffs in particular vary a lot between airlines.</div>';
+  return '<div style="border:1.5px solid var(--bor);border-radius:12px;padding:11px 13px;margin-bottom:14px">'
+    +'<div style="font-size:13px;font-weight:800;color:var(--txt);margin-bottom:2px">Flying '+name+'</div>'
+    +'<div style="font-size:11px;color:var(--tM);margin-bottom:6px;line-height:1.5">Rules set by the airline, not the country. Miss one of these and you are refused at the gate rather than at immigration.</div>'
+    +body
+    +'<a href="https://www.google.com/search?q='+q+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;font-size:12px;font-weight:700;color:var(--acc);text-decoration:underline">Check '+name+'’s official rules &rarr;</a>'
+  +'</div>';
+}
+
 function rDestRules(fd){
   if(!fd)return '';
   var cc=apCountry(fd.arr),d=DEST[cc]||DEST.OTHER,ap=AP[fd.arr]||{};
@@ -3412,6 +3579,7 @@ function openDocs(){
       +'Check off each item before your trip. Progress saves automatically.'
       +(fd?'<br><strong style="color:var(--txt)">Destination: '+( dest.cy||fd.arr)+' ('+(dest.cu||'?')+')</strong>':'')
     +'</div>'
+    +rAirlineDocs()
     +rDestRules(fd)
     +'<div style="display:flex;flex-direction:column;gap:2px">'
     +TRAVEL_DOCS_DATA.map(function(doc,i){
