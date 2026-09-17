@@ -2013,19 +2013,30 @@ function bDemo(code,num,dep,arr,offset){
   function gcD(la1,lo1,la2,lo2){var R=6371,r=function(d){return d*Math.PI/180;};var a=Math.pow(Math.sin(r(la2-la1)/2),2)+Math.cos(r(la1))*Math.cos(r(la2))*Math.pow(Math.sin(r(lo2-lo1)/2),2);return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
   var distKm=Math.round(gcD(dA.lat,dA.lon,aA.lat,aA.lon));
   var durMins=Math.max(45,Math.round(distKm/850*60)+35);
-  var aLTotal=dLH*60+dLM+durMins;
-  var aLH=Math.floor(aLTotal/60)%24,aLM=aLTotal%60;
-  var nextDay=aLTotal>=24*60;
   var dt=new Date();dt.setDate(dt.getDate()+off);
-  var aDt=new Date(dt);if(nextDay)aDt.setDate(aDt.getDate()+1);
   var p2=function(n){return String(n).padStart(2,'0');};
   var y=dt.getFullYear(),mo=dt.getMonth()+1,d=dt.getDate();
   // Convert desired local time to UTC: utc = local - utcOffsetMins
   var dUtcTotal=dLH*60+dLM-dOff;var dUtcH=Math.floor(((dUtcTotal%1440)+1440)%1440/60);var dUtcM=((dUtcTotal%1440)+1440)%1440%60;
-  var aUtcTotal=aLH*60+aLM-aOff;var aUtcH=Math.floor(((aUtcTotal%1440)+1440)%1440/60);var aUtcM=((aUtcTotal%1440)+1440)%1440%60;
-  var ay=aDt.getFullYear(),amo=aDt.getMonth()+1,ad=aDt.getDate();
   var dIso=new Date(y+'-'+p2(mo)+'-'+p2(d)+'T'+p2(dUtcH)+':'+p2(dUtcM)+':00Z');
-  var aIso=new Date(ay+'-'+p2(amo)+'-'+p2(ad)+'T'+p2(aUtcH)+':'+p2(aUtcM)+':00Z');
+  // Arrival is departure PLUS the flight time, as an absolute instant. The old
+  // code added the duration to the departure's LOCAL clock and then converted
+  // that using the ARRIVAL airport's offset, which counted the timezone
+  // difference twice — JFK-LHR reported a 7h flight whose timestamps were 2h
+  // apart, so durations, countdowns and landed/in-air status were all wrong on
+  // any route crossing timezones.
+  var aIso=new Date(dIso.getTime()+durMins*60000);
+  var aLocal=(function(){
+    try{
+      var pt=new Intl.DateTimeFormat('en-US',{timeZone:aTz,hour12:false,year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}).formatToParts(aIso).reduce(function(a,x){a[x.type]=x.value;return a;},{});
+      return{h:pt.hour==='24'?0:parseInt(pt.hour,10),m:parseInt(pt.minute,10),label:pt.month+' '+pt.day};
+    }catch(e){
+      var t=((dLH*60+dLM+durMins)%1440+1440)%1440;
+      return{h:Math.floor(t/60),m:t%60,label:''};
+    }
+  })();
+  var aLH=aLocal.h,aLM=aLocal.m;
+  var aDtLabel=aLocal.label||new Date(dt.getTime()+durMins*60000).toLocaleDateString('en-US',{month:'short',day:'numeric'});
   // Status is derived from real elapsed time against the estimated schedule
   // (not a random pick) so a demo/estimated fallback still correctly shows
   // "Landed" once the estimated arrival time has passed, "In Air" mid-flight,
@@ -2045,7 +2056,7 @@ function bDemo(code,num,dep,arr,offset){
   var acPools={B6:['32A','32B','32N','321','320'],WN:['738','7M8','7M9'],AA:['738','7M8','321','32B','788'],DL:['738','321','32A','788','333'],UA:['738','7M9','321','789'],AS:['738','7M9'],F9:['32A','32N'],NK:['32A','32N'],G4:['320','32A'],HA:['332','789'],BA:['77W','789','333'],LH:['333','359','788','32A'],AF:['333','359','388'],KL:['333','789','738'],EK:['77W','388','359'],QR:['77W','789','359','388'],SQ:['388','359','77W','789'],CX:['359','77W','333'],QF:['789','388'],AC:['789','333','738'],TK:['32B','789','77W'],EY:['789','359'],IB:['32A','359'],AY:['32A','789']};
   var pool=acPools[code]||['738','321','32A','789'];
   var acIata=pool[seed%pool.length];var acData=ACF[acIata];
-  return{airline:airline,dep:dep,arr:arr,status:status,depTime:fmtT(dLH,dLM),arrTime:fmtT(aLH,aLM),depDate:dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}),arrDate:aDt.toLocaleDateString('en-US',{month:'short',day:'numeric'}),depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:String(1+seed%4),arrT:String(1+(seed+2)%3),depG:'ABCDE'[seed%5]+(10+seed%30),arrG:'ABCDE'[(seed+2)%5]+(5+seed%20),acName:acData?acData.n:'Type '+acIata,acIata:acIata,acData:acData,baggage:'Carousel '+['3','7','12','4'][seed%4],dlyMins:status==='Delayed'?(seed%3+1)*15:0,arrDlyMins:arrDlyMins,dur:Math.floor(durMins/60)+'h '+durMins%60+'m',dIso:dIso,aIso:aIso,live:false,codeshare:null};
+  return{airline:airline,dep:dep,arr:arr,status:status,depTime:fmtT(dLH,dLM),arrTime:fmtT(aLH,aLM),depDate:dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}),arrDate:aDtLabel,depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:String(1+seed%4),arrT:String(1+(seed+2)%3),depG:'ABCDE'[seed%5]+(10+seed%30),arrG:'ABCDE'[(seed+2)%5]+(5+seed%20),acName:acData?acData.n:'Type '+acIata,acIata:acIata,acData:acData,baggage:'Carousel '+['3','7','12','4'][seed%4],dlyMins:status==='Delayed'?(seed%3+1)*15:0,arrDlyMins:arrDlyMins,dur:Math.floor(durMins/60)+'h '+durMins%60+'m',dIso:dIso,aIso:aIso,live:false,codeshare:null};
 }
 // ═══ FLIGHT DATES ═══
 function localDateStr(daysOff){
