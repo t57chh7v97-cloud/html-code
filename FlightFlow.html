@@ -603,6 +603,7 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
     <span id="apiBdg" class="nbdg dbdg">📡 Demo</span>
     <button class="nbt" onclick="OM('mSav');rSav()" data-i18n-title="nav_saved" title="Saved">🔖</button>
     <button class="nbt" onclick="OM('mFbk');rFbk()" data-i18n-title="nav_feedback" title="Feedback">💬</button>
+    <button class="nbt" id="dkToggle" onclick="tDark()" title="Night mode">🌙</button>
     <button class="nbt" onclick="OM('mSet')" data-i18n-title="nav_settings" title="Settings">⚙️</button>
   </div>
   <button class="nshare" onclick="shareApp()" title="Share FlightFlow"><span>🔗</span><span class="nshareT" data-i18n="nav_shareapp">Share</span></button>
@@ -1473,6 +1474,8 @@ function setDkMode(m){
   if(m==='auto')S.dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
   else S.dark=m==='on';
   document.body.classList.toggle('dark',S.dark);
+  var dkb=g('dkToggle');
+  if(dkb){dkb.textContent=S.dark?'☀️':'🌙';dkb.title=S.dark?'Switch to day mode':'Switch to night mode';}
   if(g('dkAuto'))g('dkAuto').classList.toggle('on',m==='auto');
   if(g('dkBtn'))g('dkBtn').classList.toggle('on',m==='on');
   if(g('dkOff'))g('dkOff').classList.toggle('on',m==='off');
@@ -3041,6 +3044,7 @@ function rInterestPicker(person){
         ?'These add to '+esc0(person)+'&rsquo;s list only. Anything marked <strong>trip</strong> was chosen for everyone and is edited from the All tab.'
         :'Pick any that apply and the matching gear is added for everyone.')
       +(sugNames.length&&!sel.length?' Suggested for this flight: '+sugNames.join(', ')+'.':'')+'</div>'
+    +(!person&&!getPaxNames().length?'<div style="font-size:11px;color:var(--tM);margin:-4px 0 8px;line-height:1.5;padding-top:6px;border-top:1px solid var(--borL)">Travelling with other people? Add their names under <span onclick="OM(&apos;mSet&apos;)" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Settings &rarr; Passengers</span> and each person gets their own interests, packing list and tick marks.</div>':'')
     +'<div style="display:flex;flex-wrap:wrap;gap:6px">'
     +TRIP_INTERESTS.map(function(t){
       var fromTrip=person&&trip.indexOf(t.k)>-1;
