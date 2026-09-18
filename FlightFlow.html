@@ -1894,6 +1894,18 @@ function mapLive(raw,parsed){
   var aSched=arr.scheduledTime&&arr.scheduledTime.local||null;
   var dRevRaw=dep.revisedTime&&dep.revisedTime.local||null;
   var aRevRaw=arr.revisedTime&&arr.revisedTime.local||null;
+  // runwayTime is the ACTUAL wheels-up / touchdown, and predictedTime is a
+  // forecast. Both were being ignored, so when revisedTime was stale or absent
+  // the app showed a worse number than the response actually contained.
+  // revisedTime stays preferred for display because it is the gate time, which
+  // is what boards and other trackers show; runway times are used to fill gaps
+  // and, more importantly, as hard evidence the flight really moved.
+  var dRunway=dep.runwayTime&&dep.runwayTime.local||null;
+  var aRunway=arr.runwayTime&&arr.runwayTime.local||null;
+  var dPred=dep.predictedTime&&dep.predictedTime.local||null;
+  var aPred=arr.predictedTime&&arr.predictedTime.local||null;
+  if(!dRevRaw)dRevRaw=dRunway||dPred||null;
+  if(!aRevRaw)aRevRaw=aRunway||aPred||null;
   var dTz=depAp.timeZone||(AP[depAp.iata]||{}).tz||'UTC';
   var aTz=arrAp.timeZone||(AP[arrAp.iata]||{}).tz||'UTC';
   // Delay is measured from revised-vs-scheduled timestamps rather than trusting
@@ -1928,6 +1940,10 @@ function mapLive(raw,parsed){
   // actually landed. Claiming a flight is still airborne hours past its
   // arrival is worse than being slightly cautious, so trust the clock once
   // the arrival time is comfortably past.
+  // An actual touchdown time is stronger evidence than the provider's status
+  // string, which routinely lags behind reality.
+  if(aRunway||arr.actualTime)status='Landed';
+  else if(dRunway&&status!=='Cancelled'&&status!=='Landed')status='In Air';
   if((status==='In Air'||status==='Boarding')&&aIso&&Date.now()-aIso.getTime()>30*60000)status='Landed';
   if(status==='Scheduled'&&dIso&&aIso&&Date.now()>=dIso.getTime()&&Date.now()<aIso.getTime())status='In Air';
   if((status==='Scheduled'||status==='Boarding')&&depDly>10)status='Delayed';
@@ -2722,8 +2738,10 @@ function showRaw(){
         +'<div style="height:7px"></div><div style="font-weight:800;color:var(--txt)">Times the provider sent</div>'
         +tRow('Departure scheduled',d.scheduledTime&&d.scheduledTime.local)
         +tRow('Departure revised',d.revisedTime&&d.revisedTime.local)
+        +tRow('Departure runway (actual)',d.runwayTime&&d.runwayTime.local)
         +tRow('Arrival scheduled',a.scheduledTime&&a.scheduledTime.local)
         +tRow('Arrival revised',a.revisedTime&&a.revisedTime.local)
+        +tRow('Arrival runway (actual)',a.runwayTime&&a.runwayTime.local)
         +(shown?('<div style="height:7px"></div><div style="font-weight:800;color:var(--txt)">What the app is showing</div>'
             +tRow('Departure',shown.depTime+' '+shown.depTz+' ('+shown.depTimeTag+')')
             +tRow('Arrival',shown.arrTime+' '+shown.arrTz+' ('+shown.arrTimeTag+')')
