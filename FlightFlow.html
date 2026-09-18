@@ -1944,11 +1944,13 @@ function mapLive(raw,parsed){
     var ms=b-a;if(!(ms>0&&ms<48*3600000))return null;
     var mn=Math.round(ms/60000);return Math.floor(mn/60)+'h '+mn%60+'m';
   }
-  var dur=durTxt(dSchedIso,aSchedIso)||durTxt(dRevIso,aRevIso)||durTxt(dIso,aIso)||'--';
+  var flown=!!(dRevIso&&aRevIso);
+  var dur=(flown?durTxt(dRevIso,aRevIso):null)||durTxt(dSchedIso,aSchedIso)||durTxt(dRevIso,aRevIso)||durTxt(dIso,aIso)||'--';
+  var durIsActual=flown&&!!durTxt(dRevIso,aRevIso);
   if(dur==='--'&&raw.greatCircleDistance&&raw.greatCircleDistance.km){var km=raw.greatCircleDistance.km;var mn2=Math.max(45,Math.round(km/850*60)+35);dur=Math.floor(mn2/60)+'h '+mn2%60+'m';}
   var acIata=(raw.aircraft&&(raw.aircraft.iata||raw.aircraft.icaoType))||null;
   var acData=acIata?ACF[acIata]:null;
-  return{airline:airline,dep:depAp.iata||dep.iata||'???',arr:arrAp.iata||arr.iata||'???',status:status,depTime:dL?fmtT(dL.h,dL.min):'--',arrTime:aL?fmtT(aL.h,aL.min):'--',depTimeTag:dIsEstimated?'Estimated':'Scheduled',arrTimeTag:aIsEstimated?'Estimated':'Scheduled',depSchedTime:(function(){var x=parseISOLocal(dSched);return x?fmtT(x.h,x.min):null;})(),arrSchedTime:(function(){var x=parseISOLocal(aSched);return x?fmtT(x.h,x.min):null;})(),depDate:dL?fmtD(dL.mo,dL.d):'',arrDate:aL?fmtD(aL.mo,aL.d):'',depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:dep.terminal||'--',arrT:arr.terminal||'--',depG:dep.gate||'--',arrG:arr.gate||'--',acName:acData?acData.n:(raw.aircraft&&raw.aircraft.model)||'Unknown',acIata:acIata,acData:acData,baggage:arr.baggageBelt?'Belt '+arr.baggageBelt:(arr.baggage||'--'),dur:dur,dlyMins:depDly>0?depDly:0,arrDlyMins:arrDly,arrDlyApprox:arrApprox,dIso:dIso,aIso:aIso,live:true,codeshare:null};
+  return{airline:airline,dep:depAp.iata||dep.iata||'???',arr:arrAp.iata||arr.iata||'???',status:status,depTime:dL?fmtT(dL.h,dL.min):'--',arrTime:aL?fmtT(aL.h,aL.min):'--',depTimeTag:dIsEstimated?'Estimated':'Scheduled',arrTimeTag:aIsEstimated?'Estimated':'Scheduled',depSchedTime:(function(){var x=parseISOLocal(dSched);return x?fmtT(x.h,x.min):null;})(),arrSchedTime:(function(){var x=parseISOLocal(aSched);return x?fmtT(x.h,x.min):null;})(),depDate:dL?fmtD(dL.mo,dL.d):'',arrDate:aL?fmtD(aL.mo,aL.d):'',depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:dep.terminal||'--',arrT:arr.terminal||'--',depG:dep.gate||'--',arrG:arr.gate||'--',acName:acData?acData.n:(raw.aircraft&&raw.aircraft.model)||'Unknown',acIata:acIata,acData:acData,baggage:arr.baggageBelt?'Belt '+arr.baggageBelt:(arr.baggage||'--'),dur:dur,durIsActual:durIsActual,dlyMins:depDly>0?depDly:0,arrDlyMins:arrDly,arrDlyApprox:arrApprox,dIso:dIso,aIso:aIso,live:true,codeshare:null};
 }
 // Shared lookup used by both the initial fetch and each date-tab's lazy
 // fetch. Returns {fd,all} or null.
@@ -2780,17 +2782,17 @@ function rDash(parsed,fd){
         +'<div class="iata" onclick="openAP(\''+fd.dep+'\')" title="Airport info">'+fd.dep+'</div>'
         +'<div class="apcy">'+dI.cy+'</div>'
         +'<div class="aptm">'+fd.depTime+'</div>'
-        +(fd.depTimeTag&&fd.depTimeTag==='Estimated'?'<div style="font-size:10px;font-weight:700;color:#f59e0b;letter-spacing:.3px">EST'+(fd.depSchedTime?' &middot; was '+fd.depSchedTime:'')+'</div>':'')
+        +(fd.depTimeTag&&fd.depTimeTag==='Estimated'?'<div style="font-size:10px;font-weight:700;color:#f59e0b;letter-spacing:.3px">REVISED'+(fd.depSchedTime?' &middot; was '+fd.depSchedTime:'')+'</div>':'')
         +'<div class="aptz">'+fd.depTz+'</div>'
         +'<div class="apdt">'+fd.depDate+'</div>'
         +'<div class="apnw">Local now: '+nowAt(fd.dTz)+'</div>'
       +'</div>'
-      +'<div class="rrmid"><div class="pico">✈️</div><div class="rdur">'+fd.dur+'</div></div>'
+      +'<div class="rrmid"><div class="pico">✈️</div><div class="rdur">'+fd.dur+'</div>'+(fd.dur&&fd.dur!=='--'?'<div style="font-size:9px;font-weight:700;letter-spacing:.3px;color:var(--tM)">'+(fd.durIsActual?'ACTUAL':'SCHEDULED')+'</div>':'')+'</div>'
       +'<div class="apb r">'
         +'<div class="iata" onclick="openAP(\''+fd.arr+'\')" title="Airport info">'+fd.arr+'</div>'
         +'<div class="apcy">'+aI.cy+'</div>'
         +'<div class="aptm">'+fd.arrTime+'</div>'
-        +(fd.arrTimeTag&&fd.arrTimeTag==='Estimated'?'<div style="font-size:10px;font-weight:700;color:#f59e0b;letter-spacing:.3px">EST'+(fd.arrSchedTime?' &middot; was '+fd.arrSchedTime:'')+'</div>':'')
+        +(fd.arrTimeTag&&fd.arrTimeTag==='Estimated'?'<div style="font-size:10px;font-weight:700;color:#f59e0b;letter-spacing:.3px">REVISED'+(fd.arrSchedTime?' &middot; was '+fd.arrSchedTime:'')+'</div>':'')
         +'<div class="aptz">'+fd.arrTz+'</div>'
         +'<div class="apdt">'+fd.arrDate+'</div>'
         +'<div class="apnw">Local now: '+nowAt(fd.aTz)+'</div>'
