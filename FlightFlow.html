@@ -1966,7 +1966,7 @@ function mapLive(raw,parsed){
   if(dur==='--'&&raw.greatCircleDistance&&raw.greatCircleDistance.km){var km=raw.greatCircleDistance.km;var mn2=Math.max(45,Math.round(km/850*60)+35);dur=Math.floor(mn2/60)+'h '+mn2%60+'m';}
   var acIata=(raw.aircraft&&(raw.aircraft.iata||raw.aircraft.icaoType))||null;
   var acData=acIata?ACF[acIata]:null;
-  return{airline:airline,dep:depAp.iata||dep.iata||'???',arr:arrAp.iata||arr.iata||'???',status:status,depTime:dL?fmtT(dL.h,dL.min):'--',arrTime:aL?fmtT(aL.h,aL.min):'--',depTimeTag:dIsEstimated?'Estimated':'Scheduled',arrTimeTag:aIsEstimated?'Estimated':'Scheduled',depSchedTime:(function(){var x=parseISOLocal(dSched);return x?fmtT(x.h,x.min):null;})(),arrSchedTime:(function(){var x=parseISOLocal(aSched);return x?fmtT(x.h,x.min):null;})(),depDate:dL?fmtD(dL.mo,dL.d):'',arrDate:aL?fmtD(aL.mo,aL.d):'',depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:dep.terminal||'--',arrT:arr.terminal||'--',depG:dep.gate||'--',arrG:arr.gate||'--',acName:acData?acData.n:(raw.aircraft&&raw.aircraft.model)||'Unknown',acIata:acIata,acData:acData,baggage:arr.baggageBelt?'Belt '+arr.baggageBelt:(arr.baggage||'--'),dur:dur,durIsActual:durIsActual,dlyMins:depDly>0?depDly:0,arrDlyMins:arrDly,arrDlyApprox:arrApprox,dIso:dIso,aIso:aIso,live:true,codeshare:null};
+  return{airline:airline,dep:depAp.iata||dep.iata||'???',arr:arrAp.iata||arr.iata||'???',status:status,depTime:dL?fmtT(dL.h,dL.min):'--',arrTime:aL?fmtT(aL.h,aL.min):'--',depTimeTag:dIsEstimated?'Estimated':'Scheduled',arrTimeTag:aIsEstimated?'Estimated':'Scheduled',depSchedTime:(function(){var x=parseISOLocal(dSched);return x?fmtT(x.h,x.min):null;})(),arrSchedTime:(function(){var x=parseISOLocal(aSched);return x?fmtT(x.h,x.min):null;})(),depDate:dL?fmtD(dL.mo,dL.d):'',arrDate:aL?fmtD(aL.mo,aL.d):'',depTz:tzLbl(dTz),arrTz:tzLbl(aTz),dTz:dTz,aTz:aTz,depT:dep.terminal||'--',arrT:arr.terminal||'--',depG:dep.gate||'--',arrG:arr.gate||'--',checkIn:dep.checkInDesk||'--',acName:acData?acData.n:(raw.aircraft&&raw.aircraft.model)||'Unknown',acIata:acIata,acData:acData,baggage:arr.baggageBelt?'Belt '+arr.baggageBelt:(arr.baggage||'--'),dur:dur,durIsActual:durIsActual,dlyMins:depDly>0?depDly:0,arrDlyMins:arrDly,arrDlyApprox:arrApprox,dIso:dIso,aIso:aIso,live:true,codeshare:null};
 }
 // Shared lookup used by both the initial fetch and each date-tab's lazy
 // fetch. Returns {fd,all} or null.
@@ -2702,7 +2702,7 @@ function tgAlDesc(){
 // simply not published by the airline until shortly before the flight, so say
 // that rather than showing a dash.
 function nsp(v){
-  if(v===undefined||v===null||v==='--'||v==='')return '<span style="font-size:11px;font-weight:600;color:var(--tM)">Not in this data feed</span>';
+  if(v===undefined||v===null||v==='--'||v==='')return '<span style="font-size:11px;font-weight:600;color:var(--tM)">Not reported for this airport</span>';
   return v;
 }
 // Shows the provider's actual response. When a field like a gate is missing
@@ -2823,8 +2823,9 @@ function rDash(parsed,fd){
       +'<div class="ic ica"><div class="icl">'+t('info_arrterminal')+'</div><div class="icv">'+nsp(fd.arrT)+'</div></div>'
       +'<div class="ic ica"><div class="icl">'+t('info_arrgate')+'</div><div class="icv">'+nsp(fd.arrG)+'</div></div>'
       +'<div class="ic"><div class="icl">'+t('info_baggage')+'</div><div class="icv">'+nsp(fd.baggage)+'</div></div>'
+      +(fd.checkIn&&fd.checkIn!=='--'?'<div class="ic"><div class="icl">CHECK-IN DESK</div><div class="icv">'+fd.checkIn+'</div></div>':'')
     +'</div>'
-    +((fd.live&&(fd.depG==='--'||fd.arrG==='--'||fd.baggage==='--'))?'<div style="font-size:11px;color:var(--tM);margin:-4px 0 10px;line-height:1.5">Gate and baggage-belt data is not included in the free AeroDataBox feed, so it may show on other trackers but not here. Check the airport screens on the day.</div>':'')
+    +((fd.live&&(fd.depG==='--'||fd.arrG==='--'||fd.baggage==='--'))?'<div style="font-size:11px;color:var(--tM);margin:-4px 0 10px;line-height:1.5">Gate and belt coverage varies by airport rather than by flight — major hubs usually report them, smaller airports often send nothing. Larger trackers pay for extra feeds that fill these gaps. Check the airport screens on the day.</div>':'')
     +(cd?'<div class="cdr">'+cd+'</div>':'')
     +'<div class="abs">'
       +'<button class="ab" onclick="openShr()">'+t('act_share')+'</button>'
