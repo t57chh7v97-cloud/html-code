@@ -3085,6 +3085,8 @@ function rCL(items,ck,key,perPerson){
   var h=names.length?'<div style="font-size:12px;color:var(--t2);margin-bottom:8px">👨‍👩‍👧‍👦 Packing for: '+names.join(', ')+'</div>':'';
   h+='<div style="display:flex;justify-content:space-between;margin-bottom:7px;font-size:13px;color:var(--t2)"><span>'+done+' of '+items.length+' done</span><span style="font-weight:700;color:var(--txt)">'+pct+'%</span></div><div class="prb"><div class="prf" style="width:'+pct+'%"></div></div>';
   if(pct===100&&isKid)h+='<div style="background:#dcfce7;border:2px solid #22c55e;border-radius:12px;padding:14px;margin:10px 0;text-align:center;font-size:15px;font-weight:700;color:#166534">You packed everything! Ready to fly!</div>';
+  var resetLbl=perPerson?'Reset '+String(S_packPerson).replace(/</g,'&lt;')+'&rsquo;s ticks':(key==='sc'?'Reset this list':'Reset all ticks');
+  h+='<div style="text-align:right;margin:-2px 0 6px"><span onclick="resetCk()" style="cursor:pointer;font-size:11px;font-weight:700;color:var(--tM);text-decoration:underline">'+resetLbl+'</span></div>';
   h+=items.map(function(item,i){return '<div class="cli" onclick="tgCL(\''+key+'\','+i+');haptic()"><div class="cbox'+(ck[item.l]?' on':'')+'"><span class="cchk">✓</span></div>'+(isKid?'<span class="cem">'+item.e+'</span>':'')+'<span class="clbl'+(ck[i]?' dn':'')+'">'+item.l+(pax>1&&!isKid&&key==='pk'&&!perPerson&&item.c!=='documents'?' x'+pax:'')+'</span><span class="ccat" style="'+(item.c==='required'||item.c==='must-have'?'background:#fee2e2;color:#991b1b':item.c==='safety'||item.c==='important'?'background:#fef3c7;color:#5c4400':'background:var(--s2);color:#5c4400')+'">'+item.c+'</span></div>';}).join('');
   return h;
 }
@@ -3095,10 +3097,32 @@ function clItems(type){
   if(type==='sc')return S.kid?KSC:ASC;
   return [];
 }
+function saveCk(){
+  try{
+    ls.sj('ff_ck_pack',S.pCk||{});
+    ls.sj('ff_ck_pack_person',S.pCkByPerson||{});
+    ls.sj('ff_ck_sec',S.sCk||{});
+  }catch(e){}
+}
+function loadCk(){
+  S.pCk=ls.gj('ff_ck_pack')||{};
+  S.pCkByPerson=ls.gj('ff_ck_pack_person')||{};
+  S.sCk=ls.gj('ff_ck_sec')||{};
+}
+function resetCk(){
+  if(S_packPerson){
+    if(!S.pCkByPerson)S.pCkByPerson={};
+    S.pCkByPerson[S_packPerson]={};
+  }else if(S.tab==='sec'){S.sCk={};}
+  else{S.pCk={};S.pCkByPerson={};}
+  saveCk();
+  if(g('tabC'))g('tabC').innerHTML=rTab();
+}
 function tgCL(type,idx){
   var item=clItems(type)[idx];if(!item)return;
   if(type==='pk'){var ck=packCkFor(S_packPerson);ck[item.l]=!ck[item.l];}
   else if(type==='sc')S.sCk[item.l]=!S.sCk[item.l];
+  saveCk();
   if(g('tabC'))g('tabC').innerHTML=rTab();
 }
 function rTr(){var arr=AP[S.curAp];var cy=arr?arr.cy:'your destination';var atAirport=arr&&arr.nt?'<a class="trb" href="https://www.google.com/maps/search/'+encodeURIComponent(cy+' airport public transit')+'" target="_blank"><div class="trlo" style="background:#16a34a">🚆</div><div><div class="trnm">At '+S.curAp+'</div><div class="trds">'+arr.nt+'</div></div></a>':'';return '<div class="trgr">'+atAirport+'<a class="trb" href="https://m.uber.com/ul/" target="_blank"><div class="trlo" style="background:#000">🚗</div><div><div class="trnm">Uber</div><div class="trds">Book a ride</div></div></a><a class="trb" href="https://lyft.com" target="_blank"><div class="trlo" style="background:#ea0b8c">🚕</div><div><div class="trnm">Lyft</div><div class="trds">Book a ride</div></div></a><a class="trb" href="https://www.rome2rio.com" target="_blank"><div class="trlo" style="background:#ff6319">🚌</div><div><div class="trnm">Rome2Rio</div><div class="trds">All transport options</div></div></a><a class="trb" href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(cy+' airport')+'" target="_blank"><div class="trlo" style="background:#4285f4">🗺️</div><div><div class="trnm">Google Maps</div><div class="trds">Directions</div></div></a></div>';}
@@ -4063,6 +4087,7 @@ document.addEventListener('DOMContentLoaded',function(){
   });
   var fi=g('flIn');
   if(fi){fi.addEventListener('keydown',function(e){if(e.key==='Enter')doLkp();});fi.addEventListener('input',function(e){e.target.value=e.target.value.toUpperCase();});}
+  loadCk();
   var last=ls.g('ff_last');if(last&&fi){fi.value=last;doLkp();}else{renderWelcome();}
 });
 </script>
