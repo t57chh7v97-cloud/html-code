@@ -2702,7 +2702,7 @@ function tgAlDesc(){
 // simply not published by the airline until shortly before the flight, so say
 // that rather than showing a dash.
 function nsp(v){
-  if(v===undefined||v===null||v==='--'||v==='')return '<span style="font-size:11px;font-weight:600;color:var(--tM)">Not published yet</span>';
+  if(v===undefined||v===null||v==='--'||v==='')return '<span style="font-size:11px;font-weight:600;color:var(--tM)">Not in this data feed</span>';
   return v;
 }
 // Shows the provider's actual response. When a field like a gate is missing
@@ -2824,6 +2824,7 @@ function rDash(parsed,fd){
       +'<div class="ic ica"><div class="icl">'+t('info_arrgate')+'</div><div class="icv">'+nsp(fd.arrG)+'</div></div>'
       +'<div class="ic"><div class="icl">'+t('info_baggage')+'</div><div class="icv">'+nsp(fd.baggage)+'</div></div>'
     +'</div>'
+    +((fd.live&&(fd.depG==='--'||fd.arrG==='--'||fd.baggage==='--'))?'<div style="font-size:11px;color:var(--tM);margin:-4px 0 10px;line-height:1.5">Gate and baggage-belt data is not included in the free AeroDataBox feed, so it may show on other trackers but not here. Check the airport screens on the day.</div>':'')
     +(cd?'<div class="cdr">'+cd+'</div>':'')
     +'<div class="abs">'
       +'<button class="ab" onclick="openShr()">'+t('act_share')+'</button>'
