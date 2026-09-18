@@ -1474,13 +1474,17 @@ function setDkMode(m){
   if(m==='auto')S.dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
   else S.dark=m==='on';
   document.body.classList.toggle('dark',S.dark);
-  var dkb=g('dkToggle');
-  if(dkb){dkb.textContent=S.dark?'☀️':'🌙';dkb.title=S.dark?'Switch to day mode':'Switch to night mode';}
+  syncDkIcon();
   if(g('dkAuto'))g('dkAuto').classList.toggle('on',m==='auto');
   if(g('dkBtn'))g('dkBtn').classList.toggle('on',m==='on');
   if(g('dkOff'))g('dkOff').classList.toggle('on',m==='off');
 }
 function tDark(){setDkMode(S.dark?'off':'on');}
+function syncDkIcon(){
+  var b=g('dkToggle');if(!b)return;
+  b.textContent=S.dark?'☀️':'🌙';
+  b.title=S.dark?'Switch to day mode':'Switch to night mode';
+}
 function kbSync(){var el=g('kbDarkLbl');if(el)el.textContent=document.body.classList.contains('dark')?'Toggle light mode':'Toggle dark mode';}
 function iDark(){
   var saved=ls.g('ff_dk');
@@ -1491,10 +1495,11 @@ function iDark(){
   }
   document.body.classList.toggle('dark',S.dark);
   var b=g('dkBtn');if(b){b.textContent=S.dark?t('dkmode_on'):t('dkmode_off');b.classList.toggle('on',S.dark);}
+  syncDkIcon();
   // Listen for system changes when in auto mode
   if(saved===null||saved==='auto'){
     try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(e){
-      if(ls.g('ff_dk')==='auto'||!ls.g('ff_dk')){S.dark=e.matches;document.body.classList.toggle('dark',e.matches);var b=g('dkBtn');if(b){b.textContent=e.matches?t('dkmode_on'):t('dkmode_off');b.classList.toggle('on',e.matches);}}
+      if(ls.g('ff_dk')==='auto'||!ls.g('ff_dk')){S.dark=e.matches;document.body.classList.toggle('dark',e.matches);var b=g('dkBtn');if(b){b.textContent=e.matches?t('dkmode_on'):t('dkmode_off');b.classList.toggle('on',e.matches);}syncDkIcon();}
     });}catch(e){}
   }
 }
