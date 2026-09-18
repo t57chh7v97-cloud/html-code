@@ -2985,11 +2985,32 @@ var TRIP_INTERESTS=[
    {l:'Moisturiser and lip balm — cabin air is very dry',c:'trip',e:'🧴'},
    {l:'Downloaded films and music',c:'trip',e:'🎬'},{l:'Spare layer, cabins run cold',c:'trip',e:'🧥'}]}
 ];
+// Trip-wide interests apply to everyone on the booking; per-person interests
+// belong to one traveller. A shared beach trip still means one person packs
+// camera gear and another packs running shoes, so the two layer rather than
+// compete.
 function getInterests(){return ls.gj('ff_interests')||[];}
+function getPaxInterests(name){
+  if(!name)return [];
+  var m=ls.gj('ff_pax_interests')||{};
+  return m[name]||[];
+}
+function setPaxInterests(name,arr){
+  var m=ls.gj('ff_pax_interests')||{};
+  m[name]=arr;ls.sj('ff_pax_interests',m);
+}
+// Toggling edits whichever list is in view: one traveller's own interests when
+// a person is selected, otherwise the trip-wide set.
 function tgInterest(k){
-  var cur=getInterests(),i=cur.indexOf(k);
-  if(i>-1)cur.splice(i,1);else cur.push(k);
-  ls.sj('ff_interests',cur);
+  if(S_packPerson){
+    var mine=getPaxInterests(S_packPerson),i=mine.indexOf(k);
+    if(i>-1)mine.splice(i,1);else mine.push(k);
+    setPaxInterests(S_packPerson,mine);
+  }else{
+    var cur=getInterests(),j=cur.indexOf(k);
+    if(j>-1)cur.splice(j,1);else cur.push(k);
+    ls.sj('ff_interests',cur);
+  }
   if(g('tabC'))g('tabC').innerHTML=rTab();
 }
 // Interests the trip itself implies, so the list is useful before anyone
@@ -3007,22 +3028,32 @@ function suggestedInterests(){
   }
   return out;
 }
-function rInterestPicker(){
-  var sel=getInterests(),sug=suggestedInterests();
+function esc0(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function rInterestPicker(person){
+  var trip=getInterests(),mine=getPaxInterests(person);
+  var sel=trip.concat(mine.filter(function(k){return trip.indexOf(k)<0;}));
+  var sug=suggestedInterests();
   var sugNames=sug.map(function(k){var t=TRIP_INTERESTS.filter(function(x){return x.k===k;})[0];return t?t.n:k;});
   return '<div style="background:var(--s2);border-radius:10px;padding:10px 12px;margin-bottom:11px">'
-    +'<div style="font-size:12px;font-weight:800;color:var(--txt);margin-bottom:3px">What is this trip for?</div>'
-    +'<div style="font-size:11px;color:var(--tM);margin-bottom:8px;line-height:1.5">Pick any that apply and the matching gear is added to the list below.'
+    +'<div style="font-size:12px;font-weight:800;color:var(--txt);margin-bottom:3px">'+(person?esc0(person)+'&rsquo;s interests':'What is this trip for?')+'</div>'
+    +'<div style="font-size:11px;color:var(--tM);margin-bottom:8px;line-height:1.5">'
+      +(person
+        ?'These add to '+esc0(person)+'&rsquo;s list only. Anything marked <strong>trip</strong> was chosen for everyone and is edited from the All tab.'
+        :'Pick any that apply and the matching gear is added for everyone.')
       +(sugNames.length&&!sel.length?' Suggested for this flight: '+sugNames.join(', ')+'.':'')+'</div>'
     +'<div style="display:flex;flex-wrap:wrap;gap:6px">'
     +TRIP_INTERESTS.map(function(t){
+      var fromTrip=person&&trip.indexOf(t.k)>-1;
       var on=sel.indexOf(t.k)>-1,isSug=!on&&sug.indexOf(t.k)>-1;
-      return '<button onclick="tgInterest(\''+t.k+'\')" style="border:1.5px solid '+(on||isSug?'var(--acc)':'var(--bor)')+';background:'+(on?'var(--acc)':'var(--sur)')+';color:'+(on?'#fff':'var(--t2)')+';border-radius:20px;padding:5px 11px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit">'+t.e+' '+t.n+(isSug?' •':'')+'</button>';
+      var tag=fromTrip?' <span style="opacity:.75;font-weight:600">trip</span>':(isSug?' •':'');
+      return '<button onclick="tgInterest(\''+t.k+'\')"'+(fromTrip?' title="Chosen for the whole trip — edit it from the All tab"':'')+' style="border:1.5px solid '+(on||isSug?'var(--acc)':'var(--bor)')+';background:'+(on?'var(--acc)':'var(--sur)')+';color:'+(on?'#fff':'var(--t2)')+';border-radius:20px;padding:5px 11px;font-size:11.5px;font-weight:700;cursor:'+(fromTrip?'default':'pointer')+';font-family:inherit;opacity:'+(fromTrip?'.7':'1')+'">'+t.e+' '+t.n+tag+'</button>';
     }).join('')
     +'</div></div>';
 }
-function packItems(){
-  var base=(S.kid?KPK:APK).slice(),sel=getInterests(),seen={};
+function packItems(person){
+  var base=(S.kid?KPK:APK).slice(),seen={};
+  var sel=getInterests().slice();
+  getPaxInterests(person).forEach(function(k){if(sel.indexOf(k)<0)sel.push(k);});
   base.forEach(function(it){seen[it.l.toLowerCase()]=1;});
   sel.forEach(function(k){
     var t=TRIP_INTERESTS.filter(function(x){return x.k===k;})[0];
@@ -3041,7 +3072,7 @@ function rTab(){
     var names=getPaxNames();
     if(!names.length)S_packPerson=null;
     var ck=names.length?packCkFor(S_packPerson):S.pCk;
-    return (names.length?rPackPersonSel(names):'')+rInterestPicker()+rCL(packItems(),ck,'pk',!!S_packPerson);
+    return (names.length?rPackPersonSel(names):'')+rInterestPicker(S_packPerson)+rCL(packItems(S_packPerson),ck,'pk',!!S_packPerson);
   }
   if(S.tab==='sec')return rCL(S.kid?KSC:ASC,S.sCk,'sc',false);
   if(S.tab==='tr')return rTr();
@@ -3049,17 +3080,25 @@ function rTab(){
 }
 function rCL(items,ck,key,perPerson){
   var pax=S.pax,isKid=S.kid;
-  var done=items.filter(function(_,i){return ck[i];}).length,pct=Math.round(done/items.length*100);
+  var done=items.filter(function(it){return ck[it.l];}).length,pct=items.length?Math.round(done/items.length*100):0;
   var names=key==='pk'&&!perPerson?getPaxNames():[];
   var h=names.length?'<div style="font-size:12px;color:var(--t2);margin-bottom:8px">👨‍👩‍👧‍👦 Packing for: '+names.join(', ')+'</div>':'';
   h+='<div style="display:flex;justify-content:space-between;margin-bottom:7px;font-size:13px;color:var(--t2)"><span>'+done+' of '+items.length+' done</span><span style="font-weight:700;color:var(--txt)">'+pct+'%</span></div><div class="prb"><div class="prf" style="width:'+pct+'%"></div></div>';
   if(pct===100&&isKid)h+='<div style="background:#dcfce7;border:2px solid #22c55e;border-radius:12px;padding:14px;margin:10px 0;text-align:center;font-size:15px;font-weight:700;color:#166534">You packed everything! Ready to fly!</div>';
-  h+=items.map(function(item,i){return '<div class="cli" onclick="tgCL(\''+key+'\','+i+');haptic()"><div class="cbox'+(ck[i]?' on':'')+'"><span class="cchk">✓</span></div>'+(isKid?'<span class="cem">'+item.e+'</span>':'')+'<span class="clbl'+(ck[i]?' dn':'')+'">'+item.l+(pax>1&&!isKid&&key==='pk'&&!perPerson&&item.c!=='documents'?' x'+pax:'')+'</span><span class="ccat" style="'+(item.c==='required'||item.c==='must-have'?'background:#fee2e2;color:#991b1b':item.c==='safety'||item.c==='important'?'background:#fef3c7;color:#5c4400':'background:var(--s2);color:#5c4400')+'">'+item.c+'</span></div>';}).join('');
+  h+=items.map(function(item,i){return '<div class="cli" onclick="tgCL(\''+key+'\','+i+');haptic()"><div class="cbox'+(ck[item.l]?' on':'')+'"><span class="cchk">✓</span></div>'+(isKid?'<span class="cem">'+item.e+'</span>':'')+'<span class="clbl'+(ck[i]?' dn':'')+'">'+item.l+(pax>1&&!isKid&&key==='pk'&&!perPerson&&item.c!=='documents'?' x'+pax:'')+'</span><span class="ccat" style="'+(item.c==='required'||item.c==='must-have'?'background:#fee2e2;color:#991b1b':item.c==='safety'||item.c==='important'?'background:#fef3c7;color:#5c4400':'background:var(--s2);color:#5c4400')+'">'+item.c+'</span></div>';}).join('');
   return h;
 }
+// Resolves the clicked row back to its item so the tick is stored against a
+// stable label rather than a position that shifts when interests change.
+function clItems(type){
+  if(type==='pk')return packItems(S_packPerson);
+  if(type==='sc')return S.kid?KSC:ASC;
+  return [];
+}
 function tgCL(type,idx){
-  if(type==='pk'){var ck=S_packPerson?packCkFor(S_packPerson):S.pCk;ck[idx]=!ck[idx];}
-  else if(type==='sc')S.sCk[idx]=!S.sCk[idx];
+  var item=clItems(type)[idx];if(!item)return;
+  if(type==='pk'){var ck=packCkFor(S_packPerson);ck[item.l]=!ck[item.l];}
+  else if(type==='sc')S.sCk[item.l]=!S.sCk[item.l];
   if(g('tabC'))g('tabC').innerHTML=rTab();
 }
 function rTr(){var arr=AP[S.curAp];var cy=arr?arr.cy:'your destination';var atAirport=arr&&arr.nt?'<a class="trb" href="https://www.google.com/maps/search/'+encodeURIComponent(cy+' airport public transit')+'" target="_blank"><div class="trlo" style="background:#16a34a">🚆</div><div><div class="trnm">At '+S.curAp+'</div><div class="trds">'+arr.nt+'</div></div></a>':'';return '<div class="trgr">'+atAirport+'<a class="trb" href="https://m.uber.com/ul/" target="_blank"><div class="trlo" style="background:#000">🚗</div><div><div class="trnm">Uber</div><div class="trds">Book a ride</div></div></a><a class="trb" href="https://lyft.com" target="_blank"><div class="trlo" style="background:#ea0b8c">🚕</div><div><div class="trnm">Lyft</div><div class="trds">Book a ride</div></div></a><a class="trb" href="https://www.rome2rio.com" target="_blank"><div class="trlo" style="background:#ff6319">🚌</div><div><div class="trnm">Rome2Rio</div><div class="trds">All transport options</div></div></a><a class="trb" href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(cy+' airport')+'" target="_blank"><div class="trlo" style="background:#4285f4">🗺️</div><div><div class="trnm">Google Maps</div><div class="trds">Directions</div></div></a></div>';}
