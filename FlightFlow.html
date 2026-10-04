@@ -50,11 +50,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 /* NAVBAR */
 .navbar{background:#1a1a2e;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.25)}
 .nav-in{max-width:700px;margin:0 auto;padding:0 1rem;height:56px;display:flex;align-items:center;justify-content:space-between;gap:8px}
-.brand{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.brand{display:flex;align-items:center;gap:10px;flex-shrink:1;min-width:0;overflow:hidden}
 .bico{width:34px;height:34px;background:rgba(255,255,255,.13);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px}
 .bnm{font-size:16px;font-weight:700;color:#fff;display:block}
 .btg{font-size:11px;color:rgba(255,255,255,.5);display:block}
-.nav-r{display:flex;align-items:center;gap:5px;overflow-x:auto;scrollbar-width:none;flex-shrink:1;min-width:0}
+.nav-r{display:flex;align-items:center;gap:5px;flex-shrink:0}
 .nav-r::-webkit-scrollbar{display:none}
 .nbdg{font-size:12px;font-weight:600;padding:4px 9px;border-radius:20px;border:1px solid transparent;white-space:nowrap;flex-shrink:0}
 .lbdg{background:rgba(110,231,183,.15);color:#6ee7b7;border-color:rgba(110,231,183,.25)}
@@ -64,7 +64,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .nshare{display:flex;align-items:center;gap:5px;height:32px;padding:0 12px;margin-left:6px;flex-shrink:0;white-space:nowrap;background:#fff;border:none;border-radius:8px;color:#1a1a2e;font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.18)}
 .nshare:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.26)}
 .nshare:active{transform:translateY(0)}
-@media(max-width:560px){.nshareT{display:none}.nshare{padding:0 10px}}
+@media(max-width:560px){.nshareT{display:none}.nshare{padding:0 10px;margin-left:4px}.bnm span{display:none}.btg{display:none}.nav-in{gap:4px;padding:0 .6rem}.nav-r{gap:3px}}@media(max-width:400px){.bnm{font-size:14px}.nbt{width:30px;height:30px}}
 .moreWrap{position:relative;flex-shrink:0}
 .moreMenu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--sur);border:1px solid var(--bor);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.3);padding:6px;min-width:210px;max-height:70vh;overflow-y:auto;z-index:200}
 .moreMenu.open{display:block}
@@ -2992,6 +2992,75 @@ var TRIP_INTERESTS=[
    {l:'Compression socks',c:'trip',e:'🧦'},{l:'Empty bottle to fill after security',c:'trip',e:'🚰'},
    {l:'Moisturiser and lip balm — cabin air is very dry',c:'trip',e:'🧴'},
    {l:'Downloaded films and music',c:'trip',e:'🎬'},{l:'Spare layer, cabins run cold',c:'trip',e:'🧥'}]}
+,
+ {k:'camping',n:'Camping',e:'⛺',items:[
+   {l:'Tent, pegs and groundsheet',c:'trip',e:'⛺'},{l:'Sleeping bag and mat',c:'trip',e:'🛌'},
+   {l:'Camping stove and fuel (fuel cannot fly — buy on arrival)',c:'trip',e:'🔥'},
+   {l:'Torch and spare batteries',c:'trip',e:'🔦'},{l:'Power bank, fully charged',c:'trip',e:'🔋'}]},
+ {k:'wedding',n:'Wedding / formal event',e:'💒',items:[
+   {l:'Outfit in a garment bag — carry on, never check it',c:'trip',e:'👗'},
+   {l:'Formal shoes',c:'trip',e:'👠'},{l:'Gift or card',c:'trip',e:'🎁'},
+   {l:'Steamer or wrinkle spray',c:'trip',e:'🧺'},{l:'Spare tights or cufflinks',c:'trip',e:'🧵'}]},
+ {k:'cruise',n:'Cruise',e:'🛳️',items:[
+   {l:'Cruise documents and luggage tags printed',c:'trip',e:'🎫'},
+   {l:'Formal night outfit',c:'trip',e:'🤵'},{l:'Seasickness tablets or bands',c:'trip',e:'💊'},
+   {l:'Lanyard for your cabin card',c:'trip',e:'🪪'},{l:'Power strip without surge protection (surge strips are banned)',c:'trip',e:'🔌'}]},
+ {k:'roadtrip',n:'Road trip / driving',e:'🚗',items:[
+   {l:'Driving licence and International Driving Permit if needed',c:'trip',e:'🪪'},
+   {l:'Car hire booking and insurance details',c:'trip',e:'📄'},
+   {l:'Phone mount and car charger',c:'trip',e:'📱'},{l:'Offline maps downloaded',c:'trip',e:'🗺️'},
+   {l:'Snacks and a refillable bottle',c:'trip',e:'🥨'}]},
+ {k:'study',n:'Study / exchange',e:'🎓',items:[
+   {l:'Acceptance letter and student visa documents',c:'trip',e:'📄'},
+   {l:'Laptop and charger',c:'trip',e:'💻'},{l:'Academic transcripts',c:'trip',e:'📜'},
+   {l:'Passport photos for local registration',c:'trip',e:'📸'},
+   {l:'Plug adapters for a long stay',c:'trip',e:'🔌'}]},
+ {k:'baby',n:'Travelling with a baby',e:'🍼',items:[
+   {l:'Formula, bottles and steriliser bags',c:'trip',e:'🍼'},
+   {l:'Nappies — pack far more than the flight length suggests',c:'trip',e:'🧻'},
+   {l:'Changing mat and nappy bags',c:'trip',e:'👶'},{l:'Pram or carrier (gate-checked free on most airlines)',c:'trip',e:'🛒'},
+   {l:'Dummy or bottle for take-off and landing',c:'trip',e:'🫧'},
+   {l:'Two spare outfits, for baby and for you',c:'trip',e:'👕'}]},
+ {k:'pet',n:'Travelling with a pet',e:'🐾',items:[
+   {l:'Pet passport, microchip and vaccination records',c:'trip',e:'📄'},
+   {l:'Airline-approved carrier, measured against their limits',c:'trip',e:'🧳'},
+   {l:'Health certificate dated within the airline window',c:'trip',e:'🩺'},
+   {l:'Collapsible bowl and food',c:'trip',e:'🥣'},{l:'Absorbent pads for the carrier',c:'trip',e:'🧻'},
+   {l:'Confirm the pet booking directly — space is capped per flight',c:'trip',e:'☎️'}]},
+ {k:'ski',n:'Ski / snowboard gear',e:'🎿',items:[
+   {l:'Skis or board, booked as sports baggage in advance',c:'trip',e:'🎿'},
+   {l:'Helmet',c:'trip',e:'⛑️'},{l:'Lift pass or booking reference',c:'trip',e:'🎟️'},
+   {l:'Ski socks (thin, not thick)',c:'trip',e:'🧦'},{l:'Sunscreen — altitude burns faster',c:'trip',e:'🧴'}]},
+ {k:'dive',n:'Diving / snorkelling',e:'🤿',items:[
+   {l:'Certification card and logbook',c:'trip',e:'🪪'},{l:'Mask and snorkel',c:'trip',e:'🤿'},
+   {l:'Dive computer',c:'trip',e:'⌚'},{l:'Reef-safe sunscreen',c:'trip',e:'🧴'},
+   {l:'Do not fly within 24h of your last dive — plan the gap',c:'trip',e:'⏰'}]},
+ {k:'festival',n:'Festival / concert',e:'🎪',items:[
+   {l:'Tickets, downloaded offline',c:'trip',e:'🎟️'},{l:'Earplugs',c:'trip',e:'🎧'},
+   {l:'Power bank and cable',c:'trip',e:'🔋'},{l:'Clear bag if the venue requires one',c:'trip',e:'👜'},
+   {l:'Wellies or sturdy boots',c:'trip',e:'🥾'},{l:'Cash — signal often fails on site',c:'trip',e:'💵'}]},
+ {k:'remote',n:'Working remotely',e:'🧑‍💻',items:[
+   {l:'Laptop, charger and adapters',c:'trip',e:'💻'},{l:'Noise-cancelling headphones',c:'trip',e:'🎧'},
+   {l:'Portable mouse and stand',c:'trip',e:'🖱️'},{l:'Backup internet — eSIM or hotspot',c:'trip',e:'📶'},
+   {l:'Check the time difference against your meetings',c:'trip',e:'🕐'}]},
+ {k:'religious',n:'Pilgrimage / religious site',e:'🕌',items:[
+   {l:'Modest clothing covering shoulders and knees',c:'trip',e:'🧥'},
+   {l:'Scarf or head covering',c:'trip',e:'🧣'},{l:'Slip-on shoes — many sites require removing them',c:'trip',e:'🥿'},
+   {l:'Socks for barefoot areas',c:'trip',e:'🧦'}]},
+ {k:'allergy',n:'Allergies',e:'⚠️',items:[
+   {l:'Two adrenaline auto-injectors, in the cabin',c:'trip',e:'💉'},
+   {l:'Allergy card translated into the local language',c:'trip',e:'🗣️'},
+   {l:'Tell the airline at booking — many can avoid serving the allergen',c:'trip',e:'☎️'},
+   {l:'Antihistamines',c:'trip',e:'💊'},{l:'Safe snacks in case nothing on board works',c:'trip',e:'🍪'}]},
+ {k:'budget',n:'Budget travel',e:'🎒',items:[
+   {l:'Everything in one cabin bag — measure it against the sizer',c:'trip',e:'🎒'},
+   {l:'Padlock for hostel lockers',c:'trip',e:'🔒'},{l:'Travel towel',c:'trip',e:'🧻'},
+   {l:'Empty bottle to fill after security',c:'trip',e:'🚰'},{l:'Laundry sheets',c:'trip',e:'🧼'}]},
+ {k:'shopping',n:'Shopping trip',e:'🛍️',items:[
+   {l:'Folded empty bag for the way home',c:'trip',e:'🛍️'},
+   {l:'Check your duty-free and customs allowance before you buy',c:'trip',e:'🧾'},
+   {l:'Keep receipts for VAT refund at the airport',c:'trip',e:'💶'},
+   {l:'Bubble wrap for anything fragile',c:'trip',e:'📦'}]}
 ];
 // Trip-wide interests apply to everyone on the booking; per-person interests
 // belong to one traveller. A shared beach trip still means one person packs
@@ -3049,7 +3118,7 @@ function rInterestPicker(person){
         ?'These add to '+esc0(person)+'&rsquo;s list only. Anything marked <strong>trip</strong> was chosen for everyone and is edited from the All tab.'
         :'Pick any that apply and the matching gear is added for everyone.')
       +(sugNames.length&&!sel.length?' Suggested for this flight: '+sugNames.join(', ')+'.':'')+'</div>'
-    +(!person&&!getPaxNames().length?'<div style="font-size:11px;color:var(--tM);margin:-4px 0 8px;line-height:1.5;padding-top:6px;border-top:1px solid var(--borL)">Travelling with other people? Add their names under <span onclick="OM(&apos;mSet&apos;)" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Settings &rarr; Passengers</span> and each person gets their own interests, packing list and tick marks.</div>':'')
+    +(!person&&!getPaxNames().length?'<div style="font-size:11px;color:var(--tM);margin:-4px 0 8px;line-height:1.5;padding-top:6px;border-top:1px solid var(--borL)">Travelling with other people? Add their names under <span onclick="OM(&apos;mSet&apos;)" style="cursor:pointer;font-weight:700;text-decoration:underline;color:var(--acc)">Settings &rarr; Passengers and passport</span> and each person gets their own interests, packing list and tick marks.</div>':'')
     +'<div style="display:flex;flex-wrap:wrap;gap:6px">'
     +TRIP_INTERESTS.map(function(t){
       var fromTrip=person&&trip.indexOf(t.k)>-1;
