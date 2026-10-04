@@ -2284,6 +2284,23 @@ function rSeat(acIata,acData){if(!acData)return '<div style="color:var(--tM);fon
 // ═══ QR ═══
 function openQR(){if(!S.parsed)return;var wrap=g('qrWrap');if(!wrap)return;drawQR(wrap,'https://flightaware.com/live/flight/'+(S.parsed.code+S.parsed.num).replace(/ /g,''));OM('mQR');}
 // ═══ JET LAG ═══
+// The body clock shifts the SHORT way round: a 23-hour eastward difference is
+// a 1-hour westward shift, not a 23-hour one. Both the jet lag calculator and
+// the sleep planner subtracted raw UTC offsets, so Honolulu to Auckland was
+// reported as "Severe (23h)" — a figure no human can experience, since the
+// maximum possible displacement is 12 hours. The planner then built a sleep
+// schedule to match it. Exactly +/-12 is kept as given, because at half the
+// clock both directions are equally far and the sign still conveys which way
+// the flight went.
+function bodyClockShift(aOff,dOff){
+  var d=Math.round(aOff-dOff);
+  while(d>12)d-=24;
+  while(d<-12)d+=24;
+  return d;
+}
+// A raw gap beyond 12 hours means the route crosses the date line, so the
+// calendar day changes even though the body clock barely moves.
+function crossesDateLine(aOff,dOff){return Math.abs(Math.round(aOff-dOff))>12;}
 function openJL(){
   var fd=S.fd;if(!fd){g('jlBd').innerHTML='<p class="mds">Track a flight first.</p>';OM('mJL');return;}
   var depNow=new Date().toLocaleTimeString('en-US',{timeZone:fd.dTz,hour:'2-digit',minute:'2-digit',hour12:true});
@@ -2291,7 +2308,7 @@ function openJL(){
   var depDate=new Date().toLocaleDateString('en-US',{timeZone:fd.dTz,weekday:'short',month:'short',day:'numeric'});
   var arrDate=new Date().toLocaleDateString('en-US',{timeZone:fd.aTz,weekday:'short',month:'short',day:'numeric'});
   function utcOff(tz){try{var s=new Date().toLocaleTimeString('en-US',{timeZone:tz,timeZoneName:'shortOffset'});var m=s.match(/GMT([+-]\d+(?::\d+)?)/);if(!m)return 0;var p=m[1].split(':');return parseInt(p[0],10)+(p[1]?parseInt(p[1],10)/60*Math.sign(parseInt(p[0],10)):0);}catch(e){return 0;}}
-  var dOff=utcOff(fd.dTz),aOff=utcOff(fd.aTz),diff=Math.round(aOff-dOff),abs=Math.abs(diff);
+  var dOff=utcOff(fd.dTz),aOff=utcOff(fd.aTz),diff=bodyClockShift(aOff,dOff),abs=Math.abs(diff);
   var dir=diff>0?'Eastward':'Westward',dSign=diff>0?'+':diff<0?'-':'';
   var sev,sevClr,sevBg,recover,bodyFeel,sevEmoji;
   if(abs===0){sev='No change';sevClr='#166534';sevBg='#dcfce7';sevEmoji='OK';recover='No adjustment needed';bodyFeel='Your body clock stays the same. No jet lag expected.';}
@@ -2300,6 +2317,9 @@ function openJL(){
   else if(abs<=7){sev='Moderate ('+abs+'h)';sevClr='#5c4400';sevBg='#fef3c7';sevEmoji='Significant';recover='3-5 days';bodyFeel='Fatigue, brain fog, waking at 3am, hunger at odd hours. Your body needs time to shift its clock.';}
   else if(abs<=10){sev='Significant ('+abs+'h)';sevClr='#991b1b';sevBg='#fee2e2';sevEmoji='Severe';recover='5-7 days';bodyFeel='Strong fatigue and difficulty concentrating. Start adjusting sleep 3 days before departure.';}
   else{sev='Severe ('+abs+'h)';sevClr='#6b21a8';sevBg='#f3e8ff';sevEmoji='Extreme';recover='7-14 days';bodyFeel='Near-complete reversal of your body clock. Plan for a full recovery week.';}
+  if(crossesDateLine(aOff,dOff)){
+    bodyFeel+=' This route crosses the international date line, so the calendar date jumps even though your body clock only shifts '+abs+'h — the date change looks dramatic but is not what causes jet lag.';
+  }
   var eastTips=[['Get bright sunlight in the MORNING at destination','Your body needs morning light to reset its clock. Go outside right after breakfast.'],['Stay awake until at least 9pm local destination time','Resist napping when you arrive. Push through to local bedtime.'],['Set your watch to destination time as you board','Start mentally shifting to the new schedule during the flight.'],['Take melatonin (0.5-3mg) at destination bedtime around 10pm','Melatonin signals your brain it is bedtime. Low doses work as well as high ones.'],['Sleep during the FIRST half of the flight','Eastward travel shortens your day. Sleeping early helps your body arrive feeling like evening.'],['Stay hydrated and skip alcohol','Cabin air is very dry and alcohol makes jet lag significantly worse.']];
   var westTips=[['Get sunlight in the LATE AFTERNOON at destination','Westward travel lengthens your day. Evening light tells your body to stay awake later.'],['Do not go to bed before 9pm local destination time','Even if exhausted, staying up resets your clock faster.'],['Set your watch to destination time as you board','This mental shift starts the adjustment early.'],['Take melatonin (0.5-3mg) at destination bedtime 10-11pm','Helps your brain accept the new bedtime.'],['Sleep during the SECOND half of the flight','Westward means later bedtime. Stay awake early and sleep toward the end.'],['Take a short walk outside after landing','Natural light and movement are the two most powerful jet lag resets.']];
   var tips=diff>=0?eastTips:westTips;
@@ -4104,7 +4124,7 @@ function rmBucket(i){var list=ls.gj('ff_bucket')||[];list.splice(i,1);ls.sj('ff_
 function openSleep(){
   var fd=S.fd;if(!fd){g('sleepBd').innerHTML='<p class="mds">Track a flight first.</p>';OM('mSleep');return;}
   function utcOff(tz){try{var s=new Date().toLocaleTimeString('en-US',{timeZone:tz,timeZoneName:'shortOffset'});var m=s.match(/GMT([+-]\d+(?::\d+)?)/);if(!m)return 0;var p=m[1].split(':');return parseInt(p[0],10)+(p[1]?parseInt(p[1],10)/60*Math.sign(parseInt(p[0],10)):0);}catch(e){return 0;}}
-  var dOff=utcOff(fd.dTz),aOff=utcOff(fd.aTz),diff=Math.round(aOff-dOff),abs=Math.abs(diff);
+  var dOff=utcOff(fd.dTz),aOff=utcOff(fd.aTz),diff=bodyClockShift(aOff,dOff),abs=Math.abs(diff);
   if(abs===0){g('sleepBd').innerHTML='<p class="mds">No timezone change — no sleep adjustment needed!</p>';OM('mSleep');return;}
   var east=diff>0;
   var schedule=[];
