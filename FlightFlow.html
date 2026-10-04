@@ -61,6 +61,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .dbdg{background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);border-color:rgba(255,255,255,.1)}
 .nbt{width:32px;height:32px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:rgba(255,255,255,.8);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:background .15s;flex-shrink:0}
 .nbt:hover{background:rgba(255,255,255,.25)}
+.wxu{background:var(--s2);border:1.5px solid var(--bor);border-radius:7px;color:var(--t2);font-size:12px;font-weight:800;font-family:inherit;padding:4px 9px;cursor:pointer;line-height:1.2}
+.wxu:hover{border-color:var(--acc);color:var(--txt)}
+.wxu.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .nshare{display:flex;align-items:center;gap:5px;height:32px;padding:0 12px;margin-left:6px;flex-shrink:0;white-space:nowrap;background:#fff;border:none;border-radius:8px;color:#1a1a2e;font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.18)}
 .nshare:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.26)}
 .nshare:active{transform:translateY(0)}
@@ -657,7 +660,16 @@ function setUnit(k,v){
     if(S.wIV)clearInterval(S.wIV);
     S.wIV=setInterval(function(){if(wxLastAP)doWx(wxLastAP);},parseInt(v)*60000);
   }
-  if((k==='temp'||k==='wind'||k==='pres'||k==='dist')&&wxLastAP)doWx(wxLastAP);
+  if((k==='temp'||k==='wind'||k==='pres'||k==='dist')&&wxLastAP){
+    if(k==='temp'&&S.parsed&&S.fd)rDash(S.parsed,S.fd);
+    doWx(wxLastAP);
+  }
+}
+function refreshWx(){
+  var el=g('wxC');
+  if(!wxLastAP){if(el)el.innerHTML='<div class="wxmsg">Track a flight first.</div>';return;}
+  if(el)el.innerHTML='<div class="wxmsg">Refreshing weather...</div>';
+  doWx(wxLastAP);
 }
 function syncUnits(){
   var pairs=[
@@ -1508,23 +1520,79 @@ function iKid(){if(ls.g('ff_kd')==='1'){S.kid=true;document.body.classList.add('
 function chPx(d){S.pax=Math.max(1,Math.min(30,S.pax+d));ls.s('ff_px',String(S.pax));var el=g('pxN');if(el)el.textContent=S.pax;rPaxNames();if(S.parsed&&S.fd)rDash(S.parsed,S.fd);}
 function iPax(){S.pax=parseInt(ls.g('ff_px')||'1',10);var el=g('pxN');if(el)el.textContent=S.pax;}
 function getPaxNames(){var n=ls.gj('ff_pax_names')||[];return n.filter(function(x){return x&&x.trim();});}
+// Passport and home currency were single global values, which breaks as soon
+// as a group is not all from the same country — a visa check is only right for
+// the passport actually being carried. Each traveller now gets their own,
+// falling back to the global setting when left as Same as mine.
+function getPaxMeta(key,name){
+  if(!name)return '';
+  var m=ls.gj(key)||{};
+  return m[name]||'';
+}
+function setPaxMeta(key,name,val){
+  if(!name)return;
+  var m=ls.gj(key)||{};
+  if(val)m[name]=val;else delete m[name];
+  ls.sj(key,m);
+}
+// Resolve for whoever's list is on screen, falling back to the account default.
+function ppFor(name){return getPaxMeta('ff_pax_pp',name)||getPP();}
+function curFor(name){return getPaxMeta('ff_pax_cur',name)||ls.g('ff_hcur')||'USD';}
+function savPaxMeta(idx,key,val){
+  var names=ls.gj('ff_pax_names')||[];
+  var nm=(names[idx]||'').trim();
+  if(!nm)return;
+  setPaxMeta(key,nm,val);
+  if(S.parsed&&S.fd&&S.tab==='pack')swTab('pack');
+}
 function rPaxNames(){
   var wrap=g('paxNamesWrap'),list=g('paxNamesList');if(!wrap||!list)return;
   if(S.pax<2){wrap.style.display='none';return;}
   wrap.style.display='block';
   var saved=ls.gj('ff_pax_names')||[];
   list.innerHTML='';
+  var ppOpts=PP.map(function(c){return '<option value="'+c.c+'">'+c.n+' ('+c.c+')</option>';}).join('');
+  var curOpts=Object.keys(CUR).sort().map(function(k){return '<option value="'+k+'">'+k+' - '+curName(k)+'</option>';}).join('');
   for(var i=0;i<S.pax;i++){
+    var nm=(saved[i]||'').trim();
+    var row=document.createElement('div');
+    row.style.cssText='border:1px solid var(--bor);border-radius:10px;padding:8px 9px;display:flex;flex-direction:column;gap:6px';
     var inp=document.createElement('input');
     inp.type='text';inp.className='mi';inp.placeholder='Passenger '+(i+1)+' name (optional)';inp.value=saved[i]||'';inp.dataset.idx=i;
     inp.oninput=savPaxNames;inp.onblur=savPaxNames;
-    list.appendChild(inp);
+    row.appendChild(inp);
+    if(nm){
+      var sub=document.createElement('div');
+      sub.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
+      var pSel=document.createElement('select');
+      pSel.className='mi';pSel.style.cssText='flex:1;min-width:140px;font-size:12px';
+      pSel.innerHTML='<option value="">🛂 Passport — same as mine</option>'+ppOpts;
+      pSel.value=getPaxMeta('ff_pax_pp',nm);
+      (function(idx){pSel.onchange=function(){savPaxMeta(idx,'ff_pax_pp',this.value);};})(i);
+      var cSel=document.createElement('select');
+      cSel.className='mi';cSel.style.cssText='flex:1;min-width:140px;font-size:12px';
+      cSel.innerHTML='<option value="">💱 Currency — same as mine</option>'+curOpts;
+      cSel.value=getPaxMeta('ff_pax_cur',nm);
+      (function(idx){cSel.onchange=function(){savPaxMeta(idx,'ff_pax_cur',this.value);};})(i);
+      sub.appendChild(pSel);sub.appendChild(cSel);
+      row.appendChild(sub);
+    }else{
+      var hint=document.createElement('div');
+      hint.style.cssText='font-size:11px;color:var(--tM)';
+      hint.textContent='Enter a name to set this person\u2019s own passport country and currency.';
+      row.appendChild(hint);
+    }
+    list.appendChild(row);
   }
 }
-function savPaxNames(){
-  var inputs=document.querySelectorAll('#paxNamesList input');
+function savPaxNames(e){
+  var inputs=document.querySelectorAll('#paxNamesList input[type=text]');
   var names=Array.from(inputs).map(function(i){return i.value.trim();});
+  var before=(ls.gj('ff_pax_names')||[]).map(function(n){return !!(n&&n.trim());}).join(',');
   ls.sj('ff_pax_names',names);
+  // Only rebuild when a name appears or disappears, otherwise the input loses
+  // focus on every keystroke.
+  if(names.map(function(n){return !!n;}).join(',')!==before)rPaxNames();
   if(S.parsed&&S.fd&&S.tab==='pack')swTab('pack');
 }
 function rPP(q){var sel=g('ppSel');if(!sel)return;var f=q.toLowerCase();var list=PP.filter(function(p){return p.n.toLowerCase().indexOf(f)>-1||p.c.toLowerCase().indexOf(f)>-1;});sel.innerHTML=list.map(function(p){return '<option value="'+p.c+'">'+p.n+' ('+p.c+')</option>';}).join('');var sv=ls.g('ff_pp')||'US';if(list.find(function(p){return p.c===sv;}))sel.value=sv;}
@@ -2859,7 +2927,16 @@ function rDash(parsed,fd){
     +'</div>'
     +'</div>'
     +seatSec
-    +'<div class="card"><div class="slbl">'+t('weather_title')+' '+(aI.cy||fd.arr)+'</div><div id="wxC"></div></div>'
+    +'<div class="card">'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">'
+        +'<div class="slbl" style="margin:0;flex:1;min-width:120px">'+t('weather_title')+' '+(aI.cy||fd.arr)+'</div>'
+        +'<div style="display:flex;gap:4px;align-items:center">'
+          +'<button onclick="setUnit(\'temp\',\'F\')" id="wxF" class="wxu'+(getU('temp','F')==='F'?' on':'')+'">&deg;F</button>'
+          +'<button onclick="setUnit(\'temp\',\'C\')" id="wxC2" class="wxu'+(getU('temp','F')==='C'?' on':'')+'">&deg;C</button>'
+          +'<button onclick="refreshWx()" class="wxu" title="Refresh weather">&#x21bb;</button>'
+        +'</div>'
+      +'</div>'
+      +'<div id="wxC"></div></div>'
     +'<div class="card"><div class="slbl">'+(isKid?t('reminders_title_kid'):t('reminders_title'))+'</div>'
       +(isKid
         ?'<div class="rem"><div class="remi" style="background:#fef9c3">🎒</div><div><div class="remt">Pack your backpack and grab your boarding pass!</div><div class="rems">Give boarding pass to a grown-up to hold safe</div></div></div>'
@@ -3727,6 +3804,25 @@ function rDestRules(fd){
   var place=ap.cy||fd.arr;
   var pp=getPP(),v=chkVisa(pp,fd.arr);
   var vColor=v.t==='citizen'?'#166534':v.t==='free'?'#166534':v.t==='required'?'#b45309':'var(--t2)';
+  var vCol=function(t){return t==='citizen'||t==='free'?'#166534':t==='required'?'#b45309':'var(--t2)';};
+  var paxNames=getPaxNames();
+  var perPax='';
+  if(paxNames.length){
+    var rows=paxNames.map(function(n){
+      var theirPP=ppFor(n),res=chkVisa(theirPP,fd.arr);
+      var ctry=(PP.filter(function(c){return c.c===theirPP;})[0]||{}).n||theirPP;
+      return{n:n,pp:theirPP,ctry:ctry,res:res};
+    });
+    // Only worth splitting out when the answers actually differ.
+    var distinct={};rows.forEach(function(r){distinct[r.pp]=1;});
+    if(Object.keys(distinct).length>1){
+      perPax='<div style="margin-top:7px;padding-top:7px;border-top:1px solid var(--borL)">'
+        +rows.map(function(r){
+          return '<div style="font-size:12px;margin-bottom:4px;line-height:1.5"><strong style="color:var(--txt)">'+String(r.n).replace(/</g,'&lt;')+'</strong> <span style="color:var(--tM)">('+r.ctry+')</span><br><span style="color:'+vCol(r.res.t)+'">'+r.res.tx+'</span></div>';
+        }).join('')
+      +'</div>';
+    }
+  }
   var sec=function(ico,title,body){
     return '<div style="padding:9px 0;border-bottom:1px solid var(--borL)">'
       +'<div style="font-size:12px;font-weight:800;color:var(--txt);margin-bottom:3px">'+ico+' '+title+'</div>'
@@ -3736,7 +3832,7 @@ function rDestRules(fd){
   return '<div style="border:1.5px solid var(--bor);border-radius:12px;padding:11px 13px;margin-bottom:14px">'
     +'<div style="font-size:13px;font-weight:800;color:var(--txt);margin-bottom:2px">Arriving in '+place+(cc!=='OTHER'?' ('+cc+')':'')+'</div>'
     +'<div style="font-size:11px;color:var(--tM);margin-bottom:6px">Requirements for this destination'+(cc==='OTHER'?' — general guidance, this country is not in the app\'s detailed list yet':'')+'</div>'
-    +sec('🛂','Visa','<span style="color:'+vColor+';font-weight:600">'+v.tx+'</span>')
+    +sec('🛂','Visa','<span style="color:'+vColor+';font-weight:600">'+v.tx+'</span>'+perPax)
     +sec('📘','Passport validity',d.pv)
     +sec('🧾','Entry authorisation',d.ent)
     +sec('🛃','Customs and restrictions',d.cus)
