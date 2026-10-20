@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ebike Maps</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root {
+    --accent: #007aff;
+    --accent-dark: #0a84ff;
+    --surface: rgba(255, 255, 255, 0.92);
+    --surface-solid: #ffffff;
+    --text: #1c1c1e;
+    --text-dim: #6e6e73;
+    --border: rgba(0, 0, 0, 0.08);
+    --shadow: 0 8px 28px rgba(0, 0, 0, 0.16);
+    --charging: #34c759;
+    --rental: #007aff;
+    --repair: #ff9500;
+    --lane: #af52de;
+    background: #e9e9ec;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --surface: rgba(30, 30, 32, 0.88);
+      --surface-solid: #1c1c1e;
+      --text: #f2f2f7;
+      --text-dim: #9b9ba1;
+      --border: rgba(255, 255, 255, 0.1);
+      --shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+      background: #000;
+    }
+  }
+  :root[data-theme="dark"] {
+    --surface: rgba(30, 30, 32, 0.88);
+    --surface-solid: #1c1c1e;
+    --text: #f2f2f7;
+    --text-dim: #9b9ba1;
+    --border: rgba(255, 255, 255, 0.1);
+    --shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+    background: #000;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    background: var(--background, #e9e9ec);
+  }
+
+  #map {
+    position: absolute;
+    inset: 0;
+    background: #eceff1;
+  }
+
+  /* Dark tile dimming so a light basemap still reads fine behind dark chrome */
+  :root:not([data-theme="light"]) #map,
+  :root[data-theme="dark"] #map {
+    filter: brightness(0.92) contrast(1.02);
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) #map { filter: none; }
+  }
+
+  .leaflet-control-attribution {
+    font-size: 10px;
+    background: var(--surface) !important;
+    color: var(--text-dim) !important;
+  }
+  .leaflet-control-attribution a { color: var(--text-dim) !important; }
+
+  /* ---------- top search bar ---------- */
+  .topbar {
+    position: absolute;
+    top: max(14px, env(safe-area-inset-top));
+    left: 14px;
+    right: 14px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+  }
+
+  .search-pill {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    border-radius: 16px;
+    padding: 11px 14px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+
+  .search-pill svg { flex: none; color: var(--text-dim); }
+
+  .search-pill input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 16px;
+    color: var(--text);
+    min-width: 0;
+  }
+  .search-pill input::placeholder { color: var(--text-dim); }
+
+  .theme-toggle {
+    flex: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(142,142,147,0.18);
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .chips {
+    pointer-events: auto;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+  .chips::-webkit-scrollbar { display: none; }
+
+  .chip {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 13px;
+    border-radius: 14px;
+    background: var(--surface);
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    border: 1px solid var(--border);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: transform .15s ease;
+  }
+  .chip:active { transform: scale(0.96); }
+  .chip .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .chip.active { color: #fff; }
+  .chip.active[data-cat="charging"] { background: var(--charging); border-color: var(--charging); }
+  .chip.active[data-cat="rental"] { background: var(--rental); border-color: var(--rental); }
+  .chip.active[data-cat="repair"] { background: var(--repair); border-color: var(--repair); }
+  .chip.active[data-cat="lane"] { background: var(--lane); border-color: var(--lane); }
+  .chip.active .dot { background: #fff; }
+
+  /* ---------- right-side controls ---------- */
+  .right-controls {
+    position: absolute;
+    right: 14px;
+    bottom: 128px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .ctrl-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    cursor: pointer;
+  }
+  .ctrl-btn:active { transform: scale(0.94); }
+
+  /* ---------- bottom sheet ---------- */
+  .sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1001;
+    background: var(--surface-solid);
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -8px 30px rgba(0,0,0,0.18);
+    max-height: 46%;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(0);
+    transition: transform .25s ease;
+  }
+  .sheet.collapsed { transform: translateY(calc(100% - 92px)); }
+
+  .sheet-handle {
+    width: 36px;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(142,142,147,0.4);
+    margin: 8px auto 2px;
+    cursor: pointer;
+  }
+
+  .sheet-header {
+    padding: 2px 18px 10px;
+    cursor: pointer;
+  }
+  .sheet-header h2 { margin: 0; font-size: 17px; }
+  .sheet-header p { margin: 2px 0 0; font-size: 13px; color: var(--text-dim); }
+
+  .sheet-list {
+    overflow-y: auto;
+    padding: 0 10px 14px;
+  }
+
+  .station-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 8px;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  .station-row:active { background: rgba(142,142,147,0.12); }
+
+  .pin-badge {
+    flex: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+  }
+  .pin-badge.charging { background: var(--charging); }
+  .pin-badge.rental { background: var(--rental); }
+  .pin-badge.repair { background: var(--repair); }
+
+  .station-info { flex: 1; min-width: 0; }
+  .station-info .name { font-size: 15px; font-weight: 600; }
+  .station-info .meta { font-size: 12.5px; color: var(--text-dim); margin-top: 1px; }
+
+  .station-dist { font-size: 13px; color: var(--text-dim); flex: none; text-align: right; }
+  .station-dist .avail { display: block; font-weight: 600; color: var(--text); font-size: 12.5px; margin-top: 2px; }
+
+  /* ---------- detail card ---------- */
+  .detail-card {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+    z-index: 1002;
+    background: var(--surface-solid);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    padding: 16px;
+    transform: translateY(120%);
+    transition: transform .28s cubic-bezier(.2,.8,.2,1);
+  }
+  .detail-card.open { transform: translateY(0); }
+
+  .detail-top { display: flex; align-items: flex-start; gap: 12px; }
+  .detail-top .pin-badge { width: 44px; height: 44px; }
+  .detail-title { flex: 1; min-width: 0; }
+  .detail-title .name { font-size: 18px; font-weight: 700; }
+  .detail-title .cat { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+  .close-btn {
+    flex: none;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(142,142,147,0.2);
+    color: var(--text-dim);
+    font-size: 15px;
+    cursor: pointer;
+  }
+
+  .detail-stats {
+    display: flex;
+    gap: 18px;
+    margin: 14px 0;
+  }
+  .detail-stats div { font-size: 13px; color: var(--text-dim); }
+  .detail-stats div b { display: block; font-size: 17px; color: var(--text); font-weight: 700; }
+
+  .detail-actions { display: flex; gap: 10px; }
+  .btn {
+    flex: 1;
+    border: none;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn.secondary { background: rgba(142,142,147,0.16); color: var(--text); }
+
+  .route-banner {
+    position: absolute;
+    top: max(14px, env(safe-area-inset-top));
+    left: 14px;
+    right: 14px;
+    z-index: 1003;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 16px;
+    padding: 12px 16px;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow);
+    font-size: 14px;
+  }
+  .route-banner.show { display: flex; }
+  .route-banner b { font-size: 15px; }
+  .route-banner button {
+    background: rgba(255,255,255,0.22);
+    border: none;
+    color: #fff;
+    border-radius: 10px;
+    padding: 6px 10px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .ebike-pin {
+    width: 30px; height: 30px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+    border: 2px solid #fff;
+  }
+  .ebike-pin svg { transform: rotate(45deg); }
+  .ebike-pin.charging { background: var(--charging); }
+  .ebike-pin.rental { background: var(--rental); }
+  .ebike-pin.repair { background: var(--repair); }
+
+  .you-dot {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 4px rgba(0,122,255,0.3), 0 2px 6px rgba(0,0,0,0.3);
+  }
+
+  @media (min-width: 720px) {
+    .topbar { left: 50%; transform: translateX(-50%); width: 420px; }
+    .sheet, .detail-card { left: 50%; transform: translateX(-50%); width: 420px; }
+    .sheet.collapsed { transform: translateX(-50%) translateY(calc(100% - 92px)); }
+    .detail-card.open { transform: translateX(-50%) translateY(0); }
+    .right-controls { right: calc(50% - 210px - 56px); }
+  }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="route-banner" id="routeBanner">
+  <div><b id="routeEta">—</b> · <span id="routeDist">—</span> · ebike route preview</div>
+  <button id="routeClose">End</button>
+</div>
+
+<div class="topbar">
+  <div class="search-pill">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+    <input id="searchInput" type="text" placeholder="Search ebike stations near you">
+    <button class="theme-toggle" id="themeToggle" title="Toggle theme" aria-label="Toggle theme">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36A5.4 5.4 0 0 1 12 3Z"/></svg>
+    </button>
+  </div>
+  <div class="chips" id="chips">
+    <div class="chip active" data-cat="charging"><span class="dot" style="background:var(--charging)"></span>Charging</div>
+    <div class="chip active" data-cat="rental"><span class="dot" style="background:var(--rental)"></span>Rental docks</div>
+    <div class="chip active" data-cat="repair"><span class="dot" style="background:var(--repair)"></span>Repair shops</div>
+    <div class="chip" data-cat="lane"><span class="dot" style="background:var(--lane)"></span>ebike lanes</div>
+  </div>
+</div>
+
+<div class="right-controls">
+  <button class="ctrl-btn" id="locateBtn" title="My location" aria-label="My location">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+  </button>
+  <button class="ctrl-btn" id="zoomInBtn" title="Zoom in" aria-label="Zoom in">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+  </button>
+  <button class="ctrl-btn" id="zoomOutBtn" title="Zoom out" aria-label="Zoom out">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+  </button>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="sheet-handle" id="sheetHandle"></div>
+  <div class="sheet-header" id="sheetHeader">
+    <h2>Nearby for ebikes</h2>
+    <p id="sheetSubtitle">Loading stations…</p>
+  </div>
+  <div class="sheet-list" id="sheetList"></div>
+</div>
+
+<div class="detail-card" id="detailCard">
+  <div class="detail-top">
+    <div class="pin-badge" id="detailBadge"></div>
+    <div class="detail-title">
+      <div class="name" id="detailName"></div>
+      <div class="cat" id="detailCat"></div>
+    </div>
+    <button class="close-btn" id="detailClose">✕</button>
+  </div>
+  <div class="detail-stats" id="detailStats"></div>
+  <div class="detail-actions">
+    <button class="btn secondary" id="detailSheetBtn">Details</button>
+    <button class="btn primary" id="detailRouteBtn">Route</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---------------- mock data: e-bike points of interest ----------------
+  var CENTER = [37.7749, -122.4194]; // San Francisco
+  var YOU = [37.7735, -122.4210];
+
+  var ICONS = {
+    charging: '<svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>',
+    rental: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17l4-9h5l3 6M10 8h4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    repair: '<svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.1-3.1a5 5 0 0 1-6.9 6.9L6.8 21.2a2 2 0 1 1-2.9-2.9L11 11.2a5 5 0 0 1 6.9-6.9l-3.1 3.1z"/></svg>'
+  };
+
+  var CAT_LABEL = { charging: "Charging station", rental: "Rental dock", repair: "Repair shop" };
+
+  var stations = [
+    { id: 1, cat: "charging", name: "Market St Charging Hub", lat: 37.7793, lng: -122.4198, bikes: 6, docks: 10, hours: "24 hours" },
+    { id: 2, cat: "charging", name: "Ferry Building Charge Point", lat: 37.7955, lng: -122.3937, bikes: 3, docks: 8, hours: "6am–11pm" },
+    { id: 3, cat: "charging", name: "Mission Bay Charger Row", lat: 37.7700, lng: -122.3917, bikes: 9, docks: 12, hours: "24 hours" },
+    { id: 4, cat: "charging", name: "Golden Gate Park Charger", lat: 37.7694, lng: -122.4862, bikes: 2, docks: 6, hours: "5am–10pm" },
+    { id: 5, cat: "rental", name: "Civic Center ebike Dock", lat: 37.7793, lng: -122.4193, bikes: 14, docks: 20, hours: "24 hours" },
+    { id: 6, cat: "rental", name: "Dolores Park Dock", lat: 37.7596, lng: -122.4269, bikes: 8, docks: 16, hours: "6am–midnight" },
+    { id: 7, cat: "rental", name: "Fisherman's Wharf Dock", lat: 37.8080, lng: -122.4177, bikes: 11, docks: 24, hours: "7am–10pm" },
+    { id: 8, cat: "rental", name: "Castro Station Dock", lat: 37.7609, lng: -122.4350, bikes: 5, docks: 12, hours: "24 hours" },
+    { id: 9, cat: "rental", name: "SoMa Transit Dock", lat: 37.7747, lng: -122.4040, bikes: 17, docks: 22, hours: "24 hours" },
+    { id: 10, cat: "repair", name: "Hub & Spoke ebike Repair", lat: 37.7650, lng: -122.4260, bikes: null, docks: null, hours: "9am–7pm" },
+    { id: 11, cat: "repair", name: "Valencia Cycle Service", lat: 37.7599, lng: -122.4214, bikes: null, docks: null, hours: "10am–6pm" },
+    { id: 12, cat: "repair", name: "Bay ebike Tune-Up", lat: 37.7841, lng: -122.4079, bikes: null, docks: null, hours: "8am–6pm" }
+  ];
+
+  var lanes = [
+    { name: "Market St ebike Lane", coords: [[37.7935, -122.3959], [37.7858, -122.4064], [37.7793, -122.4198], [37.7718, -122.4343]] },
+    { name: "The Embarcadero ebike Lane", coords: [[37.8080, -122.4177], [37.7955, -122.3937], [37.7858, -122.3875], [37.7700, -122.3885]] },
+    { name: "Valencia St ebike Lane", coords: [[37.7680, -122.4216], [37.7599, -122.4214], [37.7525, -122.4206]] }
+  ];
+
+  // ---------------- state ----------------
+  var activeCats = { charging: true, rental: true, repair: true, lane: false };
+  var markers = {};
+  var laneLayers = [];
+  var youMarker = null;
+  var routeLine = null;
+  var selected = null;
+
+  // ---------------- theme ----------------
+  var root = document.documentElement;
+  document.getElementById("themeToggle").addEventListener("click", function () {
+    var current = root.getAttribute("data-theme");
+    var isDark = current ? current === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    root.setAttribute("data-theme", isDark ? "light" : "dark");
+  });
+
+  // ---------------- map ----------------
+  var map = L.map("map", { zoomControl: false, attributionControl: true }).setView(CENTER, 14);
+
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+  }).addTo(map);
+
+  function haversine(a, b) {
+    var R = 3958.8;
+    var dLat = (b[0] - a[0]) * Math.PI / 180;
+    var dLng = (b[1] - a[1]) * Math.PI / 180;
+    var la1 = a[0] * Math.PI / 180, la2 = b[0] * Math.PI / 180;
+    var h = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  function pinIcon(station) {
+    return L.divIcon({
+      className: "",
+      html: '<div class="ebike-pin ' + station.cat + '">' + ICONS[station.cat] + "</div>",
+      iconSize: [30, 30],
+      iconAnchor: [15, 28],
+      popupAnchor: [0, -26]
+    });
+  }
+
+  function youIcon() {
+    return L.divIcon({ className: "", html: '<div class="you-dot"></div>', iconSize: [16, 16], iconAnchor: [8, 8] });
+  }
+
+  youMarker = L.marker(YOU, { icon: youIcon(), zIndexOffset: 1000 }).addTo(map);
+
+  stations.forEach(function (s) {
+    var m = L.marker([s.lat, s.lng], { icon: pinIcon(s) });
+    m.on("click", function () { openDetail(s); });
+    markers[s.id] = m;
+  });
+
+  lanes.forEach(function (l) {
+    var pl = L.polyline(l.coords, { color: "#af52de", weight: 5, opacity: 0.85, lineCap: "round" });
+    laneLayers.push(pl);
+  });
+
+  function applyFilters() {
+    stations.forEach(function (s) {
+      var show = activeCats[s.cat];
+      var m = markers[s.id];
+      if (show && !map.hasLayer(m)) m.addTo(map);
+      if (!show && map.hasLayer(m)) map.removeLayer(m);
+    });
+    laneLayers.forEach(function (pl) {
+      if (activeCats.lane && !map.hasLayer(pl)) pl.addTo(map);
+      if (!activeCats.lane && map.hasLayer(pl)) map.removeLayer(pl);
+    });
+    renderList();
+  }
+
+  // ---------------- chips ----------------
+  document.querySelectorAll(".chip").forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      var cat = chip.getAttribute("data-cat");
+      activeCats[cat] = !activeCats[cat];
+      chip.classList.toggle("active", activeCats[cat]);
+      applyFilters();
+    });
+  });
+
+  // ---------------- search ----------------
+  var searchInput = document.getElementById("searchInput");
+  var searchQuery = "";
+  searchInput.addEventListener("input", function () {
+    searchQuery = searchInput.value.trim().toLowerCase();
+    renderList();
+  });
+
+  // ---------------- bottom sheet ----------------
+  var sheet = document.getElementById("sheet");
+  var sheetList = document.getElementById("sheetList");
+  var sheetSubtitle = document.getElementById("sheetSubtitle");
+  var collapsed = false;
+
+  function toggleSheet() {
+    collapsed = !collapsed;
+    sheet.classList.toggle("collapsed", collapsed);
+  }
+  document.getElementById("sheetHandle").addEventListener("click", toggleSheet);
+  document.getElementById("sheetHeader").addEventListener("click", toggleSheet);
+
+  function badgeHtml(cat, id) {
+    var idAttr = id ? ' id="' + id + '"' : "";
+    return '<div' + idAttr + ' class="pin-badge ' + cat + '">' + ICONS[cat] + "</div>";
+  }
+
+  function renderList() {
+    var visible = stations.filter(function (s) {
+      if (!activeCats[s.cat]) return false;
+      if (searchQuery && s.name.toLowerCase().indexOf(searchQuery) === -1) return false;
+      return true;
+    });
+    visible.forEach(function (s) { s._dist = haversine(YOU, [s.lat, s.lng]); });
+    visible.sort(function (a, b) { return a._dist - b._dist; });
+
+    sheetSubtitle.textContent = visible.length + " stations found near you";
+    sheetList.innerHTML = "";
+    visible.forEach(function (s) {
+      var row = document.createElement("div");
+      row.className = "station-row";
+      var avail = s.bikes != null ? s.bikes + " bikes · " + s.docks + " docks" : "Service shop";
+      row.innerHTML =
+        badgeHtml(s.cat) +
+        '<div class="station-info"><div class="name">' + s.name + '</div><div class="meta">' + CAT_LABEL[s.cat] + " · " + s.hours + '</div></div>' +
+        '<div class="station-dist">' + s._dist.toFixed(1) + ' mi<span class="avail">' + avail + '</span></div>';
+      row.addEventListener("click", function () {
+        map.flyTo([s.lat, s.lng], 16, { duration: 0.6 });
+        openDetail(s);
+      });
+      sheetList.appendChild(row);
+    });
+  }
+
+  // ---------------- detail card ----------------
+  var detailCard = document.getElementById("detailCard");
+  var routeBanner = document.getElementById("routeBanner");
+
+  function openDetail(s) {
+    selected = s;
+    document.getElementById("detailBadge").outerHTML = badgeHtml(s.cat, "detailBadge");
+    document.getElementById("detailName").textContent = s.name;
+    document.getElementById("detailCat").textContent = CAT_LABEL[s.cat] + " · " + s.hours;
+    var dist = haversine(YOU, [s.lat, s.lng]);
+    var statsHtml = '<div><b>' + dist.toFixed(1) + '</b>miles</div>';
+    if (s.bikes != null) {
+      statsHtml += '<div><b>' + s.bikes + '</b>ebikes</div><div><b>' + s.docks + '</b>docks</div>';
+    } else {
+      statsHtml += '<div><b>Walk-in</b>service</div>';
+    }
+    document.getElementById("detailStats").innerHTML = statsHtml;
+    detailCard.classList.add("open");
+  }
+
+  document.getElementById("detailClose").addEventListener("click", closeDetail);
+  function closeDetail() {
+    detailCard.classList.remove("open");
+    selected = null;
+    clearRoute();
+  }
+
+  document.getElementById("detailSheetBtn").addEventListener("click", function () {
+    if (!selected) return;
+    collapsed = false;
+    sheet.classList.remove("collapsed");
+  });
+
+  document.getElementById("detailRouteBtn").addEventListener("click", function () {
+    if (!selected) return;
+    startRoute(selected);
+  });
+
+  function clearRoute() {
+    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+    routeBanner.classList.remove("show");
+  }
+
+  function startRoute(s) {
+    clearRoute();
+    routeLine = L.polyline([YOU, [s.lat, s.lng]], {
+      color: "#007aff", weight: 5, opacity: 0.9, dashArray: "1 10", lineCap: "round"
+    }).addTo(map);
+    var dist = haversine(YOU, [s.lat, s.lng]);
+    var mins = Math.max(1, Math.round((dist / 12) * 60)); // ~12 mph ebike pace
+    document.getElementById("routeEta").textContent = mins + " min";
+    document.getElementById("routeDist").textContent = dist.toFixed(1) + " mi";
+    routeBanner.classList.add("show");
+    map.fitBounds(routeLine.getBounds(), { padding: [80, 120] });
+  }
+
+  document.getElementById("routeClose").addEventListener("click", clearRoute);
+
+  // ---------------- controls ----------------
+  document.getElementById("zoomInBtn").addEventListener("click", function () { map.zoomIn(); });
+  document.getElementById("zoomOutBtn").addEventListener("click", function () { map.zoomOut(); });
+  document.getElementById("locateBtn").addEventListener("click", function () {
+    map.flyTo(YOU, 15, { duration: 0.6 });
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        var here = [pos.coords.latitude, pos.coords.longitude];
+        youMarker.setLatLng(here);
+        map.flyTo(here, 15, { duration: 0.6 });
+      }, function () { /* ignore, keep mock location */ }, { timeout: 3000 });
+    }
+  });
+
+  // ---------------- init ----------------
+  applyFilters();
+})();
+</script>
+</body>
+</html>
