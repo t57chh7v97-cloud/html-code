@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTML Code</title>
+<style>
+  :root{ --bg:#f2f2f7; --card:#fff; --text:#1c1c1e; --sub:#6e6e73; --accent:#0a84ff; --border:#e5e5ea; }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#000; --card:#1c1c1e; --text:#f2f2f7; --sub:#9b9ba1; --accent:#409cff; --border:#38383a; }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,"Segoe UI",Roboto,sans-serif;
+    display:flex;justify-content:center;padding:48px 16px;}
+  main{width:100%;max-width:520px;}
+  h1{font-size:26px;margin:0 0 6px;}
+  p.lede{color:var(--sub);margin:0 0 28px;font-size:15px;}
+  a.card{display:block;background:var(--card);border:1px solid var(--border);border-radius:14px;
+    padding:16px 18px;margin-bottom:12px;text-decoration:none;color:var(--text);}
+  a.card:hover{border-color:var(--accent);}
+  a.card .t{font-size:17px;font-weight:700;}
+  a.card .d{font-size:14px;color:var(--sub);margin-top:4px;line-height:1.4;}
+</style>
+</head>
+<body>
+<main>
+  <h1>HTML Code</h1>
+  <p class="lede">A small collection of self-contained HTML/CSS/JS demos.</p>
+
+  <a class="card" href="EbikeMaps.html">
+    <div class="t">eBike Maps</div>
+    <div class="d">Apple Maps-style turn-by-turn navigation for ebikes — bike-aware routing, live spoken directions, and battery/range estimates.</div>
+  </a>
+
+  <a class="card" href="FlightFlow.html">
+    <div class="t">FlightFlow</div>
+    <div class="d">A flight-planning and tracking dashboard.</div>
+  </a>
+
+  <a class="card" href="switch.HTML">
+    <div class="t">Toggle Switch</div>
+    <div class="d">A simple animated toggle switch, built with a checkbox input and a styled label — no JavaScript required.</div>
+  </a>
+</main>
+</body>
+</html>
