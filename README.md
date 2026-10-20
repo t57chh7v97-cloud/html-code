@@ -9,8 +9,10 @@ label — no JavaScript required. Open the file directly in a browser to try it.
 
 ## EbikeMaps.html
 
-An Apple Maps-style interface for finding e-bikes: charging stations, rental
-docks, repair shops, and e-bike lanes on a live Leaflet map. Includes search,
-category filters, a nearby-stations bottom sheet, station detail cards, and a
-mock route preview with distance/ETA. Open the file directly in a browser
-(requires internet access for map tiles and the Leaflet CDN).
+An Apple Maps-style navigation app for e-bikes. Search a destination or tap
+anywhere on the hand-built street map to get a real routed path: a Dijkstra
+shortest-path search over a street graph (discounted on dedicated e-bike
+lanes) turned into genuine turn-by-turn directions from the route's own
+geometry, plus a simulated turn-by-turn ride with live progress. Fully
+self-contained (pan/zoom, no map tiles or routing API) — open the file
+directly in a browser.
