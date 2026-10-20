@@ -2,6 +2,12 @@
 
 A small collection of self-contained HTML/CSS/JS demos.
 
+**Live:** https://t57chh7v97-cloud.github.io/html-code/ (deployed automatically
+from `main` via GitHub Actions — see `.github/workflows/deploy-pages.yml`).
+If this is the first deploy, GitHub Pages needs to be enabled once under
+*Settings → Pages → Build and deployment → Source: GitHub Actions*; after
+that every push to `main` redeploys automatically.
+
 ## switch.HTML
 
 A simple animated toggle switch, built with a checkbox input and a styled
@@ -18,5 +24,8 @@ in route distance and elevation gain/loss, and a low-charge warning if the
 trip may outlast your battery. Runs entirely client-side against free,
 no-API-key services — OpenStreetMap tiles, Nominatim search, the
 routing.openstreetmap.de OSRM bike router, and Open-Elevation — so it needs
-network access but no accounts or keys. Open the file directly in a browser
-to try it.
+network access but no accounts or keys. Open the file directly in a browser,
+or visit the live site above and use your browser's "Add to Home Screen" to
+install it as an app icon for quick access on a ride. Units (km/mi) default
+to your browser's locale and, along with every other setting, are then saved
+on your device.

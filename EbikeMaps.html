@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>eBike Maps</title>
+<meta name="theme-color" content="#0a84ff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="eBike Maps">
+<link rel="manifest" href="ebikemaps.webmanifest">
+<link rel="apple-touch-icon" href="icons/ebikemaps-180.png">
+<link rel="icon" href="icons/ebikemaps-192.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
   :root{
@@ -328,7 +336,7 @@ var ICONS = {
 
 var state = {
   theme: localStorage.getItem("ebm_theme") || "auto",
-  units: localStorage.getItem("ebm_units") || "km",
+  units: localStorage.getItem("ebm_units") || detectUnits(),
   assist: localStorage.getItem("ebm_assist") || "normal",
   voiceOn: localStorage.getItem("ebm_voice") !== "off",
   capacityWh: Number(localStorage.getItem("ebm_capacity")) || 500,
@@ -370,6 +378,16 @@ function bearing(lat1,lon1,lat2,lon2){
 function compassDir(deg){
   var dirs=["north","northeast","east","southeast","south","southwest","west","northwest"];
   return dirs[Math.round(deg/45)%8];
+}
+
+function detectUnits(){
+  try{
+    var tag = (navigator.languages && navigator.languages[0]) || navigator.language || "en-US";
+    var region = tag.split("-")[1] || tag.split("_")[1];
+    var milesRegions = ["US","LR","MM","GB"]; // countries that post road/trail distances in miles
+    if(region && milesRegions.indexOf(region.toUpperCase())>-1) return "mi";
+  }catch(e){}
+  return "km";
 }
 
 function fmtDist(m){
@@ -976,6 +994,12 @@ function boot(){
 
 if(document.readyState==="complete" || document.readyState==="interactive") boot();
 else document.addEventListener("DOMContentLoaded", boot);
+
+if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register("sw.js").catch(function(){ /* installability is a nice-to-have, not required */ });
+  });
+}
 
 })();
 </script>
