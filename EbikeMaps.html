@@ -33,6 +33,7 @@
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,"Segoe UI",Roboto,sans-serif;
     overscroll-behavior:none;}
   #map{position:absolute;inset:0;background:var(--map-fade);}
+  [data-theme="dark"] .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.95) contrast(.9);}
   .leaflet-control-attribution{font-size:9px;background:var(--card) !important;color:var(--sub) !important;border-radius:6px;}
   .leaflet-control-attribution a{color:var(--sub) !important;}
   button{font:inherit;color:inherit;}
@@ -379,6 +380,9 @@ function compassDir(deg){
   var dirs=["north","northeast","east","southeast","south","southwest","west","northwest"];
   return dirs[Math.round(deg/45)%8];
 }
+function fmtSpeed(kmh){
+  return state.units==="mi" ? Math.round(kmh/1.60934)+" mph" : kmh+" km/h";
+}
 
 function detectUnits(){
   try{
@@ -415,7 +419,7 @@ function toast(msg, ms){
 
 /* ---------- theme / map layers ---------- */
 
-var lightTiles, darkTiles, map;
+var tiles, map;
 
 function effectiveTheme(){
   if(state.theme!=="auto") return state.theme;
@@ -424,10 +428,6 @@ function effectiveTheme(){
 function applyTheme(){
   var eff=effectiveTheme();
   document.body.setAttribute("data-theme", eff);
-  if(map){
-    if(eff==="dark"){ if(map.hasLayer(lightTiles)) map.removeLayer(lightTiles); if(!map.hasLayer(darkTiles)) darkTiles.addTo(map); }
-    else { if(map.hasLayer(darkTiles)) map.removeLayer(darkTiles); if(!map.hasLayer(lightTiles)) lightTiles.addTo(map); }
-  }
   $("themeBtn").classList.toggle("active", state.theme!=="auto");
   renderRouteLines();
 }
@@ -436,12 +436,11 @@ function applyTheme(){
 
 function initMap(){
   map = L.map("map", { zoomControl:false, attributionControl:true }).setView([FALLBACK_START.lat, FALLBACK_START.lon], 14);
-  lightTiles = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  // A single tile source (no key needed) for both themes; dark mode is a CSS
+  // filter on the tile pane only, so markers/routes keep their real colors.
+  tiles = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom:19, attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  });
-  darkTiles = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-    maxZoom:19, subdomains:"abcd", attribution:'&copy; OpenStreetMap contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-  });
+  }).addTo(map);
   applyTheme();
 
   map.on("click", function(e){
@@ -686,7 +685,7 @@ function showPlaceCard(place){
 function buildAssistRow(onPick, activeId){
   return Object.keys(ASSIST).map(function(k){
     var a=ASSIST[k];
-    return '<div class="assist-chip'+(k===activeId?" active":"")+'" data-k="'+k+'">'+a.label+'<span class="sub">'+a.speedKmh+' km/h</span></div>';
+    return '<div class="assist-chip'+(k===activeId?" active":"")+'" data-k="'+k+'">'+a.label+'<span class="sub">'+fmtSpeed(a.speedKmh)+'</span></div>';
   }).join("");
 }
 
@@ -956,7 +955,14 @@ function wireUI(){
   $("capacityInput").addEventListener("change", function(e){ state.capacityWh=clamp(Number(e.target.value)||500,50,3000); localStorage.setItem("ebm_capacity",state.capacityWh); if(state.routes.length) showRouteCard(); });
   $("chargeRange").addEventListener("input", function(e){ state.chargePct=Number(e.target.value); $("chargeLabel").textContent=state.chargePct+"%"; localStorage.setItem("ebm_charge",state.chargePct); if(state.routes.length) showRouteCard(); });
 
-  wireSeg("unitsSeg", function(v){ state.units=v; localStorage.setItem("ebm_units",v); if(state.routes.length) showRouteCard(); });
+  wireSeg("unitsSeg", function(v){
+    state.units=v; localStorage.setItem("ebm_units",v);
+    $("assistRowSettings").innerHTML = buildAssistRow(null, state.assist);
+    Array.prototype.forEach.call(document.querySelectorAll("#assistRowSettings .assist-chip"), function(el){
+      el.addEventListener("click", function(){ setAssist(el.getAttribute("data-k")); $("assistRowSettings").innerHTML = buildAssistRow(null, state.assist); });
+    });
+    if(state.routes.length) showRouteCard();
+  });
   wireSeg("themeSeg", function(v){ state.theme=v; localStorage.setItem("ebm_theme",v); applyTheme(); });
   wireSeg("voiceSeg", function(v){ state.voiceOn = v==="on"; speechOn=state.voiceOn; localStorage.setItem("ebm_voice",v); });
 
