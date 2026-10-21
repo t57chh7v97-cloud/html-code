@@ -318,6 +318,14 @@ var ASSIST = {
 var CLIMB_WH_PER_100M = 14;   // motor-assisted energy spent per 100m of ascent
 var DESCENT_WH_PER_100M = -3; // regenerative/coasting credit per 100m of descent (clamped at 0 overall)
 var ROUTE_HOST = "https://routing.openstreetmap.de";
+// Bike-aware routing has no official SLA, so try a couple of path variants on
+// the FOSSGIS host first, then fall back to the always-on OSRM car demo
+// server rather than leave the rider with no route at all.
+var ROUTE_ENDPOINTS = [
+  { bikeAware:true,  build:function(c){ return ROUTE_HOST+"/routed-bike/route/v1/driving/"+c; } },
+  { bikeAware:true,  build:function(c){ return ROUTE_HOST+"/routed-bike/route/v1/bike/"+c; } },
+  { bikeAware:false, build:function(c){ return "https://router.project-osrm.org/route/v1/driving/"+c; } }
+];
 var FALLBACK_START = { lat:37.8075, lon:-122.4103, label:"Ferry Building, San Francisco" };
 
 var MOD_ANGLE = {
@@ -350,6 +358,7 @@ var state = {
   elevationGainM: null,
   elevationLossM: null,
   elevationPending: false,
+  routeNotBikeAware: false,
   navigating: false,
   currentStep: 0,
   watchId: null,
@@ -577,16 +586,26 @@ function fetchRoute(){
   if(!state.userLatLng || !state.destination) return;
   showLoadingCard();
   var coords = state.userLatLng.lon+","+state.userLatLng.lat+";"+state.destination.lon+","+state.destination.lat;
-  var url = ROUTE_HOST+"/routed-bike/route/v1/driving/"+coords+"?overview=full&geometries=geojson&steps=true&alternatives=true&number_of_alternatives=1";
+  tryRouteEndpoint(coords, 0);
+}
+
+function tryRouteEndpoint(coords, i){
+  if(i>=ROUTE_ENDPOINTS.length){
+    showErrorCard("Couldn't calculate a route for this trip. The routing service may be unreachable — try again in a moment.");
+    return;
+  }
+  var ep = ROUTE_ENDPOINTS[i];
+  var url = ep.build(coords)+"?overview=full&geometries=geojson&steps=true&alternatives=true&number_of_alternatives=1";
   var ctrl = new AbortController();
-  var to = setTimeout(function(){ ctrl.abort(); }, 12000);
+  var to = setTimeout(function(){ ctrl.abort(); }, 9000);
   fetch(url, { signal: ctrl.signal })
-    .then(function(r){ clearTimeout(to); if(!r.ok) throw new Error("routing failed"); return r.json(); })
+    .then(function(r){ clearTimeout(to); if(!r.ok) throw new Error("routing failed: "+r.status); return r.json(); })
     .then(function(data){
-      if(data.code!=="Ok" || !data.routes || !data.routes.length) throw new Error("no route");
+      if(data.code!=="Ok" || !data.routes || !data.routes.length) throw new Error("no route in response");
       state.routes = data.routes.map(parseRoute);
       state.activeRoute = 0;
       state.elevationGainM = null; state.elevationLossM=null;
+      state.routeNotBikeAware = !ep.bikeAware;
       map.fitBounds(L.latLngBounds(state.routes[0].latlngs), { padding:[60,60] });
       renderRouteLines();
       showRouteCard();
@@ -594,8 +613,8 @@ function fetchRoute(){
     })
     .catch(function(err){
       clearTimeout(to);
-      console.error(err);
-      showErrorCard("Couldn't calculate a bike route for this trip. The routing service may be unreachable — try again in a moment.");
+      console.error("route endpoint failed ("+url+"):", err);
+      tryRouteEndpoint(coords, i+1);
     });
 }
 
@@ -699,6 +718,10 @@ function showRouteCard(){
   var ecoWouldWork = ecoEnergy <= avail*0.92;
 
   var html = "";
+  if(state.routeNotBikeAware){
+    html += '<div class="banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>'+
+      '<div><b>Bike routing unavailable</b>Showing a general road route instead — it may not use bike paths or avoid busy roads.</div></div>';
+  }
   if(insufficient){
     html += '<div class="banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>'+
       '<div><b>Charge may not be enough</b>At '+ASSIST[state.assist].label+' mode this trip needs about '+Math.round(energy)+' Wh, more than your '+Math.round(avail)+' Wh available.'+
@@ -759,7 +782,7 @@ function stepRowHtml(s,i,all){
 }
 
 function clearRoute(){
-  state.routes=[]; state.destination=null;
+  state.routes=[]; state.destination=null; state.routeNotBikeAware=false;
   clearRouteLines();
   if(destMarker){ map.removeLayer(destMarker); destMarker=null; }
   openSheet("hidden");
