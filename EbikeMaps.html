@@ -617,23 +617,33 @@ function fetchRoute(){
   if(!state.userLatLng || !state.destination) return;
   showLoadingCard();
   var coords = state.userLatLng.lon+","+state.userLatLng.lat+";"+state.destination.lon+","+state.destination.lat;
-  tryRouteEndpoint(coords, 0);
+  tryRouteEndpoint(coords, 0, []);
 }
 
-function tryRouteEndpoint(coords, i){
+function describeFetchError(err){
+  // A generic "Failed to fetch" TypeError almost always means the request never
+  // reached a server at all — blocked by CORS, DNS failure, offline, or an ad/
+  // privacy blocker — as opposed to the server responding with an error status,
+  // which fetch() surfaces differently (a resolved response, not a rejection).
+  if(err && err.name==="AbortError") return "timed out";
+  if(err instanceof TypeError) return "network/CORS error (request never got a response — "+err.message+")";
+  return err && err.message ? err.message : String(err);
+}
+
+function tryRouteEndpoint(coords, i, attempts){
   if(i>=ROUTE_ENDPOINTS.length){
-    showErrorCard("Couldn't calculate a route for this trip. The routing service may be unreachable — try again in a moment.");
+    showErrorCard("Couldn't calculate a route for this trip. The routing service may be unreachable — try again in a moment.", attempts);
     return;
   }
   var ep = ROUTE_ENDPOINTS[i];
-  var url = ep.build(coords)+"?overview=full&geometries=geojson&steps=true&alternatives=true&number_of_alternatives=1";
+  var url = ep.build(coords)+"?overview=full&geometries=geojson&steps=true&alternatives=true";
   var ctrl = new AbortController();
   var to = setTimeout(function(){ ctrl.abort(); }, 9000);
   fetch(url, { signal: ctrl.signal })
-    .then(function(r){ clearTimeout(to); if(!r.ok) throw new Error("routing failed: "+r.status); return r.json(); })
+    .then(function(r){ clearTimeout(to); if(!r.ok) throw new Error("HTTP "+r.status+" "+r.statusText); return r.json(); })
     .then(function(data){
       clearTimeout(to);
-      if(data.code!=="Ok" || !data.routes || !data.routes.length) throw new Error("no route in response: "+(data&&data.code));
+      if(data.code!=="Ok" || !data.routes || !data.routes.length) throw new Error("server responded but with no route (code: "+(data&&data.code)+")");
       // A valid response arrived — anything that goes wrong past this point is a
       // bug in how we render it, not a reachability problem, so don't blame the
       // next endpoint for it (and don't silently cascade through all of them).
@@ -641,13 +651,15 @@ function tryRouteEndpoint(coords, i){
         applyRouteResponse(data, ep);
       }catch(renderErr){
         console.error("got a valid route but failed to render it:", renderErr);
-        showErrorCard("Got a route back but couldn't display it — this looks like a bug in the app rather than the routing service. Try a different destination, or reload and try again.");
+        showErrorCard("Got a route back but couldn't display it — this looks like a bug in the app rather than the routing service. Try a different destination, or reload and try again.", [{ url:url, reason:"render error: "+renderErr.message }]);
       }
     })
     .catch(function(err){
       clearTimeout(to);
+      var reason = describeFetchError(err);
       console.error("route endpoint failed ("+url+"):", err);
-      tryRouteEndpoint(coords, i+1);
+      attempts.push({ url:url, reason:reason });
+      tryRouteEndpoint(coords, i+1, attempts);
     });
 }
 
@@ -732,10 +744,20 @@ function showLoadingCard(){
   $("sheetContent").innerHTML = '<div class="place-title">Finding the best bike route…</div><div class="place-sub">Calculating distance, climbs and battery use.</div>';
   openSheet("peek");
 }
-function showErrorCard(msg){
-  $("sheetContent").innerHTML = '<div class="place-title">Hmm.</div><div class="place-sub">'+escapeHtml(msg)+'</div><div class="secondary-row"><button class="secondary-btn" id="retryRouteBtn">Try again</button></div>';
+function showErrorCard(msg, attempts){
+  var details = "";
+  if(attempts && attempts.length){
+    details = '<details style="margin-top:10px;"><summary style="font-size:12px;color:var(--sub);cursor:pointer;">Technical details ('+attempts.length+' attempt'+(attempts.length===1?"":"s")+')</summary>'+
+      '<div style="font-size:11px;color:var(--sub);margin-top:6px;line-height:1.5;word-break:break-all;">'+
+      attempts.map(function(a){ return escapeHtml(hostOf(a.url))+' — '+escapeHtml(a.reason); }).join('<br>')+
+      '</div></details>';
+  }
+  $("sheetContent").innerHTML = '<div class="place-title">Hmm.</div><div class="place-sub">'+escapeHtml(msg)+'</div>'+details+'<div class="secondary-row"><button class="secondary-btn" id="retryRouteBtn">Try again</button></div>';
   openSheet("peek");
   var b=$("retryRouteBtn"); if(b) b.addEventListener("click", fetchRoute);
+}
+function hostOf(url){
+  try{ return new URL(url).hostname; }catch(e){ return url; }
 }
 
 function showPlaceCard(place){
