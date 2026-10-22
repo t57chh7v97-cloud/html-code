@@ -274,6 +274,7 @@
 
   <div class="section-title">Pace</div>
   <div class="assist-row" id="assistRowSettings"></div>
+  <p class="hint" id="paceCalibrationNoteSettings"></p>
 
   <div class="field-row"><label>Battery capacity</label>
     <input type="number" id="capacityInput" min="100" max="2000" step="10"><span style="color:var(--sub);font-size:13px;">Wh</span></div>
@@ -340,6 +341,9 @@
     <div class="nav-stat"><span id="navEta">–</span><label>Arrival</label></div>
     <div class="nav-stat"><span id="navRemaining">–</span><label>Remaining</label></div>
     <div class="nav-stat battery"><span id="navBattery">–</span><label>Battery</label></div>
+    <button class="icon-btn-lg" id="reportMapIssueBtn" aria-label="Report a map problem here">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+    </button>
     <button class="icon-btn-lg" id="recenterBtn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg>
     </button>
@@ -372,12 +376,35 @@ var ASSIST_FRACTIONS = {
 function whPerKmForSpeed(kmh){
   return kmh*0.5 + (kmh*kmh)/290; // rises faster than linearly: aerodynamic drag grows with speed
 }
+var CALIBRATION_MIN_TRIPS = 2;
+var CALIBRATION_MIN_ELAPSED_MIN = 1;
+var CALIBRATION_MIN_DIST_M = 200;
+var CALIBRATION_MAX_TRIPS_USED = 8;
+
+// A real rider's achieved average speed at a given pace/class is a better
+// ETA/range predictor than the fixed 45/65/85/100% guess once there's
+// enough logged history for it -- distance-weighted across qualifying past
+// trips, not just an average of per-trip averages, so a long ride counts
+// more than a short one. Falls back to the formula when there isn't
+// enough history yet (or for a pace/class combo never ridden).
+function calibratedSpeedKmh(level){
+  var qualifying = state.tripHistory.filter(function(t){
+    return t.assistLevel===level && t.bikeClass===state.bikeClass &&
+      t.elapsedMin>=CALIBRATION_MIN_ELAPSED_MIN && t.distanceM>=CALIBRATION_MIN_DIST_M;
+  }).slice(0, CALIBRATION_MAX_TRIPS_USED);
+  if(qualifying.length<CALIBRATION_MIN_TRIPS) return null;
+  var totalDistKm = qualifying.reduce(function(s,t){ return s+t.distanceM/1000; }, 0);
+  var totalHours = qualifying.reduce(function(s,t){ return s+t.elapsedMin/60; }, 0);
+  return totalHours>0 ? Math.round(totalDistKm/totalHours) : null;
+}
+
 function getAssistLevels(){
   var maxKmh = BIKE_CLASSES[state.bikeClass].maxKmh;
   var out = {};
   Object.keys(ASSIST_FRACTIONS).forEach(function(k){
-    var speedKmh = Math.round(maxKmh*ASSIST_FRACTIONS[k].frac);
-    out[k] = { label:ASSIST_FRACTIONS[k].label, speedKmh:speedKmh, whPerKm:Math.round(whPerKmForSpeed(speedKmh)) };
+    var calibrated = calibratedSpeedKmh(k);
+    var speedKmh = calibrated!=null ? calibrated : Math.round(maxKmh*ASSIST_FRACTIONS[k].frac);
+    out[k] = { label:ASSIST_FRACTIONS[k].label, speedKmh:speedKmh, whPerKm:Math.round(whPerKmForSpeed(speedKmh)), calibrated:calibrated!=null };
   });
   return out;
 }
@@ -1062,8 +1089,14 @@ function buildAssistRow(onPick, activeId){
   var levels = getAssistLevels();
   return Object.keys(levels).map(function(k){
     var a=levels[k];
-    return '<div class="assist-chip'+(k===activeId?" active":"")+'" data-k="'+k+'" tabindex="0" role="button" aria-pressed="'+(k===activeId)+'" aria-label="'+a.label+' pace, '+fmtSpeed(a.speedKmh)+'">'+a.label+'<span class="sub">'+fmtSpeed(a.speedKmh)+'</span></div>';
+    return '<div class="assist-chip'+(k===activeId?" active":"")+'" data-k="'+k+'" tabindex="0" role="button" aria-pressed="'+(k===activeId)+'" aria-label="'+a.label+' pace, '+fmtSpeed(a.speedKmh)+(a.calibrated?" (from your ride history)":"")+'">'+a.label+'<span class="sub">'+fmtSpeed(a.speedKmh)+(a.calibrated?" •":"")+'</span></div>';
   }).join("");
+}
+function paceCalibrationNote(){
+  var levels = getAssistLevels();
+  var calibratedLabels = Object.keys(levels).filter(function(k){ return levels[k].calibrated; }).map(function(k){ return levels[k].label; });
+  if(!calibratedLabels.length) return "";
+  return "• marks a pace calibrated from your own "+BIKE_CLASSES[state.bikeClass].label+" ride history ("+calibratedLabels.join(", ")+"); others are estimates.";
 }
 
 function buildClassRow(){
@@ -1127,8 +1160,11 @@ function showRouteCard(){
   }
 
   html += '<div class="section-title">Pace ('+BIKE_CLASSES[state.bikeClass].label+')</div><div class="assist-row" id="assistRowSheet">'+buildAssistRow(null, state.assist)+'</div>';
+  var paceNote = paceCalibrationNote();
+  if(paceNote) html += '<p class="hint" style="margin-top:4px;">'+escapeHtml(paceNote)+'</p>';
 
   html += '<div class="section-title">Turn-by-turn</div>';
+  html += '<p class="hint" style="margin-top:-4px;">Routed from community map data — it can occasionally include an incorrect one-way street or a path that\'s no longer there. Follow actual signs and traffic over these directions, and use the flag button during navigation to report a problem.</p>';
   html += r.steps.map(function(s,i){ return stepRowHtml(s,i,r.steps); }).join("");
 
   $("sheetContent").innerHTML = html;
@@ -1204,8 +1240,14 @@ function setBikeClass(k){
   recomputeDurations();
   if($("classRowSettings")) $("classRowSettings").innerHTML = buildClassRow();
   wireClassRow();
-  if($("assistRowSettings")){ $("assistRowSettings").innerHTML = buildAssistRow(null, state.assist); wireAssistRow("assistRowSettings"); }
+  refreshSettingsPaceUI();
   if(state.routes.length && !state.navigating) showRouteCard();
+}
+function refreshSettingsPaceUI(){
+  if(!$("assistRowSettings")) return;
+  $("assistRowSettings").innerHTML = buildAssistRow(null, state.assist);
+  wireAssistRow("assistRowSettings");
+  if($("paceCalibrationNoteSettings")) $("paceCalibrationNoteSettings").textContent = paceCalibrationNote();
 }
 function wireClassRow(){
   Array.prototype.forEach.call(document.querySelectorAll("#classRowSettings .class-chip"), function(el){
@@ -1227,7 +1269,7 @@ function startNavigation(){
   state.navigating=true; state.currentStep=0;
   state.offRouteStreak=0; state.rerouting=false; state.lastGoodFixTime=null;
   var r = state.routes[state.activeRoute];
-  state.tripStart = { time:Date.now(), distanceM:r.distanceM, energyWh:energyForRoute(r), destName:state.destination.name };
+  state.tripStart = { time:Date.now(), distanceM:r.distanceM, energyWh:energyForRoute(r), destName:state.destination.name, assistLevel:state.assist, bikeClass:state.bikeClass };
   $("navOverlay").classList.remove("hidden");
   $("searchLayer").classList.add("hidden");
   $("fab-stack"); document.querySelector(".fab-stack").classList.add("hidden");
@@ -1256,7 +1298,8 @@ function logTrip(){
   var elapsedMin = (Date.now()-state.tripStart.time)/60000;
   state.tripHistory.unshift({
     date:Date.now(), destName:state.tripStart.destName,
-    distanceM:state.tripStart.distanceM, energyWh:state.tripStart.energyWh, elapsedMin:elapsedMin
+    distanceM:state.tripStart.distanceM, energyWh:state.tripStart.energyWh, elapsedMin:elapsedMin,
+    assistLevel:state.tripStart.assistLevel, bikeClass:state.tripStart.bikeClass
   });
   state.tripHistory = state.tripHistory.slice(0,50);
   saveJSON("ebm_trips", state.tripHistory);
@@ -1415,6 +1458,17 @@ function updateNavStats(){
 
 function recenterNav(){ if(state.userLatLng) map.setView([state.userLatLng.lat, state.userLatLng.lon], 17); }
 
+function reportMapIssue(){
+  if(!state.userLatLng){ toast("No location yet"); return; }
+  // Routing quality (a wrong-way street, a path that shouldn't be there) is
+  // almost always an OpenStreetMap data gap, not something this app can fix
+  // client-side -- so hand the rider straight to the actual editor at their
+  // current spot, where anyone can correct it for every app that uses OSM.
+  var url = "https://www.openstreetmap.org/edit#map=19/"+state.userLatLng.lat+"/"+state.userLatLng.lon;
+  window.open(url, "_blank");
+  toast("Opening OpenStreetMap editor at your location…");
+}
+
 var speechOn = state.voiceOn;
 function speak(text){
   if(!speechOn || !window.speechSynthesis) return;
@@ -1484,8 +1538,7 @@ function openSettings(){
   $("settingsPanel").classList.remove("hidden");
   $("classRowSettings").innerHTML = buildClassRow();
   wireClassRow();
-  $("assistRowSettings").innerHTML = buildAssistRow(null, state.assist);
-  wireAssistRow("assistRowSettings");
+  refreshSettingsPaceUI();
   $("capacityInput").value = state.capacityWh;
   $("chargeRange").value = state.chargePct;
   $("chargeLabel").textContent = state.chargePct+"%";
@@ -1643,7 +1696,7 @@ function wireUI(){
   wireSeg("unitsSeg", function(v){
     state.units=v; localStorage.setItem("ebm_units",v);
     $("classRowSettings").innerHTML = buildClassRow(); wireClassRow();
-    $("assistRowSettings").innerHTML = buildAssistRow(null, state.assist); wireAssistRow("assistRowSettings");
+    refreshSettingsPaceUI();
     if(state.routes.length) showRouteCard();
   });
   wireSeg("themeSeg", function(v){ state.theme=v; localStorage.setItem("ebm_theme",v); applyTheme(); });
@@ -1660,6 +1713,7 @@ function wireUI(){
 
   $("exitNavBtn").addEventListener("click", exitNavigation);
   $("recenterBtn").addEventListener("click", recenterNav);
+  $("reportMapIssueBtn").addEventListener("click", reportMapIssue);
   $("muteBtn").addEventListener("click", function(){ state.voiceOn=!state.voiceOn; speechOn=state.voiceOn; localStorage.setItem("ebm_voice", state.voiceOn?"on":"off"); toast(state.voiceOn?"Voice guidance on":"Voice guidance off", 1500); });
 
   if(window.matchMedia){
