@@ -65,6 +65,14 @@
   .suggestion-main{font-size:15px;font-weight:600;}
   .suggestion-sub{font-size:13px;color:var(--sub);margin-top:1px;}
   .suggestion-empty{padding:16px;text-align:center;color:var(--sub);font-size:14px;}
+  .quick-row{display:flex;gap:10px;padding:12px 14px;}
+  .quick-chip{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--accent-soft);
+    border-radius:12px;padding:10px 6px;cursor:pointer;color:var(--accent);}
+  .quick-chip.empty{background:var(--border);color:var(--sub);}
+  .quick-chip .qc-icon svg{width:20px;height:20px;}
+  .quick-chip .qc-label{font-size:12px;font-weight:700;}
+  .suggestion-section-label{padding:8px 14px 2px;font-size:11px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.04em;color:var(--sub);}
 
   .fab-stack{position:absolute;right:12px;bottom:max(16px,env(safe-area-inset-bottom));z-index:500;
     display:flex;flex-direction:column;gap:10px;align-items:flex-end;}
@@ -218,8 +226,8 @@
   <div class="topbar">
     <div class="search-pill" id="searchPill">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-      <input id="searchInput" placeholder="Search for a destination" autocomplete="off" inputmode="search">
-      <button class="icon-btn hidden" id="clearSearchBtn">
+      <input id="searchInput" placeholder="Search for a destination" aria-label="Search for a destination" autocomplete="off" inputmode="search">
+      <button class="icon-btn hidden" id="clearSearchBtn" aria-label="Clear search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
@@ -291,7 +299,16 @@
     <button data-v="off">Off</button>
   </div>
 
-  <p class="hint">Range and battery estimates are approximate — based on your assist mode's typical power draw plus climbing along the route. Actual range varies with rider weight, tires, wind and temperature.</p>
+  <p class="hint">Range and battery estimates are approximate — based on your assist mode's typical power draw plus climbing along the route, and current temperature where available. Actual range varies with rider weight, tires and wind.</p>
+
+  <div class="section-title">Favorites</div>
+  <div id="favoritesList"></div>
+  <p class="hint" id="favoritesEmptyHint">Star a destination from its route card to save it here.</p>
+
+  <div class="section-title">Trip history</div>
+  <div id="tripSummary"></div>
+  <div id="tripList"></div>
+  <button class="secondary-btn" id="clearTripsBtn" style="width:100%;margin-top:8px;">Clear trip history</button>
 </div>
 
 <div class="modal-backdrop hidden" id="lawBackdrop"></div>
@@ -328,7 +345,7 @@
   </div>
 </div>
 
-<div class="toast hidden" id="toast"></div>
+<div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
@@ -473,7 +490,11 @@ var ICONS = {
   depart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/></svg>',
   arrive:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M6 2v20h2v-8h3l1 2h6V5h-6l-1-2H8V2H6z"/></svg>',
   roundabout:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="5"/><path d="M12 7V2M9 3.5L12 2l3 1.5"/></svg>',
-  pin:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2C7.6 2 4 5.6 4 10c0 5.4 6.6 11.3 7.3 11.9a1 1 0 001.4 0C13.4 21.3 20 15.4 20 10c0-4.4-3.6-8-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z"/></svg>'
+  pin:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2C7.6 2 4 5.6 4 10c0 5.4 6.6 11.3 7.3 11.9a1 1 0 001.4 0C13.4 21.3 20 15.4 20 10c0-4.4-3.6-8-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z"/></svg>',
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>',
+  work:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',
+  star:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 17.3l-5.4 3.2 1.4-6-4.6-4 6-0.5L12 4l2.6 5.9 6 0.5-4.6 4 1.4 6z"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>'
 };
 
 /* ---------- state ---------- */
@@ -491,10 +512,13 @@ var state = {
   destination: null,
   routes: [],
   activeRoute: 0,
-  elevationGainM: null,
-  elevationLossM: null,
-  elevationPending: false,
   routeNotBikeAware: false,
+  favorites: loadJSON("ebm_favorites", []),
+  recents: loadJSON("ebm_recents", []),
+  tripHistory: loadJSON("ebm_trips", []),
+  pendingFavoriteSlot: null,
+  currentTempC: null,
+  tripStart: null,
   navigating: false,
   currentStep: 0,
   watchId: null,
@@ -508,6 +532,12 @@ try{ if(!localStorage.getItem("ebm_theme")) {} }catch(e){}
 function $(id){ return document.getElementById(id); }
 function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
 function debounce(fn, ms){ var t; return function(){ var a=arguments; clearTimeout(t); t=setTimeout(function(){fn.apply(null,a);}, ms); }; }
+function loadJSON(key, fallback){
+  try{ var v = JSON.parse(localStorage.getItem(key)); return v==null ? fallback : v; }catch(e){ return fallback; }
+}
+function saveJSON(key, value){
+  try{ localStorage.setItem(key, JSON.stringify(value)); }catch(e){}
+}
 
 function haversine(lat1,lon1,lat2,lon2){
   var R=6371000, toRad=Math.PI/180;
@@ -646,6 +676,7 @@ function locateMe(fly){
     state.userLatLng = { lat:pos.coords.latitude, lon:pos.coords.longitude };
     setUserMarker(state.userLatLng.lat, state.userLatLng.lon, null);
     if(fly) map.flyTo([state.userLatLng.lat, state.userLatLng.lon], 15);
+    fetchCurrentTemp();
   }, function(){
     useFallbackStart();
     toast("Location unavailable — using a demo starting point.");
@@ -655,14 +686,115 @@ function useFallbackStart(){
   if(state.userLatLng) return;
   state.userLatLng = { lat:FALLBACK_START.lat, lon:FALLBACK_START.lon };
   setUserMarker(state.userLatLng.lat, state.userLatLng.lon, null);
+  fetchCurrentTemp();
+}
+
+function fetchCurrentTemp(){
+  if(!state.userLatLng) return;
+  var ctrl = new AbortController();
+  var to = setTimeout(function(){ ctrl.abort(); }, 6000);
+  fetch("https://api.open-meteo.com/v1/forecast?latitude="+state.userLatLng.lat+"&longitude="+state.userLatLng.lon+"&current=temperature_2m", { signal:ctrl.signal })
+    .then(function(r){ clearTimeout(to); return r.ok ? r.json() : null; })
+    .then(function(d){
+      var t = d && d.current && d.current.temperature_2m;
+      if(typeof t === "number"){ state.currentTempC = t; if(state.routes.length && !state.navigating) showRouteCard(); }
+    })
+    .catch(function(){ clearTimeout(to); });
 }
 
 /* ---------- search / geocoding ---------- */
 
+/* ---------- favorites & recents ---------- */
+
+function placeKey(p){ return p ? (Number(p.lat).toFixed(5)+","+Number(p.lon).toFixed(5)) : ""; }
+// The star toggle only ever touches plain (unslotted) favorites -- it must
+// never silently delete a Home/Work slot just because the coordinates match.
+function isFavorite(p){ return !!(p && state.favorites.some(function(f){ return !f.slot && placeKey(f)===placeKey(p); })); }
+function favoriteBySlot(slot){ return state.favorites.filter(function(f){ return f.slot===slot; })[0] || null; }
+function toggleFavorite(p){
+  if(isFavorite(p)){
+    state.favorites = state.favorites.filter(function(f){ return f.slot || placeKey(f)!==placeKey(p); });
+  } else {
+    state.favorites.unshift({ name:p.name, address:p.address||"", lat:p.lat, lon:p.lon, slot:null });
+    state.favorites = state.favorites.slice(0,20);
+  }
+  saveJSON("ebm_favorites", state.favorites);
+}
+function setFavoriteSlot(slot, p){
+  state.favorites = state.favorites.filter(function(f){ return f.slot!==slot; });
+  state.favorites.unshift({ name:p.name, address:p.address||"", lat:p.lat, lon:p.lon, slot:slot });
+  saveJSON("ebm_favorites", state.favorites);
+}
+function pushRecent(p){
+  state.recents = state.recents.filter(function(r){ return placeKey(r)!==placeKey(p); });
+  state.recents.unshift({ name:p.name, address:p.address||"", lat:p.lat, lon:p.lon, ts:Date.now() });
+  state.recents = state.recents.slice(0,8);
+  saveJSON("ebm_recents", state.recents);
+}
+
+function quickChipHtml(slot, fav, label){
+  var icon = slot==="home" ? ICONS.home : ICONS.work;
+  if(fav) return '<div class="quick-chip" data-slot="'+slot+'" data-mode="go" tabindex="0" role="button" aria-label="Go to '+label+'"><div class="qc-icon">'+icon+'</div><div class="qc-label">'+label+'</div></div>';
+  return '<div class="quick-chip empty" data-slot="'+slot+'" data-mode="set" tabindex="0" role="button" aria-label="Set '+label+' address"><div class="qc-icon">'+icon+'</div><div class="qc-label">Set '+label+'</div></div>';
+}
+function startRowHtml(place, kind){
+  return '<div class="suggestion-row start-row" data-lat="'+place.lat+'" data-lon="'+place.lon+'" tabindex="0" role="button"><div class="pin">'+(kind==="favorite"?ICONS.star:ICONS.clock)+'</div><div><div class="suggestion-main">'+escapeHtml(place.name)+'</div><div class="suggestion-sub">'+escapeHtml(place.address||"")+'</div></div></div>';
+}
+
+function showStartScreen(){
+  var box=$("suggestions");
+  var home = favoriteBySlot("home"), work = favoriteBySlot("work");
+  var customFavs = state.favorites.filter(function(f){ return !f.slot; });
+  var html = '<div class="quick-row">'+quickChipHtml("home", home, "Home")+quickChipHtml("work", work, "Work")+'</div>';
+  if(customFavs.length) html += customFavs.map(function(f){ return startRowHtml(f, "favorite"); }).join("");
+  if(state.recents.length) html += '<div class="suggestion-section-label">Recent</div>'+state.recents.map(function(f){ return startRowHtml(f, "recent"); }).join("");
+  box.innerHTML = html;
+  box.classList.remove("hidden");
+  wireStartScreen();
+}
+function wireStartScreen(){
+  Array.prototype.forEach.call(document.querySelectorAll(".quick-chip"), function(el){
+    el.addEventListener("click", function(){
+      var slot = el.getAttribute("data-slot");
+      if(el.getAttribute("data-mode")==="set"){
+        state.pendingFavoriteSlot = slot;
+        toast("Search for your "+slot+" address");
+        $("suggestions").classList.add("hidden");
+        $("searchInput").focus();
+      } else {
+        var fav = favoriteBySlot(slot);
+        if(fav) goToPlace(fav);
+      }
+    });
+    el.addEventListener("keydown", function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); el.click(); } });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll(".start-row"), function(el){
+    var go = function(){
+      var lat=Number(el.getAttribute("data-lat")), lon=Number(el.getAttribute("data-lon"));
+      var all = state.favorites.concat(state.recents);
+      var place = all.filter(function(p){ return Number(p.lat)===lat && Number(p.lon)===lon; })[0];
+      if(place) goToPlace(place);
+    };
+    el.addEventListener("click", go);
+    el.addEventListener("keydown", function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); } });
+  });
+}
+function goToPlace(place){
+  setDestination({ lat:place.lat, lon:place.lon, name:place.name, address:place.address });
+  $("suggestions").classList.add("hidden");
+  $("searchInput").value = place.name;
+  $("clearSearchBtn").classList.remove("hidden");
+  $("searchInput").blur();
+}
+
 var searchAbort=null;
 function runSearch(q){
   var box=$("suggestions");
-  if(!q || q.trim().length<2){ box.classList.add("hidden"); box.innerHTML=""; return; }
+  if(!q || q.trim().length<2){
+    if(document.activeElement===$("searchInput")) showStartScreen();
+    else { box.classList.add("hidden"); box.innerHTML=""; }
+    return;
+  }
   if(searchAbort) searchAbort.abort();
   searchAbort = new AbortController();
   var bias = state.userLatLng ? ("&viewbox="+(state.userLatLng.lon-0.4)+","+(state.userLatLng.lat+0.4)+","+(state.userLatLng.lon+0.4)+","+(state.userLatLng.lat-0.4)) : "";
@@ -680,7 +812,7 @@ function renderSuggestions(results){
   box.innerHTML = results.map(function(r,i){
     var main = r.namedetails && r.namedetails.name ? r.namedetails.name : (r.display_name.split(",")[0]);
     var sub = r.display_name.split(",").slice(1,4).join(",").trim();
-    return '<div class="suggestion-row" data-i="'+i+'"><div class="pin">'+ICONS.pin+'</div><div><div class="suggestion-main">'+escapeHtml(main)+'</div><div class="suggestion-sub">'+escapeHtml(sub)+'</div></div></div>';
+    return '<div class="suggestion-row" data-i="'+i+'" tabindex="0" role="button"><div class="pin">'+ICONS.pin+'</div><div><div class="suggestion-main">'+escapeHtml(main)+'</div><div class="suggestion-sub">'+escapeHtml(sub)+'</div></div></div>';
   }).join("");
   box.classList.remove("hidden");
   Array.prototype.forEach.call(box.querySelectorAll(".suggestion-row"), function(el){
@@ -693,6 +825,7 @@ function renderSuggestions(results){
       $("searchInput").blur();
     });
   });
+  enableChipKeyboard(box);
 }
 function escapeHtml(s){ var d=document.createElement("div"); d.textContent=s||""; return d.innerHTML; }
 
@@ -716,6 +849,12 @@ function setDestination(dest){
   state.destination = dest;
   setDestMarker(dest.lat, dest.lon);
   showPlaceCard(dest);
+  if(state.pendingFavoriteSlot){
+    setFavoriteSlot(state.pendingFavoriteSlot, dest);
+    toast((state.pendingFavoriteSlot==="home"?"Home":"Work")+" saved");
+    state.pendingFavoriteSlot = null;
+  }
+  pushRecent(dest);
   if(!state.userLatLng) useFallbackStart();
   fetchRoute();
 }
@@ -773,12 +912,14 @@ function tryRouteEndpoint(coords, i, attempts){
 function applyRouteResponse(data, ep){
   state.routes = data.routes.map(parseRoute);
   state.activeRoute = 0;
-  state.elevationGainM = null; state.elevationLossM=null;
   state.routeNotBikeAware = !ep.bikeAware;
   map.fitBounds(L.latLngBounds(state.routes[0].latlngs), { padding:[60,60] });
   renderRouteLines();
   showRouteCard();
-  fetchElevation(state.routes[0]);
+  // Fetch elevation for every route, not just the active one: lets switching
+  // between alternatives use cached data instead of refetching, and lets us
+  // flag whichever alternative climbs the least once all of them resolve.
+  state.routes.forEach(fetchElevation);
 }
 
 function parseRoute(r){
@@ -792,7 +933,11 @@ function parseRoute(r){
       bearingAfter: m.bearing_after, location: m.location ? [m.location[1], m.location[0]] : latlngs[0]
     };
   });
-  return { latlngs:latlngs, distanceM:r.distance, osrmDurationS:r.duration, durationMin: (r.distance/1000)/getAssistLevels()[state.assist].speedKmh*60, steps:steps };
+  return {
+    latlngs:latlngs, distanceM:r.distance, osrmDurationS:r.duration,
+    durationMin: (r.distance/1000)/getAssistLevels()[state.assist].speedKmh*60, steps:steps,
+    elevationGainM:null, elevationLossM:null, elevationProfile:null, elevationPending:false
+  };
 }
 
 function recomputeDurations(){
@@ -807,7 +952,8 @@ function selectRoute(i){
 }
 
 function fetchElevation(route){
-  state.elevationPending = true;
+  if(route.elevationProfile || route.elevationPending){ if(!state.navigating) showRouteCard(); return; }
+  route.elevationPending = true;
   var pts = route.latlngs;
   var n = Math.min(24, pts.length);
   var step = Math.max(1, Math.floor(pts.length/n));
@@ -824,22 +970,41 @@ function fetchElevation(route){
       var elevs = (data.results||[]).map(function(d){ return d.elevation; });
       var gain=0, loss=0;
       for(var i=1;i<elevs.length;i++){ var d=elevs[i]-elevs[i-1]; if(d>0) gain+=d; else loss+=-d; }
-      state.elevationGainM = gain; state.elevationLossM = loss; state.elevationPending=false;
-      if(!state.navigating) showRouteCard();
+      route.elevationProfile = elevs; route.elevationGainM = gain; route.elevationLossM = loss; route.elevationPending=false;
+      if(!state.navigating){ showRouteCard(); renderRouteLines(); }
     })
-    .catch(function(){ clearTimeout(to); state.elevationGainM=null; state.elevationLossM=null; state.elevationPending=false; if(!state.navigating) showRouteCard(); });
+    .catch(function(){ clearTimeout(to); route.elevationPending=false; if(!state.navigating) showRouteCard(); });
+}
+
+function flattestRouteIndex(){
+  var best=-1, bestGain=Infinity;
+  state.routes.forEach(function(r,i){
+    if(r.elevationGainM!=null && r.elevationGainM<bestGain){ bestGain=r.elevationGainM; best=i; }
+  });
+  // Only meaningful once every route has resolved and there's an actual choice.
+  var allResolved = state.routes.every(function(r){ return r.elevationGainM!=null; });
+  return (allResolved && state.routes.length>1) ? best : -1;
 }
 
 /* ---------- energy model ---------- */
 
+function batteryTempFactor(tempC){
+  // Lithium packs deliver less usable capacity in the cold; roughly negligible
+  // above 15°C, up to ~35% more energy needed (not literally "created" — this
+  // derates the usable Wh) by -10°C. A simple linear ramp between those.
+  if(tempC==null) return 1.0;
+  if(tempC>=15) return 1.0;
+  if(tempC<=-10) return 1.35;
+  return 1.0 + (15-tempC)/25*0.35;
+}
 function energyForRoute(route){
   var km = route.distanceM/1000;
   var base = km*getAssistLevels()[state.assist].whPerKm;
   var climb = 0;
-  if(state.elevationGainM!=null){
-    climb = (state.elevationGainM/100)*CLIMB_WH_PER_100M + (state.elevationLossM/100)*DESCENT_WH_PER_100M;
+  if(route.elevationGainM!=null){
+    climb = (route.elevationGainM/100)*CLIMB_WH_PER_100M + (route.elevationLossM/100)*DESCENT_WH_PER_100M;
   }
-  return Math.max(0, base+climb);
+  return Math.max(0, (base+climb)*batteryTempFactor(state.currentTempC));
 }
 function availableWh(){ return state.capacityWh * (state.chargePct/100); }
 
@@ -880,17 +1045,24 @@ function buildAssistRow(onPick, activeId){
   var levels = getAssistLevels();
   return Object.keys(levels).map(function(k){
     var a=levels[k];
-    return '<div class="assist-chip'+(k===activeId?" active":"")+'" data-k="'+k+'">'+a.label+'<span class="sub">'+fmtSpeed(a.speedKmh)+'</span></div>';
+    return '<div class="assist-chip'+(k===activeId?" active":"")+'" data-k="'+k+'" tabindex="0" role="button" aria-pressed="'+(k===activeId)+'" aria-label="'+a.label+' pace, '+fmtSpeed(a.speedKmh)+'">'+a.label+'<span class="sub">'+fmtSpeed(a.speedKmh)+'</span></div>';
   }).join("");
 }
 
 function buildClassRow(){
   return Object.keys(BIKE_CLASSES).map(function(k){
     var c=BIKE_CLASSES[k];
-    return '<div class="class-chip'+(k===state.bikeClass?" active":"")+'" data-k="'+k+'">'+
+    var active = k===state.bikeClass;
+    return '<div class="class-chip'+(active?" active":"")+'" data-k="'+k+'" tabindex="0" role="button" aria-pressed="'+active+'" aria-label="'+c.label+', '+c.sub+'">'+
       '<div class="row"><span>'+c.label+'</span><span>'+fmtSpeed(c.maxKmh)+' max</span></div>'+
       '<div class="desc">'+c.sub+'</div></div>';
   }).join("");
+}
+
+function enableChipKeyboard(container){
+  Array.prototype.forEach.call(container.querySelectorAll('[role="button"]'), function(el){
+    el.addEventListener("keydown", function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); el.click(); } });
+  });
 }
 
 function showRouteCard(){
@@ -899,8 +1071,9 @@ function showRouteCard(){
   var energy = energyForRoute(r);
   var avail = availableWh();
   var insufficient = energy > avail*0.92;
-  var ecoEnergy = r.distanceM/1000*getAssistLevels().eco.whPerKm + (state.elevationGainM!=null ? (state.elevationGainM/100)*CLIMB_WH_PER_100M + (state.elevationLossM/100)*DESCENT_WH_PER_100M : 0);
+  var ecoEnergy = (r.distanceM/1000*getAssistLevels().eco.whPerKm + (r.elevationGainM!=null ? (r.elevationGainM/100)*CLIMB_WH_PER_100M + (r.elevationLossM/100)*DESCENT_WH_PER_100M : 0))*batteryTempFactor(state.currentTempC);
   var ecoWouldWork = ecoEnergy <= avail*0.92;
+  var flattest = flattestRouteIndex();
 
   var html = "";
   if(state.routeNotBikeAware){
@@ -913,19 +1086,28 @@ function showRouteCard(){
       (ecoWouldWork ? '<button id="switchEcoBtn">Switch to Eco</button>' : '')+'</div></div>';
   }
 
-  html += '<div class="place-title">'+escapeHtml(state.destination.name)+'</div>';
-  html += '<div class="place-sub">'+escapeHtml(state.destination.address||"")+'</div>';
+  var fav = isFavorite(state.destination);
+  html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'+
+    '<div><div class="place-title">'+escapeHtml(state.destination.name)+'</div><div class="place-sub">'+escapeHtml(state.destination.address||"")+'</div></div>'+
+    '<button class="icon-btn" id="favToggleBtn" aria-label="'+(fav?"Remove from favorites":"Save to favorites")+'" aria-pressed="'+fav+'" style="width:34px;height:34px;flex:none;background:'+(fav?"var(--accent-soft)":"var(--border)")+';color:'+(fav?"var(--accent)":"var(--sub)")+';">'+
+    '<svg viewBox="0 0 24 24" fill="'+(fav?"currentColor":"none")+'" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M12 17.3l-5.4 3.2 1.4-6-4.6-4 6-0.5L12 4l2.6 5.9 6 0.5-4.6 4 1.4 6z"/></svg>'+
+    '</button></div>';
 
   html += '<button class="primary-btn" id="startNavBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Start Navigation</button>';
-  html += '<div class="secondary-row"><button class="secondary-btn" id="clearRouteBtn">Clear route</button>'+(state.routes.length>1?'<button class="secondary-btn" id="altRouteBtn">Other route</button>':'')+'</div>';
+  html += '<div class="secondary-row"><button class="secondary-btn" id="clearRouteBtn">Clear route</button>'+
+    (state.routes.length>1?'<button class="secondary-btn" id="altRouteBtn">Other route'+(flattest===((state.activeRoute+1)%state.routes.length)?" (flatter)":"")+'</button>':'')+'</div>';
 
   html += '<div class="stat-row">'+
     '<div class="stat-card"><div class="v">'+fmtDuration(r.durationMin)+'</div><div class="l">Ride time</div></div>'+
     '<div class="stat-card"><div class="v">'+fmtDist(r.distanceM)+'</div><div class="l">Distance</div></div>'+
-    '<div class="stat-card'+(insufficient?" warn":"")+'"><div class="v">'+(state.elevationPending?"…":Math.round(energy)+" Wh")+'</div><div class="l">Battery use</div></div>'+
+    '<div class="stat-card'+(insufficient?" warn":"")+'"><div class="v">'+(r.elevationPending?"…":Math.round(energy)+" Wh")+'</div><div class="l">Battery use</div></div>'+
     '</div>';
 
-  html += '<div class="elev-note">'+(state.elevationPending?"Checking elevation along the route…": (state.elevationGainM!=null ? ("Climbs "+Math.round(state.elevationGainM)+" m · descends "+Math.round(state.elevationLossM)+" m") : "Elevation data unavailable — estimate ignores climbs."))+'</div>';
+  html += '<div class="elev-note">'+(r.elevationPending?"Checking elevation along the route…": (r.elevationGainM!=null ? ("Climbs "+Math.round(r.elevationGainM)+" m · descends "+Math.round(r.elevationLossM)+" m"+(flattest===state.activeRoute?" · flattest option":"")) : "Elevation data unavailable — estimate ignores climbs."))+'</div>';
+  if(r.elevationProfile) html += buildElevationSvg(r.elevationProfile);
+  if(state.currentTempC!=null && batteryTempFactor(state.currentTempC)>1.02){
+    html += '<div class="elev-note">Cold weather ('+Math.round(state.currentTempC)+'°C) reduces usable battery range — factored into this estimate.</div>';
+  }
 
   html += '<div class="section-title">Pace ('+BIKE_CLASSES[state.bikeClass].label+')</div><div class="assist-row" id="assistRowSheet">'+buildAssistRow(null, state.assist)+'</div>';
 
@@ -937,11 +1119,30 @@ function showRouteCard(){
 
   $("startNavBtn").addEventListener("click", startNavigation);
   $("clearRouteBtn").addEventListener("click", clearRoute);
+  $("favToggleBtn").addEventListener("click", function(){ toggleFavorite(state.destination); showRouteCard(); });
   var altBtn=$("altRouteBtn"); if(altBtn) altBtn.addEventListener("click", function(){ selectRoute((state.activeRoute+1)%state.routes.length); });
   var ecoBtn=$("switchEcoBtn"); if(ecoBtn) ecoBtn.addEventListener("click", function(){ setAssist("eco"); });
   Array.prototype.forEach.call(document.querySelectorAll("#assistRowSheet .assist-chip"), function(el){
     el.addEventListener("click", function(){ setAssist(el.getAttribute("data-k")); });
   });
+}
+
+function buildElevationSvg(elevs){
+  if(!elevs || elevs.length<2) return "";
+  var w=100, h=40, pad=2;
+  var min=Math.min.apply(null,elevs), max=Math.max.apply(null,elevs);
+  var range = Math.max(1, max-min);
+  var pts = elevs.map(function(e,i){
+    var x = pad + (i/(elevs.length-1))*(w-2*pad);
+    var y = pad + (1-(e-min)/range)*(h-2*pad);
+    return x.toFixed(1)+","+y.toFixed(1);
+  });
+  var line = pts.join(" ");
+  var area = (pad)+","+(h-pad)+" "+line+" "+(w-pad)+","+(h-pad);
+  return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" role="img" aria-label="Elevation profile along the route, ranging from '+Math.round(min)+' to '+Math.round(max)+' meters" style="width:100%;height:40px;display:block;margin:-4px 0 10px;">'+
+    '<polyline points="'+area+'" fill="var(--accent-soft)" stroke="none"/>'+
+    '<polyline points="'+line+'" fill="none" stroke="var(--accent)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>'+
+    '</svg>';
 }
 
 function stepIconHtml(s){
@@ -993,11 +1194,13 @@ function wireClassRow(){
   Array.prototype.forEach.call(document.querySelectorAll("#classRowSettings .class-chip"), function(el){
     el.addEventListener("click", function(){ setBikeClass(el.getAttribute("data-k")); });
   });
+  enableChipKeyboard($("classRowSettings"));
 }
 function wireAssistRow(containerId){
   Array.prototype.forEach.call(document.querySelectorAll("#"+containerId+" .assist-chip"), function(el){
     el.addEventListener("click", function(){ setAssist(el.getAttribute("data-k")); document.getElementById(containerId).innerHTML = buildAssistRow(null, state.assist); wireAssistRow(containerId); });
   });
+  enableChipKeyboard(document.getElementById(containerId));
 }
 
 /* ---------- navigation mode ---------- */
@@ -1005,6 +1208,8 @@ function wireAssistRow(containerId){
 function startNavigation(){
   if(!state.routes.length) return;
   state.navigating=true; state.currentStep=0;
+  var r = state.routes[state.activeRoute];
+  state.tripStart = { time:Date.now(), distanceM:r.distanceM, energyWh:energyForRoute(r), destName:state.destination.name };
   $("navOverlay").classList.remove("hidden");
   $("searchLayer").classList.add("hidden");
   $("fab-stack"); document.querySelector(".fab-stack").classList.add("hidden");
@@ -1024,7 +1229,20 @@ function exitNavigation(){
   $("navOverlay").classList.add("hidden");
   $("searchLayer").classList.remove("hidden");
   document.querySelector(".fab-stack").classList.remove("hidden");
+  logTrip();
   if(state.routes.length) showRouteCard();
+}
+
+function logTrip(){
+  if(!state.tripStart) return;
+  var elapsedMin = (Date.now()-state.tripStart.time)/60000;
+  state.tripHistory.unshift({
+    date:Date.now(), destName:state.tripStart.destName,
+    distanceM:state.tripStart.distanceM, energyWh:state.tripStart.energyWh, elapsedMin:elapsedMin
+  });
+  state.tripHistory = state.tripHistory.slice(0,50);
+  saveJSON("ebm_trips", state.tripHistory);
+  state.tripStart = null;
 }
 
 function onNavPosition(pos){
@@ -1153,8 +1371,52 @@ function openSettings(){
   setSeg("unitsSeg", state.units);
   setSeg("themeSeg", state.theme);
   setSeg("voiceSeg", state.voiceOn?"on":"off");
+  renderFavoritesList();
+  renderTripHistory();
 }
 function closeSettings(){ $("settingsBackdrop").classList.add("hidden"); $("settingsPanel").classList.add("hidden"); }
+
+function renderFavoritesList(){
+  var box=$("favoritesList");
+  var hint=$("favoritesEmptyHint");
+  if(!state.favorites.length){ box.innerHTML=""; hint.classList.remove("hidden"); return; }
+  hint.classList.add("hidden");
+  box.innerHTML = state.favorites.map(function(f,i){
+    var label = f.slot==="home"?"Home":f.slot==="work"?"Work":f.name;
+    var icon = f.slot==="home"?ICONS.home:f.slot==="work"?ICONS.work:ICONS.star;
+    return '<div class="step-row"><div class="step-icon">'+icon+'</div>'+
+      '<div style="flex:1;min-width:0;"><div class="step-text">'+escapeHtml(label)+'</div><div class="step-meta">'+escapeHtml(f.address||"")+'</div></div>'+
+      '<button class="icon-btn" data-i="'+i+'" aria-label="Remove '+escapeHtml(label)+'" style="width:26px;height:26px;flex:none;">'+
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>';
+  }).join("");
+  Array.prototype.forEach.call(box.querySelectorAll("button[data-i]"), function(btn){
+    btn.addEventListener("click", function(){
+      state.favorites.splice(Number(btn.getAttribute("data-i")),1);
+      saveJSON("ebm_favorites", state.favorites);
+      renderFavoritesList();
+    });
+  });
+}
+
+function renderTripHistory(){
+  var summaryBox=$("tripSummary"), listBox=$("tripList");
+  if(!state.tripHistory.length){
+    summaryBox.innerHTML = '<p class="hint">No rides logged yet — trips are recorded when you start, then end, navigation.</p>';
+    listBox.innerHTML = "";
+    return;
+  }
+  var totalDist = state.tripHistory.reduce(function(s,t){ return s+t.distanceM; },0);
+  var totalWh = state.tripHistory.reduce(function(s,t){ return s+t.energyWh; },0);
+  summaryBox.innerHTML = '<div class="stat-row">'+
+    '<div class="stat-card"><div class="v">'+state.tripHistory.length+'</div><div class="l">Rides</div></div>'+
+    '<div class="stat-card"><div class="v">'+fmtDist(totalDist)+'</div><div class="l">Total distance</div></div>'+
+    '<div class="stat-card"><div class="v">'+Math.round(totalWh)+' Wh</div><div class="l">Battery used</div></div></div>';
+  listBox.innerHTML = state.tripHistory.slice(0,10).map(function(t){
+    var d = new Date(t.date);
+    return '<div class="step-row"><div class="step-icon">'+ICONS.clock+'</div><div style="min-width:0;"><div class="step-text">'+escapeHtml(t.destName)+'</div>'+
+      '<div class="step-meta">'+d.toLocaleDateString()+' · '+fmtDist(t.distanceM)+' · '+Math.round(t.energyWh)+' Wh</div></div></div>';
+  }).join("");
+}
 
 /* ---------- local e-bike rules panel ---------- */
 
@@ -1180,11 +1442,12 @@ function closeLawPanel(){ $("lawBackdrop").classList.add("hidden"); $("lawPanel"
 function renderRegionPicker(){
   var opts = [["US","United States"],["GB","United Kingdom"],["EU","European Union (general)"],["CA","Canada"]];
   var html = '<p class="hint" style="margin-top:10px;">Couldn\'t detect your location, or you\'d just like to check another region. Pick one:</p>'+
-    opts.map(function(o){ return '<div class="region-pick" data-k="'+o[0]+'" data-label="'+o[1]+'">'+o[1]+'</div>'; }).join("");
+    opts.map(function(o){ return '<div class="region-pick" data-k="'+o[0]+'" data-label="'+o[1]+'" tabindex="0" role="button">'+o[1]+'</div>'; }).join("");
   $("lawContent").innerHTML = html;
   Array.prototype.forEach.call(document.querySelectorAll("#lawContent .region-pick"), function(el){
     el.addEventListener("click", function(){ renderLawContent(el.getAttribute("data-k"), el.getAttribute("data-label"), ""); });
   });
+  enableChipKeyboard($("lawContent"));
 }
 
 function renderLawContent(key, countryName, regionName){
@@ -1234,8 +1497,11 @@ function wireSeg(id, onSet){
 
 function wireUI(){
   $("searchInput").addEventListener("input", function(e){ debouncedSearch(e.target.value); $("clearSearchBtn").classList.toggle("hidden", !e.target.value); });
-  $("searchInput").addEventListener("focus", function(){ if($("searchInput").value.trim().length>=2) $("suggestions").classList.remove("hidden"); });
-  $("clearSearchBtn").addEventListener("click", function(){ $("searchInput").value=""; $("suggestions").classList.add("hidden"); $("clearSearchBtn").classList.add("hidden"); $("searchInput").focus(); });
+  $("searchInput").addEventListener("focus", function(){
+    if($("searchInput").value.trim().length>=2) $("suggestions").classList.remove("hidden");
+    else showStartScreen();
+  });
+  $("clearSearchBtn").addEventListener("click", function(){ $("searchInput").value=""; $("clearSearchBtn").classList.add("hidden"); showStartScreen(); $("searchInput").focus(); });
   document.addEventListener("click", function(e){ if(!e.target.closest("#searchLayer")) $("suggestions").classList.add("hidden"); });
 
   $("settingsBtn").addEventListener("click", openSettings);
@@ -1245,6 +1511,10 @@ function wireUI(){
   $("lawBtn").addEventListener("click", openLawPanel);
   $("closeLawBtn").addEventListener("click", closeLawPanel);
   $("lawBackdrop").addEventListener("click", closeLawPanel);
+
+  $("clearTripsBtn").addEventListener("click", function(){
+    state.tripHistory=[]; saveJSON("ebm_trips", []); renderTripHistory();
+  });
 
   $("capacityInput").addEventListener("change", function(e){ state.capacityWh=clamp(Number(e.target.value)||500,50,3000); localStorage.setItem("ebm_capacity",state.capacityWh); if(state.routes.length) showRouteCard(); });
   $("chargeRange").addEventListener("input", function(e){ state.chargePct=Number(e.target.value); $("chargeLabel").textContent=state.chargePct+"%"; localStorage.setItem("ebm_charge",state.chargePct); if(state.routes.length) showRouteCard(); });
