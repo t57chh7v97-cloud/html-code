@@ -118,6 +118,11 @@
   .banner b{display:block;margin-bottom:2px;}
   .banner button{margin-top:6px;background:var(--danger);color:#fff;border:none;border-radius:8px;
     padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;}
+  .banner.info{background:var(--accent-soft);border-color:rgba(10,132,255,.3);}
+  .banner.info svg{color:var(--accent);}
+  .law-points{padding-left:18px;margin:10px 0;font-size:14px;line-height:1.6;}
+  .law-points li{margin-bottom:4px;}
+  .region-pick{background:var(--border);border-radius:12px;padding:12px 14px;cursor:pointer;margin-bottom:8px;font-size:14px;font-weight:600;}
 
   .assist-row{display:flex;gap:8px;margin:12px 0;}
   .assist-chip{flex:1;text-align:center;padding:9px 4px;border-radius:12px;background:var(--border);
@@ -230,6 +235,9 @@
     <button id="zoomInBtn">+</button>
     <button id="zoomOutBtn">−</button>
   </div>
+  <button class="fab" id="lawBtn" aria-label="Local e-bike rules">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 16v-5M12 8h.01"/></svg>
+  </button>
   <button class="fab" id="themeBtn" aria-label="Toggle dark mode">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
   </button>
@@ -286,6 +294,16 @@
   <p class="hint">Range and battery estimates are approximate — based on your assist mode's typical power draw plus climbing along the route. Actual range varies with rider weight, tires, wind and temperature.</p>
 </div>
 
+<div class="modal-backdrop hidden" id="lawBackdrop"></div>
+<div class="modal hidden" id="lawPanel">
+  <div class="modal-header"><h2>Local eBike Rules</h2>
+    <button class="icon-btn" id="closeLawBtn" style="width:28px;height:28px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div id="lawContent"></div>
+</div>
+
 <div class="nav-overlay hidden" id="navOverlay">
   <div class="nav-banner">
     <div class="nav-icon" id="navIcon"></div>
@@ -323,9 +341,9 @@
 // cutoff speed; pace presets (eco/normal/sport/max) are fractions of that
 // cutoff, since riders rarely cruise at the legal ceiling in mixed traffic.
 var BIKE_CLASSES = {
-  class1: { label:"Class 1", sub:"Pedal-assist, no throttle · up to 20 mph", maxKmh:32, throttle:false },
-  class2: { label:"Class 2", sub:"Throttle-assist · up to 20 mph", maxKmh:32, throttle:true },
-  class3: { label:"Class 3", sub:"Pedal-assist, higher speed · up to 28 mph", maxKmh:45, throttle:false }
+  class1: { label:"Class 1", sub:"Pedal-assist, no throttle · up to 20 mph", maxKmh:32.2, throttle:false },
+  class2: { label:"Class 2", sub:"Throttle-assist · up to 20 mph", maxKmh:32.2, throttle:true },
+  class3: { label:"Class 3", sub:"Pedal-assist, higher speed · up to 28 mph", maxKmh:45.1, throttle:false }
 };
 var ASSIST_FRACTIONS = {
   eco:    { label:"Eco",    frac:0.45 },
@@ -345,6 +363,93 @@ function getAssistLevels(){
   });
   return out;
 }
+
+// General reference only, not legal advice: commonly cited, relatively stable
+// framework facts. State/province notes are a few well-documented examples,
+// not full 50-state/13-province coverage, and city/trail/park rules can
+// always be stricter. E-bike law changes often — verify locally before riding.
+var JURISDICTIONS = {
+  US: {
+    label:"United States",
+    assistCapKmh:null, // governed by the class system itself, not one flat cap
+    framework:"Most states have adopted the federal 3-class e-bike model used by this app's Bike class setting.",
+    points:[
+      "Class 1 & 2: motor assist cuts off at 20 mph (32 km/h).",
+      "Class 3: motor assist cuts off at 28 mph (45 km/h); commonly requires a minimum age (often 16) and a helmet.",
+      "Class 2 has a throttle; Class 1 and 3 are pedal-assist only in most states.",
+      "E-bikes are generally allowed wherever regular bicycles are allowed, but Class 2/3 are sometimes restricted on specific multi-use paths, boardwalks, or park trails."
+    ],
+    regionNotes:{
+      "california":"One of the first states to adopt the 3-class system (2015). Helmets are required for all Class 3 riders and for anyone under 18 on Class 1/2. Cities, state parks, and trail districts can and do restrict Class 2/3 on specific paths.",
+      "new york":"Class 1 and 2 e-bikes are allowed statewide. Class 3 is only allowed in municipalities that specifically opt in, so legality can vary place to place — an actively evolving area, especially in New York City.",
+      "washington":"Class 3 e-bikes are generally restricted to roads and bike/multi-use lanes posted under 35 mph unless the local path manager allows otherwise, and require a helmet.",
+      "texas":"Generally treats e-bikes like regular bicycles under the 3-class model with few statewide path restrictions, but individual cities and parks set their own rules."
+    }
+  },
+  GB: {
+    label:"United Kingdom",
+    assistCapKmh:25,
+    framework:"The UK's EAPC (Electrically Assisted Pedal Cycle) rules.",
+    points:[
+      "Motor power limited to 250W continuous.",
+      "Assistance must cut off at 15.5 mph (25 km/h) and only while pedaling — throttle-only operation beyond a brief, slow 'walk assist' isn't allowed.",
+      "Minimum age 14; no license, registration, tax, or insurance required for a compliant EAPC.",
+      "A faster or throttle-driven e-bike is legally a moped: it needs type approval, registration, insurance, a license, and a helmet to use on the road."
+    ],
+    regionNotes:{}
+  },
+  EU: {
+    label:"European Union",
+    assistCapKmh:25,
+    framework:"EN 15194 'pedelec' rules, broadly harmonized across EU member states.",
+    points:[
+      "Motor power limited to 250W continuous.",
+      "Assistance must cut off at 25 km/h (15.5 mph), and in most member states only while pedaling.",
+      "A compliant pedelec needs no license, registration, or insurance in most member states.",
+      "A faster or more powerful e-bike is generally classified as a moped (L1e-B) or similar, needing type approval, registration, insurance, and a helmet — specifics differ by country."
+    ],
+    regionNotes:{}
+  },
+  CA: {
+    label:"Canada",
+    assistCapKmh:32,
+    framework:"The federal 'power-assisted bicycle' definition (varies slightly by province).",
+    points:[
+      "Motor power limited to 500W.",
+      "Assistance must cut off at 32 km/h (20 mph), and the bike must have working pedals.",
+      "Helmet required; minimum age is commonly 16 but set by each province.",
+      "No license, registration, or insurance required for a compliant power-assisted bicycle, but a faster or more powerful e-bike falls outside this definition and may need to be registered as a moped or motorcycle."
+    ],
+    regionNotes:{
+      "ontario":"Riders must be 16+, or 14-15 supervised by someone 16+. Power-assisted bicycles aren't allowed on some 400-series highways and other controlled-access roads.",
+      "british columbia":"Minimum age 16 to ride unsupervised. Local and regional park authorities can restrict e-bikes on specific trails."
+    }
+  }
+};
+var EU_COUNTRY_CODES = ["AT","BE","BG","HR","CY","CZ","DK","EE","FI","FR","DE","GR","HU","IE","IT","LV","LT","LU","MT","NL","PL","PT","RO","SK","SI","ES","SE"];
+
+function resolveJurisdiction(countryCode){
+  var cc = (countryCode||"").toUpperCase();
+  if(cc==="US") return "US";
+  if(cc==="GB") return "GB";
+  if(cc==="CA") return "CA";
+  if(EU_COUNTRY_CODES.indexOf(cc)>-1) return "EU";
+  return null;
+}
+
+function classComplianceNote(jurisdictionKey){
+  var j = JURISDICTIONS[jurisdictionKey];
+  if(!j || j.assistCapKmh==null) return null;
+  var cls = BIKE_CLASSES[state.bikeClass];
+  // A 5% tolerance absorbs mph<->km/h rounding noise at class boundaries (US
+  // Class 1/2's 20 mph is ~32.2 km/h, a hair over Canada's 32 km/h cap, but
+  // the two are the same limit in practice, not a real regulatory gap).
+  if(cls.maxKmh > j.assistCapKmh*1.05){
+    return "Your selected "+cls.label+" bike (assist up to "+fmtSpeed(cls.maxKmh)+") exceeds "+j.label+"'s "+fmtSpeed(j.assistCapKmh)+" e-bike limit. A motor like this is commonly treated as a moped there, not a bicycle — it would likely need registration, insurance, and a different license to ride on public roads.";
+  }
+  return null;
+}
+
 var CLIMB_WH_PER_100M = 14;   // motor-assisted energy spent per 100m of ascent
 var DESCENT_WH_PER_100M = -3; // regenerative/coasting credit per 100m of descent (clamped at 0 overall)
 var ROUTE_HOST = "https://routing.openstreetmap.de";
@@ -421,7 +526,9 @@ function compassDir(deg){
   return dirs[Math.round(deg/45)%8];
 }
 function fmtSpeed(kmh){
-  return state.units==="mi" ? Math.round(kmh/1.60934)+" mph" : kmh+" km/h";
+  if(state.units!=="mi") return (Math.round(kmh*10)/10)+" km/h";
+  var mph = Math.round((kmh/1.60934)*10)/10;
+  return (mph%1===0 ? mph.toFixed(0) : mph.toFixed(1))+" mph";
 }
 
 function detectUnits(){
@@ -1048,6 +1155,69 @@ function openSettings(){
   setSeg("voiceSeg", state.voiceOn?"on":"off");
 }
 function closeSettings(){ $("settingsBackdrop").classList.add("hidden"); $("settingsPanel").classList.add("hidden"); }
+
+/* ---------- local e-bike rules panel ---------- */
+
+function openLawPanel(){
+  $("lawBackdrop").classList.remove("hidden");
+  $("lawPanel").classList.remove("hidden");
+  $("lawContent").innerHTML = '<p class="hint" style="margin-top:10px;">Detecting your location…</p>';
+  if(!state.userLatLng){ renderRegionPicker(); return; }
+  var ctrl = new AbortController();
+  var to = setTimeout(function(){ ctrl.abort(); }, 8000);
+  fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat="+state.userLatLng.lat+"&lon="+state.userLatLng.lon,
+    { signal:ctrl.signal, headers:{ "Accept-Language": navigator.language||"en" } })
+    .then(function(r){ clearTimeout(to); return r.ok ? r.json() : null; })
+    .then(function(d){
+      var addr = (d && d.address) || {};
+      var key = resolveJurisdiction(addr.country_code);
+      renderLawContent(key, addr.country || "", addr.state || addr.province || "");
+    })
+    .catch(function(){ clearTimeout(to); renderRegionPicker(); });
+}
+function closeLawPanel(){ $("lawBackdrop").classList.add("hidden"); $("lawPanel").classList.add("hidden"); }
+
+function renderRegionPicker(){
+  var opts = [["US","United States"],["GB","United Kingdom"],["EU","European Union (general)"],["CA","Canada"]];
+  var html = '<p class="hint" style="margin-top:10px;">Couldn\'t detect your location, or you\'d just like to check another region. Pick one:</p>'+
+    opts.map(function(o){ return '<div class="region-pick" data-k="'+o[0]+'" data-label="'+o[1]+'">'+o[1]+'</div>'; }).join("");
+  $("lawContent").innerHTML = html;
+  Array.prototype.forEach.call(document.querySelectorAll("#lawContent .region-pick"), function(el){
+    el.addEventListener("click", function(){ renderLawContent(el.getAttribute("data-k"), el.getAttribute("data-label"), ""); });
+  });
+}
+
+function renderLawContent(key, countryName, regionName){
+  var html = '<div class="banner info" style="margin-top:10px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-5M12 8h.01"/></svg>'+
+    '<div><b>General information, not legal advice</b>These are commonly cited norms and may be outdated or incomplete. City, park, and trail rules can be stricter than state or national law — always check local signage and your trail authority before riding.</div></div>';
+
+  if(!key){
+    html += '<div class="place-title">'+(countryName?escapeHtml(countryName):"Unknown region")+'</div>';
+    html += '<p class="hint">We don\'t have reference info for this country yet. In most places, e-bike rules are based on motor power and top assist speed — check your national or regional transport authority for specifics.</p>';
+  } else {
+    var j = JURISDICTIONS[key];
+    html += '<div class="place-title">'+escapeHtml(countryName || j.label)+(regionName?' · '+escapeHtml(regionName):'')+'</div>';
+    html += '<div class="place-sub">'+escapeHtml(j.framework)+'</div>';
+    html += '<ul class="law-points">'+j.points.map(function(p){ return '<li>'+escapeHtml(p)+'</li>'; }).join('')+'</ul>';
+
+    var note = j.regionNotes[(regionName||"").toLowerCase()];
+    if(note){
+      html += '<div class="section-title">'+escapeHtml(regionName)+'</div><p style="font-size:14px;line-height:1.5;">'+escapeHtml(note)+'</p>';
+    }
+
+    var compliance = classComplianceNote(key);
+    if(compliance){
+      html += '<div class="banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>'+
+        '<div><b>Check your bike class</b>'+escapeHtml(compliance)+'</div></div>';
+    } else {
+      html += '<p class="hint">Your selected '+BIKE_CLASSES[state.bikeClass].label+' bike fits within the typical assist-speed limit here.</p>';
+    }
+  }
+
+  html += '<button class="secondary-btn" id="manualRegionBtn" style="width:100%;margin-top:4px;">Choose a different region</button>';
+  $("lawContent").innerHTML = html;
+  var b=$("manualRegionBtn"); if(b) b.addEventListener("click", renderRegionPicker);
+}
 function setSeg(id, val){
   var seg=$(id);
   Array.prototype.forEach.call(seg.querySelectorAll("button"), function(b){ b.classList.toggle("active", b.getAttribute("data-v")===val); });
@@ -1071,6 +1241,10 @@ function wireUI(){
   $("settingsBtn").addEventListener("click", openSettings);
   $("closeSettingsBtn").addEventListener("click", closeSettings);
   $("settingsBackdrop").addEventListener("click", closeSettings);
+
+  $("lawBtn").addEventListener("click", openLawPanel);
+  $("closeLawBtn").addEventListener("click", closeLawPanel);
+  $("lawBackdrop").addEventListener("click", closeLawPanel);
 
   $("capacityInput").addEventListener("change", function(e){ state.capacityWh=clamp(Number(e.target.value)||500,50,3000); localStorage.setItem("ebm_capacity",state.capacityWh); if(state.routes.length) showRouteCard(); });
   $("chargeRange").addEventListener("input", function(e){ state.chargePct=Number(e.target.value); $("chargeLabel").textContent=state.chargePct+"%"; localStorage.setItem("ebm_charge",state.chargePct); if(state.routes.length) showRouteCard(); });
