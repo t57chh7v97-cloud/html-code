@@ -153,6 +153,9 @@
   .step-icon svg{width:16px;height:16px;}
   .step-text{font-size:15px;font-weight:600;}
   .step-meta{font-size:12.5px;color:var(--sub);margin-top:1px;}
+  .step-row.flagged{background:rgba(255,59,48,.08);margin:0 -18px;padding:11px 18px;border-radius:8px;}
+  .step-icon.warn{background:rgba(255,59,48,.14);color:var(--danger);}
+  .warn-label{color:var(--danger);font-weight:600;}
 
   .elev-note{font-size:12px;color:var(--sub);margin-top:-6px;margin-bottom:10px;}
 
@@ -179,6 +182,7 @@
     border-radius:16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:14px;padding:14px 16px;}
   .nav-icon{flex:none;width:46px;height:46px;border-radius:12px;background:var(--accent);color:#fff;
     display:flex;align-items:center;justify-content:center;}
+  .nav-icon.warn{background:var(--danger);}
   .nav-icon svg{width:26px;height:26px;}
   .nav-text{flex:1;min-width:0;}
   .nav-distance{font-size:22px;font-weight:800;}
@@ -522,7 +526,8 @@ var ICONS = {
   home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>',
   work:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',
   star:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 17.3l-5.4 3.2 1.4-6-4.6-4 6-0.5L12 4l2.6 5.9 6 0.5-4.6 4 1.4 6z"/></svg>',
-  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>'
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>',
+  warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>'
 };
 
 /* ---------- state ---------- */
@@ -1133,6 +1138,10 @@ function showRouteCard(){
     html += '<div class="banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>'+
       '<div><b>Bike routing unavailable</b>Showing a general road route instead — it may not use bike paths or avoid busy roads.</div></div>';
   }
+  if(routeHasRestrictedRoad(r)){
+    html += '<div class="banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>'+
+      '<div><b>Check this route before riding</b>It may include a highway/parkway-type road (marked below) where bikes often aren\'t allowed. Map data doesn\'t always flag this — verify locally and use the report button if you find it\'s wrong.</div></div>';
+  }
   if(insufficient){
     html += '<div class="banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>'+
       '<div><b>Charge may not be enough</b>At '+getAssistLevels()[state.assist].label+' mode this trip needs about '+Math.round(energy)+' Wh, more than your '+Math.round(avail)+' Wh available.'+
@@ -1201,6 +1210,28 @@ function buildElevationSvg(elevs){
     '</svg>';
 }
 
+// Heuristic only, scanning step names for common limited-access-road naming
+// in the US -- these are usually legally off-limits to bicycles (parkways,
+// expressways, turnpikes, interstates), but bike-routing data doesn't always
+// carry an explicit access restriction for a given segment, so the router
+// can still include one. Deliberately conservative: matches clear road-type
+// words rather than bare route numbers (e.g. "9A"), since a numbered state
+// route is just as often an ordinary, perfectly bikeable road -- a blanket
+// number match would cry wolf too often to be trusted. This catches a real
+// class of cases but not all of them; the report-to-OSM flow and the
+// standing route-card disclaimer remain the backstop for what it misses.
+var RESTRICTED_ROAD_PATTERNS = [
+  /\bparkway\b/i, /\bpkwy\b/i, /\bexpressway\b/i, /\bexpwy\b/i,
+  /\bfreeway\b/i, /\bfwy\b/i, /\bturnpike\b/i, /\btpke\b/i,
+  /\binterstate\b/i, /^i-\d+/i
+];
+function looksRestricted(name){
+  return !!(name && RESTRICTED_ROAD_PATTERNS.some(function(re){ return re.test(name); }));
+}
+function routeHasRestrictedRoad(route){
+  return route.steps.some(function(s){ return looksRestricted(s.name); });
+}
+
 function stepIconHtml(s){
   if(s.type==="depart") return ICONS.depart;
   if(s.type==="arrive") return ICONS.arrive;
@@ -1219,8 +1250,9 @@ function stepText(s){
 function ordinal(n){ var s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
 
 function stepRowHtml(s,i,all){
-  return '<div class="step-row"><div class="step-icon">'+stepIconHtml(s)+'</div><div><div class="step-text">'+escapeHtml(stepText(s))+'</div>'+
-    '<div class="step-meta">'+(s.distance>0?fmtDist(s.distance):"")+'</div></div></div>';
+  var flagged = looksRestricted(s.name);
+  return '<div class="step-row'+(flagged?" flagged":"")+'"><div class="step-icon'+(flagged?" warn":"")+'">'+(flagged?ICONS.warn:stepIconHtml(s))+'</div><div><div class="step-text">'+escapeHtml(stepText(s))+'</div>'+
+    '<div class="step-meta">'+(s.distance>0?fmtDist(s.distance):"")+(flagged?' <span class="warn-label">may not allow bikes</span>':"")+'</div></div></div>';
 }
 
 function clearRoute(){
@@ -1466,8 +1498,10 @@ function renderNavStep(distOverride){
   var route = state.routes[state.activeRoute];
   var step = route.steps[state.currentStep];
   if(!step) return;
-  $("navIcon").innerHTML = stepIconHtml(step);
-  $("navInstruction").textContent = stepText(step);
+  var flagged = looksRestricted(step.name);
+  $("navIcon").innerHTML = flagged ? ICONS.warn : stepIconHtml(step);
+  $("navIcon").classList.toggle("warn", flagged);
+  $("navInstruction").textContent = stepText(step) + (flagged ? " — may not allow bikes" : "");
   var d = distOverride!=null ? distOverride : step.distance;
   $("navDistance").textContent = fmtDist(d);
 }
