@@ -658,6 +658,7 @@ function initMap(){
 }
 
 var userMarker=null, userPuckEl=null, destMarker=null, routeLayers=[], pillMarkers=[];
+var navCasing=null, navLine=null, traveledLine=null;
 
 // Built once and then updated in place (setLatLng + a direct style tweak)
 // instead of being torn down and recreated on every GPS fix -- replacing the
@@ -688,6 +689,8 @@ function clearRouteLines(){
   routeLayers=[];
   pillMarkers.forEach(function(p){ map.removeLayer(p); });
   pillMarkers=[];
+  if(traveledLine){ map.removeLayer(traveledLine); traveledLine=null; }
+  navCasing=null; navLine=null;
 }
 
 function renderRouteLines(){
@@ -704,9 +707,9 @@ function renderRouteLines(){
     pillMarkers.push(pill);
   });
   var active = state.routes[state.activeRoute];
-  var casing = L.polyline(active.latlngs, { color: getComputedStyle(document.body).getPropertyValue("--route-casing").trim()||"#fff", weight:11, opacity:.95, lineCap:"round", lineJoin:"round" }).addTo(map);
-  var line = L.polyline(active.latlngs, { color: getComputedStyle(document.body).getPropertyValue("--route-line").trim()||"#1f8bff", weight:6.5, opacity:1, lineCap:"round", lineJoin:"round" }).addTo(map);
-  routeLayers.push(casing, line);
+  navCasing = L.polyline(active.latlngs, { color: getComputedStyle(document.body).getPropertyValue("--route-casing").trim()||"#fff", weight:11, opacity:.95, lineCap:"round", lineJoin:"round" }).addTo(map);
+  navLine = L.polyline(active.latlngs, { color: getComputedStyle(document.body).getPropertyValue("--route-line").trim()||"#1f8bff", weight:6.5, opacity:1, lineCap:"round", lineJoin:"round" }).addTo(map);
+  routeLayers.push(navCasing, navLine);
   var amid = active.latlngs[Math.floor(active.latlngs.length/2)];
   var apill = L.marker(amid, { icon: L.divIcon({ className:"", html:'<div class="route-pill selected">'+fmtDuration(active.durationMin)+'</div>', iconSize:[1,1] }) }).addTo(map);
   pillMarkers.push(apill);
@@ -1290,7 +1293,7 @@ function exitNavigation(){
   $("searchLayer").classList.remove("hidden");
   document.querySelector(".fab-stack").classList.remove("hidden");
   logTrip();
-  if(state.routes.length) showRouteCard();
+  if(state.routes.length){ renderRouteLines(); showRouteCard(); }
 }
 
 function logTrip(){
@@ -1310,25 +1313,50 @@ var GPS_ACCURACY_LIMIT_M = 50;   // ignore fixes worse than this unless we're st
 var OFF_ROUTE_THRESHOLD_M = 40;  // how far from the route line counts as "off it"
 var OFF_ROUTE_STREAK_NEEDED = 3; // consecutive bad fixes required before rerouting (debounces GPS noise)
 
-function pointToSegmentDistanceM(lat, lon, lat1, lon1, lat2, lon2){
+function projectPointToSegment(lat, lon, lat1, lon1, lat2, lon2){
   // Local equirectangular projection -- accurate enough at road scale, much
   // cheaper than great-circle segment math, and this runs on every GPS fix
-  // against every segment of the route.
+  // against every segment of the route. Returns the distance in meters plus
+  // the interpolation fraction t (0=segment start, 1=segment end) and the
+  // projected point itself, so callers that need to split the route at the
+  // rider's position (not just know how far off it they are) can reuse this.
   var mPerDegLat = 111320, mPerDegLon = 111320*Math.cos(lat1*Math.PI/180);
   var x=(lon-lon1)*mPerDegLon, y=(lat-lat1)*mPerDegLat;
   var dx=(lon2-lon1)*mPerDegLon, dy=(lat2-lat1)*mPerDegLat;
   var len2 = dx*dx+dy*dy;
   var t = len2>0 ? clamp((x*dx+y*dy)/len2, 0, 1) : 0;
   var ex=x-dx*t, ey=y-dy*t;
-  return Math.sqrt(ex*ex+ey*ey);
+  return { distM: Math.sqrt(ex*ex+ey*ey), t:t, point:[ lat1+(lat2-lat1)*t, lon1+(lon2-lon1)*t ] };
 }
-function distanceToRouteM(lat, lon, latlngs){
-  var best = Infinity;
+function nearestPointOnRoute(lat, lon, latlngs){
+  var best = null;
   for(var i=0;i<latlngs.length-1;i++){
-    var d = pointToSegmentDistanceM(lat, lon, latlngs[i][0], latlngs[i][1], latlngs[i+1][0], latlngs[i+1][1]);
-    if(d<best) best=d;
+    var p1=latlngs[i], p2=latlngs[i+1];
+    var proj = projectPointToSegment(lat, lon, p1[0], p1[1], p2[0], p2[1]);
+    if(!best || proj.distM<best.distM){ best = { distM:proj.distM, segIndex:i, t:proj.t, point:proj.point }; }
   }
   return best;
+}
+function distanceToRouteM(lat, lon, latlngs){
+  var n = nearestPointOnRoute(lat, lon, latlngs);
+  return n ? n.distM : Infinity;
+}
+
+// Splits the route polyline at the rider's projected position and redraws
+// the part already ridden in grey, shrinking the highlighted blue line to
+// just what's ahead -- the usual "traveled vs. remaining" nav-app look.
+function updateTraveledOverlay(route, nearest){
+  if(!navLine || !navCasing) return;
+  var traveled = route.latlngs.slice(0, nearest.segIndex+1).concat([nearest.point]);
+  var remaining = [nearest.point].concat(route.latlngs.slice(nearest.segIndex+1));
+  navCasing.setLatLngs(remaining);
+  navLine.setLatLngs(remaining);
+  var traveledColor = getComputedStyle(document.body).getPropertyValue("--route-alt").trim() || "#9aa0a6";
+  if(!traveledLine){
+    traveledLine = L.polyline(traveled, { color:traveledColor, weight:6.5, opacity:.8, lineCap:"round", lineJoin:"round" }).addTo(map);
+  } else {
+    traveledLine.setLatLngs(traveled);
+  }
 }
 
 function onNavPosition(pos){
@@ -1350,14 +1378,16 @@ function onNavPosition(pos){
   var route = state.routes[state.activeRoute];
   if(!route) return;
 
-  if(!state.rerouting){
-    if(distanceToRouteM(lat, lon, route.latlngs) > OFF_ROUTE_THRESHOLD_M){
+  var nearest = nearestPointOnRoute(lat, lon, route.latlngs);
+  if(!state.rerouting && nearest){
+    if(nearest.distM > OFF_ROUTE_THRESHOLD_M){
       state.offRouteStreak = (state.offRouteStreak||0) + 1;
       if(state.offRouteStreak >= OFF_ROUTE_STREAK_NEEDED){ rerouteDuringNav(); return; }
     } else {
       state.offRouteStreak = 0;
     }
   }
+  if(nearest) updateTraveledOverlay(route, nearest);
 
   var step = route.steps[state.currentStep];
   if(step){
