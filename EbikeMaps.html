@@ -199,9 +199,10 @@
   .nav-bottom .icon-btn-lg svg{width:18px;height:18px;}
 
   .user-puck{width:22px;height:22px;border-radius:50%;background:var(--accent);border:3px solid #fff;
-    box-shadow:0 0 0 2px rgba(10,132,255,.4),0 1px 4px rgba(0,0,0,.4);}
+    box-shadow:0 0 0 2px rgba(10,132,255,.4),0 1px 4px rgba(0,0,0,.4);transition:transform .35s linear;}
   .user-puck.heading::after{content:'';position:absolute;top:-9px;left:50%;transform:translateX(-50%);
     border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:8px solid var(--accent);}
+  .user-marker-icon{transition:transform .5s linear;}
 
   .toast{position:absolute;bottom:150px;left:50%;transform:translateX(-50%);z-index:800;background:rgba(28,28,30,.92);
     color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;max-width:85vw;text-align:center;box-shadow:var(--shadow);}
@@ -522,6 +523,9 @@ var state = {
   navigating: false,
   currentStep: 0,
   watchId: null,
+  offRouteStreak: 0,
+  rerouting: false,
+  lastGoodFixTime: null,
   sheetState: "hidden",
   dragStartY: 0, dragStartTransform: 0, dragging:false
 };
@@ -626,12 +630,25 @@ function initMap(){
   });
 }
 
-var userMarker=null, destMarker=null, routeLayers=[], pillMarkers=[];
+var userMarker=null, userPuckEl=null, destMarker=null, routeLayers=[], pillMarkers=[];
 
+// Built once and then updated in place (setLatLng + a direct style tweak)
+// instead of being torn down and recreated on every GPS fix -- replacing the
+// marker's whole DOM element each update (the old approach) defeats any CSS
+// transition and is what made tracking look jumpy rather than gliding.
 function setUserMarker(lat,lon,heading){
-  var icon = L.divIcon({ className:"", html:'<div class="user-puck'+(heading!=null?" heading":"")+'" style="'+(heading!=null?"transform:rotate("+heading+"deg)":"")+'"></div>', iconSize:[22,22] });
-  if(!userMarker) userMarker = L.marker([lat,lon], {icon:icon, zIndexOffset:1000}).addTo(map);
-  else { userMarker.setLatLng([lat,lon]); userMarker.setIcon(icon); }
+  if(!userMarker){
+    var icon = L.divIcon({ className:"user-marker-icon", html:'<div class="user-puck"></div>', iconSize:[22,22] });
+    userMarker = L.marker([lat,lon], {icon:icon, zIndexOffset:1000}).addTo(map);
+    var el = userMarker.getElement();
+    userPuckEl = el ? el.querySelector(".user-puck") : null;
+  } else {
+    userMarker.setLatLng([lat,lon]);
+  }
+  if(userPuckEl){
+    userPuckEl.classList.toggle("heading", heading!=null);
+    userPuckEl.style.transform = heading!=null ? "rotate("+heading+"deg)" : "";
+  }
 }
 
 function setDestMarker(lat,lon){
@@ -1208,6 +1225,7 @@ function wireAssistRow(containerId){
 function startNavigation(){
   if(!state.routes.length) return;
   state.navigating=true; state.currentStep=0;
+  state.offRouteStreak=0; state.rerouting=false; state.lastGoodFixTime=null;
   var r = state.routes[state.activeRoute];
   state.tripStart = { time:Date.now(), distanceM:r.distanceM, energyWh:energyForRoute(r), destName:state.destination.name };
   $("navOverlay").classList.remove("hidden");
@@ -1245,8 +1263,41 @@ function logTrip(){
   state.tripStart = null;
 }
 
+var GPS_ACCURACY_LIMIT_M = 50;   // ignore fixes worse than this unless we're starved for one
+var OFF_ROUTE_THRESHOLD_M = 40;  // how far from the route line counts as "off it"
+var OFF_ROUTE_STREAK_NEEDED = 3; // consecutive bad fixes required before rerouting (debounces GPS noise)
+
+function pointToSegmentDistanceM(lat, lon, lat1, lon1, lat2, lon2){
+  // Local equirectangular projection -- accurate enough at road scale, much
+  // cheaper than great-circle segment math, and this runs on every GPS fix
+  // against every segment of the route.
+  var mPerDegLat = 111320, mPerDegLon = 111320*Math.cos(lat1*Math.PI/180);
+  var x=(lon-lon1)*mPerDegLon, y=(lat-lat1)*mPerDegLat;
+  var dx=(lon2-lon1)*mPerDegLon, dy=(lat2-lat1)*mPerDegLat;
+  var len2 = dx*dx+dy*dy;
+  var t = len2>0 ? clamp((x*dx+y*dy)/len2, 0, 1) : 0;
+  var ex=x-dx*t, ey=y-dy*t;
+  return Math.sqrt(ex*ex+ey*ey);
+}
+function distanceToRouteM(lat, lon, latlngs){
+  var best = Infinity;
+  for(var i=0;i<latlngs.length-1;i++){
+    var d = pointToSegmentDistanceM(lat, lon, latlngs[i][0], latlngs[i][1], latlngs[i+1][0], latlngs[i+1][1]);
+    if(d<best) best=d;
+  }
+  return best;
+}
+
 function onNavPosition(pos){
   var lat=pos.coords.latitude, lon=pos.coords.longitude;
+  var acc = pos.coords.accuracy;
+  var sinceGoodFix = state.lastGoodFixTime ? (Date.now()-state.lastGoodFixTime) : Infinity;
+  // A noisy fix would both jerk the puck around and risk a false off-route
+  // trigger, so skip it -- unless we haven't had a usable fix in a while,
+  // in which case a rough position beats none.
+  if(acc!=null && acc>GPS_ACCURACY_LIMIT_M && sinceGoodFix<10000) return;
+  state.lastGoodFixTime = Date.now();
+
   var heading = pos.coords.heading;
   if(heading==null && state.userLatLng){ heading = bearing(state.userLatLng.lat, state.userLatLng.lon, lat, lon); }
   state.userLatLng = { lat:lat, lon:lon };
@@ -1254,18 +1305,88 @@ function onNavPosition(pos){
   map.panTo([lat,lon], { animate:true });
 
   var route = state.routes[state.activeRoute];
+  if(!route) return;
+
+  if(!state.rerouting){
+    if(distanceToRouteM(lat, lon, route.latlngs) > OFF_ROUTE_THRESHOLD_M){
+      state.offRouteStreak = (state.offRouteStreak||0) + 1;
+      if(state.offRouteStreak >= OFF_ROUTE_STREAK_NEEDED){ rerouteDuringNav(); return; }
+    } else {
+      state.offRouteStreak = 0;
+    }
+  }
+
   var step = route.steps[state.currentStep];
   if(step){
-    var d = haversine(lat,lon, step.location[0], step.location[1]);
-    if(d<25 && state.currentStep < route.steps.length-1){
-      state.currentStep++;
-      renderNavStep();
-      speak(stepText(route.steps[state.currentStep]));
+    // Distance shown/checked is to the UPCOMING maneuver (the next step's
+    // location), not the current step's own location -- that location is
+    // where *this* instruction's maneuver already happened. Comparing
+    // against your own current step meant the distance only ever grew once
+    // you moved past it, so navigation could advance at most once by luck
+    // and then get stuck showing the same instruction for the rest of the
+    // ride, however far off-route you went.
+    var nextStep = route.steps[state.currentStep+1];
+    if(nextStep){
+      var d = haversine(lat,lon, nextStep.location[0], nextStep.location[1]);
+      if(d<25){
+        state.currentStep++;
+        renderNavStep();
+        speak(stepText(route.steps[state.currentStep]));
+      } else {
+        renderNavStep(d);
+      }
     } else {
-      renderNavStep(d);
+      // Already on the final (arrive) step: its own location IS the destination.
+      renderNavStep(haversine(lat,lon, step.location[0], step.location[1]));
     }
   }
   updateNavStats();
+}
+
+function rerouteDuringNav(){
+  if(state.rerouting || !state.userLatLng || !state.destination) return;
+  state.rerouting = true;
+  state.offRouteStreak = 0;
+  $("navInstruction").textContent = "Rerouting…";
+  toast("Off route — rerouting…");
+  speak("Rerouting");
+  var coords = state.userLatLng.lon+","+state.userLatLng.lat+";"+state.destination.lon+","+state.destination.lat;
+  tryRerouteEndpoint(coords, 0);
+}
+
+function tryRerouteEndpoint(coords, i){
+  if(i>=ROUTE_ENDPOINTS.length){
+    state.rerouting = false;
+    toast("Couldn't reroute — check your connection. Still tracking your original route.");
+    renderNavStep();
+    return;
+  }
+  var ep = ROUTE_ENDPOINTS[i];
+  var url = ep.build(coords)+"?overview=full&geometries=geojson&steps=true&alternatives=false";
+  var ctrl = new AbortController();
+  var to = setTimeout(function(){ ctrl.abort(); }, 9000);
+  fetch(url, { signal: ctrl.signal })
+    .then(function(r){ clearTimeout(to); if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+    .then(function(data){
+      clearTimeout(to);
+      if(data.code!=="Ok" || !data.routes || !data.routes.length) throw new Error("no route in response");
+      var newRoute = parseRoute(data.routes[0]);
+      state.routes = [newRoute];
+      state.activeRoute = 0;
+      state.currentStep = 0;
+      state.routeNotBikeAware = !ep.bikeAware;
+      renderRouteLines();
+      renderNavStep();
+      updateNavStats();
+      fetchElevation(newRoute);
+      state.rerouting = false;
+      speak(stepText(newRoute.steps[0]));
+    })
+    .catch(function(err){
+      clearTimeout(to);
+      console.error("reroute endpoint failed ("+url+"):", err);
+      tryRerouteEndpoint(coords, i+1);
+    });
 }
 
 function renderNavStep(distOverride){
