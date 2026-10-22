@@ -90,6 +90,13 @@
     font-size:13px;font-weight:700;color:var(--text);box-shadow:var(--shadow);white-space:nowrap;cursor:pointer;}
   .route-pill.selected{border-color:var(--route-line);color:var(--route-line);}
 
+  .transit-pin{width:26px;height:26px;border-radius:50%;background:var(--card-solid);border:2px solid var(--border);
+    box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;color:var(--text);}
+  .transit-pin svg{width:15px;height:15px;}
+  .transit-pin.subway{color:#fff;background:#0039a6;border-color:#0039a6;}
+  .transit-pin.ferry{color:#fff;background:#00838f;border-color:#00838f;}
+  .transit-popup{font-size:13px;font-weight:600;white-space:nowrap;}
+
   .sheet{position:absolute;left:0;right:0;bottom:0;z-index:600;background:var(--card-solid);
     border-radius:16px 16px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.25);
     display:flex;flex-direction:column;height:85vh;transform:translateY(calc(100% - 132px));
@@ -304,6 +311,13 @@
     <button data-v="on" class="active">On</button>
     <button data-v="off">Off</button>
   </div>
+
+  <div class="section-title">Nearby transit</div>
+  <div class="seg" id="transitSeg">
+    <button data-v="on" class="active">On</button>
+    <button data-v="off">Off</button>
+  </div>
+  <p class="hint">Shows nearby subway stations and ferry terminals on the map and route card — useful for combining a ride with transit. Not routed by this app; it only shows what's nearby.</p>
 
   <p class="hint">Range and battery estimates are approximate — based on your assist mode's typical power draw plus climbing along the route, and current temperature where available. Actual range varies with rider weight, tires and wind.</p>
 
@@ -527,7 +541,9 @@ var ICONS = {
   work:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',
   star:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 17.3l-5.4 3.2 1.4-6-4.6-4 6-0.5L12 4l2.6 5.9 6 0.5-4.6 4 1.4 6z"/></svg>',
   clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>',
-  warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>'
+  warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>',
+  subway:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="13" rx="4"/><path d="M4 11h16M9 16l-2 4M15 16l2 4"/><circle cx="8.5" cy="13.5" r=".6" fill="currentColor" stroke="none"/><circle cx="15.5" cy="13.5" r=".6" fill="currentColor" stroke="none"/></svg>',
+  ferry:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11l1.5 5.5a2 2 0 001.9 1.5h9.2a2 2 0 001.9-1.5L20 11"/><path d="M6 11V6h5l3 5"/><path d="M3 20c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0"/></svg>'
 };
 
 /* ---------- state ---------- */
@@ -546,6 +562,8 @@ var state = {
   routes: [],
   activeRoute: 0,
   routeNotBikeAware: false,
+  showTransit: localStorage.getItem("ebm_showtransit") !== "off",
+  transitPOIs: [],
   favorites: loadJSON("ebm_favorites", []),
   recents: loadJSON("ebm_recents", []),
   tripHistory: loadJSON("ebm_trips", []),
@@ -729,6 +747,7 @@ function locateMe(fly){
     setUserMarker(state.userLatLng.lat, state.userLatLng.lon, null);
     if(fly) map.flyTo([state.userLatLng.lat, state.userLatLng.lon], 15);
     fetchCurrentTemp();
+    fetchNearbyTransit(state.userLatLng.lat, state.userLatLng.lon);
   }, function(){
     useFallbackStart();
     toast("Location unavailable — using a demo starting point.");
@@ -739,6 +758,7 @@ function useFallbackStart(){
   state.userLatLng = { lat:FALLBACK_START.lat, lon:FALLBACK_START.lon };
   setUserMarker(state.userLatLng.lat, state.userLatLng.lon, null);
   fetchCurrentTemp();
+  fetchNearbyTransit(state.userLatLng.lat, state.userLatLng.lon);
 }
 
 function fetchCurrentTemp(){
@@ -752,6 +772,64 @@ function fetchCurrentTemp(){
       if(typeof t === "number"){ state.currentTempC = t; if(state.routes.length && !state.navigating) showRouteCard(); }
     })
     .catch(function(){ clearTimeout(to); });
+}
+
+/* ---------- nearby transit (subway + ferry) ---------- */
+
+var transitMarkers = [];
+var transitQueriedAt = []; // [{lat,lon}] centers already fetched, to avoid redundant Overpass calls
+
+function fetchNearbyTransit(lat, lon){
+  if(transitQueriedAt.some(function(c){ return haversine(lat,lon,c.lat,c.lon) < 500; })) return;
+  transitQueriedAt.push({ lat:lat, lon:lon });
+  var query = "[out:json][timeout:15];(node[\"railway\"=\"station\"][\"station\"=\"subway\"](around:1500,"+lat+","+lon+");node[\"amenity\"=\"ferry_terminal\"](around:1500,"+lat+","+lon+"););out body;";
+  var ctrl = new AbortController();
+  var to = setTimeout(function(){ ctrl.abort(); }, 10000);
+  fetch("https://overpass-api.de/api/interpreter", {
+    method:"POST", signal:ctrl.signal, headers:{ "Content-Type":"application/x-www-form-urlencoded" },
+    body:"data="+encodeURIComponent(query)
+  }).then(function(r){ clearTimeout(to); return r.ok ? r.json() : null; })
+    .then(function(data){
+      if(!data || !data.elements) return;
+      var existingIds = {};
+      state.transitPOIs.forEach(function(p){ existingIds[p.osmId]=true; });
+      data.elements.forEach(function(el){
+        if(existingIds[el.id]) return;
+        var kind = el.tags && el.tags.amenity==="ferry_terminal" ? "ferry" : "subway";
+        state.transitPOIs.push({ osmId:el.id, lat:el.lat, lon:el.lon, name:(el.tags&&el.tags.name)||(kind==="ferry"?"Ferry terminal":"Subway station"), kind:kind });
+        existingIds[el.id]=true;
+      });
+      renderTransitMarkers();
+      if(state.routes.length && !state.navigating) showRouteCard();
+    })
+    .catch(function(){ clearTimeout(to); });
+}
+
+function clearTransitMarkers(){
+  transitMarkers.forEach(function(m){ map.removeLayer(m); });
+  transitMarkers=[];
+}
+
+function renderTransitMarkers(){
+  clearTransitMarkers();
+  if(!state.showTransit) return;
+  state.transitPOIs.forEach(function(p){
+    var marker = L.marker([p.lat,p.lon], {
+      icon: L.divIcon({ className:"", html:'<div class="transit-pin '+p.kind+'">'+(p.kind==="ferry"?ICONS.ferry:ICONS.subway)+'</div>', iconSize:[26,26] }),
+      zIndexOffset: -100
+    }).addTo(map);
+    marker.bindPopup('<div class="transit-popup">'+escapeHtml(p.name)+'</div>');
+    transitMarkers.push(marker);
+  });
+}
+
+function nearestTransitPOI(lat, lon){
+  var best=null, bestD=Infinity;
+  state.transitPOIs.forEach(function(p){
+    var d = haversine(lat,lon,p.lat,p.lon);
+    if(d<bestD){ bestD=d; best=p; }
+  });
+  return best ? { poi:best, distM:bestD } : null;
 }
 
 /* ---------- search / geocoding ---------- */
@@ -909,6 +987,7 @@ function setDestination(dest){
   pushRecent(dest);
   if(!state.userLatLng) useFallbackStart();
   fetchRoute();
+  fetchNearbyTransit(dest.lat, dest.lon);
 }
 
 function fetchRoute(){
@@ -1154,6 +1233,15 @@ function showRouteCard(){
     '<button class="icon-btn" id="favToggleBtn" aria-label="'+(fav?"Remove from favorites":"Save to favorites")+'" aria-pressed="'+fav+'" style="width:34px;height:34px;flex:none;background:'+(fav?"var(--accent-soft)":"var(--border)")+';color:'+(fav?"var(--accent)":"var(--sub)")+';">'+
     '<svg viewBox="0 0 24 24" fill="'+(fav?"currentColor":"none")+'" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M12 17.3l-5.4 3.2 1.4-6-4.6-4 6-0.5L12 4l2.6 5.9 6 0.5-4.6 4 1.4 6z"/></svg>'+
     '</button></div>';
+
+  if(state.showTransit){
+    var nearTransit = nearestTransitPOI(state.destination.lat, state.destination.lon);
+    if(nearTransit && nearTransit.distM < 2000){
+      html += '<div class="place-sub" style="display:flex;align-items:center;gap:6px;margin:-4px 0 10px;">'+
+        '<span style="display:inline-flex;width:18px;height:18px;flex:none;">'+(nearTransit.poi.kind==="ferry"?ICONS.ferry:ICONS.subway)+'</span>'+
+        escapeHtml(nearTransit.poi.name)+' · '+fmtDist(nearTransit.distM)+' from destination</div>';
+    }
+  }
 
   html += '<button class="primary-btn" id="startNavBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Start Navigation</button>';
   html += '<div class="secondary-row"><button class="secondary-btn" id="clearRouteBtn">Clear route</button>'+
@@ -1609,6 +1697,7 @@ function openSettings(){
   setSeg("unitsSeg", state.units);
   setSeg("themeSeg", state.theme);
   setSeg("voiceSeg", state.voiceOn?"on":"off");
+  setSeg("transitSeg", state.showTransit?"on":"off");
   renderFavoritesList();
   renderTripHistory();
 }
@@ -1765,6 +1854,13 @@ function wireUI(){
   });
   wireSeg("themeSeg", function(v){ state.theme=v; localStorage.setItem("ebm_theme",v); applyTheme(); });
   wireSeg("voiceSeg", function(v){ state.voiceOn = v==="on"; speechOn=state.voiceOn; localStorage.setItem("ebm_voice",v); });
+  wireSeg("transitSeg", function(v){
+    state.showTransit = v==="on";
+    localStorage.setItem("ebm_showtransit", v);
+    if(state.showTransit && !state.transitPOIs.length && state.userLatLng) fetchNearbyTransit(state.userLatLng.lat, state.userLatLng.lon);
+    else renderTransitMarkers();
+    if(state.routes.length && !state.navigating) showRouteCard();
+  });
 
   $("themeBtn").addEventListener("click", function(){
     state.theme = state.theme==="auto" ? "light" : (state.theme==="light" ? "dark" : "auto");
