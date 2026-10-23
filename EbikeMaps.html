@@ -327,6 +327,13 @@
   </div>
   <p class="hint">Shows bike parking/racks near your destination, so you know where to actually lock up.</p>
 
+  <div class="section-title">Bike lanes</div>
+  <div class="seg" id="bikeLanesSeg">
+    <button data-v="on">On</button>
+    <button data-v="off" class="active">Off</button>
+  </div>
+  <p class="hint">Highlights streets with a dedicated bike lane or path near your route, so you can eyeball how much of it is protected before you ride. Off by default — can be visually dense in built-up areas.</p>
+
   <p class="hint">Range and battery estimates are approximate — based on your assist mode's typical power draw plus climbing along the route, and current temperature where available. Actual range varies with rider weight, tires and wind.</p>
 
   <div class="section-title">Favorites</div>
@@ -573,6 +580,8 @@ var state = {
   routeNotBikeAware: false,
   showTransit: localStorage.getItem("ebm_showtransit") !== "off",
   showParking: localStorage.getItem("ebm_showparking") !== "off",
+  showBikeLanes: localStorage.getItem("ebm_showbikelanes") === "on",
+  bikeLanes: [],
   transitPOIs: [],
   favorites: loadJSON("ebm_favorites", []),
   recents: loadJSON("ebm_recents", []),
@@ -873,6 +882,58 @@ function nearestTransitPOI(lat, lon, kindFilter){
   return best ? { poi:best, distM:bestD } : null;
 }
 
+/* ---------- bike lane overlay ---------- */
+
+var bikeLaneLayers = [];
+var bikeLaneFetchedForDest = null; // destination key already fetched for, so switching back doesn't re-query
+
+function routeBoundingBox(route, paddingDeg){
+  var minLat=Infinity,maxLat=-Infinity,minLon=Infinity,maxLon=-Infinity;
+  route.latlngs.forEach(function(p){
+    if(p[0]<minLat) minLat=p[0]; if(p[0]>maxLat) maxLat=p[0];
+    if(p[1]<minLon) minLon=p[1]; if(p[1]>maxLon) maxLon=p[1];
+  });
+  return { south:minLat-paddingDeg, west:minLon-paddingDeg, north:maxLat+paddingDeg, east:maxLon+paddingDeg };
+}
+
+function fetchBikeLanes(route){
+  var destKey = state.destination ? (state.destination.lat.toFixed(4)+","+state.destination.lon.toFixed(4)) : null;
+  if(!destKey || bikeLaneFetchedForDest===destKey){ renderBikeLanes(); return; }
+  bikeLaneFetchedForDest = destKey;
+  var b = routeBoundingBox(route, 0.002); // ~220m padding so nearby parallel lanes aren't clipped
+  var bbox = b.south+","+b.west+","+b.north+","+b.east;
+  var query = "[out:json][timeout:20];(way[\"highway\"=\"cycleway\"]("+bbox+");way[\"cycleway\"]("+bbox+");"+
+    "way[\"cycleway:both\"]("+bbox+");way[\"cycleway:left\"]("+bbox+");way[\"cycleway:right\"]("+bbox+"););out geom 400;";
+  var ctrl = new AbortController();
+  var to = setTimeout(function(){ ctrl.abort(); }, 15000);
+  fetch("https://overpass-api.de/api/interpreter", {
+    method:"POST", signal:ctrl.signal, headers:{ "Content-Type":"application/x-www-form-urlencoded" },
+    body:"data="+encodeURIComponent(query)
+  }).then(function(r){ clearTimeout(to); return r.ok ? r.json() : null; })
+    .then(function(data){
+      if(!data || !data.elements) return;
+      state.bikeLanes = data.elements.filter(function(el){ return el.type==="way" && el.geometry; })
+        .map(function(el){ return el.geometry.map(function(g){ return [g.lat,g.lon]; }); });
+      renderBikeLanes();
+    })
+    .catch(function(){ clearTimeout(to); });
+}
+
+function clearBikeLaneLayers(){
+  bikeLaneLayers.forEach(function(l){ map.removeLayer(l); });
+  bikeLaneLayers=[];
+}
+
+function renderBikeLanes(){
+  clearBikeLaneLayers();
+  if(!state.showBikeLanes) return;
+  state.bikeLanes.forEach(function(coords){
+    var line = L.polyline(coords, { color:"#2e7d32", weight:3, opacity:.65, dashArray:"1 7", lineCap:"round" }).addTo(map);
+    line.bringToBack();
+    bikeLaneLayers.push(line);
+  });
+}
+
 /* ---------- search / geocoding ---------- */
 
 /* ---------- favorites & recents ---------- */
@@ -1092,6 +1153,7 @@ function applyRouteResponse(data, ep){
   // between alternatives use cached data instead of refetching, and lets us
   // flag whichever alternative climbs the least once all of them resolve.
   state.routes.forEach(fetchElevation);
+  if(state.showBikeLanes) fetchBikeLanes(state.routes[0]);
 }
 
 function parseRoute(r){
@@ -1400,6 +1462,8 @@ function stepRowHtml(s,i,all){
 function clearRoute(){
   state.routes=[]; state.destination=null; state.routeNotBikeAware=false;
   clearRouteLines();
+  clearBikeLaneLayers();
+  state.bikeLanes=[]; bikeLaneFetchedForDest=null;
   if(destMarker){ map.removeLayer(destMarker); destMarker=null; }
   openSheet("hidden");
   $("searchInput").value=""; $("clearSearchBtn").classList.add("hidden");
@@ -1753,6 +1817,7 @@ function openSettings(){
   setSeg("voiceSeg", state.voiceOn?"on":"off");
   setSeg("transitSeg", state.showTransit?"on":"off");
   setSeg("parkingSeg", state.showParking?"on":"off");
+  setSeg("bikeLanesSeg", state.showBikeLanes?"on":"off");
   renderFavoritesList();
   renderTripHistory();
 }
@@ -1922,6 +1987,12 @@ function wireUI(){
     if(state.showParking && !state.transitPOIs.length && state.userLatLng) fetchNearbyTransit(state.userLatLng.lat, state.userLatLng.lon);
     else renderTransitMarkers();
     if(state.routes.length && !state.navigating) showRouteCard();
+  });
+  wireSeg("bikeLanesSeg", function(v){
+    state.showBikeLanes = v==="on";
+    localStorage.setItem("ebm_showbikelanes", v);
+    if(state.showBikeLanes && state.routes.length) fetchBikeLanes(state.routes[state.activeRoute]);
+    else renderBikeLanes();
   });
 
   $("themeBtn").addEventListener("click", function(){
