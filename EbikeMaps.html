@@ -95,6 +95,7 @@
   .transit-pin svg{width:15px;height:15px;}
   .transit-pin.subway{color:#fff;background:#0039a6;border-color:#0039a6;}
   .transit-pin.ferry{color:#fff;background:#00838f;border-color:#00838f;}
+  .transit-pin.parking{color:#fff;background:#2e7d32;border-color:#2e7d32;}
   .transit-popup{font-size:13px;font-weight:600;white-space:nowrap;}
 
   .sheet{position:absolute;left:0;right:0;bottom:0;z-index:600;background:var(--card-solid);
@@ -318,6 +319,13 @@
     <button data-v="off">Off</button>
   </div>
   <p class="hint">Shows nearby subway stations and ferry terminals on the map and route card — useful for combining a ride with transit. Not routed by this app; it only shows what's nearby.</p>
+
+  <div class="section-title">Bike parking</div>
+  <div class="seg" id="parkingSeg">
+    <button data-v="on" class="active">On</button>
+    <button data-v="off">Off</button>
+  </div>
+  <p class="hint">Shows bike parking/racks near your destination, so you know where to actually lock up.</p>
 
   <p class="hint">Range and battery estimates are approximate — based on your assist mode's typical power draw plus climbing along the route, and current temperature where available. Actual range varies with rider weight, tires and wind.</p>
 
@@ -543,7 +551,8 @@ var ICONS = {
   clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>',
   warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>',
   subway:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="13" rx="4"/><path d="M4 11h16M9 16l-2 4M15 16l2 4"/><circle cx="8.5" cy="13.5" r=".6" fill="currentColor" stroke="none"/><circle cx="15.5" cy="13.5" r=".6" fill="currentColor" stroke="none"/></svg>',
-  ferry:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11l1.5 5.5a2 2 0 001.9 1.5h9.2a2 2 0 001.9-1.5L20 11"/><path d="M6 11V6h5l3 5"/><path d="M3 20c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0"/></svg>'
+  ferry:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11l1.5 5.5a2 2 0 001.9 1.5h9.2a2 2 0 001.9-1.5L20 11"/><path d="M6 11V6h5l3 5"/><path d="M3 20c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0"/></svg>',
+  parking:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 18L10 9h3l5 9M10 9l2.5 4.5H17"/></svg>'
 };
 
 /* ---------- state ---------- */
@@ -563,12 +572,14 @@ var state = {
   activeRoute: 0,
   routeNotBikeAware: false,
   showTransit: localStorage.getItem("ebm_showtransit") !== "off",
+  showParking: localStorage.getItem("ebm_showparking") !== "off",
   transitPOIs: [],
   favorites: loadJSON("ebm_favorites", []),
   recents: loadJSON("ebm_recents", []),
   tripHistory: loadJSON("ebm_trips", []),
   pendingFavoriteSlot: null,
   currentTempC: null,
+  hourlyForecast: null,
   tripStart: null,
   navigating: false,
   currentStep: 0,
@@ -765,24 +776,47 @@ function fetchCurrentTemp(){
   if(!state.userLatLng) return;
   var ctrl = new AbortController();
   var to = setTimeout(function(){ ctrl.abort(); }, 6000);
-  fetch("https://api.open-meteo.com/v1/forecast?latitude="+state.userLatLng.lat+"&longitude="+state.userLatLng.lon+"&current=temperature_2m", { signal:ctrl.signal })
+  fetch("https://api.open-meteo.com/v1/forecast?latitude="+state.userLatLng.lat+"&longitude="+state.userLatLng.lon+
+    "&current=temperature_2m&hourly=precipitation_probability&forecast_hours=6", { signal:ctrl.signal })
     .then(function(r){ clearTimeout(to); return r.ok ? r.json() : null; })
     .then(function(d){
       var t = d && d.current && d.current.temperature_2m;
-      if(typeof t === "number"){ state.currentTempC = t; if(state.routes.length && !state.navigating) showRouteCard(); }
+      if(typeof t === "number") state.currentTempC = t;
+      if(d && d.hourly && Array.isArray(d.hourly.time) && Array.isArray(d.hourly.precipitation_probability)){
+        state.hourlyForecast = d.hourly.time.map(function(iso,i){ return { time:new Date(iso), precipProb:d.hourly.precipitation_probability[i] }; });
+      }
+      if(state.routes.length && !state.navigating) showRouteCard();
     })
     .catch(function(){ clearTimeout(to); });
 }
 
-/* ---------- nearby transit (subway + ferry) ---------- */
+// Checks the forecast hours spanning "now" through "now + rideMinutes" for the
+// highest rain chance, so a long ride can be warned about weather it'll meet
+// partway through, not just conditions at the moment of checking.
+var RAIN_WARNING_THRESHOLD_PCT = 40;
+function rainDuringRide(rideMinutes){
+  if(!state.hourlyForecast || !state.hourlyForecast.length || rideMinutes<30) return null;
+  var now = Date.now(), endTime = now + rideMinutes*60000;
+  var worst = null;
+  state.hourlyForecast.forEach(function(h){
+    var t = h.time.getTime();
+    if(t+3600000 < now || t > endTime) return; // hour's window doesn't overlap the ride
+    if(!worst || h.precipProb>worst.precipProb) worst = h;
+  });
+  if(!worst || worst.precipProb < RAIN_WARNING_THRESHOLD_PCT) return null;
+  return worst;
+}
 
+/* ---------- nearby transit (subway + ferry) + bike parking ---------- */
+
+var POI_ICON = { subway:ICONS.subway, ferry:ICONS.ferry, parking:ICONS.parking };
 var transitMarkers = [];
 var transitQueriedAt = []; // [{lat,lon}] centers already fetched, to avoid redundant Overpass calls
 
 function fetchNearbyTransit(lat, lon){
   if(transitQueriedAt.some(function(c){ return haversine(lat,lon,c.lat,c.lon) < 500; })) return;
   transitQueriedAt.push({ lat:lat, lon:lon });
-  var query = "[out:json][timeout:15];(node[\"railway\"=\"station\"][\"station\"=\"subway\"](around:1500,"+lat+","+lon+");node[\"amenity\"=\"ferry_terminal\"](around:1500,"+lat+","+lon+"););out body;";
+  var query = "[out:json][timeout:15];(node[\"railway\"=\"station\"][\"station\"=\"subway\"](around:1500,"+lat+","+lon+");node[\"amenity\"=\"ferry_terminal\"](around:1500,"+lat+","+lon+");node[\"amenity\"=\"bicycle_parking\"](around:800,"+lat+","+lon+"););out body;";
   var ctrl = new AbortController();
   var to = setTimeout(function(){ ctrl.abort(); }, 10000);
   fetch("https://overpass-api.de/api/interpreter", {
@@ -795,8 +829,9 @@ function fetchNearbyTransit(lat, lon){
       state.transitPOIs.forEach(function(p){ existingIds[p.osmId]=true; });
       data.elements.forEach(function(el){
         if(existingIds[el.id]) return;
-        var kind = el.tags && el.tags.amenity==="ferry_terminal" ? "ferry" : "subway";
-        state.transitPOIs.push({ osmId:el.id, lat:el.lat, lon:el.lon, name:(el.tags&&el.tags.name)||(kind==="ferry"?"Ferry terminal":"Subway station"), kind:kind });
+        var kind = el.tags && el.tags.amenity==="ferry_terminal" ? "ferry" : el.tags && el.tags.amenity==="bicycle_parking" ? "parking" : "subway";
+        var defaultName = kind==="ferry" ? "Ferry terminal" : kind==="parking" ? "Bike parking" : "Subway station";
+        state.transitPOIs.push({ osmId:el.id, lat:el.lat, lon:el.lon, name:(el.tags&&el.tags.name)||defaultName, kind:kind });
         existingIds[el.id]=true;
       });
       renderTransitMarkers();
@@ -810,12 +845,16 @@ function clearTransitMarkers(){
   transitMarkers=[];
 }
 
+function poiVisible(kind){
+  return (kind==="parking") ? state.showParking : state.showTransit;
+}
+
 function renderTransitMarkers(){
   clearTransitMarkers();
-  if(!state.showTransit) return;
   state.transitPOIs.forEach(function(p){
+    if(!poiVisible(p.kind)) return;
     var marker = L.marker([p.lat,p.lon], {
-      icon: L.divIcon({ className:"", html:'<div class="transit-pin '+p.kind+'">'+(p.kind==="ferry"?ICONS.ferry:ICONS.subway)+'</div>', iconSize:[26,26] }),
+      icon: L.divIcon({ className:"", html:'<div class="transit-pin '+p.kind+'">'+POI_ICON[p.kind]+'</div>', iconSize:[26,26] }),
       zIndexOffset: -100
     }).addTo(map);
     marker.bindPopup('<div class="transit-popup">'+escapeHtml(p.name)+'</div>');
@@ -823,9 +862,11 @@ function renderTransitMarkers(){
   });
 }
 
-function nearestTransitPOI(lat, lon){
+function nearestTransitPOI(lat, lon, kindFilter){
   var best=null, bestD=Infinity;
   state.transitPOIs.forEach(function(p){
+    if(kindFilter && p.kind!==kindFilter) return;
+    if(!kindFilter && p.kind==="parking") return; // "transit" lookups exclude parking by default
     var d = haversine(lat,lon,p.lat,p.lon);
     if(d<bestD){ bestD=d; best=p; }
   });
@@ -1221,6 +1262,11 @@ function showRouteCard(){
     html += '<div class="banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>'+
       '<div><b>Check this route before riding</b>It may include a highway/parkway-type road (marked below) where bikes often aren\'t allowed. Map data doesn\'t always flag this — verify locally and use the report button if you find it\'s wrong.</div></div>';
   }
+  var rain = rainDuringRide(r.durationMin);
+  if(rain){
+    html += '<div class="banner info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 13v4M8 13v4M12 15v4M20 16.58A5 5 0 0018 7h-1.26A8 8 0 104 15.25"/></svg>'+
+      '<div><b>Rain likely during this ride</b>'+Math.round(rain.precipProb)+'% chance around '+rain.time.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+', based on the current forecast.</div></div>';
+  }
   if(insufficient){
     html += '<div class="banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>'+
       '<div><b>Charge may not be enough</b>At '+getAssistLevels()[state.assist].label+' mode this trip needs about '+Math.round(energy)+' Wh, more than your '+Math.round(avail)+' Wh available.'+
@@ -1237,9 +1283,17 @@ function showRouteCard(){
   if(state.showTransit){
     var nearTransit = nearestTransitPOI(state.destination.lat, state.destination.lon);
     if(nearTransit && nearTransit.distM < 2000){
-      html += '<div class="place-sub" style="display:flex;align-items:center;gap:6px;margin:-4px 0 10px;">'+
+      html += '<div class="place-sub" style="display:flex;align-items:center;gap:6px;margin:-4px 0 6px;">'+
         '<span style="display:inline-flex;width:18px;height:18px;flex:none;">'+(nearTransit.poi.kind==="ferry"?ICONS.ferry:ICONS.subway)+'</span>'+
         escapeHtml(nearTransit.poi.name)+' · '+fmtDist(nearTransit.distM)+' from destination</div>';
+    }
+  }
+  if(state.showParking){
+    var nearParking = nearestTransitPOI(state.destination.lat, state.destination.lon, "parking");
+    if(nearParking && nearParking.distM < 300){
+      html += '<div class="place-sub" style="display:flex;align-items:center;gap:6px;margin:-4px 0 10px;">'+
+        '<span style="display:inline-flex;width:18px;height:18px;flex:none;">'+ICONS.parking+'</span>'+
+        escapeHtml(nearParking.poi.name)+' · '+fmtDist(nearParking.distM)+' from destination</div>';
     }
   }
 
@@ -1698,6 +1752,7 @@ function openSettings(){
   setSeg("themeSeg", state.theme);
   setSeg("voiceSeg", state.voiceOn?"on":"off");
   setSeg("transitSeg", state.showTransit?"on":"off");
+  setSeg("parkingSeg", state.showParking?"on":"off");
   renderFavoritesList();
   renderTripHistory();
 }
@@ -1858,6 +1913,13 @@ function wireUI(){
     state.showTransit = v==="on";
     localStorage.setItem("ebm_showtransit", v);
     if(state.showTransit && !state.transitPOIs.length && state.userLatLng) fetchNearbyTransit(state.userLatLng.lat, state.userLatLng.lon);
+    else renderTransitMarkers();
+    if(state.routes.length && !state.navigating) showRouteCard();
+  });
+  wireSeg("parkingSeg", function(v){
+    state.showParking = v==="on";
+    localStorage.setItem("ebm_showparking", v);
+    if(state.showParking && !state.transitPOIs.length && state.userLatLng) fetchNearbyTransit(state.userLatLng.lat, state.userLatLng.lon);
     else renderTransitMarkers();
     if(state.routes.length && !state.navigating) showRouteCard();
   });
