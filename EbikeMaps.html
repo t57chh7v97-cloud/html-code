@@ -469,10 +469,23 @@ var JURISDICTIONS = {
       "E-bikes are generally allowed wherever regular bicycles are allowed, but Class 2/3 are sometimes restricted on specific multi-use paths, boardwalks, or park trails."
     ],
     regionNotes:{
+      "alaska":"Has no statewide e-bike classification statute — a 2023 bill to adopt the 3-class system was vetoed and never overridden, so e-bikes are generally treated under ordinary bicycle rules, with some cities (e.g. Anchorage) setting their own local rules.",
+      "arizona":"Sets no statewide minimum age or helmet requirement for any class, but restricts Class 3 to roads and on-road bike lanes by default. Several cities (Scottsdale, Gilbert, Chandler) set their own stricter age minimums and path restrictions for Class 3.",
       "california":"One of the first states to adopt the 3-class system (2015). Helmets are required for all Class 3 riders and for anyone under 18 on Class 1/2. Cities, state parks, and trail districts can and do restrict Class 2/3 on specific paths.",
+      "colorado":"Class 3 e-bikes are restricted to roads and on-street bike lanes unless a path sits next to a road or the local agency explicitly allows them. Several Front Range cities and counties (Boulder, Colorado Springs, Jefferson County) go further and restrict or ban Class 2/3 on their open-space trails.",
+      "connecticut":"Requires a helmet for every e-bike rider and passenger regardless of age or class — stricter than most states' under-18-only rules. Class 3 riders must be 16+, and Class 3 bikes are barred from bicycle and multi-use trails statewide.",
+      "florida":"No statewide minimum age for any class; a helmet is required only for riders under 16, under the general bicycle law.",
+      "illinois":"Class 3 riders must be 16+. Class 3 e-bikes are excluded from many forest-preserve and natural-area trails (e.g. Cook County), and Chicago's Lakefront Trail adds its own peak-hour and class restrictions.",
+      "kentucky":"Has no statewide e-bike classification statute; e-bikes are generally treated as ordinary bicycles under general traffic law rather than the 3-class system used by this app's Bike class setting.",
+      "massachusetts":"Only recognizes Class 1 and Class 2 by statute. A Class 3-style bike (pedal assist above 20 mph) falls under the state's 'motorized bicycle' category instead, which requires a license, registration, and a DOT-approved helmet.",
+      "new jersey":"Moving away from the 3-class model: starting mid-2026, Class 2 and Class 3 e-bikes are reclassified as motorized bicycles requiring a license, registration, and insurance — only Class 1 keeps the no-license/no-registration treatment.",
       "new york":"Class 1 and 2 e-bikes are allowed statewide. Class 3 is only allowed in municipalities that specifically opt in, so legality can vary place to place — an actively evolving area, especially in New York City.",
-      "washington":"Class 3 e-bikes are generally restricted to roads and bike/multi-use lanes posted under 35 mph unless the local path manager allows otherwise, and require a helmet.",
-      "texas":"Generally treats e-bikes like regular bicycles under the 3-class model with few statewide path restrictions, but individual cities and parks set their own rules."
+      "north carolina":"Doesn't yet recognize the 3-class system in statute; a law adopting it takes effect December 1, 2026, after which Class 3 riders and passengers under 18 must wear a helmet. Until then, Class 3-style bikes fall outside the standard e-bike definition.",
+      "oregon":"Currently requires every class's rider to be at least 16, not just Class 3 — stricter than most states. Starting January 1, 2027, the Class 1 minimum drops to 14, while Class 2 and 3 stay at 16.",
+      "pennsylvania":"Doesn't use the Class 1/2/3 system — its single 'pedalcycle with electric assist' category caps out at 20 mph/750W, so a Class 3-style bike (assist above 20 mph) doesn't qualify as a legal bicycle here at all. Minimum age is 16; no license, registration, or insurance needed for a compliant e-bike.",
+      "texas":"Generally treats e-bikes like regular bicycles under the 3-class model with few statewide path restrictions, but individual cities and parks set their own rules.",
+      "virginia":"Sets the Class 3 minimum age at 14 (with adult supervision required under 14) — lower than the 16 most states use — but still requires a helmet for Class 3 riders at every age. Localities can further restrict sidewalk riding and, in some cases, Class 3 path access.",
+      "washington":"Class 3 e-bikes are generally restricted to roads and bike/multi-use lanes posted under 35 mph unless the local path manager allows otherwise, and require a helmet."
     }
   },
   GB: {
@@ -862,7 +875,15 @@ function fetchNearbyTransit(lat, lon){
         if(existingIds[el.id]) return;
         var kind = el.tags && el.tags.amenity==="ferry_terminal" ? "ferry" : el.tags && el.tags.amenity==="bicycle_parking" ? "parking" : "subway";
         var defaultName = kind==="ferry" ? "Ferry terminal" : kind==="parking" ? "Bike parking" : "Subway station";
-        state.transitPOIs.push({ osmId:el.id, lat:el.lat, lon:el.lon, name:(el.tags&&el.tags.name)||defaultName, kind:kind });
+        // "capacity" is a free-text OSM tag, so only trust it when it actually
+        // parses to a plain positive number -- not every mapper fills it in,
+        // and some values are notes ("limited") rather than a count.
+        var capacity = null;
+        if(kind==="parking" && el.tags && el.tags.capacity!=null){
+          var capNum = parseInt(el.tags.capacity, 10);
+          if(!isNaN(capNum) && capNum>0 && String(capNum)===String(el.tags.capacity).trim()) capacity = capNum;
+        }
+        state.transitPOIs.push({ osmId:el.id, lat:el.lat, lon:el.lon, name:(el.tags&&el.tags.name)||defaultName, kind:kind, capacity:capacity });
         existingIds[el.id]=true;
       });
       renderTransitMarkers();
@@ -888,7 +909,7 @@ function renderTransitMarkers(){
       icon: L.divIcon({ className:"", html:'<div class="transit-pin '+p.kind+'">'+POI_ICON[p.kind]+'</div>', iconSize:[26,26] }),
       zIndexOffset: -100
     }).addTo(map);
-    marker.bindPopup('<div class="transit-popup">'+escapeHtml(p.name)+'</div>');
+    marker.bindPopup('<div class="transit-popup">'+escapeHtml(p.name)+(p.capacity?' · ~'+p.capacity+' spaces':'')+'</div>');
     transitMarkers.push(marker);
   });
 }
@@ -1456,7 +1477,8 @@ function showRouteCard(){
     if(nearParking && nearParking.distM < 300){
       html += '<div class="place-sub" style="display:flex;align-items:center;gap:6px;margin:-4px 0 10px;">'+
         '<span style="display:inline-flex;width:18px;height:18px;flex:none;">'+ICONS.parking+'</span>'+
-        escapeHtml(nearParking.poi.name)+' · '+fmtDist(nearParking.distM)+' from destination</div>';
+        escapeHtml(nearParking.poi.name)+' · '+fmtDist(nearParking.distM)+' from destination'+
+        (nearParking.poi.capacity?' · ~'+nearParking.poi.capacity+' spaces':'')+'</div>';
     }
   }
 
