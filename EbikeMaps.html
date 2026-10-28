@@ -65,8 +65,8 @@
   .suggestion-main{font-size:15px;font-weight:600;}
   .suggestion-sub{font-size:13px;color:var(--sub);margin-top:1px;}
   .suggestion-empty{padding:16px;text-align:center;color:var(--sub);font-size:14px;}
-  .quick-row{display:flex;gap:10px;padding:12px 14px;}
-  .quick-chip{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--accent-soft);
+  .quick-row{display:flex;gap:10px;padding:12px 14px;overflow-x:auto;}
+  .quick-chip{flex:1 0 76px;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--accent-soft);
     border-radius:12px;padding:10px 6px;cursor:pointer;color:var(--accent);}
   .quick-chip.empty{background:var(--border);color:var(--sub);}
   .quick-chip .qc-icon svg{width:20px;height:20px;}
@@ -339,6 +339,14 @@
 
   <p class="hint">Range and battery estimates are approximate — based on your assist mode's typical power draw plus climbing along the route, and current temperature where available. Actual range varies with rider weight, tires and wind.</p>
 
+  <div class="section-title">Saved places</div>
+  <div id="savedPlacesList"></div>
+  <div class="field-row" style="border-bottom:none;gap:8px;">
+    <input type="text" id="newSlotLabelInput" placeholder="Add a place, e.g. School" style="flex:1;min-width:0;border:1px solid var(--border);border-radius:8px;padding:9px 10px;font-size:14px;background:var(--bg);color:var(--text);">
+    <button class="secondary-btn" id="addSlotBtn" style="flex:none;width:auto;padding:9px 14px;">Add</button>
+  </div>
+  <p class="hint" style="margin-top:-2px;">One-tap destinations shown on the search screen. Home and Work are built in — add more for school, the gym, a parent's house, anywhere you go often.</p>
+
   <div class="section-title">Favorites</div>
   <div id="favoritesList"></div>
   <p class="hint" id="favoritesEmptyHint">Star a destination from its route card to save it here.</p>
@@ -562,7 +570,8 @@ var ICONS = {
   warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>',
   subway:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="13" rx="4"/><path d="M4 11h16M9 16l-2 4M15 16l2 4"/><circle cx="8.5" cy="13.5" r=".6" fill="currentColor" stroke="none"/><circle cx="15.5" cy="13.5" r=".6" fill="currentColor" stroke="none"/></svg>',
   ferry:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11l1.5 5.5a2 2 0 001.9 1.5h9.2a2 2 0 001.9-1.5L20 11"/><path d="M6 11V6h5l3 5"/><path d="M3 20c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0"/></svg>',
-  parking:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 18L10 9h3l5 9M10 9l2.5 4.5H17"/></svg>'
+  parking:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 18L10 9h3l5 9M10 9l2.5 4.5H17"/></svg>',
+  flag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 3v18"/><path d="M5 4h11l-2.5 4L16 12H5"/></svg>'
 };
 
 /* ---------- state ---------- */
@@ -592,6 +601,7 @@ var state = {
   recents: loadJSON("ebm_recents", []),
   tripHistory: loadJSON("ebm_trips", []),
   pendingFavoriteSlot: null,
+  pendingFavoriteLabel: null,
   currentTempC: null,
   hourlyForecast: null,
   tripStart: null,
@@ -964,11 +974,21 @@ function toggleFavorite(p){
   }
   saveJSON("ebm_favorites", state.favorites);
 }
-function setFavoriteSlot(slot, p){
+function setFavoriteSlot(slot, p, label){
   state.favorites = state.favorites.filter(function(f){ return f.slot!==slot; });
-  state.favorites.unshift({ name:p.name, address:p.address||"", lat:p.lat, lon:p.lon, slot:slot });
+  var entry = { name:p.name, address:p.address||"", lat:p.lat, lon:p.lon, slot:slot };
+  if(label) entry.slotLabel = label;
+  state.favorites.unshift(entry);
   saveJSON("ebm_favorites", state.favorites);
 }
+function removeFavoriteSlot(slot){
+  state.favorites = state.favorites.filter(function(f){ return f.slot!==slot; });
+  saveJSON("ebm_favorites", state.favorites);
+}
+// Home and Work are fixed slots that always show (set or not); any other
+// slot only exists for as long as its favorites entry does.
+function customSlots(){ return state.favorites.filter(function(f){ return f.slot && f.slot!=="home" && f.slot!=="work"; }); }
+function slotDisplayLabel(f){ return f.slot==="home"?"Home":f.slot==="work"?"Work":(f.slotLabel||f.name); }
 function pushRecent(p){
   state.recents = state.recents.filter(function(r){ return placeKey(r)!==placeKey(p); });
   state.recents.unshift({ name:p.name, address:p.address||"", lat:p.lat, lon:p.lon, ts:Date.now() });
@@ -976,10 +996,10 @@ function pushRecent(p){
   saveJSON("ebm_recents", state.recents);
 }
 
-function quickChipHtml(slot, fav, label){
-  var icon = slot==="home" ? ICONS.home : ICONS.work;
-  if(fav) return '<div class="quick-chip" data-slot="'+slot+'" data-mode="go" tabindex="0" role="button" aria-label="Go to '+label+'"><div class="qc-icon">'+icon+'</div><div class="qc-label">'+label+'</div></div>';
-  return '<div class="quick-chip empty" data-slot="'+slot+'" data-mode="set" tabindex="0" role="button" aria-label="Set '+label+' address"><div class="qc-icon">'+icon+'</div><div class="qc-label">Set '+label+'</div></div>';
+function quickChipHtml(slot, fav, label, icon){
+  icon = icon || (slot==="home" ? ICONS.home : ICONS.work);
+  if(fav) return '<div class="quick-chip" data-slot="'+slot+'" data-mode="go" tabindex="0" role="button" aria-label="Go to '+escapeHtml(label)+'"><div class="qc-icon">'+icon+'</div><div class="qc-label">'+escapeHtml(label)+'</div></div>';
+  return '<div class="quick-chip empty" data-slot="'+slot+'" data-mode="set" tabindex="0" role="button" aria-label="Set '+escapeHtml(label)+' address"><div class="qc-icon">'+icon+'</div><div class="qc-label">Set '+escapeHtml(label)+'</div></div>';
 }
 function startRowHtml(place, kind){
   return '<div class="suggestion-row start-row" data-lat="'+place.lat+'" data-lon="'+place.lon+'" tabindex="0" role="button"><div class="pin">'+(kind==="favorite"?ICONS.star:ICONS.clock)+'</div><div><div class="suggestion-main">'+escapeHtml(place.name)+'</div><div class="suggestion-sub">'+escapeHtml(place.address||"")+'</div></div></div>';
@@ -989,7 +1009,9 @@ function showStartScreen(){
   var box=$("suggestions");
   var home = favoriteBySlot("home"), work = favoriteBySlot("work");
   var customFavs = state.favorites.filter(function(f){ return !f.slot; });
-  var html = '<div class="quick-row">'+quickChipHtml("home", home, "Home")+quickChipHtml("work", work, "Work")+'</div>';
+  var chips = quickChipHtml("home", home, "Home") + quickChipHtml("work", work, "Work") +
+    customSlots().map(function(f){ return quickChipHtml(f.slot, f, slotDisplayLabel(f), ICONS.flag); }).join("");
+  var html = '<div class="quick-row">'+chips+'</div>';
   if(customFavs.length) html += customFavs.map(function(f){ return startRowHtml(f, "favorite"); }).join("");
   if(state.recents.length) html += '<div class="suggestion-section-label">Recent</div>'+state.recents.map(function(f){ return startRowHtml(f, "recent"); }).join("");
   box.innerHTML = html;
@@ -1102,9 +1124,13 @@ function setDestination(dest){
   setStopMarkers();
   showPlaceCard(dest);
   if(state.pendingFavoriteSlot){
-    setFavoriteSlot(state.pendingFavoriteSlot, dest);
-    toast((state.pendingFavoriteSlot==="home"?"Home":"Work")+" saved");
+    var savedSlot = state.pendingFavoriteSlot;
+    var savedLabel = savedSlot==="home"?"Home":savedSlot==="work"?"Work":state.pendingFavoriteLabel;
+    setFavoriteSlot(savedSlot, dest, state.pendingFavoriteLabel);
+    toast((savedLabel||"Place")+" saved");
     state.pendingFavoriteSlot = null;
+    state.pendingFavoriteLabel = null;
+    if(!$("settingsPanel").classList.contains("hidden")) renderSavedPlaces();
   }
   pushRecent(dest);
   if(!state.userLatLng) useFallbackStart();
@@ -1919,22 +1945,26 @@ function openSettings(){
   setSeg("transitSeg", state.showTransit?"on":"off");
   setSeg("parkingSeg", state.showParking?"on":"off");
   setSeg("bikeLanesSeg", state.showBikeLanes?"on":"off");
+  renderSavedPlaces();
   renderFavoritesList();
   renderTripHistory();
 }
 function closeSettings(){ $("settingsBackdrop").classList.add("hidden"); $("settingsPanel").classList.add("hidden"); }
 
+// Home, Work and any custom named slots live in "Saved places" (below) --
+// this list is only the plain, unlabeled places someone starred from a
+// route card.
 function renderFavoritesList(){
   var box=$("favoritesList");
   var hint=$("favoritesEmptyHint");
-  if(!state.favorites.length){ box.innerHTML=""; hint.classList.remove("hidden"); return; }
+  var plain = state.favorites.filter(function(f){ return !f.slot; });
+  if(!plain.length){ box.innerHTML=""; hint.classList.remove("hidden"); return; }
   hint.classList.add("hidden");
-  box.innerHTML = state.favorites.map(function(f,i){
-    var label = f.slot==="home"?"Home":f.slot==="work"?"Work":f.name;
-    var icon = f.slot==="home"?ICONS.home:f.slot==="work"?ICONS.work:ICONS.star;
-    return '<div class="step-row"><div class="step-icon">'+icon+'</div>'+
-      '<div style="flex:1;min-width:0;"><div class="step-text">'+escapeHtml(label)+'</div><div class="step-meta">'+escapeHtml(f.address||"")+'</div></div>'+
-      '<button class="icon-btn" data-i="'+i+'" aria-label="Remove '+escapeHtml(label)+'" style="width:26px;height:26px;flex:none;">'+
+  box.innerHTML = plain.map(function(f){
+    var i = state.favorites.indexOf(f);
+    return '<div class="step-row"><div class="step-icon">'+ICONS.star+'</div>'+
+      '<div style="flex:1;min-width:0;"><div class="step-text">'+escapeHtml(f.name)+'</div><div class="step-meta">'+escapeHtml(f.address||"")+'</div></div>'+
+      '<button class="icon-btn" data-i="'+i+'" aria-label="Remove '+escapeHtml(f.name)+'" style="width:26px;height:26px;flex:none;">'+
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>';
   }).join("");
   Array.prototype.forEach.call(box.querySelectorAll("button[data-i]"), function(btn){
@@ -1944,6 +1974,47 @@ function renderFavoritesList(){
       renderFavoritesList();
     });
   });
+}
+
+function savedPlaceRowHtml(slot, fav, label, icon){
+  if(!fav){
+    return '<div class="step-row"><div class="step-icon">'+icon+'</div>'+
+      '<div style="flex:1;min-width:0;"><div class="step-text">'+escapeHtml(label)+'</div><div class="step-meta">Not set</div></div>'+
+      '<button class="secondary-btn" data-set="'+slot+'" data-label="'+escapeHtml(label)+'" style="flex:none;width:auto;padding:8px 14px;">Set</button></div>';
+  }
+  return '<div class="step-row"><div class="step-icon">'+icon+'</div>'+
+    '<div style="flex:1;min-width:0;"><div class="step-text">'+escapeHtml(label)+'</div><div class="step-meta">'+escapeHtml(fav.address||"")+'</div></div>'+
+    '<button class="secondary-btn" data-change="'+slot+'" data-label="'+escapeHtml(label)+'" style="flex:none;width:auto;padding:8px 10px;margin-right:6px;">Change</button>'+
+    '<button class="icon-btn" data-remove="'+slot+'" aria-label="Remove '+escapeHtml(label)+'" style="width:26px;height:26px;flex:none;">'+
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>';
+}
+
+function renderSavedPlaces(){
+  var box = $("savedPlacesList");
+  var home = favoriteBySlot("home"), work = favoriteBySlot("work");
+  var html = savedPlaceRowHtml("home", home, "Home", ICONS.home) + savedPlaceRowHtml("work", work, "Work", ICONS.work);
+  html += customSlots().map(function(f){ return savedPlaceRowHtml(f.slot, f, slotDisplayLabel(f), ICONS.flag); }).join("");
+  box.innerHTML = html;
+  Array.prototype.forEach.call(box.querySelectorAll("[data-set], [data-change]"), function(btn){
+    btn.addEventListener("click", function(){ beginSetSlot(btn.getAttribute("data-set")||btn.getAttribute("data-change"), btn.getAttribute("data-label")); });
+  });
+  Array.prototype.forEach.call(box.querySelectorAll("[data-remove]"), function(btn){
+    btn.addEventListener("click", function(){
+      removeFavoriteSlot(btn.getAttribute("data-remove"));
+      renderSavedPlaces();
+    });
+  });
+}
+
+function beginSetSlot(slot, label){
+  state.pendingFavoriteSlot = slot;
+  state.pendingFavoriteLabel = (slot!=="home" && slot!=="work") ? label : null;
+  closeSettings();
+  toast("Search for the "+label+" address");
+  $("searchInput").placeholder = "Search for a destination";
+  $("searchInput").value = "";
+  $("clearSearchBtn").classList.add("hidden");
+  $("searchInput").focus();
 }
 
 function renderTripHistory(){
@@ -2051,10 +2122,12 @@ function wireUI(){
   });
   $("clearSearchBtn").addEventListener("click", function(){ $("searchInput").value=""; $("clearSearchBtn").classList.add("hidden"); showStartScreen(); $("searchInput").focus(); });
   document.addEventListener("click", function(e){
-    // #addStopBtn lives in the route-card sheet, not #searchLayer, but its own
-    // click is what turns addingStop on -- it must not also be treated as a
-    // "clicked away" cancel of the mode it just started.
-    if(!e.target.closest("#searchLayer") && !e.target.closest("#addStopBtn")){
+    // #addStopBtn lives in the route-card sheet and the Set/Change/Add
+    // buttons live in #settingsPanel -- neither is inside #searchLayer, but
+    // each one's own click is what turns on the mode it starts (addingStop,
+    // or a pending Home/Work/custom-slot save), so that click must not also
+    // be treated as a "clicked away" cancel of the mode it just started.
+    if(!e.target.closest("#searchLayer") && !e.target.closest("#addStopBtn") && !e.target.closest("#settingsPanel")){
       $("suggestions").classList.add("hidden");
       if(state.addingStop){
         state.addingStop = false;
@@ -2062,12 +2135,23 @@ function wireUI(){
         $("searchInput").value = state.destination ? state.destination.name : "";
         $("clearSearchBtn").classList.toggle("hidden", !state.destination);
       }
+      if(state.pendingFavoriteSlot){
+        state.pendingFavoriteSlot = null;
+        state.pendingFavoriteLabel = null;
+      }
     }
   });
 
   $("settingsBtn").addEventListener("click", openSettings);
   $("closeSettingsBtn").addEventListener("click", closeSettings);
   $("settingsBackdrop").addEventListener("click", closeSettings);
+
+  $("addSlotBtn").addEventListener("click", function(){
+    var label = $("newSlotLabelInput").value.trim();
+    if(!label){ toast("Give it a name first, like \"School\""); return; }
+    $("newSlotLabelInput").value = "";
+    beginSetSlot("slot_"+Date.now(), label);
+  });
 
   $("lawBtn").addEventListener("click", openLawPanel);
   $("closeLawBtn").addEventListener("click", closeLawPanel);
