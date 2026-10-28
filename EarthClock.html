@@ -335,57 +335,143 @@ function makeDot(size, inner, outer){
 }
 
 const CONTINENTS = [
- [[-168,66],[-165,60],[-155,59],[-149,61],[-135,58],[-130,52],[-124,42],[-122,37],
-  [-117,33],[-110,24],[-105,20],[-97,18],[-92,15],[-88,14],[-83,9],[-79,8],[-77,13],
-  [-82,24],[-80,25],[-81,31],[-76,35],[-72,40],[-70,43],[-67,45],[-60,47],[-55,51],
-  [-65,60],[-80,62],[-95,68],[-110,70],[-130,70],[-155,71],[-168,66]],
- [[-80,10],[-77,3],[-79,-5],[-81,-15],[-71,-18],[-70,-30],[-71,-40],[-73,-50],
-  [-68,-55],[-65,-55],[-62,-50],[-58,-38],[-48,-25],[-35,-8],[-40,0],[-50,5],
-  [-60,10],[-70,12],[-80,10]],
- [[-17,15],[-16,21],[-10,30],[0,37],[10,37],[20,33],[32,31],[35,28],[43,12],
-  [51,12],[51,2],[42,-1],[40,-15],[35,-25],[20,-35],[14,-23],[10,-6],[8,4],
-  [-5,5],[-12,7],[-17,15]],
- [[-9,36],[-9,43],[-5,48],[0,51],[5,51],[10,54],[20,54],[25,60],[28,60],[30,50],
-  [27,43],[20,40],[15,38],[10,36],[-9,36]],
- [[27,43],[40,45],[50,45],[55,52],[60,55],[70,55],[80,58],[90,60],[100,62],
-  [110,62],[120,55],[130,52],[135,45],[130,40],[122,38],[121,31],[110,22],
-  [108,16],[103,10],[98,8],[95,20],[88,22],[80,22],[72,22],[68,25],[61,25],
-  [53,27],[48,30],[44,37],[40,37],[35,37],[30,37],[27,43]],
+ // North America (Panama narrows to a thin isthmus, not a wide blob into South America)
+ [[-168,66],[-165,59],[-157,58],[-152,60],[-140,60],[-130,55],[-125,49],[-124,40],
+  [-122,37],[-117,32.5],[-114,31],[-109,23],[-105,20],[-97,16],[-94,16],[-91,15.5],
+  [-88,14],[-84,9.5],[-80,8.3],[-77,8.3],[-80,9.2],[-83,10],[-86,13],[-88,16],
+  [-90,19],[-97,21],[-97,26],[-94,29],[-89,29],[-85,30],[-82,27],[-80.3,25.2],
+  [-80,26.5],[-81,29],[-81,31.2],[-78,33.8],[-76,35],[-75.5,38],[-74,40],[-70,41],
+  [-67,44.5],[-64,45],[-60,46],[-55,51],[-56,53],[-65,58],[-78,62],[-85,67],
+  [-95,68.5],[-110,68.5],[-125,70],[-141,70],[-156,71],[-168,66]],
+ // Greenland (kept clearly separate from Canada via open water)
+ [[-45,60],[-35,65],[-25,70],[-18,76],[-25,81],[-40,83],[-55,82],[-65,76],
+  [-62,70],[-55,66],[-48,61],[-45,60]],
+ // South America
+ [[-77,7],[-75,1],[-79,-4],[-80.5,-6],[-81,-14],[-76,-18],[-70,-18],[-70,-23],
+  [-71,-30],[-71,-37],[-73,-42],[-72,-48],[-68,-52],[-70,-55],[-66,-55],[-65,-52],
+  [-62,-45],[-58,-38],[-57,-34],[-54,-33],[-48,-26],[-39,-13],[-35,-7],[-38,-3],
+  [-43,-2],[-48,1],[-51,4],[-55,5],[-60,8],[-67,10],[-72,11],[-77,7]],
+ // Europe (south edge capped ~36-37N, leaving a clear Mediterranean gap to Africa)
+ [[-9,37],[-9,43],[-5,48],[2,51],[8,54],[11,58],[11,63],[16,69],[28,70],
+  [40,66],[48,67],[60,68],[60,52],[48,47],[38,47],[30,46],[28,41],[23,37],
+  [16,40],[12,44],[7,44],[-9,37]],
+ // Africa (north edge capped ~31-32N, east edge keeps a Red Sea gap from Arabia)
+ [[-17,21],[-16,27],[-9,32],[-5,35],[0,37],[9,37],[11,33],[10,31],[20,31],
+  [25,31],[32,31],[34,28],[35,27],[37,22],[43,13],[51,12],[51,10],[49,4],
+  [42,-1],[40,-10],[35,-18],[35,-24],[33,-26],[27,-33],[19,-34],[14,-22],
+  [12,-18],[9,-6],[9,0],[8,5],[3,6],[-5,5],[-11,7],[-16,13],[-17,21]],
+ // Arabian Peninsula
+ [[34,30],[36,32],[42,30],[48,30],[56,26],[58,23],[56,17],[52,13],[48,13],
+  [44,15],[40,17],[36,24],[34,30]],
+ // India / South Asia
+ [[61,24],[68,23.5],[72,21.5],[73,15],[76,8],[79,9],[80,13],[83,17],[88,22],
+  [92,26],[88,26],[80,30],[73,33],[68,33],[61,30],[61,24]],
+ // Asia (Urals to the Pacific, dipping south to Indochina)
+ [[60,68],[75,73],[95,75],[115,76],[135,73],[150,68],[163,67],[173,66],
+  [179,65],[177,64],[163,59],[156,51],[150,46],[142,46],[135,43],[131,38],
+  [127,35],[124,33],[122,31],[121,29],[121,25],[118,23],[110,18],[107,20],
+  [103,20],[98,20],[95,15],[98,10],[100,6],[98,4],[97,8],[92,15],[88,21],
+  [80,30],[73,33],[68,33],[61,30],[55,38],[48,42],[44,40],[38,37],[42,30],
+  [48,30],[55,38],[60,52],[60,68]],
+ // Australia
  [[113,-22],[115,-34],[138,-38],[146,-39],[150,-37],[153,-28],[146,-19],
   [142,-11],[135,-12],[130,-12],[122,-18],[113,-22]],
+ // Great Britain & Ireland
  [[-10,51],[-8,55],[-6,58],[-3,59],[0,53],[-2,51],[-5,50],[-10,51]],
+ // Japan
  [[130,31],[132,34],[136,35],[140,36],[141,40],[143,43],[140,45],[135,35],[130,31]],
+ // Madagascar
  [[43,-25],[44,-16],[50,-16],[47,-25],[43,-25]],
- [[-45,60],[-20,70],[-20,78],[-45,83],[-65,76],[-55,65],[-45,60]],
+ // New Zealand
+ [[173,-41],[175,-37],[178,-38],[177,-40],[174,-45],[167,-45],[170,-42],[173,-41]],
+ // Indonesia / Philippines (a scatter of smaller islands)
+ [[95,5],[98,2],[106,-3],[114,-4],[119,-4],[120,-8],[115,-9],[108,-7],[101,-1],[95,5]],
+ [[120,19],[122,17],[124,10],[126,9],[123,13],[121,18],[120,19]],
+];
+
+// Real-world-ish patches of desert (tan) and mountain (grey-brown) color, applied with
+// 'source-atop' compositing so they only tint pixels already painted as land — no need
+// for the overlay shapes to precisely match a continent's true outline.
+const DESERTS = [ // [lon,lat,radiusDeg]
+  [12,23,16], [45,22,13], [103,42,11], [133,-25,15], [-112,32,9], [23,-23,9], [-69,-23,5],
+];
+const MOUNTAINS = [ // chains as a sequence of [lon,lat] points, drawn as a thick soft stroke
+  [[-115,50],[-112,42],[-107,36]],            // Rockies
+  [[-70,-5],[-72,-20],[-70,-35],[-71,-45]],    // Andes
+  [[72,36],[85,30],[95,29],[103,32]],          // Himalaya/Tibet
+  [[7,46],[10,46.5],[14,46]],                  // Alps
+  [[60,68],[60,52]],                           // Urals
+  [[-6,32],[2,33],[6,34]],                     // Atlas
 ];
 
 function buildEarthTextures(){
-  const W=2048, H=1024;
+  const W=3072, H=1536, S=W/2048;
   const day=document.createElement('canvas'); day.width=W; day.height=H;
   const night=document.createElement('canvas'); night.width=W; night.height=H;
   const dctx=day.getContext('2d'), nctx=night.getContext('2d');
+  function toXY(lon,lat){ return [ (lon+180)/360*W, (90-lat)/180*H ]; }
 
-  // ocean gradient
+  // ocean: a deep-to-mid blue gradient plus soft mottling for a less flat look
   const og=dctx.createLinearGradient(0,0,0,H);
-  og.addColorStop(0,'#0c2f52'); og.addColorStop(0.5,'#123f66'); og.addColorStop(1,'#0c2f52');
+  og.addColorStop(0,'#0a2a4a'); og.addColorStop(0.18,'#0e3a62'); og.addColorStop(0.5,'#155a8c');
+  og.addColorStop(0.82,'#0e3a62'); og.addColorStop(1,'#0a2a4a');
   dctx.fillStyle=og; dctx.fillRect(0,0,W,H);
+  for(let i=0;i<260;i++){
+    const x=Math.random()*W, y=H*0.08+Math.random()*H*0.84, r=(30+Math.random()*90)*S;
+    const g=dctx.createRadialGradient(x,y,0,x,y,r);
+    const lighter=Math.random()<0.5;
+    g.addColorStop(0, lighter?'rgba(60,120,160,0.06)':'rgba(5,20,38,0.07)');
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    dctx.fillStyle=g; dctx.beginPath(); dctx.arc(x,y,r,0,7); dctx.fill();
+  }
   nctx.fillStyle='#000'; nctx.fillRect(0,0,W,H);
 
-  function toXY(lon,lat){ return [ (lon+180)/360*W, (90-lat)/180*H ]; }
-  function drawPoly(pts, fill){
-    dctx.beginPath();
-    pts.forEach(([lon,lat],i)=>{ const [x,y]=toXY(lon,lat); i===0?dctx.moveTo(x,y):dctx.lineTo(x,y); });
-    dctx.closePath(); dctx.fillStyle=fill; dctx.fill();
+  function tracePoly(ctx, pts){
+    ctx.beginPath();
+    pts.forEach(([lon,lat],i)=>{ const [x,y]=toXY(lon,lat); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+    ctx.closePath();
   }
-  CONTINENTS.forEach(poly=>drawPoly(poly,'#2f6b3f'));
-  // subtle lighter interior variation + coastline
-  CONTINENTS.forEach(poly=>{
-    dctx.beginPath();
-    poly.forEach(([lon,lat],i)=>{ const [x,y]=toXY(lon,lat); i===0?dctx.moveTo(x,y):dctx.lineTo(x,y); });
-    dctx.closePath(); dctx.strokeStyle='rgba(20,50,25,0.6)'; dctx.lineWidth=2; dctx.stroke();
+
+  // base landmass fill — a slightly varied green per continent, not one flat color
+  CONTINENTS.forEach((poly,i)=>{
+    tracePoly(dctx, poly);
+    const hue = 95 + (i*13)%25, light = 28 + (i*7)%10;
+    dctx.fillStyle = `hsl(${hue} 32% ${light}%)`;
+    dctx.fill();
   });
+
+  // terrain variation, clipped to land only via 'source-atop'
+  dctx.save();
+  dctx.globalCompositeOperation = 'source-atop';
+  DESERTS.forEach(([lon,lat,rdeg])=>{
+    const [x,y]=toXY(lon,lat); const r=rdeg*(W/360);
+    const g=dctx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0,'rgba(196,166,94,0.85)'); g.addColorStop(0.7,'rgba(196,166,94,0.55)'); g.addColorStop(1,'rgba(196,166,94,0)');
+    dctx.fillStyle=g; dctx.beginPath(); dctx.arc(x,y,r,0,7); dctx.fill();
+  });
+  dctx.strokeStyle='rgba(90,76,66,0.55)'; dctx.lineCap='round'; dctx.lineJoin='round';
+  MOUNTAINS.forEach(chain=>{
+    dctx.lineWidth = 14*S;
+    dctx.beginPath();
+    chain.forEach(([lon,lat],i)=>{ const [x,y]=toXY(lon,lat); i===0?dctx.moveTo(x,y):dctx.lineTo(x,y); });
+    dctx.stroke();
+  });
+  // scattered vegetation-darkening speckle for texture
+  for(let i=0;i<900;i++){
+    const x=Math.random()*W, y=Math.random()*H, r=(2+Math.random()*5)*S;
+    dctx.fillStyle = Math.random()<0.5 ? 'rgba(20,45,20,0.10)' : 'rgba(150,170,90,0.08)';
+    dctx.beginPath(); dctx.arc(x,y,r,0,7); dctx.fill();
+  }
+  dctx.restore();
+
+  // coastline outline
+  CONTINENTS.forEach(poly=>{
+    tracePoly(dctx, poly);
+    dctx.strokeStyle='rgba(15,35,18,0.55)'; dctx.lineWidth=1.6*S; dctx.stroke();
+  });
+
   // polar ice caps
-  dctx.fillStyle='#dfeaf0';
+  dctx.fillStyle='#e6eef3';
   dctx.fillRect(0,0,W,H*0.045);
   dctx.fillRect(0,H*0.962,W,H*0.038);
 
@@ -403,11 +489,11 @@ function buildEarthTextures(){
     let minX=W,maxX=0,minY=H,maxY=0;
     pxPoly.forEach(([x,y])=>{ minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);});
     const area=(maxX-minX)*(maxY-minY);
-    const n=Math.min(260, Math.max(12, Math.round(area/900)));
+    const n=Math.min(420, Math.max(10, Math.round(area/(900*S*S))));
     for(let k=0;k<n;k++){
       const x=minX+Math.random()*(maxX-minX), y=minY+Math.random()*(maxY-minY);
       if(pointInPoly(x,y,pxPoly) && Math.random()<0.55){
-        const r=0.6+Math.random()*1.1;
+        const r=(0.6+Math.random()*1.1)*S;
         nctx.beginPath(); nctx.fillStyle=`rgba(255,${200+Math.floor(Math.random()*40)},${120+Math.floor(Math.random()*60)},${0.5+Math.random()*0.5})`;
         nctx.arc(x,y,r,0,7); nctx.fill();
       }
@@ -415,6 +501,31 @@ function buildEarthTextures(){
   });
 
   return { day:new THREE.CanvasTexture(day), night:new THREE.CanvasTexture(night) };
+}
+
+function buildCloudTexture(){
+  const W=2048, H=1024;
+  const c=document.createElement('canvas'); c.width=W; c.height=H;
+  const ctx=c.getContext('2d');
+  // cluster wispy blobs into loose bands (roughly where real cloud bands sit) rather than
+  // scattering uniformly, so it reads as weather systems instead of static
+  const bands = [ {lat:60,spread:18,n:24}, {lat:5,spread:14,n:32}, {lat:-15,spread:16,n:26}, {lat:-55,spread:16,n:24} ];
+  bands.forEach(b=>{
+    for(let i=0;i<b.n;i++){
+      const lon = Math.random()*360-180;
+      const lat = clamp(b.lat + (Math.random()-0.5)*b.spread*2, -85, 85);
+      const x = (lon+180)/360*W, y=(90-lat)/180*H;
+      const rx = (18+Math.random()*55), ry = rx*(0.35+Math.random()*0.4);
+      ctx.save();
+      ctx.translate(x,y); ctx.rotate(Math.random()*Math.PI);
+      const g = ctx.createRadialGradient(0,0,0,0,0,rx);
+      const a = 0.08+Math.random()*0.18;
+      g.addColorStop(0,`rgba(255,255,255,${a})`); g.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(0,0,rx,ry,0,0,7); ctx.fill();
+      ctx.restore();
+    }
+  });
+  return new THREE.CanvasTexture(c);
 }
 
 function buildMoonTexture(){
@@ -571,6 +682,34 @@ const earthMat = new THREE.ShaderMaterial({
 });
 const earthMesh = new THREE.Mesh(earthGeo, earthMat);
 spinGroup.add(earthMesh);
+
+// cloud layer — shaded by the same sun direction as the surface, so it dims at night too
+const cloudTex = buildCloudTexture();
+const cloudGeo = new THREE.SphereGeometry(EARTH_R*1.012, 96, 64);
+remapUVsToLatLon(cloudGeo, EARTH_R*1.012);
+const cloudMat = new THREE.ShaderMaterial({
+  uniforms:{ cloudMap:{value:cloudTex}, sunDir:{value:new THREE.Vector3(1,0,0)} },
+  transparent:true, depthWrite:false,
+  vertexShader:`
+    varying vec2 vUv; varying vec3 vWorldNormal;
+    void main(){
+      vUv = uv;
+      vWorldNormal = normalize(mat3(modelMatrix)*normal);
+      gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0);
+    }`,
+  fragmentShader:`
+    uniform sampler2D cloudMap; uniform vec3 sunDir;
+    varying vec2 vUv; varying vec3 vWorldNormal;
+    void main(){
+      vec4 c = texture2D(cloudMap, vUv);
+      float ndl = dot(normalize(vWorldNormal), normalize(sunDir));
+      float t = smoothstep(-0.2, 0.15, ndl);
+      float shade = mix(0.12, 1.0, t);
+      gl_FragColor = vec4(vec3(1.0)*shade, c.a*0.6);
+    }`
+});
+const cloudMesh = new THREE.Mesh(cloudGeo, cloudMat);
+spinGroup.add(cloudMesh);
 
 // atmosphere rim glow
 {
@@ -793,6 +932,7 @@ function frame(now){
   earthCenterUniform.copy(tmpV1);
   tmpV2.copy(tmpV1).multiplyScalar(-1).normalize();
   earthMat.uniforms.sunDir.value.copy(tmpV2);
+  cloudMat.uniforms.sunDir.value.copy(tmpV2);
   sunLight.target.position.copy(tmpV1);
 
   // marker placement + distance-independent scale
