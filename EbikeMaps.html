@@ -29,7 +29,7 @@
     --route-alt:#5a5f66; --handle:#55555a;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,"Segoe UI",Roboto,sans-serif;
     overscroll-behavior:none;}
   #map{position:absolute;inset:0;background:var(--map-fade);}
@@ -96,6 +96,9 @@
   .transit-pin.subway{color:#fff;background:#0039a6;border-color:#0039a6;}
   .transit-pin.ferry{color:#fff;background:#00838f;border-color:#00838f;}
   .transit-pin.parking{color:#fff;background:#2e7d32;border-color:#2e7d32;}
+  .stop-marker{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;
+    font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;
+    box-shadow:0 1px 4px rgba(0,0,0,.35);transform:translate(-11px,-11px);}
   .transit-popup{font-size:13px;font-weight:600;white-space:nowrap;}
 
   .sheet{position:absolute;left:0;right:0;bottom:0;z-index:600;background:var(--card-solid);
@@ -575,6 +578,8 @@ var state = {
   userLatLng: null,
   headingDeg: null,
   destination: null,
+  waypoints: [],
+  addingStop: false,
   routes: [],
   activeRoute: 0,
   routeNotBikeAware: false,
@@ -700,7 +705,7 @@ function initMap(){
   });
 }
 
-var userMarker=null, userPuckEl=null, destMarker=null, routeLayers=[], pillMarkers=[];
+var userMarker=null, userPuckEl=null, destMarker=null, routeLayers=[], pillMarkers=[], stopMarkers=[];
 var navCasing=null, navLine=null, traveledLine=null;
 
 // Built once and then updated in place (setLatLng + a direct style tweak)
@@ -725,6 +730,13 @@ function setUserMarker(lat,lon,heading){
 function setDestMarker(lat,lon){
   if(destMarker) map.removeLayer(destMarker);
   destMarker = L.marker([lat,lon], { icon: L.divIcon({ className:"", html:'<div style="color:var(--danger);width:28px;height:28px;transform:translate(-2px,-26px);">'+ICONS.pin+'</div>', iconSize:[28,28] }) }).addTo(map);
+}
+
+function setStopMarkers(){
+  stopMarkers.forEach(function(m){ map.removeLayer(m); });
+  stopMarkers = state.waypoints.map(function(w,i){
+    return L.marker([w.lat,w.lon], { icon: L.divIcon({ className:"", html:'<div class="stop-marker">'+(i+1)+'</div>', iconSize:[22,22] }) }).addTo(map);
+  });
 }
 
 function clearRouteLines(){
@@ -989,6 +1001,7 @@ function wireStartScreen(){
     el.addEventListener("click", function(){
       var slot = el.getAttribute("data-slot");
       if(el.getAttribute("data-mode")==="set"){
+        if(state.addingStop) return; // can't set Home/Work while picking a stop
         state.pendingFavoriteSlot = slot;
         toast("Search for your "+slot+" address");
         $("suggestions").classList.add("hidden");
@@ -1012,8 +1025,10 @@ function wireStartScreen(){
   });
 }
 function goToPlace(place){
-  setDestination({ lat:place.lat, lon:place.lon, name:place.name, address:place.address });
+  var p = { lat:place.lat, lon:place.lon, name:place.name, address:place.address };
   $("suggestions").classList.add("hidden");
+  if(state.addingStop){ finishAddStop(p); return; }
+  setDestination(p);
   $("searchInput").value = place.name;
   $("clearSearchBtn").classList.remove("hidden");
   $("searchInput").blur();
@@ -1050,9 +1065,11 @@ function renderSuggestions(results){
   Array.prototype.forEach.call(box.querySelectorAll(".suggestion-row"), function(el){
     el.addEventListener("click", function(){
       var r = results[Number(el.getAttribute("data-i"))];
-      setDestination({ lat:Number(r.lat), lon:Number(r.lon), name:(r.namedetails&&r.namedetails.name)||r.display_name.split(",")[0], address:r.display_name });
+      var place = { lat:Number(r.lat), lon:Number(r.lon), name:(r.namedetails&&r.namedetails.name)||r.display_name.split(",")[0], address:r.display_name };
       box.classList.add("hidden");
-      $("searchInput").value = (r.namedetails&&r.namedetails.name)||r.display_name.split(",")[0];
+      if(state.addingStop){ finishAddStop(place); return; }
+      setDestination(place);
+      $("searchInput").value = place.name;
       $("clearSearchBtn").classList.remove("hidden");
       $("searchInput").blur();
     });
@@ -1079,7 +1096,10 @@ function reverseGeocode(lat,lon){
 
 function setDestination(dest){
   state.destination = dest;
+  state.waypoints = [];
+  state.addingStop = false;
   setDestMarker(dest.lat, dest.lon);
+  setStopMarkers();
   showPlaceCard(dest);
   if(state.pendingFavoriteSlot){
     setFavoriteSlot(state.pendingFavoriteSlot, dest);
@@ -1092,11 +1112,41 @@ function setDestination(dest){
   fetchNearbyTransit(dest.lat, dest.lon);
 }
 
+function routeCoordsString(points){
+  return points.map(function(p){ return p.lon+","+p.lat; }).join(";");
+}
+
 function fetchRoute(){
   if(!state.userLatLng || !state.destination) return;
   showLoadingCard();
-  var coords = state.userLatLng.lon+","+state.userLatLng.lat+";"+state.destination.lon+","+state.destination.lat;
-  tryRouteEndpoint(coords, 0, []);
+  var pts = [state.userLatLng].concat(state.waypoints).concat([state.destination]);
+  tryRouteEndpoint(routeCoordsString(pts), 0, []);
+}
+
+function beginAddStop(){
+  if(!state.destination) return;
+  state.addingStop = true;
+  $("searchInput").placeholder = "Search for a stop to add";
+  $("searchInput").value = "";
+  $("clearSearchBtn").classList.add("hidden");
+  $("searchInput").focus();
+}
+
+function finishAddStop(place){
+  state.addingStop = false;
+  $("searchInput").placeholder = "Search for a destination";
+  $("searchInput").value = state.destination ? state.destination.name : "";
+  $("clearSearchBtn").classList.toggle("hidden", !state.destination);
+  $("searchInput").blur();
+  state.waypoints.push(place);
+  setStopMarkers();
+  fetchRoute();
+}
+
+function removeWaypoint(i){
+  state.waypoints.splice(i,1);
+  setStopMarkers();
+  fetchRoute();
 }
 
 function describeFetchError(err){
@@ -1115,7 +1165,11 @@ function tryRouteEndpoint(coords, i, attempts){
     return;
   }
   var ep = ROUTE_ENDPOINTS[i];
-  var url = ep.build(coords)+"?overview=full&geometries=geojson&steps=true&alternatives=true";
+  // Alternatives only make sense for a plain start->destination trip; OSRM
+  // doesn't give meaningful alternates once via points are in the mix, so
+  // don't ask for them (and don't show the "other route" UI) with stops.
+  var alts = state.waypoints.length ? "false" : "true";
+  var url = ep.build(coords)+"?overview=full&geometries=geojson&steps=true&alternatives="+alts;
   var ctrl = new AbortController();
   var to = setTimeout(function(){ ctrl.abort(); }, 9000);
   fetch(url, { signal: ctrl.signal })
@@ -1143,7 +1197,8 @@ function tryRouteEndpoint(coords, i, attempts){
 }
 
 function applyRouteResponse(data, ep){
-  state.routes = data.routes.map(parseRoute);
+  var waypointNames = state.waypoints.map(function(w){ return w.name; });
+  state.routes = data.routes.map(function(r){ return parseRoute(r, waypointNames); });
   state.activeRoute = 0;
   state.routeNotBikeAware = !ep.bikeAware;
   map.fitBounds(L.latLngBounds(state.routes[0].latlngs), { padding:[60,60] });
@@ -1156,16 +1211,26 @@ function applyRouteResponse(data, ep){
   if(state.showBikeLanes) fetchBikeLanes(state.routes[0]);
 }
 
-function parseRoute(r){
+// waypointNames: one name per intermediate stop, in order (empty for a plain
+// start->destination trip). A route with N stops has N+1 legs; every leg's
+// "arrive" step except the very last one lands on a stop rather than the
+// final destination, so it's labeled with that stop's name instead.
+function parseRoute(r, waypointNames){
+  waypointNames = waypointNames || [];
   var latlngs = r.geometry.coordinates.map(function(c){ return [c[1], c[0]]; });
-  var rawSteps = (r.legs && r.legs[0] && r.legs[0].steps) || [];
-  var steps = rawSteps.map(function(s){
-    var m = s.maneuver || {};
-    return {
-      distance: s.distance, duration: s.duration, name: s.name,
-      type: m.type, modifier: m.modifier, exit: m.exit,
-      bearingAfter: m.bearing_after, location: m.location ? [m.location[1], m.location[0]] : latlngs[0]
-    };
+  var legs = r.legs || [];
+  var steps = [];
+  legs.forEach(function(leg, li){
+    (leg.steps || []).forEach(function(s){
+      var m = s.maneuver || {};
+      var stopName = (m.type==="arrive" && li<legs.length-1) ? waypointNames[li] : null;
+      steps.push({
+        distance: s.distance, duration: s.duration, name: s.name,
+        type: m.type, modifier: m.modifier, exit: m.exit,
+        bearingAfter: m.bearing_after, location: m.location ? [m.location[1], m.location[0]] : latlngs[0],
+        leg: li, stopName: stopName
+      });
+    });
   });
   return {
     latlngs:latlngs, distanceM:r.distance, osrmDurationS:r.duration,
@@ -1342,6 +1407,16 @@ function showRouteCard(){
     '<svg viewBox="0 0 24 24" fill="'+(fav?"currentColor":"none")+'" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M12 17.3l-5.4 3.2 1.4-6-4.6-4 6-0.5L12 4l2.6 5.9 6 0.5-4.6 4 1.4 6z"/></svg>'+
     '</button></div>';
 
+  if(state.waypoints.length){
+    html += '<div>'+state.waypoints.map(function(w,i){
+      return '<div class="step-row"><div class="step-icon" style="font-size:13px;font-weight:700;">'+(i+1)+'</div>'+
+        '<div style="flex:1;min-width:0;"><div class="step-text">'+escapeHtml(w.name)+'</div><div class="step-meta">'+escapeHtml(w.address||"")+'</div></div>'+
+        '<button class="icon-btn stop-remove-btn" data-i="'+i+'" aria-label="Remove stop '+escapeHtml(w.name)+'" style="width:26px;height:26px;flex:none;">'+
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>';
+    }).join("")+'</div>';
+  }
+  html += '<button class="secondary-btn" id="addStopBtn" style="width:100%;margin:2px 0 10px;">+ Add stop</button>';
+
   if(state.showTransit){
     var nearTransit = nearestTransitPOI(state.destination.lat, state.destination.lon);
     if(nearTransit && nearTransit.distM < 2000){
@@ -1389,6 +1464,10 @@ function showRouteCard(){
   $("startNavBtn").addEventListener("click", startNavigation);
   $("clearRouteBtn").addEventListener("click", clearRoute);
   $("favToggleBtn").addEventListener("click", function(){ toggleFavorite(state.destination); showRouteCard(); });
+  $("addStopBtn").addEventListener("click", beginAddStop);
+  Array.prototype.forEach.call(document.querySelectorAll(".stop-remove-btn"), function(btn){
+    btn.addEventListener("click", function(e){ e.stopPropagation(); removeWaypoint(Number(btn.getAttribute("data-i"))); });
+  });
   var altBtn=$("altRouteBtn"); if(altBtn) altBtn.addEventListener("click", function(){ selectRoute((state.activeRoute+1)%state.routes.length); });
   var ecoBtn=$("switchEcoBtn"); if(ecoBtn) ecoBtn.addEventListener("click", function(){ setAssist("eco"); });
   Array.prototype.forEach.call(document.querySelectorAll("#assistRowSheet .assist-chip"), function(el){
@@ -1445,7 +1524,7 @@ function stepIconHtml(s){
 }
 function stepText(s){
   if(s.type==="depart") return "Head "+compassDir(s.bearingAfter)+(s.name?" on "+s.name:"");
-  if(s.type==="arrive") return "Arrive at destination";
+  if(s.type==="arrive") return s.stopName ? ("Arrive at "+s.stopName) : "Arrive at destination";
   if(s.type==="roundabout"||s.type==="rotary") return "Take the roundabout"+(s.exit?", "+ordinal(s.exit)+" exit":"")+(s.name?" onto "+s.name:"");
   var verb = s.modifier==="uturn" ? "Make a U-turn" : "Turn "+ (s.modifier||"straight");
   if(s.modifier==="straight") verb="Continue straight";
@@ -1461,11 +1540,14 @@ function stepRowHtml(s,i,all){
 
 function clearRoute(){
   state.routes=[]; state.destination=null; state.routeNotBikeAware=false;
+  state.waypoints=[]; state.addingStop=false;
   clearRouteLines();
   clearBikeLaneLayers();
   state.bikeLanes=[]; bikeLaneFetchedForDest=null;
   if(destMarker){ map.removeLayer(destMarker); destMarker=null; }
+  stopMarkers.forEach(function(m){ map.removeLayer(m); }); stopMarkers=[];
   openSheet("hidden");
+  $("searchInput").placeholder="Search for a destination";
   $("searchInput").value=""; $("clearSearchBtn").classList.add("hidden");
 }
 
@@ -1507,6 +1589,13 @@ function wireAssistRow(containerId){
 
 function startNavigation(){
   if(!state.routes.length) return;
+  // Clicking the button focuses it, and if it was sitting near the bottom
+  // edge of the half-open sheet, some browsers scroll the whole page (not
+  // just the sheet's own scroll box) to bring it fully into view -- this
+  // is a single fixed-viewport app shell, so the page itself must never
+  // scroll. Blur and snap back before anything else moves.
+  if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  window.scrollTo(0,0);
   state.navigating=true; state.currentStep=0;
   state.offRouteStreak=0; state.rerouting=false; state.lastGoodFixTime=null;
   var r = state.routes[state.activeRoute];
@@ -1654,6 +1743,17 @@ function onNavPosition(pos){
   updateNavStats();
 }
 
+// Stops already reached (their leg is behind the step we're currently on)
+// must drop out of a mid-ride reroute, or it would send the rider back to
+// a stop they already passed.
+function remainingWaypoints(){
+  if(!state.waypoints.length) return [];
+  var route = state.routes[state.activeRoute];
+  var step = route && route.steps[state.currentStep];
+  var li = step ? step.leg : 0;
+  return state.waypoints.slice(li);
+}
+
 function rerouteDuringNav(){
   if(state.rerouting || !state.userLatLng || !state.destination) return;
   state.rerouting = true;
@@ -1661,11 +1761,12 @@ function rerouteDuringNav(){
   $("navInstruction").textContent = "Rerouting…";
   toast("Off route — rerouting…");
   speak("Rerouting");
-  var coords = state.userLatLng.lon+","+state.userLatLng.lat+";"+state.destination.lon+","+state.destination.lat;
-  tryRerouteEndpoint(coords, 0);
+  var remaining = remainingWaypoints();
+  var pts = [state.userLatLng].concat(remaining).concat([state.destination]);
+  tryRerouteEndpoint(routeCoordsString(pts), 0, remaining.map(function(w){ return w.name; }));
 }
 
-function tryRerouteEndpoint(coords, i){
+function tryRerouteEndpoint(coords, i, waypointNames){
   if(i>=ROUTE_ENDPOINTS.length){
     state.rerouting = false;
     toast("Couldn't reroute — check your connection. Still tracking your original route.");
@@ -1681,7 +1782,7 @@ function tryRerouteEndpoint(coords, i){
     .then(function(data){
       clearTimeout(to);
       if(data.code!=="Ok" || !data.routes || !data.routes.length) throw new Error("no route in response");
-      var newRoute = parseRoute(data.routes[0]);
+      var newRoute = parseRoute(data.routes[0], waypointNames);
       state.routes = [newRoute];
       state.activeRoute = 0;
       state.currentStep = 0;
@@ -1696,7 +1797,7 @@ function tryRerouteEndpoint(coords, i){
     .catch(function(err){
       clearTimeout(to);
       console.error("reroute endpoint failed ("+url+"):", err);
-      tryRerouteEndpoint(coords, i+1);
+      tryRerouteEndpoint(coords, i+1, waypointNames);
     });
 }
 
@@ -1949,7 +2050,20 @@ function wireUI(){
     else showStartScreen();
   });
   $("clearSearchBtn").addEventListener("click", function(){ $("searchInput").value=""; $("clearSearchBtn").classList.add("hidden"); showStartScreen(); $("searchInput").focus(); });
-  document.addEventListener("click", function(e){ if(!e.target.closest("#searchLayer")) $("suggestions").classList.add("hidden"); });
+  document.addEventListener("click", function(e){
+    // #addStopBtn lives in the route-card sheet, not #searchLayer, but its own
+    // click is what turns addingStop on -- it must not also be treated as a
+    // "clicked away" cancel of the mode it just started.
+    if(!e.target.closest("#searchLayer") && !e.target.closest("#addStopBtn")){
+      $("suggestions").classList.add("hidden");
+      if(state.addingStop){
+        state.addingStop = false;
+        $("searchInput").placeholder = "Search for a destination";
+        $("searchInput").value = state.destination ? state.destination.name : "";
+        $("clearSearchBtn").classList.toggle("hidden", !state.destination);
+      }
+    }
+  });
 
   $("settingsBtn").addEventListener("click", openSettings);
   $("closeSettingsBtn").addEventListener("click", closeSettings);
