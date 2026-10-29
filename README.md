@@ -29,3 +29,22 @@ or visit the live site above and use your browser's "Add to Home Screen" to
 install it as an app icon for quick access on a ride. Units (km/mi) default
 to your browser's locale and, along with every other setting, are then saved
 on your device.
+
+## EarthClock.html
+
+A 3D model (Three.js) of Earth spinning on its real 23.5° axial tilt while it
+orbits the Sun with the Moon in tow. Set your location by clicking the globe,
+searching a city, typing coordinates, or using your device's time zone as a
+rough guess — no GPS is used, since the browser sandbox here can't request
+it — and the panel shows your local solar time, whether you're in daylight
+or night, the current season for your hemisphere, and a countdown to the
+next equinox/solstice. The Equator, Tropics and Arctic/Antarctic Circles are
+drawn on the globe as the lines that mark the seasons. Four view presets
+(Surface, Globe, Earth–Moon, Solar System) zoom out to show the Moon's orbit
+and then Earth's orbit around the Sun, each labeled with its direction of
+travel, with your location marker staying visible even at the zoomed-out
+solar view. A speed control lets the simulated clock run in real time or
+fast-forward (up to a simulated week per second) to watch the seasons cycle.
+Everything is procedurally generated (no external map imagery), so it needs
+network access only to load the Three.js library and fonts. Open the file
+directly in a browser, or visit the live site above.
