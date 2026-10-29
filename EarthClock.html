@@ -713,6 +713,16 @@ spinGroup.add(cloudMesh);
   spinGroup.add(new THREE.Mesh(rimGeo, rimMat));
 }
 
+// a thin equator line, purely as an orientation aid so it's clear which way is
+// "up" (north) on the globe
+{
+  const pts = [];
+  for(let i=0;i<=120;i++){ pts.push(latLonToPos(0, i/120*360-180, EARTH_R*1.001)); }
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const mat = new THREE.LineBasicMaterial({color:0xeceff5, transparent:true, opacity:0.3});
+  spinGroup.add(new THREE.LineLoop(geo, mat));
+}
+
 // location marker (distance-independent sprite)
 const markerTexDay = makeDot(128,'#fff4d6','rgba(255,196,60,0)');
 const markerTexNight = makeDot(128,'#d7e4ff','rgba(90,130,255,0)');
@@ -754,17 +764,45 @@ let followMode='earth';
 const currentTarget = new THREE.Vector3();
 let currentView='globe';
 
+// 'globe' deliberately omits azimuth/polar: the camera keeps whatever heading it had
+// (set by recenterOn() below, or by the user dragging) instead of snapping to a fixed
+// angle that has nothing to do with where on Earth you're actually looking at.
 const VIEWS = {
-  globe:{radius:2.6, polar:1.15, azimuth:0.5, follow:'earth'},
+  globe:{radius:2.6, follow:'earth'},
   orbit:{radius:150, polar:1.0, azimuth:0.6, follow:'sun'},
 };
 function setView(name){
   const v = VIEWS[name]; if(!v) return;
   currentView = name;
-  targetRadius=v.radius; targetPolar=v.polar; targetAzimuth=v.azimuth; followMode=v.follow;
+  targetRadius=v.radius; followMode=v.follow;
+  if(v.polar!==undefined) targetPolar=v.polar;
+  if(v.azimuth!==undefined) targetAzimuth=v.azimuth;
   document.querySelectorAll('#viewbar button').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
 }
 setView('globe');
+
+// Earth's true north pole direction, fixed in world space (the tilt never rotates
+// per-frame, only the orbit position does — see the hierarchy comment above) — used
+// to keep the globe view reliably "north up" regardless of camera azimuth or the
+// time of year, instead of defaulting to the ecliptic's own up vector.
+const earthNorthWorld = new THREE.Vector3(0,1,0).applyAxisAngle(new THREE.Vector3(1,0,0), EARTH_TILT);
+const eclipticUp = new THREE.Vector3(0,1,0);
+
+// Turn the camera to face a given lat/lon head-on, accounting for Earth's current
+// spin (which direction faces a fixed outside point changes continuously as Earth
+// rotates) and its fixed axial tilt. Called whenever the location changes, so the
+// globe view actually shows where you are instead of whatever happened to be
+// facing the camera's arbitrary default angle at that moment.
+function recenterOn(lat, lon){
+  const local = latLonToPos(lat, lon, 1);
+  const spinAngle = (dayFrac(new Date()) % EARTH_SPIN_PERIOD_DAYS) / EARTH_SPIN_PERIOD_DAYS * Math.PI*2;
+  local.applyAxisAngle(new THREE.Vector3(0,1,0), spinAngle);
+  local.applyAxisAngle(new THREE.Vector3(1,0,0), EARTH_TILT);
+  local.normalize();
+  targetPolar = clamp(Math.acos(clamp(local.y,-1,1)), 0.25, Math.PI-0.25);
+  targetAzimuth = Math.atan2(local.z, local.x);
+  camAzimuth = targetAzimuth; camPolar = targetPolar; // snap, don't ease, on an explicit location change
+}
 
 function updateCamera(dt){
   const a = 1-Math.pow(0.001, dt);
@@ -778,6 +816,7 @@ function updateCamera(dt){
   const sinP=Math.sin(camPolar), cosP=Math.cos(camPolar);
   const x=camRadius*sinP*Math.cos(camAzimuth), z=camRadius*sinP*Math.sin(camAzimuth), y=camRadius*cosP;
   camera.position.set(currentTarget.x+x, currentTarget.y+y, currentTarget.z+z);
+  camera.up.copy(followMode==='sun' ? eclipticUp : earthNorthWorld);
   camera.lookAt(currentTarget);
 }
 
@@ -822,7 +861,7 @@ function tryPick(clientX, clientY){
   if(hit){
     const local = earthMesh.worldToLocal(hit.point.clone());
     const {lat,lon} = posToLatLon(local);
-    setLocation(lat, lon, 'Custom pin');
+    setLocation(lat, lon, 'Custom pin', false);
   }
 }
 
@@ -830,11 +869,14 @@ let lastFrame = performance.now();
 
 /* ===================== location state ===================== */
 let loc = { lat:40, lon:0, name:'Approximate (from device time zone)' };
-function setLocation(lat, lon, name){
+function setLocation(lat, lon, name, recenter=true){
   loc = { lat: clamp(lat,-90,90), lon: wrap180(lon), name };
   document.getElementById('locName').textContent = name;
   document.getElementById('locCoord').textContent =
     `${Math.abs(loc.lat).toFixed(2)}°${loc.lat>=0?'N':'S'}, ${Math.abs(loc.lon).toFixed(2)}°${loc.lon>=0?'E':'W'}`;
+  // recenter the camera on the new location — except for a globe click, which the
+  // user can already see (snapping the view right after their click would be jarring)
+  if(recenter && currentView==='globe') recenterOn(loc.lat, loc.lon);
 }
 {
   const tzLon = clamp(-(new Date().getTimezoneOffset())*0.25, -180, 180);
