@@ -167,6 +167,9 @@
   .step-row.flagged{background:rgba(255,59,48,.08);margin:0 -18px;padding:11px 18px;border-radius:8px;}
   .step-icon.warn{background:rgba(255,59,48,.14);color:var(--danger);}
   .warn-label{color:var(--danger);font-weight:600;}
+  .step-row.unpaved{background:var(--accent-soft);margin:0 -18px;padding:11px 18px;border-radius:8px;}
+  .step-icon.unpaved{background:var(--accent-soft);color:var(--accent);}
+  .unpaved-label{color:var(--accent);font-weight:600;}
 
   .elev-note{font-size:12px;color:var(--sub);margin-top:-6px;margin-bottom:10px;}
 
@@ -336,6 +339,13 @@
     <button data-v="off" class="active">Off</button>
   </div>
   <p class="hint">Highlights streets with a dedicated bike lane or path near your route, so you can eyeball how much of it is protected before you ride. Off by default — can be visually dense in built-up areas.</p>
+
+  <div class="section-title">Surface warnings</div>
+  <div class="seg" id="surfaceWarnSeg">
+    <button data-v="on" class="active">On</button>
+    <button data-v="off">Off</button>
+  </div>
+  <p class="hint">Flags turn-by-turn steps that cross gravel, dirt, or other unpaved surfaces (marked below), based on map data — useful to know before you commit to a route on skinny tires.</p>
 
   <p class="hint">Range and battery estimates are approximate — based on your assist mode's typical power draw plus climbing along the route, and current temperature where available. Actual range varies with rider weight, tires and wind.</p>
 
@@ -589,7 +599,8 @@ var ICONS = {
   ferry:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11l1.5 5.5a2 2 0 001.9 1.5h9.2a2 2 0 001.9-1.5L20 11"/><path d="M6 11V6h5l3 5"/><path d="M3 20c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0"/></svg>',
   parking:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 18L10 9h3l5 9M10 9l2.5 4.5H17"/></svg>',
   flag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 3v18"/><path d="M5 4h11l-2.5 4L16 12H5"/></svg>',
-  moon:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.4 14.7A8.3 8.3 0 1110 3.1a6.6 6.6 0 1010.4 11.6z"/></svg>'
+  moon:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.4 14.7A8.3 8.3 0 1110 3.1a6.6 6.6 0 1010.4 11.6z"/></svg>',
+  gravel:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="7" cy="8" r="1.4"/><circle cx="13" cy="6" r="1.2"/><circle cx="17" cy="10" r="1.3"/><circle cx="9" cy="13" r="1.1"/><circle cx="15" cy="15" r="1.4"/><circle cx="19" cy="17" r="1"/><circle cx="5" cy="17" r="1.2"/></svg>'
 };
 
 /* ---------- state ---------- */
@@ -613,6 +624,7 @@ var state = {
   showTransit: localStorage.getItem("ebm_showtransit") !== "off",
   showParking: localStorage.getItem("ebm_showparking") !== "off",
   showBikeLanes: localStorage.getItem("ebm_showbikelanes") === "on",
+  showSurfaceWarnings: localStorage.getItem("ebm_showsurfacewarn") !== "off",
   bikeLanes: [],
   transitPOIs: [],
   favorites: loadJSON("ebm_favorites", []),
@@ -1041,6 +1053,51 @@ function renderBikeLanes(){
   });
 }
 
+/* ---------- unpaved/gravel surface warnings ---------- */
+
+var UNPAVED_SURFACES = ["unpaved","gravel","dirt","grass","ground","sand","mud","pebblestone","fine_gravel","compacted","earth","woodchips"];
+var SURFACE_WARN_THRESHOLD_M = 20; // how close a route step's maneuver point must be to a flagged way to count as "on" it
+var surfacePoints = [];           // flat [lat,lon] pairs from every flagged way's geometry, for the current destination
+var surfaceFetchedForDest = null; // destination key already fetched for, so switching back doesn't re-query
+
+function fetchSurfaceWays(route){
+  var destKey = state.destination ? (state.destination.lat.toFixed(4)+","+state.destination.lon.toFixed(4)) : null;
+  if(!destKey || surfaceFetchedForDest===destKey){ if(state.routes.length && !state.navigating) showRouteCard(); return; }
+  surfaceFetchedForDest = destKey;
+  var b = routeBoundingBox(route, 0.002);
+  var bbox = b.south+","+b.west+","+b.north+","+b.east;
+  var query = "[out:json][timeout:20];way[\"highway\"][\"surface\"~\"^("+UNPAVED_SURFACES.join("|")+")$\"]("+bbox+");out geom 400;";
+  var ctrl = new AbortController();
+  var to = setTimeout(function(){ ctrl.abort(); }, 15000);
+  fetch("https://overpass-api.de/api/interpreter", {
+    method:"POST", signal:ctrl.signal, headers:{ "Content-Type":"application/x-www-form-urlencoded" },
+    body:"data="+encodeURIComponent(query)
+  }).then(function(r){ clearTimeout(to); return r.ok ? r.json() : null; })
+    .then(function(data){
+      surfacePoints = [];
+      (data && data.elements || []).forEach(function(way){
+        (way.geometry||[]).forEach(function(pt){ surfacePoints.push([pt.lat, pt.lon]); });
+      });
+      if(state.routes.length && !state.navigating) showRouteCard();
+    })
+    .catch(function(){ clearTimeout(to); });
+}
+
+// Geometry-based, like the bike-lane overlay -- a step's own name rarely says
+// anything about its surface, unlike the restricted-road check above, which
+// can go by name alone. Approximate on purpose: flags a step whose maneuver
+// point is close to ANY point of a nearby unpaved way, not an exact overlap.
+function stepOnUnpavedSurface(step){
+  if(!state.showSurfaceWarnings) return false;
+  for(var i=0;i<surfacePoints.length;i++){
+    if(haversine(step.location[0], step.location[1], surfacePoints[i][0], surfacePoints[i][1]) < SURFACE_WARN_THRESHOLD_M) return true;
+  }
+  return false;
+}
+function routeHasUnpavedSurface(route){
+  return state.showSurfaceWarnings && route.steps.some(stepOnUnpavedSurface);
+}
+
 /* ---------- search / geocoding ---------- */
 
 /* ---------- favorites & recents ---------- */
@@ -1385,6 +1442,7 @@ function applyRouteResponse(data, ep){
   // flag whichever alternative climbs the least once all of them resolve.
   state.routes.forEach(fetchElevation);
   if(state.showBikeLanes) fetchBikeLanes(state.routes[0]);
+  if(state.showSurfaceWarnings) fetchSurfaceWays(state.routes[0]);
 }
 
 // waypointNames: one name per intermediate stop, in order (empty for a plain
@@ -1619,6 +1677,10 @@ function showRouteCard(){
     html += '<div class="banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>'+
       '<div><b>Check this route before riding</b>It may include a highway/parkway-type road (marked below) where bikes often aren\'t allowed. Map data doesn\'t always flag this — verify locally and use the report button if you find it\'s wrong.</div></div>';
   }
+  if(routeHasUnpavedSurface(r)){
+    html += '<div class="banner info">'+ICONS.gravel+
+      '<div><b>Includes unpaved sections</b>Part of this route crosses gravel, dirt, or another unpaved surface (marked below) — may be slower or trickier depending on your tires.</div></div>';
+  }
   var rain = rainDuringRide(r.durationMin);
   if(rain){
     html += '<div class="banner info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 13v4M8 13v4M12 15v4M20 16.58A5 5 0 0018 7h-1.26A8 8 0 104 15.25"/></svg>'+
@@ -1785,8 +1847,13 @@ function ordinal(n){ var s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10
 
 function stepRowHtml(s,i,all){
   var flagged = looksRestricted(s.name);
-  return '<div class="step-row'+(flagged?" flagged":"")+'"><div class="step-icon'+(flagged?" warn":"")+'">'+(flagged?ICONS.warn:stepIconHtml(s))+'</div><div><div class="step-text">'+escapeHtml(stepText(s))+'</div>'+
-    '<div class="step-meta">'+(s.distance>0?fmtDist(s.distance):"")+(flagged?' <span class="warn-label">may not allow bikes</span>':"")+'</div></div></div>';
+  var unpaved = !flagged && stepOnUnpavedSurface(s); // a restricted-road name is the more serious call if both somehow apply
+  var cls = flagged ? " flagged" : (unpaved ? " unpaved" : "");
+  var iconCls = flagged ? " warn" : (unpaved ? " unpaved" : "");
+  var icon = flagged ? ICONS.warn : (unpaved ? ICONS.gravel : stepIconHtml(s));
+  var label = flagged ? '<span class="warn-label">may not allow bikes</span>' : (unpaved ? '<span class="unpaved-label">unpaved surface</span>' : "");
+  return '<div class="step-row'+cls+'"><div class="step-icon'+iconCls+'">'+icon+'</div><div><div class="step-text">'+escapeHtml(stepText(s))+'</div>'+
+    '<div class="step-meta">'+(s.distance>0?fmtDist(s.distance):"")+' '+label+'</div></div></div>';
 }
 
 function clearRoute(){
@@ -1795,6 +1862,7 @@ function clearRoute(){
   clearRouteLines();
   clearBikeLaneLayers();
   state.bikeLanes=[]; bikeLaneFetchedForDest=null;
+  surfacePoints=[]; surfaceFetchedForDest=null;
   if(destMarker){ map.removeLayer(destMarker); destMarker=null; }
   stopMarkers.forEach(function(m){ map.removeLayer(m); }); stopMarkers=[];
   openSheet("hidden");
@@ -2193,6 +2261,7 @@ function openSettings(){
   setSeg("transitSeg", state.showTransit?"on":"off");
   setSeg("parkingSeg", state.showParking?"on":"off");
   setSeg("bikeLanesSeg", state.showBikeLanes?"on":"off");
+  setSeg("surfaceWarnSeg", state.showSurfaceWarnings?"on":"off");
   renderSavedPlaces();
   renderFavoritesList();
   renderSavedRoutesList();
@@ -2460,6 +2529,12 @@ function wireUI(){
     localStorage.setItem("ebm_showbikelanes", v);
     if(state.showBikeLanes && state.routes.length) fetchBikeLanes(state.routes[state.activeRoute]);
     else renderBikeLanes();
+  });
+  wireSeg("surfaceWarnSeg", function(v){
+    state.showSurfaceWarnings = v==="on";
+    localStorage.setItem("ebm_showsurfacewarn", v);
+    if(state.showSurfaceWarnings && state.routes.length) fetchSurfaceWays(state.routes[state.activeRoute]);
+    else if(state.routes.length && !state.navigating) showRouteCard();
   });
 
   $("themeBtn").addEventListener("click", function(){
