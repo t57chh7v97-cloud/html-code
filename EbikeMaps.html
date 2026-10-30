@@ -299,6 +299,9 @@
   <div class="field-row"><label>Current charge</label>
     <input type="range" id="chargeRange" min="1" max="100" step="1">
     <span id="chargeLabel" style="width:40px;text-align:right;font-weight:700;">100%</span></div>
+  <div class="field-row"><label>Rider + cargo weight</label>
+    <input type="number" id="weightInput" min="30" max="300" step="1"><span id="weightUnitLabel" style="color:var(--sub);font-size:13px;">kg</span></div>
+  <p class="hint" style="margin-top:-6px;">Total weight the motor has to move — you plus the bike plus anything you're carrying. Heavier loads use more battery per mile, especially on climbs.</p>
 
   <div class="section-title">Units</div>
   <div class="seg" id="unitsSeg">
@@ -568,6 +571,16 @@ function classComplianceNote(jurisdictionKey){
 
 var CLIMB_WH_PER_100M = 14;   // motor-assisted energy spent per 100m of ascent
 var DESCENT_WH_PER_100M = -3; // regenerative/coasting credit per 100m of descent (clamped at 0 overall)
+// Rider + bike + any cargo this whole energy model was calibrated against;
+// a heavier or lighter total scales the estimate proportionally. 90kg is a
+// reasonable default (≈75kg rider + ≈15kg bike), and matches the stored
+// default below exactly, so anyone who never touches the setting sees no
+// change from before it existed.
+var WEIGHT_BASELINE_KG = 90;
+var KG_PER_LB = 0.45359237;
+function kgToLb(kg){ return kg/KG_PER_LB; }
+function lbToKg(lb){ return lb*KG_PER_LB; }
+function weightFactor(){ return clamp(state.riderWeightKg/WEIGHT_BASELINE_KG, 0.5, 2); }
 var ROUTE_HOST = "https://routing.openstreetmap.de";
 // Bike-aware routing has no official SLA, so try a couple of path variants on
 // the FOSSGIS host first, then fall back to the always-on OSRM car demo
@@ -600,7 +613,8 @@ var ICONS = {
   parking:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 18L10 9h3l5 9M10 9l2.5 4.5H17"/></svg>',
   flag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 3v18"/><path d="M5 4h11l-2.5 4L16 12H5"/></svg>',
   moon:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.4 14.7A8.3 8.3 0 1110 3.1a6.6 6.6 0 1010.4 11.6z"/></svg>',
-  gravel:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="7" cy="8" r="1.4"/><circle cx="13" cy="6" r="1.2"/><circle cx="17" cy="10" r="1.3"/><circle cx="9" cy="13" r="1.1"/><circle cx="15" cy="15" r="1.4"/><circle cx="19" cy="17" r="1"/><circle cx="5" cy="17" r="1.2"/></svg>'
+  gravel:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="7" cy="8" r="1.4"/><circle cx="13" cy="6" r="1.2"/><circle cx="17" cy="10" r="1.3"/><circle cx="9" cy="13" r="1.1"/><circle cx="15" cy="15" r="1.4"/><circle cx="19" cy="17" r="1"/><circle cx="5" cy="17" r="1.2"/></svg>',
+  incline:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20l7-12 4 6 7-11"/><path d="M17 3h4v4"/></svg>'
 };
 
 /* ---------- state ---------- */
@@ -613,6 +627,7 @@ var state = {
   voiceOn: localStorage.getItem("ebm_voice") !== "off",
   capacityWh: Number(localStorage.getItem("ebm_capacity")) || 500,
   chargePct: Number(localStorage.getItem("ebm_charge")) || 100,
+  riderWeightKg: Number(localStorage.getItem("ebm_weightkg")) || 90,
   userLatLng: null,
   headingDeg: null,
   destination: null,
@@ -644,6 +659,7 @@ var state = {
   lastGoodFixTime: null,
   speedOverStreak: 0,
   lastSpeedWarnAt: null,
+  lowBatteryWarned: false,
   sheetState: "hidden",
   dragStartY: 0, dragStartTransform: 0, dragging:false
 };
@@ -720,8 +736,19 @@ function toast(msg, ms){
 
 var tiles, map;
 
+// "Auto" prefers the real local sunrise/sunset over the OS's light/dark
+// setting once a location is known -- that setting reflects taste, not
+// whether it's actually dark where you're riding right now. Falls back to
+// the OS preference before any location fix has come in.
 function effectiveTheme(){
   if(state.theme!=="auto") return state.theme;
+  if(state.userLatLng){
+    var times = sunTimesFor(state.userLatLng.lat, state.userLatLng.lon, new Date());
+    if(times){
+      var now = Date.now();
+      return (now < times.sunrise.getTime() || now >= times.sunset.getTime()) ? "dark" : "light";
+    }
+  }
   return (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark":"light";
 }
 function applyTheme(){
@@ -729,6 +756,13 @@ function applyTheme(){
   document.body.setAttribute("data-theme", eff);
   $("themeBtn").classList.toggle("active", state.theme!=="auto");
   renderRouteLines();
+}
+// Cheap re-check for call sites (a GPS fix, a fresh locate) that run often --
+// only touches the DOM and re-renders route lines when the theme actually
+// flips, not on every call.
+function refreshAutoTheme(){
+  if(state.theme!=="auto") return;
+  if(document.body.getAttribute("data-theme")!==effectiveTheme()) applyTheme();
 }
 
 /* ---------- map init ---------- */
@@ -821,6 +855,7 @@ function locateMe(fly){
     state.userLatLng = { lat:pos.coords.latitude, lon:pos.coords.longitude };
     setUserMarker(state.userLatLng.lat, state.userLatLng.lon, null);
     if(fly) map.flyTo([state.userLatLng.lat, state.userLatLng.lon], 15);
+    refreshAutoTheme();
     fetchCurrentTemp();
     fetchNearbyTransit(state.userLatLng.lat, state.userLatLng.lon);
   }, function(){
@@ -832,6 +867,7 @@ function useFallbackStart(){
   if(state.userLatLng) return;
   state.userLatLng = { lat:FALLBACK_START.lat, lon:FALLBACK_START.lon };
   setUserMarker(state.userLatLng.lat, state.userLatLng.lon, null);
+  refreshAutoTheme();
   fetchCurrentTemp();
   fetchNearbyTransit(state.userLatLng.lat, state.userLatLng.lon);
 }
@@ -1433,6 +1469,7 @@ function applyRouteResponse(data, ep){
   var waypointNames = state.waypoints.map(function(w){ return w.name; });
   state.routes = data.routes.map(function(r){ return parseRoute(r, waypointNames); });
   state.activeRoute = 0;
+  state.currentStep = 0; // a freshly fetched route always starts at its first step; startNavigation() leaves this alone so a resumed-from-cache ride can pick up where it left off
   state.routeNotBikeAware = !ep.bikeAware;
   map.fitBounds(L.latLngBounds(state.routes[0].latlngs), { padding:[60,60] });
   renderRouteLines();
@@ -1469,7 +1506,7 @@ function parseRoute(r, waypointNames){
   return {
     latlngs:latlngs, distanceM:r.distance, osrmDurationS:r.duration,
     durationMin: (r.distance/1000)/getAssistLevels()[state.assist].speedKmh*60, steps:steps,
-    elevationGainM:null, elevationLossM:null, elevationProfile:null, elevationPending:false
+    elevationGainM:null, elevationLossM:null, elevationProfile:null, elevationSamplePoints:null, elevationPending:false
   };
 }
 
@@ -1504,6 +1541,7 @@ function fetchElevation(route){
       var gain=0, loss=0;
       for(var i=1;i<elevs.length;i++){ var d=elevs[i]-elevs[i-1]; if(d>0) gain+=d; else loss+=-d; }
       route.elevationProfile = elevs; route.elevationGainM = gain; route.elevationLossM = loss; route.elevationPending=false;
+      route.elevationSamplePoints = sample; // same order as elevationProfile, needed to turn elevation deltas into a grade
       if(!state.navigating){ showRouteCard(); renderRouteLines(); }
     })
     .catch(function(){ clearTimeout(to); route.elevationPending=false; if(!state.navigating) showRouteCard(); });
@@ -1519,6 +1557,31 @@ function flattestRouteIndex(){
   return (allResolved && state.routes.length>1) ? best : -1;
 }
 
+// Flags the single steepest climb or descent along the route, from the same
+// elevation samples already fetched for the gain/loss totals -- no extra
+// API call. Approximate by nature (the samples are spaced every few hundred
+// meters on a longer ride, not continuous), so this calls out the worst
+// grade it can see rather than claiming to catch every steep stretch.
+var STEEP_GRADE_WARN_PCT = 8;
+function steepestGradeSegment(route){
+  if(!route.elevationProfile || !route.elevationSamplePoints || route.elevationProfile.length<2) return null;
+  // The two arrays are built 1:1 at request time, but a malformed elevation
+  // response (wrong count) would silently misalign them -- bail rather than
+  // index past the shorter one.
+  if(route.elevationProfile.length !== route.elevationSamplePoints.length) return null;
+  var pts = route.elevationSamplePoints, elevs = route.elevationProfile;
+  var distFromStartM = 0, worst = null;
+  for(var i=1;i<elevs.length;i++){
+    var segM = haversine(pts[i-1][0],pts[i-1][1], pts[i][0],pts[i][1]);
+    if(segM>=5){ // skip near-zero-distance pairs, where elevation noise swings the % wildly
+      var gradePct = ((elevs[i]-elevs[i-1])/segM)*100;
+      if(!worst || Math.abs(gradePct)>Math.abs(worst.gradePct)) worst = { gradePct:gradePct, distFromStartM:distFromStartM, climbing:gradePct>0 };
+    }
+    distFromStartM += segM;
+  }
+  return (worst && Math.abs(worst.gradePct)>=STEEP_GRADE_WARN_PCT) ? worst : null;
+}
+
 /* ---------- energy model ---------- */
 
 function batteryTempFactor(tempC){
@@ -1532,10 +1595,11 @@ function batteryTempFactor(tempC){
 }
 function energyForRoute(route){
   var km = route.distanceM/1000;
-  var base = km*getAssistLevels()[state.assist].whPerKm;
+  var wf = weightFactor();
+  var base = km*getAssistLevels()[state.assist].whPerKm*wf;
   var climb = 0;
   if(route.elevationGainM!=null){
-    climb = (route.elevationGainM/100)*CLIMB_WH_PER_100M + (route.elevationLossM/100)*DESCENT_WH_PER_100M;
+    climb = ((route.elevationGainM/100)*CLIMB_WH_PER_100M + (route.elevationLossM/100)*DESCENT_WH_PER_100M)*wf;
   }
   return Math.max(0, (base+climb)*batteryTempFactor(state.currentTempC));
 }
@@ -1664,7 +1728,7 @@ function showRouteCard(){
   var energy = energyForRoute(r);
   var avail = availableWh();
   var insufficient = energy > avail*0.92;
-  var ecoEnergy = (r.distanceM/1000*getAssistLevels().eco.whPerKm + (r.elevationGainM!=null ? (r.elevationGainM/100)*CLIMB_WH_PER_100M + (r.elevationLossM/100)*DESCENT_WH_PER_100M : 0))*batteryTempFactor(state.currentTempC);
+  var ecoEnergy = (r.distanceM/1000*getAssistLevels().eco.whPerKm*weightFactor() + (r.elevationGainM!=null ? ((r.elevationGainM/100)*CLIMB_WH_PER_100M + (r.elevationLossM/100)*DESCENT_WH_PER_100M)*weightFactor() : 0))*batteryTempFactor(state.currentTempC);
   var ecoWouldWork = ecoEnergy <= avail*0.92;
   var flattest = flattestRouteIndex();
 
@@ -1680,6 +1744,11 @@ function showRouteCard(){
   if(routeHasUnpavedSurface(r)){
     html += '<div class="banner info">'+ICONS.gravel+
       '<div><b>Includes unpaved sections</b>Part of this route crosses gravel, dirt, or another unpaved surface (marked below) — may be slower or trickier depending on your tires.</div></div>';
+  }
+  var steepGrade = steepestGradeSegment(r);
+  if(steepGrade){
+    html += '<div class="banner info">'+ICONS.incline+
+      '<div><b>Includes a steep '+(steepGrade.climbing?"climb":"descent")+'</b>About '+Math.round(Math.abs(steepGrade.gradePct))+'% grade, roughly '+fmtDist(steepGrade.distFromStartM)+' into the ride.</div></div>';
   }
   var rain = rainDuringRide(r.durationMin);
   if(rain){
@@ -1859,6 +1928,7 @@ function stepRowHtml(s,i,all){
 function clearRoute(){
   state.routes=[]; state.destination=null; state.routeNotBikeAware=false;
   state.waypoints=[]; state.addingStop=false;
+  clearNavSnapshot();
   clearRouteLines();
   clearBikeLaneLayers();
   state.bikeLanes=[]; bikeLaneFetchedForDest=null;
@@ -1891,6 +1961,12 @@ function refreshSettingsPaceUI(){
   wireAssistRow("assistRowSettings");
   if($("paceCalibrationNoteSettings")) $("paceCalibrationNoteSettings").textContent = paceCalibrationNote();
 }
+function refreshWeightInput(){
+  if(!$("weightInput")) return;
+  var isLb = state.units==="mi";
+  $("weightInput").value = Math.round(isLb ? kgToLb(state.riderWeightKg) : state.riderWeightKg);
+  $("weightUnitLabel").textContent = isLb ? "lb" : "kg";
+}
 function wireClassRow(){
   Array.prototype.forEach.call(document.querySelectorAll("#classRowSettings .class-chip"), function(el){
     el.addEventListener("click", function(){ setBikeClass(el.getAttribute("data-k")); });
@@ -1915,11 +1991,13 @@ function startNavigation(){
   // scroll. Blur and snap back before anything else moves.
   if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
   window.scrollTo(0,0);
-  state.navigating=true; state.currentStep=0;
+  state.navigating=true;
   state.offRouteStreak=0; state.rerouting=false; state.lastGoodFixTime=null;
   state.speedOverStreak=0; state.lastSpeedWarnAt=null;
+  state.lowBatteryWarned=false;
   var r = state.routes[state.activeRoute];
   state.tripStart = { time:Date.now(), distanceM:r.distanceM, energyWh:energyForRoute(r), destName:state.destination.name, assistLevel:state.assist, bikeClass:state.bikeClass };
+  saveNavSnapshot();
   $("navOverlay").classList.remove("hidden");
   $("searchLayer").classList.add("hidden");
   $("fab-stack"); document.querySelector(".fab-stack").classList.add("hidden");
@@ -1930,7 +2008,7 @@ function startNavigation(){
   if(navigator.geolocation){
     state.watchId = navigator.geolocation.watchPosition(onNavPosition, function(){ /* keep last known */ }, { enableHighAccuracy:true, maximumAge:1000, timeout:10000 });
   }
-  speak("Starting navigation. " + stepText(state.routes[state.activeRoute].steps[0]));
+  speak("Starting navigation. " + stepText(state.routes[state.activeRoute].steps[state.currentStep]));
 }
 
 function exitNavigation(){
@@ -1940,7 +2018,48 @@ function exitNavigation(){
   $("searchLayer").classList.remove("hidden");
   document.querySelector(".fab-stack").classList.remove("hidden");
   logTrip();
+  clearNavSnapshot();
   if(state.routes.length){ renderRouteLines(); showRouteCard(); }
+}
+
+/* ---------- resume-in-progress-ride (survives a reload/crash with no network needed) ---------- */
+
+var LAST_NAV_KEY = "ebm_lastnav";
+var LAST_NAV_MAX_AGE_MS = 3*60*60*1000; // offer to resume for a few hours; anything older is almost certainly a finished ride
+
+// Written on starting navigation and on every step advance -- cheap, and
+// infrequent enough that it's never a meaningful write-volume concern.
+// Everything needed to show the route and tap Start Navigation again (the
+// destination, any stops, the full parsed route, which step we were on)
+// comes back out of this with no fetch required, so a dropped connection
+// or a killed tab in a dead zone doesn't strand the rider without guidance.
+function saveNavSnapshot(){
+  if(!state.navigating || !state.destination) return;
+  saveJSON(LAST_NAV_KEY, {
+    destination: state.destination,
+    waypoints: state.waypoints,
+    route: state.routes[state.activeRoute],
+    currentStep: state.currentStep,
+    savedAt: Date.now()
+  });
+}
+function clearNavSnapshot(){
+  try{ localStorage.removeItem(LAST_NAV_KEY); }catch(e){}
+}
+function restoreLastNav(){
+  var snap = loadJSON(LAST_NAV_KEY, null);
+  if(!snap || !snap.route || !snap.destination){ return; }
+  if(!snap.savedAt || Date.now()-snap.savedAt > LAST_NAV_MAX_AGE_MS){ clearNavSnapshot(); return; }
+  state.destination = snap.destination;
+  state.waypoints = snap.waypoints || [];
+  state.routes = [snap.route];
+  state.activeRoute = 0;
+  state.currentStep = snap.currentStep || 0;
+  setDestMarker(state.destination.lat, state.destination.lon);
+  setStopMarkers();
+  renderRouteLines();
+  showRouteCard();
+  toast("Restored your route to "+state.destination.name+" from before — tap Start Navigation to continue.", 5000);
 }
 
 function logTrip(){
@@ -2043,6 +2162,7 @@ function onNavPosition(pos){
   setUserMarker(lat,lon,heading);
   map.panTo([lat,lon], { animate:true });
   checkSpeedAgainstClass(pos.coords.speed);
+  refreshAutoTheme(); // so a ride that crosses sunset switches to the dark map on its own
 
   var route = state.routes[state.activeRoute];
   if(!route) return;
@@ -2074,6 +2194,7 @@ function onNavPosition(pos){
         state.currentStep++;
         renderNavStep();
         speak(stepText(route.steps[state.currentStep]));
+        saveNavSnapshot();
       } else {
         renderNavStep(d);
       }
@@ -2133,6 +2254,7 @@ function tryRerouteEndpoint(coords, i, waypointNames){
       renderNavStep();
       updateNavStats();
       fetchElevation(newRoute);
+      saveNavSnapshot();
       state.rerouting = false;
       speak(stepText(newRoute.steps[0]));
     })
@@ -2155,6 +2277,17 @@ function renderNavStep(distOverride){
   $("navDistance").textContent = fmtDist(d);
 }
 
+var LOW_BATTERY_WARN_PCT = 15;
+// Fires once per ride, the moment projected charge first dips under the
+// threshold -- the ".low" red number is a passive, always-visible cue, but
+// a rider glancing at turn-by-turn instructions instead of the stat row
+// could easily miss it crossing the line, so this also gets an active nudge.
+function checkLowBatteryDuringRide(pct){
+  if(state.lowBatteryWarned || pct==null || pct>=LOW_BATTERY_WARN_PCT) return;
+  state.lowBatteryWarned = true;
+  toast("Battery running low ("+pct+"%) — consider Eco mode or finding a charge soon.", 4500);
+}
+
 function updateNavStats(){
   var route = state.routes[state.activeRoute];
   var remainingM = route.steps.slice(state.currentStep).reduce(function(s,st){ return s+st.distance; }, 0) || route.distanceM;
@@ -2167,6 +2300,7 @@ function updateNavStats(){
   var pct = state.capacityWh>0 ? clamp(Math.round(remainingWh/state.capacityWh*100),0,100) : 0;
   $("navBattery").textContent = pct+"%";
   document.querySelector(".nav-stat.battery").classList.toggle("low", pct<15);
+  checkLowBatteryDuringRide(pct);
 }
 
 function recenterNav(){ if(state.userLatLng) map.setView([state.userLatLng.lat, state.userLatLng.lon], 17); }
@@ -2255,6 +2389,7 @@ function openSettings(){
   $("capacityInput").value = state.capacityWh;
   $("chargeRange").value = state.chargePct;
   $("chargeLabel").textContent = state.chargePct+"%";
+  refreshWeightInput();
   setSeg("unitsSeg", state.units);
   setSeg("themeSeg", state.theme);
   setSeg("voiceSeg", state.voiceOn?"on":"off");
@@ -2500,12 +2635,20 @@ function wireUI(){
   });
 
   $("capacityInput").addEventListener("change", function(e){ state.capacityWh=clamp(Number(e.target.value)||500,50,3000); localStorage.setItem("ebm_capacity",state.capacityWh); if(state.routes.length) showRouteCard(); });
+  $("weightInput").addEventListener("change", function(e){
+    var entered = Number(e.target.value) || (state.units==="mi" ? kgToLb(WEIGHT_BASELINE_KG) : WEIGHT_BASELINE_KG);
+    state.riderWeightKg = clamp(state.units==="mi" ? lbToKg(entered) : entered, 30, 300);
+    localStorage.setItem("ebm_weightkg", state.riderWeightKg);
+    refreshWeightInput();
+    if(state.routes.length) showRouteCard();
+  });
   $("chargeRange").addEventListener("input", function(e){ state.chargePct=Number(e.target.value); $("chargeLabel").textContent=state.chargePct+"%"; localStorage.setItem("ebm_charge",state.chargePct); if(state.routes.length) showRouteCard(); });
 
   wireSeg("unitsSeg", function(v){
     state.units=v; localStorage.setItem("ebm_units",v);
     $("classRowSettings").innerHTML = buildClassRow(); wireClassRow();
     refreshSettingsPaceUI();
+    refreshWeightInput();
     if(state.routes.length) showRouteCard();
   });
   wireSeg("themeSeg", function(v){ state.theme=v; localStorage.setItem("ebm_theme",v); applyTheme(); });
@@ -2564,6 +2707,7 @@ function boot(){
     initDrag();
     wireUI();
     locateMe(false);
+    restoreLastNav();
   }catch(e){
     console.error(e);
     toast("Something went wrong starting the map.");
