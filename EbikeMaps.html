@@ -96,6 +96,13 @@
   .transit-pin.subway{color:#fff;background:#0039a6;border-color:#0039a6;}
   .transit-pin.ferry{color:#fff;background:#00838f;border-color:#00838f;}
   .transit-pin.parking{color:#fff;background:#2e7d32;border-color:#2e7d32;}
+  .transit-pin.charging{color:#fff;background:#f57f17;border-color:#f57f17;}
+  .park-pin{width:30px;height:30px;border-radius:50%;background:#6a1b9a;color:#fff;border:2px solid #fff;
+    box-shadow:0 1px 4px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;}
+  .park-pin svg{width:16px;height:16px;}
+  .park-popup{font-size:13px;font-weight:600;}
+  .park-popup button{margin-top:6px;background:var(--danger);color:#fff;border:none;border-radius:8px;
+    padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;display:block;}
   .stop-marker{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;
     font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;
     box-shadow:0 1px 4px rgba(0,0,0,.35);transform:translate(-11px,-11px);}
@@ -276,6 +283,9 @@
   <button class="fab" id="locateBtn" aria-label="My location">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
   </button>
+  <button class="fab" id="parkBtn" aria-label="Mark where you parked">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+  </button>
 </div>
 
 <div class="sheet" id="sheet" data-state="hidden">
@@ -347,6 +357,13 @@
     <button data-v="off">Off</button>
   </div>
   <p class="hint">Shows bike parking/racks near your destination, so you know where to actually lock up.</p>
+
+  <div class="section-title">Charging stations</div>
+  <div class="seg" id="chargingSeg">
+    <button data-v="on" class="active">On</button>
+    <button data-v="off">Off</button>
+  </div>
+  <p class="hint">Shows nearby e-bike charging or battery-swap points on the map — useful for planning a top-up on longer rides.</p>
 
   <div class="section-title">Bike lanes</div>
   <div class="seg" id="bikeLanesSeg">
@@ -637,7 +654,9 @@ var ICONS = {
   flag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 3v18"/><path d="M5 4h11l-2.5 4L16 12H5"/></svg>',
   moon:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.4 14.7A8.3 8.3 0 1110 3.1a6.6 6.6 0 1010.4 11.6z"/></svg>',
   gravel:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="7" cy="8" r="1.4"/><circle cx="13" cy="6" r="1.2"/><circle cx="17" cy="10" r="1.3"/><circle cx="9" cy="13" r="1.1"/><circle cx="15" cy="15" r="1.4"/><circle cx="19" cy="17" r="1"/><circle cx="5" cy="17" r="1.2"/></svg>',
-  incline:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20l7-12 4 6 7-11"/><path d="M17 3h4v4"/></svg>'
+  incline:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20l7-12 4 6 7-11"/><path d="M17 3h4v4"/></svg>',
+  charging:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>',
+  lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>'
 };
 
 /* ---------- state ---------- */
@@ -662,6 +681,7 @@ var state = {
   routeNotBikeAware: false,
   showTransit: localStorage.getItem("ebm_showtransit") !== "off",
   showParking: localStorage.getItem("ebm_showparking") !== "off",
+  showCharging: localStorage.getItem("ebm_showcharging") !== "off",
   showBikeLanes: localStorage.getItem("ebm_showbikelanes") === "on",
   showSurfaceWarnings: localStorage.getItem("ebm_showsurfacewarn") !== "off",
   bikeLanes: [],
@@ -670,6 +690,7 @@ var state = {
   recents: loadJSON("ebm_recents", []),
   savedRoutes: loadJSON("ebm_savedroutes", []),
   tripHistory: loadJSON("ebm_trips", []),
+  parkingPin: loadJSON("ebm_parkingpin", null),
   pendingFavoriteSlot: null,
   pendingFavoriteLabel: null,
   currentTempC: null,
@@ -678,6 +699,7 @@ var state = {
   navigating: false,
   followMode: true,
   currentStep: 0,
+  advanceWarnedStep: -1,
   watchId: null,
   offRouteStreak: 0,
   rerouting: false,
@@ -772,6 +794,25 @@ function updateOfflineBanner(){
 }
 window.addEventListener("online", updateOfflineBanner);
 window.addEventListener("offline", updateOfflineBanner);
+
+/* ---------- keep the screen on during navigation ---------- */
+
+var wakeLock = null;
+function requestWakeLock(){
+  if(!("wakeLock" in navigator)) return;
+  navigator.wakeLock.request("screen").then(function(lock){
+    wakeLock = lock;
+  }).catch(function(){ /* denied, low power mode, etc -- nav still works, the screen just may dim on its own */ });
+}
+function releaseWakeLock(){
+  if(wakeLock){ wakeLock.release().catch(function(){}); wakeLock=null; }
+}
+// The lock is auto-released by the browser whenever the tab/screen goes
+// hidden, and never reacquires itself -- re-request it on the way back if
+// a ride is still going, or the rest of the ride would get no lock at all.
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState==="visible" && state.navigating) requestWakeLock();
+});
 
 /* ---------- theme / map layers ---------- */
 
@@ -1017,14 +1058,14 @@ function rainDuringRide(rideMinutes){
 
 /* ---------- nearby transit (subway + ferry) + bike parking ---------- */
 
-var POI_ICON = { subway:ICONS.subway, ferry:ICONS.ferry, parking:ICONS.parking };
+var POI_ICON = { subway:ICONS.subway, ferry:ICONS.ferry, parking:ICONS.parking, charging:ICONS.charging };
 var transitMarkers = [];
 var transitQueriedAt = []; // [{lat,lon}] centers already fetched, to avoid redundant Overpass calls
 
 function fetchNearbyTransit(lat, lon){
   if(transitQueriedAt.some(function(c){ return haversine(lat,lon,c.lat,c.lon) < 500; })) return;
   transitQueriedAt.push({ lat:lat, lon:lon });
-  var query = "[out:json][timeout:15];(node[\"railway\"=\"station\"][\"station\"=\"subway\"](around:1500,"+lat+","+lon+");node[\"amenity\"=\"ferry_terminal\"](around:1500,"+lat+","+lon+");node[\"amenity\"=\"bicycle_parking\"](around:800,"+lat+","+lon+"););out body;";
+  var query = "[out:json][timeout:15];(node[\"railway\"=\"station\"][\"station\"=\"subway\"](around:1500,"+lat+","+lon+");node[\"amenity\"=\"ferry_terminal\"](around:1500,"+lat+","+lon+");node[\"amenity\"=\"bicycle_parking\"](around:800,"+lat+","+lon+");node[\"amenity\"=\"charging_station\"][\"bicycle\"=\"yes\"](around:1500,"+lat+","+lon+"););out body;";
   var ctrl = new AbortController();
   var to = setTimeout(function(){ ctrl.abort(); }, 10000);
   fetch("https://overpass-api.de/api/interpreter", {
@@ -1037,8 +1078,8 @@ function fetchNearbyTransit(lat, lon){
       state.transitPOIs.forEach(function(p){ existingIds[p.osmId]=true; });
       data.elements.forEach(function(el){
         if(existingIds[el.id]) return;
-        var kind = el.tags && el.tags.amenity==="ferry_terminal" ? "ferry" : el.tags && el.tags.amenity==="bicycle_parking" ? "parking" : "subway";
-        var defaultName = kind==="ferry" ? "Ferry terminal" : kind==="parking" ? "Bike parking" : "Subway station";
+        var kind = el.tags && el.tags.amenity==="ferry_terminal" ? "ferry" : el.tags && el.tags.amenity==="bicycle_parking" ? "parking" : el.tags && el.tags.amenity==="charging_station" ? "charging" : "subway";
+        var defaultName = kind==="ferry" ? "Ferry terminal" : kind==="parking" ? "Bike parking" : kind==="charging" ? "E-bike charging station" : "Subway station";
         // "capacity" is a free-text OSM tag, so only trust it when it actually
         // parses to a plain positive number -- not every mapper fills it in,
         // and some values are notes ("limited") rather than a count.
@@ -1062,7 +1103,9 @@ function clearTransitMarkers(){
 }
 
 function poiVisible(kind){
-  return (kind==="parking") ? state.showParking : state.showTransit;
+  if(kind==="parking") return state.showParking;
+  if(kind==="charging") return state.showCharging;
+  return state.showTransit;
 }
 
 function renderTransitMarkers(){
@@ -1087,6 +1130,45 @@ function nearestTransitPOI(lat, lon, kindFilter){
     if(d<bestD){ bestD=d; best=p; }
   });
   return best ? { poi:best, distM:bestD } : null;
+}
+
+/* ---------- "where did I park" pin ---------- */
+
+var parkMarker = null;
+
+// One pin at a time -- dropping a new one always means "I'm parking HERE
+// now", replacing wherever the last one was. Persisted so it survives a
+// reload and is still there if the app's closed between parking and
+// getting back to the bike.
+function markParkingSpot(){
+  if(!state.userLatLng){ toast("No location yet"); return; }
+  state.parkingPin = { lat:state.userLatLng.lat, lon:state.userLatLng.lon, time:Date.now() };
+  saveJSON("ebm_parkingpin", state.parkingPin);
+  renderParkingPin();
+  toast("Parking spot saved", 2000);
+}
+
+function clearParkingPin(){
+  state.parkingPin = null;
+  saveJSON("ebm_parkingpin", null);
+  renderParkingPin();
+  toast("Parking pin cleared", 1500);
+}
+
+function renderParkingPin(){
+  if(parkMarker){ map.removeLayer(parkMarker); parkMarker=null; }
+  $("parkBtn").classList.toggle("active", !!state.parkingPin);
+  if(!state.parkingPin) return;
+  var p = state.parkingPin;
+  parkMarker = L.marker([p.lat, p.lon], {
+    icon: L.divIcon({ className:"", html:'<div class="park-pin">'+ICONS.lock+'</div>', iconSize:[30,30] }),
+    zIndexOffset: 200
+  }).addTo(map);
+  parkMarker.bindPopup('<div class="park-popup">Parked here · '+fmtClock(new Date(p.time))+'<button id="clearParkPinBtn">Clear</button></div>');
+  parkMarker.on("popupopen", function(){
+    var btn = document.getElementById("clearParkPinBtn");
+    if(btn) btn.addEventListener("click", clearParkingPin);
+  });
 }
 
 /* ---------- bike lane overlay ---------- */
@@ -1522,6 +1604,7 @@ function applyRouteResponse(data, ep){
   state.routes = data.routes.map(function(r){ return parseRoute(r, waypointNames); });
   state.activeRoute = 0;
   state.currentStep = 0; // a freshly fetched route always starts at its first step; startNavigation() leaves this alone so a resumed-from-cache ride can pick up where it left off
+  state.advanceWarnedStep = -1;
   state.routeNotBikeAware = !ep.bikeAware;
   map.fitBounds(L.latLngBounds(state.routes[0].latlngs), { padding:[60,60] });
   renderRouteLines();
@@ -2081,7 +2164,9 @@ function startNavigation(){
   state.speedOverStreak=0; state.lastSpeedWarnAt=null;
   state.lowBatteryWarned=false;
   state.followMode=true;
+  state.advanceWarnedStep=-1;
   $("recenterBtn").classList.remove("active");
+  requestWakeLock();
   var r = state.routes[state.activeRoute];
   state.tripStart = {
     time:Date.now(), distanceM:r.distanceM, energyWh:energyForRoute(r), destName:state.destination.name, assistLevel:state.assist, bikeClass:state.bikeClass,
@@ -2104,6 +2189,7 @@ function startNavigation(){
 
 function exitNavigation(){
   state.navigating=false;
+  releaseWakeLock();
   if(state.watchId!=null && navigator.geolocation){ navigator.geolocation.clearWatch(state.watchId); state.watchId=null; }
   $("navOverlay").classList.add("hidden");
   $("searchLayer").classList.remove("hidden");
@@ -2146,6 +2232,7 @@ function restoreLastNav(){
   state.routes = [snap.route];
   state.activeRoute = 0;
   state.currentStep = snap.currentStep || 0;
+  state.advanceWarnedStep = -1;
   setDestMarker(state.destination.lat, state.destination.lon);
   setStopMarkers();
   renderRouteLines();
@@ -2177,6 +2264,7 @@ function logTrip(){
 }
 
 var GPS_ACCURACY_LIMIT_M = 50;   // ignore fixes worse than this unless we're starved for one
+var ADVANCE_WARN_M = 150;  // how far ahead of a maneuver to speak an early heads-up, once per step
 var OFF_ROUTE_THRESHOLD_M = 40;  // how far from the route line counts as "off it"
 var OFF_ROUTE_STREAK_NEEDED = 3; // consecutive bad fixes required before rerouting (debounces GPS noise)
 var SPEED_WARN_MARGIN = 1.1;        // must clear the class's cutoff by this much -- GPS speed jitters
@@ -2303,6 +2391,16 @@ function onNavPosition(pos){
     var nextStep = route.steps[state.currentStep+1];
     if(nextStep){
       var d = haversine(lat,lon, nextStep.location[0], nextStep.location[1]);
+      // One early heads-up per step, gated on the CURRENT segment's own
+      // length (step.distance -- the stretch between this maneuver and the
+      // next one), not the next step's: a short current segment means
+      // you're already nearly on top of the upcoming maneuver, so an
+      // "advance" warning would land right next to the arrival announcement
+      // below instead of giving any real lead time.
+      if(step.distance >= ADVANCE_WARN_M && d < ADVANCE_WARN_M && d >= 25 && state.advanceWarnedStep !== state.currentStep){
+        state.advanceWarnedStep = state.currentStep;
+        speak("In " + fmtDist(d) + ", " + stepText(nextStep));
+      }
       if(d<25){
         state.currentStep++;
         renderNavStep();
@@ -2363,6 +2461,7 @@ function tryRerouteEndpoint(coords, i, waypointNames){
       state.routes = [newRoute];
       state.activeRoute = 0;
       state.currentStep = 0;
+      state.advanceWarnedStep = -1;
       state.routeNotBikeAware = !ep.bikeAware;
       renderRouteLines();
       renderNavStep();
@@ -2522,6 +2621,7 @@ function openSettings(){
   setSeg("hapticSeg", state.hapticOn?"on":"off");
   setSeg("transitSeg", state.showTransit?"on":"off");
   setSeg("parkingSeg", state.showParking?"on":"off");
+  setSeg("chargingSeg", state.showCharging?"on":"off");
   setSeg("bikeLanesSeg", state.showBikeLanes?"on":"off");
   setSeg("surfaceWarnSeg", state.showSurfaceWarnings?"on":"off");
   renderSavedPlaces();
@@ -2830,6 +2930,12 @@ function wireUI(){
     else renderTransitMarkers();
     if(state.routes.length && !state.navigating) showRouteCard();
   });
+  wireSeg("chargingSeg", function(v){
+    state.showCharging = v==="on";
+    localStorage.setItem("ebm_showcharging", v);
+    if(state.showCharging && !state.transitPOIs.length && state.userLatLng) fetchNearbyTransit(state.userLatLng.lat, state.userLatLng.lon);
+    else renderTransitMarkers();
+  });
   wireSeg("bikeLanesSeg", function(v){
     state.showBikeLanes = v==="on";
     localStorage.setItem("ebm_showbikelanes", v);
@@ -2849,6 +2955,7 @@ function wireUI(){
     applyTheme();
   });
   $("locateBtn").addEventListener("click", function(){ locateMe(true); });
+  $("parkBtn").addEventListener("click", markParkingSpot);
   $("zoomInBtn").addEventListener("click", function(){ map.zoomIn(); });
   $("zoomOutBtn").addEventListener("click", function(){ map.zoomOut(); });
 
@@ -2883,7 +2990,7 @@ function boot(){
   // app -- button wiring, the offline banner, everything -- still needs a
   // chance to run instead of the single earliest failure taking all of it
   // down silently.
-  try{ initMap(); }catch(e){ console.error("initMap failed:", e); toast("Map failed to load — some features may not work until you're back online.", 5000); }
+  try{ initMap(); renderParkingPin(); }catch(e){ console.error("initMap failed:", e); toast("Map failed to load — some features may not work until you're back online.", 5000); }
   try{
     initDrag();
     wireUI();
