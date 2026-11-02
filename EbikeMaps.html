@@ -194,6 +194,9 @@
   .nav-overlay.showing{pointer-events:none;}
   .nav-banner{pointer-events:auto;margin:max(12px,env(safe-area-inset-top)) 12px 0;background:var(--card-solid);
     border-radius:16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:14px;padding:14px 16px;}
+  .offline-banner{pointer-events:auto;background:var(--danger);color:#fff;font-size:12.5px;font-weight:700;
+    text-align:center;padding:9px 14px;border-radius:12px;margin:0 0 8px;box-shadow:var(--shadow);}
+  .nav-overlay .offline-banner{margin:max(12px,env(safe-area-inset-top)) 12px 8px;}
   .nav-icon{flex:none;width:46px;height:46px;border-radius:12px;background:var(--accent);color:#fff;
     display:flex;align-items:center;justify-content:center;}
   .nav-icon.warn{background:var(--danger);}
@@ -242,6 +245,7 @@
 <div id="map"></div>
 
 <div class="ui-layer" id="searchLayer">
+  <div class="offline-banner hidden" id="offlineBannerSearch">You are offline, connect to the Internet or cellular services</div>
   <div class="topbar">
     <div class="search-pill" id="searchPill">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
@@ -395,6 +399,7 @@
 </div>
 
 <div class="nav-overlay hidden" id="navOverlay">
+  <div class="offline-banner hidden" id="offlineBannerNav">You are offline, connect to the Internet or cellular services</div>
   <div class="nav-banner">
     <div class="nav-icon" id="navIcon"></div>
     <div class="nav-text">
@@ -412,6 +417,7 @@
     <div class="nav-stat"><span id="navEta">–</span><label>Arrival</label></div>
     <div class="nav-stat"><span id="navRemaining">–</span><label>Remaining</label></div>
     <div class="nav-stat battery"><span id="navBattery">–</span><label>Battery</label></div>
+    <div class="nav-stat"><span id="navSpeed">–</span><label>Speed</label></div>
     <button class="icon-btn-lg" id="reportMapIssueBtn" aria-label="Report a map problem here">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
     </button>
@@ -460,7 +466,13 @@ var CALIBRATION_MAX_TRIPS_USED = 8;
 // enough history yet (or for a pace/class combo never ridden).
 function calibratedSpeedKmh(level){
   var qualifying = state.tripHistory.filter(function(t){
-    return t.assistLevel===level && t.bikeClass===state.bikeClass &&
+    // completed===true only -- a trip ended before reaching the destination
+    // pairs the FULL planned distance against however much time was
+    // actually spent riding only part of it, inflating the apparent pace
+    // (sometimes wildly, if navigation was started and exited again right
+    // away). Older trips logged before this field existed have no way to
+    // tell, so they're excluded too rather than assumed good.
+    return t.completed===true && t.assistLevel===level && t.bikeClass===state.bikeClass &&
       t.elapsedMin>=CALIBRATION_MIN_ELAPSED_MIN && t.distanceM>=CALIBRATION_MIN_DIST_M;
   }).slice(0, CALIBRATION_MAX_TRIPS_USED);
   if(qualifying.length<CALIBRATION_MIN_TRIPS) return null;
@@ -742,6 +754,22 @@ function toast(msg, ms){
   clearTimeout(t._h);
   t._h=setTimeout(function(){ t.classList.add("hidden"); }, ms||2600);
 }
+
+/* ---------- offline banner ---------- */
+
+// A persistent banner (not a toast -- being offline isn't a one-off event,
+// it's a state that can last a while) in both places the top of the screen
+// can look like: the search/route-card layer and the nav overlay. Shown
+// and hidden together, driven by the standard online/offline events plus
+// an initial check at boot in case the device launches already offline.
+function updateOfflineBanner(){
+  var offline = !navigator.onLine;
+  Array.prototype.forEach.call(document.querySelectorAll(".offline-banner"), function(el){
+    el.classList.toggle("hidden", !offline);
+  });
+}
+window.addEventListener("online", updateOfflineBanner);
+window.addEventListener("offline", updateOfflineBanner);
 
 /* ---------- theme / map layers ---------- */
 
@@ -2113,11 +2141,20 @@ function restoreLastNav(){
 function logTrip(){
   if(!state.tripStart) return;
   var elapsedMin = (Date.now()-state.tripStart.time)/60000;
+  // distanceM/energyWh are the FULL planned route, recorded when navigation
+  // started -- if the ride was exited before reaching the last ("arrive")
+  // step, elapsedMin only covers however much of that distance was actually
+  // ridden, so distance/time together would wildly overstate the pace.
+  // Tag it rather than drop it (it's still a real, worth-keeping trip record)
+  // and let calibration below decide what to do with that.
+  var route = state.routes[state.activeRoute];
+  var completed = !!(route && state.currentStep >= route.steps.length-1);
   state.tripHistory.unshift({
     date:Date.now(), destName:state.tripStart.destName,
     distanceM:state.tripStart.distanceM, energyWh:state.tripStart.energyWh, elapsedMin:elapsedMin,
     assistLevel:state.tripStart.assistLevel, bikeClass:state.tripStart.bikeClass,
-    destination:state.tripStart.destination, waypoints:state.tripStart.waypoints
+    destination:state.tripStart.destination, waypoints:state.tripStart.waypoints,
+    completed:completed
   });
   state.tripHistory = state.tripHistory.slice(0,50);
   saveJSON("ebm_trips", state.tripHistory);
@@ -2195,6 +2232,17 @@ function checkSpeedAgainstClass(speedMs){
   toast("Past your "+BIKE_CLASSES[state.bikeClass].label+" cutoff ("+fmtSpeed(cutoff)+") — fine if you're coasting, the motor should already be easing off.", 4500);
 }
 
+// Live speedometer in the nav stat row -- whole numbers only (no decimal),
+// since a live GPS readout jitters enough that a tenths digit would just
+// flicker distractingly without adding real information.
+function updateSpeedDisplay(speedMs){
+  var el = $("navSpeed");
+  if(!el) return;
+  if(speedMs==null){ el.textContent = "–"; return; }
+  var kmh = speedMs*3.6;
+  el.textContent = (state.units==="mi" ? Math.round(kmh/1.60934)+" mph" : Math.round(kmh)+" km/h");
+}
+
 function onNavPosition(pos){
   var lat=pos.coords.latitude, lon=pos.coords.longitude;
   var acc = pos.coords.accuracy;
@@ -2211,6 +2259,7 @@ function onNavPosition(pos){
   setUserMarker(lat,lon,heading);
   map.panTo([lat,lon], { animate:true });
   checkSpeedAgainstClass(pos.coords.speed);
+  updateSpeedDisplay(pos.coords.speed);
   refreshAutoTheme(); // so a ride that crosses sunset switches to the dark map on its own
 
   var route = state.routes[state.activeRoute];
@@ -2567,7 +2616,7 @@ function renderTripHistory(){
     // Older trips logged before "Ride again" existed have no saved destination to go back to.
     var rideAgainBtn = t.destination ? '<button class="secondary-btn" data-ride-again="'+i+'" style="flex:none;width:auto;padding:6px 10px;font-size:12px;margin-left:8px;align-self:center;">Ride again</button>' : '';
     return '<div class="step-row"><div class="step-icon">'+ICONS.clock+'</div><div style="min-width:0;flex:1;"><div class="step-text">'+escapeHtml(t.destName)+'</div>'+
-      '<div class="step-meta">'+d.toLocaleDateString()+' · '+fmtDist(t.distanceM)+' · '+Math.round(t.energyWh)+' Wh</div></div>'+rideAgainBtn+'</div>';
+      '<div class="step-meta">'+d.toLocaleDateString()+' · '+fmtDist(t.distanceM)+' · '+Math.round(t.energyWh)+' Wh'+(t.completed===false?' · ended early':'')+'</div></div>'+rideAgainBtn+'</div>';
   }).join("");
   Array.prototype.forEach.call(listBox.querySelectorAll("[data-ride-again]"), function(btn){
     btn.addEventListener("click", function(){
@@ -2585,11 +2634,12 @@ function exportTripsCsv(){
     var s = String(v==null?"":v);
     return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
   }
-  var header = ["Date","Destination","Distance (km)","Battery (Wh)","Duration (min)","Pace","Bike class"];
+  var header = ["Date","Destination","Distance (km)","Battery (Wh)","Duration (min)","Pace","Bike class","Completed"];
   var rows = state.tripHistory.map(function(t){
     return [
       new Date(t.date).toISOString(), t.destName, (t.distanceM/1000).toFixed(2),
-      Math.round(t.energyWh), Math.round(t.elapsedMin), t.assistLevel, t.bikeClass
+      Math.round(t.energyWh), Math.round(t.elapsedMin), t.assistLevel, t.bikeClass,
+      t.completed===false ? "No" : (t.completed===true ? "Yes" : "Unknown")
     ];
   });
   var csv = [header].concat(rows).map(function(row){ return row.map(csvCell).join(","); }).join("\r\n");
@@ -2812,6 +2862,7 @@ function boot(){
     initMap();
     initDrag();
     wireUI();
+    updateOfflineBanner();
     locateMe(false);
     restoreLastNav();
     handleLaunchShortcut();
