@@ -322,6 +322,13 @@
     <button data-v="off">Off</button>
   </div>
 
+  <div class="section-title">Haptic feedback</div>
+  <div class="seg" id="hapticSeg">
+    <button data-v="on" class="active">On</button>
+    <button data-v="off">Off</button>
+  </div>
+  <p class="hint">A short vibration each time you reach a turn — handy when you're not looking at the screen. Only works on devices/browsers that support it; does nothing otherwise.</p>
+
   <div class="section-title">Nearby transit</div>
   <div class="seg" id="transitSeg">
     <button data-v="on" class="active">On</button>
@@ -371,7 +378,10 @@
   <div class="section-title">Trip history</div>
   <div id="tripSummary"></div>
   <div id="tripList"></div>
-  <button class="secondary-btn" id="clearTripsBtn" style="width:100%;margin-top:8px;">Clear trip history</button>
+  <div class="secondary-row" style="margin-top:8px;">
+    <button class="secondary-btn" id="exportTripsBtn">Export CSV</button>
+    <button class="secondary-btn" id="clearTripsBtn">Clear trip history</button>
+  </div>
 </div>
 
 <div class="modal-backdrop hidden" id="lawBackdrop"></div>
@@ -625,6 +635,7 @@ var state = {
   bikeClass: localStorage.getItem("ebm_bikeclass") || "class1",
   assist: localStorage.getItem("ebm_assist") || "normal",
   voiceOn: localStorage.getItem("ebm_voice") !== "off",
+  hapticOn: localStorage.getItem("ebm_haptic") !== "off",
   capacityWh: Number(localStorage.getItem("ebm_capacity")) || 500,
   chargePct: Number(localStorage.getItem("ebm_charge")) || 100,
   riderWeightKg: Number(localStorage.getItem("ebm_weightkg")) || 90,
@@ -1840,6 +1851,7 @@ function showRouteCard(){
   $("sheetContent").innerHTML = html;
   openSheet(state.sheetState==="hidden" ? "half" : state.sheetState);
 
+  wireElevationChart();
   $("startNavBtn").addEventListener("click", startNavigation);
   $("clearRouteBtn").addEventListener("click", clearRoute);
   $("saveRouteBtn").addEventListener("click", toggleSavedRoute);
@@ -1857,6 +1869,37 @@ function showRouteCard(){
   });
 }
 
+// Tapping/dragging across the chart shows the distance-into-route and
+// elevation at that point. Distance uses the real haversine spacing between
+// elevation sample points when available (they aren't evenly spaced in real
+// distance), falling back to an even split of the total route distance if
+// that data is missing or mismatched in length.
+function wireElevationChart(){
+  var svg = $("elevChartSvg"), readout = $("elevReadout");
+  if(!svg || !readout) return;
+  var r = state.routes[state.activeRoute];
+  if(!r || !r.elevationProfile) return;
+  var elevs = r.elevationProfile;
+  var cumDist = null;
+  if(r.elevationSamplePoints && r.elevationSamplePoints.length===elevs.length){
+    cumDist = [0];
+    for(var i=1;i<elevs.length;i++){
+      var p0=r.elevationSamplePoints[i-1], p1=r.elevationSamplePoints[i];
+      cumDist.push(cumDist[i-1] + haversine(p0[0],p0[1], p1[0],p1[1]));
+    }
+  }
+  function showAt(clientX){
+    var rect = svg.getBoundingClientRect();
+    if(rect.width<=0) return;
+    var frac = clamp((clientX-rect.left)/rect.width, 0, 1);
+    var idx = Math.round(frac*(elevs.length-1));
+    var distM = cumDist ? cumDist[idx] : r.distanceM*idx/(elevs.length-1);
+    readout.textContent = fmtDist(distM)+" in — "+Math.round(elevs[idx])+" m elevation";
+  }
+  svg.addEventListener("pointerdown", function(e){ showAt(e.clientX); });
+  svg.addEventListener("pointermove", function(e){ if(e.buttons>0 || e.pointerType!=="mouse") showAt(e.clientX); });
+}
+
 function buildElevationSvg(elevs){
   if(!elevs || elevs.length<2) return "";
   var w=100, h=40, pad=2;
@@ -1869,10 +1912,11 @@ function buildElevationSvg(elevs){
   });
   var line = pts.join(" ");
   var area = (pad)+","+(h-pad)+" "+line+" "+(w-pad)+","+(h-pad);
-  return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" role="img" aria-label="Elevation profile along the route, ranging from '+Math.round(min)+' to '+Math.round(max)+' meters" style="width:100%;height:40px;display:block;margin:-4px 0 10px;">'+
+  return '<svg id="elevChartSvg" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" role="img" aria-label="Elevation profile along the route, ranging from '+Math.round(min)+' to '+Math.round(max)+' meters. Tap or drag to inspect a point." style="width:100%;height:40px;display:block;margin:-4px 0 2px;cursor:pointer;touch-action:pan-y;">'+
     '<polyline points="'+area+'" fill="var(--accent-soft)" stroke="none"/>'+
     '<polyline points="'+line+'" fill="none" stroke="var(--accent)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>'+
-    '</svg>';
+    '</svg>'+
+    '<div class="hint" id="elevReadout" style="margin:0 0 8px;min-height:15px;">Tap the chart to inspect a point along the route.</div>';
 }
 
 // Heuristic only, scanning step names for common limited-access-road naming
@@ -1996,7 +2040,11 @@ function startNavigation(){
   state.speedOverStreak=0; state.lastSpeedWarnAt=null;
   state.lowBatteryWarned=false;
   var r = state.routes[state.activeRoute];
-  state.tripStart = { time:Date.now(), distanceM:r.distanceM, energyWh:energyForRoute(r), destName:state.destination.name, assistLevel:state.assist, bikeClass:state.bikeClass };
+  state.tripStart = {
+    time:Date.now(), distanceM:r.distanceM, energyWh:energyForRoute(r), destName:state.destination.name, assistLevel:state.assist, bikeClass:state.bikeClass,
+    destination: { lat:state.destination.lat, lon:state.destination.lon, name:state.destination.name, address:state.destination.address||"" },
+    waypoints: state.waypoints.map(function(w){ return { lat:w.lat, lon:w.lon, name:w.name, address:w.address||"" }; })
+  };
   saveNavSnapshot();
   $("navOverlay").classList.remove("hidden");
   $("searchLayer").classList.add("hidden");
@@ -2068,7 +2116,8 @@ function logTrip(){
   state.tripHistory.unshift({
     date:Date.now(), destName:state.tripStart.destName,
     distanceM:state.tripStart.distanceM, energyWh:state.tripStart.energyWh, elapsedMin:elapsedMin,
-    assistLevel:state.tripStart.assistLevel, bikeClass:state.tripStart.bikeClass
+    assistLevel:state.tripStart.assistLevel, bikeClass:state.tripStart.bikeClass,
+    destination:state.tripStart.destination, waypoints:state.tripStart.waypoints
   });
   state.tripHistory = state.tripHistory.slice(0,50);
   saveJSON("ebm_trips", state.tripHistory);
@@ -2194,6 +2243,7 @@ function onNavPosition(pos){
         state.currentStep++;
         renderNavStep();
         speak(stepText(route.steps[state.currentStep]));
+        vibrateOnStep();
         saveNavSnapshot();
       } else {
         renderNavStep(d);
@@ -2327,6 +2377,13 @@ function speak(text){
   }catch(e){}
 }
 
+// Silently does nothing where the Vibration API isn't supported (notably
+// iOS Safari) -- never an error, just no buzz.
+function vibrateOnStep(){
+  if(!state.hapticOn || !navigator.vibrate) return;
+  try{ navigator.vibrate(60); }catch(e){}
+}
+
 /* ---------- sheet drag ---------- */
 
 function sheetHeightPx(){ return $("sheet").getBoundingClientRect().height; }
@@ -2393,6 +2450,7 @@ function openSettings(){
   setSeg("unitsSeg", state.units);
   setSeg("themeSeg", state.theme);
   setSeg("voiceSeg", state.voiceOn?"on":"off");
+  setSeg("hapticSeg", state.hapticOn?"on":"off");
   setSeg("transitSeg", state.showTransit?"on":"off");
   setSeg("parkingSeg", state.showParking?"on":"off");
   setSeg("bikeLanesSeg", state.showBikeLanes?"on":"off");
@@ -2505,9 +2563,42 @@ function renderTripHistory(){
     '<div class="stat-card"><div class="v">'+Math.round(totalWh)+' Wh</div><div class="l">Battery used</div></div></div>';
   listBox.innerHTML = state.tripHistory.slice(0,10).map(function(t){
     var d = new Date(t.date);
-    return '<div class="step-row"><div class="step-icon">'+ICONS.clock+'</div><div style="min-width:0;"><div class="step-text">'+escapeHtml(t.destName)+'</div>'+
-      '<div class="step-meta">'+d.toLocaleDateString()+' · '+fmtDist(t.distanceM)+' · '+Math.round(t.energyWh)+' Wh</div></div></div>';
+    var i = state.tripHistory.indexOf(t);
+    // Older trips logged before "Ride again" existed have no saved destination to go back to.
+    var rideAgainBtn = t.destination ? '<button class="secondary-btn" data-ride-again="'+i+'" style="flex:none;width:auto;padding:6px 10px;font-size:12px;margin-left:8px;align-self:center;">Ride again</button>' : '';
+    return '<div class="step-row"><div class="step-icon">'+ICONS.clock+'</div><div style="min-width:0;flex:1;"><div class="step-text">'+escapeHtml(t.destName)+'</div>'+
+      '<div class="step-meta">'+d.toLocaleDateString()+' · '+fmtDist(t.distanceM)+' · '+Math.round(t.energyWh)+' Wh</div></div>'+rideAgainBtn+'</div>';
   }).join("");
+  Array.prototype.forEach.call(listBox.querySelectorAll("[data-ride-again]"), function(btn){
+    btn.addEventListener("click", function(){
+      var trip = state.tripHistory[Number(btn.getAttribute("data-ride-again"))];
+      if(!trip || !trip.destination) return;
+      closeSettings();
+      goToSavedRoute(trip);
+    });
+  });
+}
+
+function exportTripsCsv(){
+  if(!state.tripHistory.length){ toast("No rides to export yet"); return; }
+  function csvCell(v){
+    var s = String(v==null?"":v);
+    return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  }
+  var header = ["Date","Destination","Distance (km)","Battery (Wh)","Duration (min)","Pace","Bike class"];
+  var rows = state.tripHistory.map(function(t){
+    return [
+      new Date(t.date).toISOString(), t.destName, (t.distanceM/1000).toFixed(2),
+      Math.round(t.energyWh), Math.round(t.elapsedMin), t.assistLevel, t.bikeClass
+    ];
+  });
+  var csv = [header].concat(rows).map(function(row){ return row.map(csvCell).join(","); }).join("\r\n");
+  var blob = new Blob([csv], { type:"text/csv" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = "ebike_trips.csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
 }
 
 /* ---------- local e-bike rules panel ---------- */
@@ -2633,6 +2724,7 @@ function wireUI(){
   $("clearTripsBtn").addEventListener("click", function(){
     state.tripHistory=[]; saveJSON("ebm_trips", []); renderTripHistory();
   });
+  $("exportTripsBtn").addEventListener("click", exportTripsCsv);
 
   $("capacityInput").addEventListener("change", function(e){ state.capacityWh=clamp(Number(e.target.value)||500,50,3000); localStorage.setItem("ebm_capacity",state.capacityWh); if(state.routes.length) showRouteCard(); });
   $("weightInput").addEventListener("change", function(e){
@@ -2653,6 +2745,7 @@ function wireUI(){
   });
   wireSeg("themeSeg", function(v){ state.theme=v; localStorage.setItem("ebm_theme",v); applyTheme(); });
   wireSeg("voiceSeg", function(v){ state.voiceOn = v==="on"; speechOn=state.voiceOn; localStorage.setItem("ebm_voice",v); });
+  wireSeg("hapticSeg", function(v){ state.hapticOn = v==="on"; localStorage.setItem("ebm_haptic",v); });
   wireSeg("transitSeg", function(v){
     state.showTransit = v==="on";
     localStorage.setItem("ebm_showtransit", v);
@@ -2701,6 +2794,19 @@ function wireUI(){
 
 /* ---------- boot ---------- */
 
+// Launched from a PWA home-screen shortcut (?go=home / ?go=work, see
+// ebikemaps.webmanifest) -- strips the param either way so a later reload
+// doesn't repeat it, and takes precedence over a resumed ride since the
+// shortcut tap is a fresh, explicit intent.
+function handleLaunchShortcut(){
+  var go = new URLSearchParams(location.search).get("go");
+  if(go!=="home" && go!=="work") return;
+  if(window.history && window.history.replaceState) history.replaceState(null, "", location.pathname);
+  var fav = favoriteBySlot(go);
+  if(!fav){ toast("Set your "+(go==="home"?"Home":"Work")+" address in Settings first.", 4000); return; }
+  goToPlace(fav);
+}
+
 function boot(){
   try{
     initMap();
@@ -2708,6 +2814,7 @@ function boot(){
     wireUI();
     locateMe(false);
     restoreLastNav();
+    handleLaunchShortcut();
   }catch(e){
     console.error(e);
     toast("Something went wrong starting the map.");
