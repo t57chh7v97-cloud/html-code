@@ -218,6 +218,7 @@
   .nav-bottom .icon-btn-lg{flex:none;width:40px;align-self:center;height:40px;border-radius:50%;background:var(--accent-soft);
     border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--accent);}
   .nav-bottom .icon-btn-lg svg{width:18px;height:18px;}
+  .nav-bottom .icon-btn-lg.active{background:var(--accent);color:#fff;}
 
   .user-puck{width:22px;height:22px;border-radius:50%;background:var(--accent);border:3px solid #fff;
     box-shadow:0 0 0 2px rgba(10,132,255,.4),0 1px 4px rgba(0,0,0,.4);transition:transform .35s linear;}
@@ -675,6 +676,7 @@ var state = {
   hourlyForecast: null,
   tripStart: null,
   navigating: false,
+  followMode: true,
   currentStep: 0,
   watchId: null,
   offRouteStreak: 0,
@@ -818,6 +820,17 @@ function initMap(){
   map.on("click", function(e){
     if(state.navigating) return;
     reverseGeocode(e.latlng.lat, e.latlng.lng);
+  });
+
+  // Dragging the map yourself during navigation means you want to look
+  // around, not keep being snapped back to your own position -- this event
+  // only fires for a real user-initiated drag, never for the panTo() calls
+  // onNavPosition() makes while following, so there's no feedback loop.
+  // Pausing stays in effect until the recenter button is tapped.
+  map.on("dragstart", function(){
+    if(!state.navigating) return;
+    state.followMode = false;
+    $("recenterBtn").classList.add("active");
   });
 }
 
@@ -2067,6 +2080,8 @@ function startNavigation(){
   state.offRouteStreak=0; state.rerouting=false; state.lastGoodFixTime=null;
   state.speedOverStreak=0; state.lastSpeedWarnAt=null;
   state.lowBatteryWarned=false;
+  state.followMode=true;
+  $("recenterBtn").classList.remove("active");
   var r = state.routes[state.activeRoute];
   state.tripStart = {
     time:Date.now(), distanceM:r.distanceM, energyWh:energyForRoute(r), destName:state.destination.name, assistLevel:state.assist, bikeClass:state.bikeClass,
@@ -2257,7 +2272,7 @@ function onNavPosition(pos){
   if(heading==null && state.userLatLng){ heading = bearing(state.userLatLng.lat, state.userLatLng.lon, lat, lon); }
   state.userLatLng = { lat:lat, lon:lon };
   setUserMarker(lat,lon,heading);
-  map.panTo([lat,lon], { animate:true });
+  if(state.followMode) map.panTo([lat,lon], { animate:true });
   checkSpeedAgainstClass(pos.coords.speed);
   updateSpeedDisplay(pos.coords.speed);
   refreshAutoTheme(); // so a ride that crosses sunset switches to the dark map on its own
@@ -2402,7 +2417,12 @@ function updateNavStats(){
   checkLowBatteryDuringRide(pct);
 }
 
-function recenterNav(){ if(state.userLatLng) map.setView([state.userLatLng.lat, state.userLatLng.lon], 17); }
+function recenterNav(){
+  if(!state.userLatLng) return;
+  map.setView([state.userLatLng.lat, state.userLatLng.lon], 17);
+  state.followMode = true;
+  $("recenterBtn").classList.remove("active");
+}
 
 function reportMapIssue(){
   if(!state.userLatLng){ toast("No location yet"); return; }
@@ -2858,8 +2878,13 @@ function handleLaunchShortcut(){
 }
 
 function boot(){
+  // initMap() gets its own try/catch: if it throws for any reason (the
+  // Leaflet-caching bug this once was, or anything else), the rest of the
+  // app -- button wiring, the offline banner, everything -- still needs a
+  // chance to run instead of the single earliest failure taking all of it
+  // down silently.
+  try{ initMap(); }catch(e){ console.error("initMap failed:", e); toast("Map failed to load — some features may not work until you're back online.", 5000); }
   try{
-    initMap();
     initDrag();
     wireUI();
     updateOfflineBanner();
