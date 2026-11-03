@@ -106,6 +106,16 @@
     padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;}
   .park-popup .popup-danger-btn{background:var(--danger);color:#fff;}
   .park-popup .popup-secondary-btn{background:var(--border);color:var(--text);}
+  .stop-drag-handle{flex:none;width:26px;height:26px;border:none;background:transparent;color:var(--sub);
+    display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;padding:0;}
+  .stop-drag-handle svg{width:16px;height:16px;}
+  .step-row.dragging{background:var(--accent-soft);border-radius:8px;opacity:.85;position:relative;z-index:1;}
+  .avoid-row{display:flex;gap:8px;margin:-4px 0 10px;}
+  .avoid-chip{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 6px;
+    border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--sub);
+    font-size:12.5px;font-weight:700;cursor:pointer;}
+  .avoid-chip svg{width:14px;height:14px;}
+  .avoid-chip.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent);}
   .stop-marker{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;
     font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;
     box-shadow:0 1px 4px rgba(0,0,0,.35);transform:translate(-11px,-11px);}
@@ -291,6 +301,12 @@
   </button>
   <button class="fab" id="parkBtn" aria-label="Mark where you parked">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+  </button>
+  <button class="fab" id="shareLocationBtn" aria-label="Share my location">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.6l6.8-3.8M8.6 13.4l6.8 3.8"/></svg>
+  </button>
+  <button class="fab" id="reportIssueBtn" aria-label="Report a map problem here">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
   </button>
 </div>
 
@@ -684,7 +700,9 @@ var ICONS = {
   incline:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20l7-12 4 6 7-11"/><path d="M17 3h4v4"/></svg>',
   charging:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>',
   lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>',
-  traffic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3L5 21M16 3l3 18"/><path d="M12 6v2M12 11v2M12 16v2"/></svg>'
+  traffic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3L5 21M16 3l3 18"/><path d="M12 6v2M12 11v2M12 16v2"/></svg>',
+  dragHandle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
+  share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.6l6.8-3.8M8.6 13.4l6.8 3.8"/></svg>'
 };
 
 /* ---------- state ---------- */
@@ -1193,6 +1211,20 @@ function clearParkingPin(){
 
 // One-time text share of where the bike is parked -- same pattern as
 // shareEta(), not a live/continuous location share.
+// One-time text share of where you are right now -- same pattern as
+// shareEta()/shareParkingSpot(), not a live/continuous location share.
+function shareMyLocation(){
+  if(!state.userLatLng){ toast("No location yet"); return; }
+  var text = "My current location: https://www.google.com/maps?q="+state.userLatLng.lat+","+state.userLatLng.lon;
+  if(navigator.share){
+    navigator.share({ text:text }).catch(function(){ /* user cancelled, or no share target -- nothing to do */ });
+  } else if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){ toast("Location copied to clipboard"); }).catch(function(){ toast("Couldn't copy — try again", 3500); });
+  } else {
+    toast("Sharing isn't supported on this browser", 3500);
+  }
+}
+
 function shareParkingSpot(){
   if(!state.parkingPin) return;
   var p = state.parkingPin;
@@ -1692,6 +1724,70 @@ function removeWaypoint(i){
   fetchRoute();
 }
 
+function stopRowHtml(w, i){
+  var handle = state.waypoints.length>1 ? '<button class="stop-drag-handle" aria-label="Reorder stop '+escapeHtml(w.name)+'">'+ICONS.dragHandle+'</button>' : '';
+  return '<div class="step-row" data-i="'+i+'">'+handle+'<div class="step-icon" style="font-size:13px;font-weight:700;">'+(i+1)+'</div>'+
+    '<div style="flex:1;min-width:0;"><div class="step-text">'+escapeHtml(w.name)+'</div><div class="step-meta">'+escapeHtml(w.address||"")+'</div></div>'+
+    '<button class="icon-btn stop-remove-btn" data-i="'+i+'" aria-label="Remove stop '+escapeHtml(w.name)+'" style="width:26px;height:26px;flex:none;">'+
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>';
+}
+
+// Drag-to-reorder: moves the actual row DOM node (not a full re-render) as
+// the pointer crosses a neighboring row's midpoint. The move/up listeners
+// live on document rather than using pointer-capture on the handle itself --
+// capture doesn't reliably survive the handle's own element being
+// reparented by insertBefore() mid-gesture in every engine, and a dropped
+// capture would silently strand the drag with no pointerup ever reaching it.
+// Rows' data-i still refers to each stop's ORIGINAL index for the duration
+// of the drag; the real reorder is computed from final DOM order and
+// committed (with a real re-render + reroute) only once the drag ends.
+function wireStopListHandlers(){
+  var box = $("stopList");
+  if(!box) return;
+  Array.prototype.forEach.call(box.querySelectorAll(".stop-remove-btn"), function(btn){
+    btn.addEventListener("click", function(e){ e.stopPropagation(); removeWaypoint(Number(btn.getAttribute("data-i"))); });
+  });
+  function renumber(){
+    Array.prototype.forEach.call(box.querySelectorAll(".step-row[data-i]"), function(r, domIdx){
+      r.querySelector(".step-icon").textContent = String(domIdx+1);
+    });
+  }
+  Array.prototype.forEach.call(box.querySelectorAll(".step-row[data-i]"), function(row){
+    var handle = row.querySelector(".stop-drag-handle");
+    if(!handle) return;
+    function onMove(e){
+      var rows = Array.prototype.slice.call(box.querySelectorAll(".step-row[data-i]"));
+      var myIdx = rows.indexOf(row);
+      for(var k=0;k<rows.length;k++){
+        if(rows[k]===row) continue;
+        var rect = rows[k].getBoundingClientRect();
+        var mid = rect.top + rect.height/2;
+        if(e.clientY < mid && myIdx > k){ box.insertBefore(row, rows[k]); renumber(); break; }
+        if(e.clientY > mid && myIdx < k){ box.insertBefore(row, rows[k].nextSibling); renumber(); break; }
+      }
+    }
+    function onUp(){
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+      row.classList.remove("dragging");
+      var newOrder = Array.prototype.map.call(box.querySelectorAll(".step-row[data-i]"), function(r){
+        return Number(r.getAttribute("data-i"));
+      });
+      state.waypoints = newOrder.map(function(origIdx){ return state.waypoints[origIdx]; });
+      setStopMarkers();
+      fetchRoute();
+    }
+    handle.addEventListener("pointerdown", function(e){
+      e.preventDefault();
+      row.classList.add("dragging");
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", onUp);
+      document.addEventListener("pointercancel", onUp);
+    });
+  });
+}
+
 function describeFetchError(err){
   // A generic "Failed to fetch" TypeError almost always means the request never
   // reached a server at all — blocked by CORS, DNS failure, offline, or an ad/
@@ -1801,6 +1897,28 @@ function selectRoute(i, auto){
   renderRouteLines();
   showRouteCard();
   fetchElevation(state.routes[i]);
+}
+
+// Shared by the Settings toggle and the route card's quick "Avoid hills" /
+// "Avoid busy roads" chips, so both stay in lockstep with the same logic.
+function setPreferFlatRoute(on){
+  state.preferFlatRoute = on;
+  localStorage.setItem("ebm_preferflat", on?"on":"off");
+  if(on && state.routes.length && !state.userPickedRoute){
+    var flatIdx = flattestRouteIndex();
+    if(flatIdx>-1 && flatIdx!==state.activeRoute) selectRoute(flatIdx, true);
+  }
+}
+function setPreferLowTraffic(on){
+  state.preferLowTraffic = on;
+  localStorage.setItem("ebm_preferlowtraffic", on?"on":"off");
+  if(on && state.routes.length){
+    if(!busyRoadsFetched) fetchBusyRoads(state.routes[state.activeRoute]);
+    else if(!state.userPickedRoute){
+      var qIdx = quietestRouteIndex();
+      if(qIdx>-1 && qIdx!==state.activeRoute) selectRoute(qIdx, true);
+    }
+  }
 }
 
 function fetchElevation(route){
@@ -2077,12 +2195,7 @@ function showRouteCard(){
     '</button></div></div>';
 
   if(state.waypoints.length){
-    html += '<div>'+state.waypoints.map(function(w,i){
-      return '<div class="step-row"><div class="step-icon" style="font-size:13px;font-weight:700;">'+(i+1)+'</div>'+
-        '<div style="flex:1;min-width:0;"><div class="step-text">'+escapeHtml(w.name)+'</div><div class="step-meta">'+escapeHtml(w.address||"")+'</div></div>'+
-        '<button class="icon-btn stop-remove-btn" data-i="'+i+'" aria-label="Remove stop '+escapeHtml(w.name)+'" style="width:26px;height:26px;flex:none;">'+
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>';
-    }).join("")+'</div>';
+    html += '<div id="stopList">'+state.waypoints.map(stopRowHtml).join("")+'</div>';
   }
   html += '<button class="secondary-btn" id="addStopBtn" style="width:100%;margin:2px 0 10px;">+ Add stop</button>';
 
@@ -2115,6 +2228,11 @@ function showRouteCard(){
     '<button class="secondary-btn" id="saveRouteBtn">'+(savedIdx>-1?"Saved ✓":"Save route")+'</button>'+
     (state.routes.length>1?'<button class="secondary-btn" id="altRouteBtn">Other route'+altHintStr+'</button>':'')+'</div>';
 
+  html += '<div class="avoid-row">'+
+    '<button class="avoid-chip'+(state.preferFlatRoute?" active":"")+'" id="avoidHillsChip">'+ICONS.incline+'Avoid hills</button>'+
+    '<button class="avoid-chip'+(state.preferLowTraffic?" active":"")+'" id="avoidBusyChip">'+ICONS.traffic+'Avoid busy roads</button>'+
+    '</div>';
+
   html += '<div class="stat-row">'+
     '<div class="stat-card"><div class="v">'+fmtDuration(r.durationMin)+'</div><div class="l">Ride time</div></div>'+
     '<div class="stat-card"><div class="v">'+fmtDist(r.distanceM)+'</div><div class="l">Distance</div></div>'+
@@ -2146,9 +2264,9 @@ function showRouteCard(){
   $("shareEtaBtn").addEventListener("click", shareEta);
   $("exportGpxBtn").addEventListener("click", exportGpx);
   $("addStopBtn").addEventListener("click", beginAddStop);
-  Array.prototype.forEach.call(document.querySelectorAll(".stop-remove-btn"), function(btn){
-    btn.addEventListener("click", function(e){ e.stopPropagation(); removeWaypoint(Number(btn.getAttribute("data-i"))); });
-  });
+  wireStopListHandlers();
+  $("avoidHillsChip").addEventListener("click", function(){ setPreferFlatRoute(!state.preferFlatRoute); showRouteCard(); });
+  $("avoidBusyChip").addEventListener("click", function(){ setPreferLowTraffic(!state.preferLowTraffic); showRouteCard(); });
   var altBtn=$("altRouteBtn"); if(altBtn) altBtn.addEventListener("click", function(){ selectRoute((state.activeRoute+1)%state.routes.length); });
   var ecoBtn=$("switchEcoBtn"); if(ecoBtn) ecoBtn.addEventListener("click", function(){ setAssist("eco"); });
   Array.prototype.forEach.call(document.querySelectorAll("#assistRowSheet .assist-chip"), function(el){
@@ -3123,25 +3241,8 @@ function wireUI(){
     if(state.showBusyRoadWarnings && state.routes.length) fetchBusyRoads(state.routes[state.activeRoute]);
     else if(state.routes.length && !state.navigating) showRouteCard();
   });
-  wireSeg("preferLowTrafficSeg", function(v){
-    state.preferLowTraffic = v==="on";
-    localStorage.setItem("ebm_preferlowtraffic", v);
-    if(state.preferLowTraffic && state.routes.length){
-      if(!busyRoadsFetched) fetchBusyRoads(state.routes[state.activeRoute]);
-      else if(!state.userPickedRoute){
-        var qIdx = quietestRouteIndex();
-        if(qIdx>-1 && qIdx!==state.activeRoute) selectRoute(qIdx, true);
-      }
-    }
-  });
-  wireSeg("preferFlatSeg", function(v){
-    state.preferFlatRoute = v==="on";
-    localStorage.setItem("ebm_preferflat", v);
-    if(state.preferFlatRoute && state.routes.length && !state.userPickedRoute){
-      var flatIdx = flattestRouteIndex();
-      if(flatIdx>-1 && flatIdx!==state.activeRoute) selectRoute(flatIdx, true);
-    }
-  });
+  wireSeg("preferLowTrafficSeg", function(v){ setPreferLowTraffic(v==="on"); });
+  wireSeg("preferFlatSeg", function(v){ setPreferFlatRoute(v==="on"); });
 
   $("themeBtn").addEventListener("click", function(){
     state.theme = state.theme==="auto" ? "light" : (state.theme==="light" ? "dark" : "auto");
@@ -3150,6 +3251,8 @@ function wireUI(){
   });
   $("locateBtn").addEventListener("click", function(){ locateMe(true); });
   $("parkBtn").addEventListener("click", markParkingSpot);
+  $("shareLocationBtn").addEventListener("click", shareMyLocation);
+  $("reportIssueBtn").addEventListener("click", reportMapIssue);
   $("zoomInBtn").addEventListener("click", function(){ map.zoomIn(); });
   $("zoomOutBtn").addEventListener("click", function(){ map.zoomOut(); });
 
