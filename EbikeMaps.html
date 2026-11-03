@@ -101,8 +101,11 @@
     box-shadow:0 1px 4px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;}
   .park-pin svg{width:16px;height:16px;}
   .park-popup{font-size:13px;font-weight:600;}
-  .park-popup button{margin-top:6px;background:var(--danger);color:#fff;border:none;border-radius:8px;
-    padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;display:block;}
+  .park-note{font-weight:400;color:var(--sub);margin-top:2px;}
+  .park-popup button{margin-top:6px;margin-right:6px;border:none;border-radius:8px;
+    padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;}
+  .park-popup .popup-danger-btn{background:var(--danger);color:#fff;}
+  .park-popup .popup-secondary-btn{background:var(--border);color:var(--text);}
   .stop-marker{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;
     font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;
     box-shadow:0 1px 4px rgba(0,0,0,.35);transform:translate(-11px,-11px);}
@@ -177,6 +180,9 @@
   .step-row.unpaved{background:var(--accent-soft);margin:0 -18px;padding:11px 18px;border-radius:8px;}
   .step-icon.unpaved{background:var(--accent-soft);color:var(--accent);}
   .unpaved-label{color:var(--accent);font-weight:600;}
+  .step-row.busy{background:rgba(245,124,0,.08);margin:0 -18px;padding:11px 18px;border-radius:8px;}
+  .step-icon.busy{background:rgba(245,124,0,.14);color:#f57f17;}
+  .busy-label{color:#f57f17;font-weight:600;}
 
   .elev-note{font-size:12px;color:var(--sub);margin-top:-6px;margin-bottom:10px;}
 
@@ -378,6 +384,27 @@
     <button data-v="off">Off</button>
   </div>
   <p class="hint">Flags turn-by-turn steps that cross gravel, dirt, or other unpaved surfaces (marked below), based on map data — useful to know before you commit to a route on skinny tires.</p>
+
+  <div class="section-title">Busy-road warnings</div>
+  <div class="seg" id="busyRoadSeg">
+    <button data-v="on" class="active">On</button>
+    <button data-v="off">Off</button>
+  </div>
+  <p class="hint">Flags turn-by-turn steps that run along a primary, secondary, or trunk road (marked below), based on map data.</p>
+
+  <div class="section-title">Prefer low-traffic routes</div>
+  <div class="seg" id="preferLowTrafficSeg">
+    <button data-v="on">On</button>
+    <button data-v="off" class="active">Off</button>
+  </div>
+  <p class="hint">When alternatives are available, automatically picks whichever one runs along fewer busy roads, instead of just flagging it as an option. Off by default.</p>
+
+  <div class="section-title">Prefer flatter routes</div>
+  <div class="seg" id="preferFlatSeg">
+    <button data-v="on">On</button>
+    <button data-v="off" class="active">Off</button>
+  </div>
+  <p class="hint">When alternatives are available, automatically picks whichever one climbs the least, instead of just flagging it as an option. Off by default.</p>
 
   <p class="hint">Range and battery estimates are approximate — based on your assist mode's typical power draw plus climbing along the route, and current temperature where available. Actual range varies with rider weight, tires and wind.</p>
 
@@ -656,7 +683,8 @@ var ICONS = {
   gravel:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="7" cy="8" r="1.4"/><circle cx="13" cy="6" r="1.2"/><circle cx="17" cy="10" r="1.3"/><circle cx="9" cy="13" r="1.1"/><circle cx="15" cy="15" r="1.4"/><circle cx="19" cy="17" r="1"/><circle cx="5" cy="17" r="1.2"/></svg>',
   incline:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20l7-12 4 6 7-11"/><path d="M17 3h4v4"/></svg>',
   charging:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>',
-  lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>'
+  lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>',
+  traffic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3L5 21M16 3l3 18"/><path d="M12 6v2M12 11v2M12 16v2"/></svg>'
 };
 
 /* ---------- state ---------- */
@@ -684,6 +712,10 @@ var state = {
   showCharging: localStorage.getItem("ebm_showcharging") !== "off",
   showBikeLanes: localStorage.getItem("ebm_showbikelanes") === "on",
   showSurfaceWarnings: localStorage.getItem("ebm_showsurfacewarn") !== "off",
+  showBusyRoadWarnings: localStorage.getItem("ebm_showbusyroad") !== "off",
+  preferLowTraffic: localStorage.getItem("ebm_preferlowtraffic") === "on",
+  preferFlatRoute: localStorage.getItem("ebm_preferflat") === "on",
+  userPickedRoute: false,
   bikeLanes: [],
   transitPOIs: [],
   favorites: loadJSON("ebm_favorites", []),
@@ -951,6 +983,7 @@ function locateMe(fly){
     refreshAutoTheme();
     fetchCurrentTemp();
     fetchNearbyTransit(state.userLatLng.lat, state.userLatLng.lon);
+    checkParkingDistance();
   }, function(){
     useFallbackStart();
     toast("Location unavailable — using a demo starting point.");
@@ -963,6 +996,7 @@ function useFallbackStart(){
   refreshAutoTheme();
   fetchCurrentTemp();
   fetchNearbyTransit(state.userLatLng.lat, state.userLatLng.lon);
+  checkParkingDistance();
 }
 
 function fetchCurrentTemp(){
@@ -1142,7 +1176,9 @@ var parkMarker = null;
 // getting back to the bike.
 function markParkingSpot(){
   if(!state.userLatLng){ toast("No location yet"); return; }
-  state.parkingPin = { lat:state.userLatLng.lat, lon:state.userLatLng.lon, time:Date.now() };
+  var note = window.prompt("Add a note for this spot (optional)", (state.parkingPin && state.parkingPin.note) || "");
+  if(note===null) return; // cancelled -- leave any existing pin untouched
+  state.parkingPin = { lat:state.userLatLng.lat, lon:state.userLatLng.lon, time:Date.now(), note:note.trim() };
   saveJSON("ebm_parkingpin", state.parkingPin);
   renderParkingPin();
   toast("Parking spot saved", 2000);
@@ -1155,6 +1191,21 @@ function clearParkingPin(){
   toast("Parking pin cleared", 1500);
 }
 
+// One-time text share of where the bike is parked -- same pattern as
+// shareEta(), not a live/continuous location share.
+function shareParkingSpot(){
+  if(!state.parkingPin) return;
+  var p = state.parkingPin;
+  var text = "My bike is parked here: https://www.google.com/maps?q="+p.lat+","+p.lon+(p.note?" ("+p.note+")":"");
+  if(navigator.share){
+    navigator.share({ text:text }).catch(function(){ /* user cancelled, or no share target -- nothing to do */ });
+  } else if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){ toast("Parking location copied to clipboard"); }).catch(function(){ toast("Couldn't copy — try again", 3500); });
+  } else {
+    toast("Sharing isn't supported on this browser", 3500);
+  }
+}
+
 function renderParkingPin(){
   if(parkMarker){ map.removeLayer(parkMarker); parkMarker=null; }
   $("parkBtn").classList.toggle("active", !!state.parkingPin);
@@ -1164,11 +1215,29 @@ function renderParkingPin(){
     icon: L.divIcon({ className:"", html:'<div class="park-pin">'+ICONS.lock+'</div>', iconSize:[30,30] }),
     zIndexOffset: 200
   }).addTo(map);
-  parkMarker.bindPopup('<div class="park-popup">Parked here · '+fmtClock(new Date(p.time))+'<button id="clearParkPinBtn">Clear</button></div>');
+  parkMarker.bindPopup('<div class="park-popup">Parked here · '+fmtClock(new Date(p.time))+(p.note?'<div class="park-note">'+escapeHtml(p.note)+'</div>':'')+
+    '<button id="shareParkPinBtn" class="popup-secondary-btn">Share</button>'+
+    '<button id="clearParkPinBtn" class="popup-danger-btn">Clear</button></div>');
   parkMarker.on("popupopen", function(){
-    var btn = document.getElementById("clearParkPinBtn");
-    if(btn) btn.addEventListener("click", clearParkingPin);
+    var shareBtn = document.getElementById("shareParkPinBtn");
+    if(shareBtn) shareBtn.addEventListener("click", shareParkingSpot);
+    var clearBtn = document.getElementById("clearParkPinBtn");
+    if(clearBtn) clearBtn.addEventListener("click", clearParkingPin);
   });
+}
+
+// Shown once per app launch, the first time the rider's location resolves --
+// not repeated on every subsequent locate-me tap, or it'd nag on every trip
+// that has nothing to do with getting back to the bike.
+var parkingDistanceChecked = false;
+var PARKING_DISTANCE_MIN_M = 30; // skip the toast if they're basically standing at the pin already
+function checkParkingDistance(){
+  if(parkingDistanceChecked || !state.parkingPin || !state.userLatLng) return;
+  parkingDistanceChecked = true;
+  var d = haversine(state.userLatLng.lat, state.userLatLng.lon, state.parkingPin.lat, state.parkingPin.lon);
+  if(d < PARKING_DISTANCE_MIN_M) return;
+  var dir = compassDir(bearing(state.userLatLng.lat, state.userLatLng.lon, state.parkingPin.lat, state.parkingPin.lon));
+  toast("Your bike is parked "+fmtDist(d)+" "+dir+" from here"+(state.parkingPin.note?" — \""+state.parkingPin.note+"\"":""), 4500);
 }
 
 /* ---------- bike lane overlay ---------- */
@@ -1266,6 +1335,77 @@ function stepOnUnpavedSurface(step){
 }
 function routeHasUnpavedSurface(route){
   return state.showSurfaceWarnings && route.steps.some(stepOnUnpavedSurface);
+}
+
+/* ---------- busy-road warnings + "prefer low-traffic" ---------- */
+
+var BUSY_ROAD_WARN_THRESHOLD_M = 20; // mirrors SURFACE_WARN_THRESHOLD_M
+var BUSY_HIGHWAY_CLASSES = ["primary","primary_link","trunk","trunk_link","secondary","secondary_link"];
+var busyPoints = [];            // flat [lat,lon] pairs from every flagged way's geometry, for the current destination
+var busyFetchedForDest = null;  // destination key already fetched for, so switching back doesn't re-query
+var busyRoadsFetched = false;   // true once a fetch has actually resolved (not just attempted) -- lets quietestRouteIndex() tell "no busy roads found" apart from "haven't checked yet"
+
+function fetchBusyRoads(route){
+  var destKey = state.destination ? (state.destination.lat.toFixed(4)+","+state.destination.lon.toFixed(4)) : null;
+  if(!destKey || busyFetchedForDest===destKey){ if(state.routes.length && !state.navigating) showRouteCard(); return; }
+  busyFetchedForDest = destKey;
+  var b = routeBoundingBox(route, 0.002);
+  var bbox = b.south+","+b.west+","+b.north+","+b.east;
+  var query = "[out:json][timeout:20];way[\"highway\"~\"^("+BUSY_HIGHWAY_CLASSES.join("|")+")$\"]("+bbox+");out geom 400;";
+  var ctrl = new AbortController();
+  var to = setTimeout(function(){ ctrl.abort(); }, 15000);
+  fetch("https://overpass-api.de/api/interpreter", {
+    method:"POST", signal:ctrl.signal, headers:{ "Content-Type":"application/x-www-form-urlencoded" },
+    body:"data="+encodeURIComponent(query)
+  }).then(function(r){ clearTimeout(to); return r.ok ? r.json() : null; })
+    .then(function(data){
+      busyPoints = [];
+      (data && data.elements || []).forEach(function(way){
+        (way.geometry||[]).forEach(function(pt){ busyPoints.push([pt.lat, pt.lon]); });
+      });
+      busyRoadsFetched = true;
+      // Auto-pick the quieter alternative the same way the elevation fetch
+      // auto-picks the flatter one below -- but never override a route the
+      // rider chose themselves via the "Other route" button or map tap.
+      if(state.preferLowTraffic && !state.userPickedRoute){
+        var qIdx = quietestRouteIndex();
+        if(qIdx>-1 && qIdx!==state.activeRoute){ selectRoute(qIdx, true); return; }
+      }
+      if(state.routes.length && !state.navigating) showRouteCard();
+    })
+    .catch(function(){ clearTimeout(to); });
+}
+
+// Raw geometry predicate, independent of whether the warning labels are
+// currently shown -- "prefer low-traffic" still needs to know which route is
+// quieter even if the rider has the on-map/turn-list labels turned off.
+function pointNearBusyRoad(lat, lon){
+  for(var i=0;i<busyPoints.length;i++){
+    if(haversine(lat, lon, busyPoints[i][0], busyPoints[i][1]) < BUSY_ROAD_WARN_THRESHOLD_M) return true;
+  }
+  return false;
+}
+// Geometry-based, like the unpaved-surface check -- gated on the display
+// toggle since this one drives the turn-list label/icon.
+function stepOnBusyRoad(step){
+  return state.showBusyRoadWarnings && pointNearBusyRoad(step.location[0], step.location[1]);
+}
+function routeHasBusyRoad(route){
+  return state.showBusyRoadWarnings && route.steps.some(function(s){ return pointNearBusyRoad(s.location[0], s.location[1]); });
+}
+// Like flattestRouteIndex(): only meaningful once the busy-road data has
+// actually resolved and the alternatives genuinely differ -- otherwise there's
+// no real choice to make.
+function quietestRouteIndex(){
+  if(!busyRoadsFetched || state.routes.length<2) return -1;
+  var counts = state.routes.map(function(r){
+    return r.steps.filter(function(s){ return pointNearBusyRoad(s.location[0], s.location[1]); }).length;
+  });
+  var allSame = counts.every(function(c){ return c===counts[0]; });
+  if(allSame) return -1;
+  var best=0;
+  for(var i=1;i<counts.length;i++){ if(counts[i]<counts[best]) best=i; }
+  return best;
 }
 
 /* ---------- search / geocoding ---------- */
@@ -1605,6 +1745,7 @@ function applyRouteResponse(data, ep){
   state.activeRoute = 0;
   state.currentStep = 0; // a freshly fetched route always starts at its first step; startNavigation() leaves this alone so a resumed-from-cache ride can pick up where it left off
   state.advanceWarnedStep = -1;
+  state.userPickedRoute = false;
   state.routeNotBikeAware = !ep.bikeAware;
   map.fitBounds(L.latLngBounds(state.routes[0].latlngs), { padding:[60,60] });
   renderRouteLines();
@@ -1615,6 +1756,7 @@ function applyRouteResponse(data, ep){
   state.routes.forEach(fetchElevation);
   if(state.showBikeLanes) fetchBikeLanes(state.routes[0]);
   if(state.showSurfaceWarnings) fetchSurfaceWays(state.routes[0]);
+  if(state.showBusyRoadWarnings || state.preferLowTraffic) fetchBusyRoads(state.routes[0]);
 }
 
 // waypointNames: one name per intermediate stop, in order (empty for a plain
@@ -1649,8 +1791,13 @@ function recomputeDurations(){
   state.routes.forEach(function(r){ r.durationMin = (r.distanceM/1000)/getAssistLevels()[state.assist].speedKmh*60; });
 }
 
-function selectRoute(i){
+// auto: true when the "prefer flatter/quieter" logic is picking this route
+// for the rider, as opposed to a real tap on "Other route" or the map -- an
+// auto-pick must never count as the rider having chosen a route themselves,
+// or it would block that same logic from ever adjusting its pick again.
+function selectRoute(i, auto){
   state.activeRoute = i;
+  if(!auto) state.userPickedRoute = true;
   renderRouteLines();
   showRouteCard();
   fetchElevation(state.routes[i]);
@@ -1677,6 +1824,12 @@ function fetchElevation(route){
       for(var i=1;i<elevs.length;i++){ var d=elevs[i]-elevs[i-1]; if(d>0) gain+=d; else loss+=-d; }
       route.elevationProfile = elevs; route.elevationGainM = gain; route.elevationLossM = loss; route.elevationPending=false;
       route.elevationSamplePoints = sample; // same order as elevationProfile, needed to turn elevation deltas into a grade
+      // Auto-pick the flatter alternative once every route's elevation has
+      // resolved -- but never override a route the rider chose themselves.
+      if(state.preferFlatRoute && !state.userPickedRoute){
+        var flatIdx = flattestRouteIndex();
+        if(flatIdx>-1 && flatIdx!==state.activeRoute){ selectRoute(flatIdx, true); return; }
+      }
       if(!state.navigating){ showRouteCard(); renderRouteLines(); }
     })
     .catch(function(){ clearTimeout(to); route.elevationPending=false; if(!state.navigating) showRouteCard(); });
@@ -1866,6 +2019,7 @@ function showRouteCard(){
   var ecoEnergy = (r.distanceM/1000*getAssistLevels().eco.whPerKm*weightFactor() + (r.elevationGainM!=null ? ((r.elevationGainM/100)*CLIMB_WH_PER_100M + (r.elevationLossM/100)*DESCENT_WH_PER_100M)*weightFactor() : 0))*batteryTempFactor(state.currentTempC);
   var ecoWouldWork = ecoEnergy <= avail*0.92;
   var flattest = flattestRouteIndex();
+  var quietest = quietestRouteIndex();
 
   var html = "";
   if(state.routeNotBikeAware){
@@ -1879,6 +2033,10 @@ function showRouteCard(){
   if(routeHasUnpavedSurface(r)){
     html += '<div class="banner info">'+ICONS.gravel+
       '<div><b>Includes unpaved sections</b>Part of this route crosses gravel, dirt, or another unpaved surface (marked below) — may be slower or trickier depending on your tires.</div></div>';
+  }
+  if(routeHasBusyRoad(r)){
+    html += '<div class="banner info">'+ICONS.traffic+
+      '<div><b>Includes busy roads</b>Part of this route runs along a primary, secondary, or trunk road (marked below) — may have more traffic than quieter streets nearby.</div></div>';
   }
   var steepGrade = steepestGradeSegment(r);
   if(steepGrade){
@@ -1948,9 +2106,14 @@ function showRouteCard(){
 
   html += '<button class="primary-btn" id="startNavBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Start Navigation</button>';
   var savedIdx = matchingSavedRouteIndex();
+  var altIdx = (state.activeRoute+1)%state.routes.length;
+  var altHints = [];
+  if(flattest===altIdx) altHints.push("flatter");
+  if(quietest===altIdx) altHints.push("quieter");
+  var altHintStr = altHints.length ? " ("+altHints.join(", ")+")" : "";
   html += '<div class="secondary-row"><button class="secondary-btn" id="clearRouteBtn">Clear route</button>'+
     '<button class="secondary-btn" id="saveRouteBtn">'+(savedIdx>-1?"Saved ✓":"Save route")+'</button>'+
-    (state.routes.length>1?'<button class="secondary-btn" id="altRouteBtn">Other route'+(flattest===((state.activeRoute+1)%state.routes.length)?" (flatter)":"")+'</button>':'')+'</div>';
+    (state.routes.length>1?'<button class="secondary-btn" id="altRouteBtn">Other route'+altHintStr+'</button>':'')+'</div>';
 
   html += '<div class="stat-row">'+
     '<div class="stat-card"><div class="v">'+fmtDuration(r.durationMin)+'</div><div class="l">Ride time</div></div>'+
@@ -1958,7 +2121,7 @@ function showRouteCard(){
     '<div class="stat-card'+(insufficient?" warn":"")+'"><div class="v">'+(r.elevationPending?"…":Math.round(energy)+" Wh")+'</div><div class="l">Battery use</div></div>'+
     '</div>';
 
-  html += '<div class="elev-note">'+(r.elevationPending?"Checking elevation along the route…": (r.elevationGainM!=null ? ("Climbs "+Math.round(r.elevationGainM)+" m · descends "+Math.round(r.elevationLossM)+" m"+(flattest===state.activeRoute?" · flattest option":"")) : "Elevation data unavailable — estimate ignores climbs."))+'</div>';
+  html += '<div class="elev-note">'+(r.elevationPending?"Checking elevation along the route…": (r.elevationGainM!=null ? ("Climbs "+Math.round(r.elevationGainM)+" m · descends "+Math.round(r.elevationLossM)+" m"+(flattest===state.activeRoute?" · flattest option":"")+(quietest===state.activeRoute?" · quietest option":"")) : "Elevation data unavailable — estimate ignores climbs."))+'</div>';
   if(r.elevationProfile) html += buildElevationSvg(r.elevationProfile);
   if(state.currentTempC!=null && batteryTempFactor(state.currentTempC)>1.02){
     html += '<div class="elev-note">Cold weather ('+Math.round(state.currentTempC)+'°C) reduces usable battery range — factored into this estimate.</div>';
@@ -2085,10 +2248,11 @@ function ordinal(n){ var s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10
 function stepRowHtml(s,i,all){
   var flagged = looksRestricted(s.name);
   var unpaved = !flagged && stepOnUnpavedSurface(s); // a restricted-road name is the more serious call if both somehow apply
-  var cls = flagged ? " flagged" : (unpaved ? " unpaved" : "");
-  var iconCls = flagged ? " warn" : (unpaved ? " unpaved" : "");
-  var icon = flagged ? ICONS.warn : (unpaved ? ICONS.gravel : stepIconHtml(s));
-  var label = flagged ? '<span class="warn-label">may not allow bikes</span>' : (unpaved ? '<span class="unpaved-label">unpaved surface</span>' : "");
+  var busy = !flagged && !unpaved && stepOnBusyRoad(s); // least severe of the three -- only shown when nothing else already flagged this step
+  var cls = flagged ? " flagged" : (unpaved ? " unpaved" : (busy ? " busy" : ""));
+  var iconCls = flagged ? " warn" : (unpaved ? " unpaved" : (busy ? " busy" : ""));
+  var icon = flagged ? ICONS.warn : (unpaved ? ICONS.gravel : (busy ? ICONS.traffic : stepIconHtml(s)));
+  var label = flagged ? '<span class="warn-label">may not allow bikes</span>' : (unpaved ? '<span class="unpaved-label">unpaved surface</span>' : (busy ? '<span class="busy-label">busy road</span>' : ""));
   return '<div class="step-row'+cls+'"><div class="step-icon'+iconCls+'">'+icon+'</div><div><div class="step-text">'+escapeHtml(stepText(s))+'</div>'+
     '<div class="step-meta">'+(s.distance>0?fmtDist(s.distance):"")+' '+label+'</div></div></div>';
 }
@@ -2096,11 +2260,13 @@ function stepRowHtml(s,i,all){
 function clearRoute(){
   state.routes=[]; state.destination=null; state.routeNotBikeAware=false;
   state.waypoints=[]; state.addingStop=false;
+  state.userPickedRoute=false;
   clearNavSnapshot();
   clearRouteLines();
   clearBikeLaneLayers();
   state.bikeLanes=[]; bikeLaneFetchedForDest=null;
   surfacePoints=[]; surfaceFetchedForDest=null;
+  busyPoints=[]; busyFetchedForDest=null; busyRoadsFetched=false;
   if(destMarker){ map.removeLayer(destMarker); destMarker=null; }
   stopMarkers.forEach(function(m){ map.removeLayer(m); }); stopMarkers=[];
   openSheet("hidden");
@@ -2624,6 +2790,9 @@ function openSettings(){
   setSeg("chargingSeg", state.showCharging?"on":"off");
   setSeg("bikeLanesSeg", state.showBikeLanes?"on":"off");
   setSeg("surfaceWarnSeg", state.showSurfaceWarnings?"on":"off");
+  setSeg("busyRoadSeg", state.showBusyRoadWarnings?"on":"off");
+  setSeg("preferLowTrafficSeg", state.preferLowTraffic?"on":"off");
+  setSeg("preferFlatSeg", state.preferFlatRoute?"on":"off");
   renderSavedPlaces();
   renderFavoritesList();
   renderSavedRoutesList();
@@ -2947,6 +3116,31 @@ function wireUI(){
     localStorage.setItem("ebm_showsurfacewarn", v);
     if(state.showSurfaceWarnings && state.routes.length) fetchSurfaceWays(state.routes[state.activeRoute]);
     else if(state.routes.length && !state.navigating) showRouteCard();
+  });
+  wireSeg("busyRoadSeg", function(v){
+    state.showBusyRoadWarnings = v==="on";
+    localStorage.setItem("ebm_showbusyroad", v);
+    if(state.showBusyRoadWarnings && state.routes.length) fetchBusyRoads(state.routes[state.activeRoute]);
+    else if(state.routes.length && !state.navigating) showRouteCard();
+  });
+  wireSeg("preferLowTrafficSeg", function(v){
+    state.preferLowTraffic = v==="on";
+    localStorage.setItem("ebm_preferlowtraffic", v);
+    if(state.preferLowTraffic && state.routes.length){
+      if(!busyRoadsFetched) fetchBusyRoads(state.routes[state.activeRoute]);
+      else if(!state.userPickedRoute){
+        var qIdx = quietestRouteIndex();
+        if(qIdx>-1 && qIdx!==state.activeRoute) selectRoute(qIdx, true);
+      }
+    }
+  });
+  wireSeg("preferFlatSeg", function(v){
+    state.preferFlatRoute = v==="on";
+    localStorage.setItem("ebm_preferflat", v);
+    if(state.preferFlatRoute && state.routes.length && !state.userPickedRoute){
+      var flatIdx = flattestRouteIndex();
+      if(flatIdx>-1 && flatIdx!==state.activeRoute) selectRoute(flatIdx, true);
+    }
   });
 
   $("themeBtn").addEventListener("click", function(){
