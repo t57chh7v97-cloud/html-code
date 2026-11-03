@@ -155,6 +155,9 @@
   <div class="card" id="locCard">
     <h2>Your Location</h2>
     <div class="row">
+      <button id="useGps" class="primary" style="flex:1">📍 Use My Location</button>
+    </div>
+    <div class="row">
       <input id="citySearch" type="text" list="cityOptions" placeholder="Type a city…">
       <button id="cityGo">Go</button>
     </div>
@@ -165,11 +168,11 @@
       <button id="setLatLon">Set</button>
     </div>
     <div class="row">
-      <button id="useTz" style="flex:1">Use device time zone</button>
+      <button id="useTz" style="flex:1">Rough guess from time zone</button>
     </div>
     <div class="locname" id="locName">—</div>
     <div class="coordline" id="locCoord">—</div>
-    <div class="hint">Click anywhere on the globe to drop a pin there. No GPS is used.</div>
+    <div class="hint">Or click anywhere on the globe to drop a pin there.</div>
   </div>
 </div>
 
@@ -203,7 +206,7 @@
     <ul>
       <li><b>Sizes and distances are schematic</b>, not to scale — a real Earth–Sun gap would make the Earth invisible at this zoom. The tilt angle (23.5°) is kept accurate.</li>
       <li><b>Your local time</b> is your device's own exact clock — used when the location is set from your device's time zone. For any other place, the big clock is an <b>estimate</b>: UTC shifted by that place's longitude rounded to the nearest hour, which tracks real clock time much more closely than solar time, but still isn't exact, since real time zones follow political borders, not longitude. The smaller <b>solar time</b> line is a separate, purely astronomical reading — the Sun is exactly overhead at 12:00:00 solar time wherever you are — which is what actually drives the day/night shading, and can be off from a real clock by up to a couple of hours.</li>
-      <li>This page can't use device GPS, so set your location by clicking the globe, searching a place, typing coordinates, or using your device's time zone as a rough guess. Searching a specific village works on the deployed site; in a preview like this one, search is sometimes blocked by the sandbox it runs in — click the globe or enter coordinates instead.</li>
+      <li><b>Use My Location</b> asks your browser for your real GPS position (your browser will prompt for permission). If you say no, or it's unavailable, it falls back to a rough guess from your device's time zone. You can also click the globe, search a place, or type coordinates directly. Searching and GPS both work on the deployed site; in a sandboxed preview like a Claude artifact, both are sometimes blocked by the sandbox itself — click the globe or enter coordinates there instead.</li>
       <li>Switch to <b>Your Orbit Around the Sun</b> to see Earth's current position on its path around the Sun, including the four equinox/solstice points.</li>
     </ul>
   </div>
@@ -1052,10 +1055,35 @@ document.getElementById('setLatLon').addEventListener('click', ()=>{
   const lon = parseFloat(document.getElementById('lonInput').value);
   if(!isNaN(lat) && !isNaN(lon)) setLocation(lat, lon, 'Custom coordinates');
 });
-document.getElementById('useTz').addEventListener('click', ()=>{
+function useTimezoneFallback(reason){
   const tzLon = clamp(-(new Date().getTimezoneOffset())*0.25, -180, 180);
-  setLocation(loc.lat, tzLon, 'Approximate (from device time zone)', true, true);
+  const name = reason ? `${reason} — using a rough guess from your time zone instead` : 'Approximate (from device time zone)';
+  setLocation(loc.lat, tzLon, name, true, true);
+}
+document.getElementById('useGps').addEventListener('click', ()=>{
+  const btn = document.getElementById('useGps');
+  if(!navigator.geolocation){
+    useTimezoneFallback("This browser can't do GPS location");
+    return;
+  }
+  const original = btn.textContent;
+  btn.textContent = 'Locating…'; btn.disabled = true;
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      btn.textContent = original; btn.disabled = false;
+      setLocation(pos.coords.latitude, pos.coords.longitude, 'Your GPS location', true, true);
+    },
+    err => {
+      btn.textContent = original; btn.disabled = false;
+      const reason = err.code===err.PERMISSION_DENIED ? 'Location permission was denied'
+        : err.code===err.TIMEOUT ? 'Finding your location timed out'
+        : "Couldn't get your location";
+      useTimezoneFallback(reason);
+    },
+    { enableHighAccuracy:false, timeout:8000, maximumAge:300000 }
+  );
 });
+document.getElementById('useTz').addEventListener('click', ()=> useTimezoneFallback());
 document.getElementById('toggle12h').addEventListener('click', e=>{
   use12h = !use12h;
   e.target.textContent = use12h ? '12h' : '24h';
