@@ -164,6 +164,7 @@
     padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;}
   .banner.info{background:var(--accent-soft);border-color:rgba(10,132,255,.3);}
   .banner.info svg{color:var(--accent);}
+  .banner.info button{background:var(--accent);}
   .law-points{padding-left:18px;margin:10px 0;font-size:14px;line-height:1.6;}
   .law-points li{margin-bottom:4px;}
   .region-pick{background:var(--border);border-radius:12px;padding:12px 14px;cursor:pointer;margin-bottom:8px;font-size:14px;font-weight:600;}
@@ -198,9 +199,20 @@
   .step-row.busy{background:rgba(245,124,0,.08);margin:0 -18px;padding:11px 18px;border-radius:8px;}
   .step-icon.busy{background:rgba(245,124,0,.14);color:#f57f17;}
   .busy-label{color:#f57f17;font-weight:600;}
+  .avoided-label{color:var(--danger);font-weight:600;font-size:12px;}
+  .avoid-road-btn{flex:none;align-self:center;width:28px;height:28px;border-radius:50%;border:none;
+    background:transparent;color:var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
+  .avoid-road-btn svg{width:16px;height:16px;}
+  .avoid-road-btn.active{color:var(--danger);}
 
   .elev-note{font-size:12px;color:var(--sub);margin-top:-6px;margin-bottom:10px;}
 
+  .crash-overlay{position:fixed;inset:0;z-index:950;background:rgba(0,0,0,.55);
+    display:flex;align-items:center;justify-content:center;padding:20px;}
+  .crash-card{background:var(--card-solid);border-radius:16px;padding:22px;max-width:320px;width:100%;
+    box-shadow:0 8px 30px rgba(0,0,0,.4);text-align:center;}
+  .crash-title{font-size:20px;font-weight:700;margin-bottom:6px;}
+  .crash-sub{font-size:14px;color:var(--sub);margin-bottom:16px;}
   .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:700;}
   .modal{position:absolute;left:0;right:0;bottom:0;z-index:701;background:var(--card-solid);
     border-radius:16px 16px 0 0;max-height:82vh;overflow-y:auto;padding:4px 18px calc(20px + env(safe-area-inset-bottom));
@@ -371,6 +383,20 @@
   </div>
   <p class="hint">A short vibration each time you reach a turn — handy when you're not looking at the screen. Only works on devices/browsers that support it; does nothing otherwise.</p>
 
+  <div class="section-title">Bike maintenance reminders</div>
+  <div class="seg" id="maintenanceSeg">
+    <button data-v="on" class="active">On</button>
+    <button data-v="off">Off</button>
+  </div>
+  <p class="hint">A quick "check tire pressure and lights" nudge on the route card every 10 logged rides.</p>
+
+  <div class="section-title">Crash detection (experimental)</div>
+  <div class="seg" id="crashDetectSeg">
+    <button data-v="on">On</button>
+    <button data-v="off" class="active">Off</button>
+  </div>
+  <p class="hint">During navigation, watches for a sudden hard stop (a possible crash) using your device's motion sensor, then asks if you're OK and offers to share your location. Off by default — needs motion-sensor permission, is experimental, and can occasionally trigger on a hard pothole or curb hit. Not a substitute for calling emergency services yourself if you're actually hurt.</p>
+
   <div class="section-title">Nearby transit</div>
   <div class="seg" id="transitSeg">
     <button data-v="on" class="active">On</button>
@@ -452,6 +478,14 @@
   <div id="savedRoutesList"></div>
   <p class="hint" id="savedRoutesEmptyHint">Save a route (destination plus any stops) from its route card for one-tap access on the search screen.</p>
 
+  <div class="section-title">Roads you're avoiding</div>
+  <div id="avoidedRoadsList"></div>
+  <p class="hint" id="avoidedRoadsEmptyHint">Tap the ⊘ button on a turn-by-turn step to avoid that road going forward. When alternatives are available, routing prefers whichever one uses fewer of these.</p>
+
+  <div class="section-title">Offline maps</div>
+  <button class="secondary-btn" id="clearOfflineMapsBtn" style="width:100%;">Clear downloaded maps</button>
+  <p class="hint">Downloaded via "Download offline map" on a saved route's card. Clears the cached map tiles to free up storage.</p>
+
   <div class="section-title">Trip history</div>
   <div id="tripSummary"></div>
   <div id="tripList"></div>
@@ -497,6 +531,15 @@
     <button class="icon-btn-lg" id="recenterBtn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg>
     </button>
+  </div>
+</div>
+
+<div class="crash-overlay hidden" id="crashCheckOverlay">
+  <div class="crash-card">
+    <div class="crash-title">Are you OK?</div>
+    <div class="crash-sub">We noticed a sudden stop during your ride.</div>
+    <button class="primary-btn" id="crashImOkBtn">I'm OK</button>
+    <button class="secondary-btn" id="crashShareBtn" style="margin-top:8px;">Share my location</button>
   </div>
 </div>
 
@@ -713,6 +756,8 @@ var ICONS = {
   charging:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>',
   lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>',
   traffic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3L5 21M16 3l3 18"/><path d="M12 6v2M12 11v2M12 16v2"/></svg>',
+  ban:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M5.5 5.5l13 13"/></svg>',
+  wrench:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 00-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 005.4-5.4l-2.1 2.1-2-2z"/></svg>',
   dragHandle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
   share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.6l6.8-3.8M8.6 13.4l6.8 3.8"/></svg>'
 };
@@ -751,6 +796,9 @@ var state = {
   avoidRestrictedRoads: localStorage.getItem("ebm_avoidrestricted") !== "off",
   plannedDepartureAt: null, // ms epoch, or null for "leave now" -- never persisted; a per-planning-session choice, not a standing preference
   userPickedRoute: false,
+  avoidedRoads: loadJSON("ebm_avoidedroads", []), // road names the rider tapped to avoid, from the turn-by-turn list
+  maintenanceReminders: localStorage.getItem("ebm_maintenancereminders") !== "off",
+  crashDetection: localStorage.getItem("ebm_crashdetection") === "on", // opt-in -- needs a sensor permission and has real false-positive risk
   bikeLanes: [],
   transitPOIs: [],
   favorites: loadJSON("ebm_favorites", []),
@@ -880,6 +928,78 @@ function releaseWakeLock(){
 document.addEventListener("visibilitychange", function(){
   if(document.visibilityState==="visible" && state.navigating) requestWakeLock();
 });
+
+/* ---------- crash / hard-stop detection (experimental, opt-in) ---------- */
+// Two signals, not one: a lone accelerometer spike is just as often a
+// pothole or a curb hit as a real crash, so this only raises the "are you
+// OK" prompt when a hard spike is ALSO followed by the rider coming to a
+// near-stop and staying there -- checked against real GPS speed in
+// onNavPosition(), not the accelerometer alone. Still experimental and
+// still capable of false positives; never a substitute for the rider
+// calling for help themselves if they're actually hurt.
+
+var CRASH_ACCEL_THRESHOLD = 30; // m/s^2 (~3g) -- a hard impact, not routine riding vibration
+var CRASH_STILL_CONFIRM_MS = 4000; // must stay essentially stopped this long after the spike to confirm
+var CRASH_STILL_SPEED_MS = 1; // ~3.6 km/h -- "essentially stopped"
+var crashMotionHandler = null;
+var crashCandidateAt = null;
+
+function enableCrashDetection(){
+  if(typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function"){
+    // iOS requires this to be requested from a real user gesture (the
+    // Settings toggle tap counts) and answered before motion events will
+    // ever fire at all.
+    DeviceMotionEvent.requestPermission().then(function(res){
+      if(res==="granted"){ state.crashDetection=true; localStorage.setItem("ebm_crashdetection","on"); if(state.navigating) startCrashDetection(); }
+      else { state.crashDetection=false; localStorage.setItem("ebm_crashdetection","off"); setSeg("crashDetectSeg","off"); toast("Motion permission denied — crash detection needs it to work.", 3500); }
+    }).catch(function(){ state.crashDetection=false; localStorage.setItem("ebm_crashdetection","off"); setSeg("crashDetectSeg","off"); toast("Couldn't enable crash detection on this device.", 3500); });
+  } else if(typeof DeviceMotionEvent !== "undefined"){
+    state.crashDetection=true; localStorage.setItem("ebm_crashdetection","on");
+    if(state.navigating) startCrashDetection();
+  } else {
+    state.crashDetection=false; localStorage.setItem("ebm_crashdetection","off"); setSeg("crashDetectSeg","off");
+    toast("Motion sensors aren't available on this device/browser.", 3500);
+  }
+}
+function disableCrashDetection(){
+  state.crashDetection=false;
+  localStorage.setItem("ebm_crashdetection","off");
+  stopCrashDetection();
+}
+function startCrashDetection(){
+  if(!state.crashDetection || crashMotionHandler || typeof DeviceMotionEvent==="undefined") return;
+  crashCandidateAt = null;
+  crashMotionHandler = function(e){
+    var a = e.accelerationIncludingGravity || e.acceleration;
+    if(!a) return;
+    var mag = Math.sqrt((a.x||0)*(a.x||0)+(a.y||0)*(a.y||0)+(a.z||0)*(a.z||0));
+    if(mag > CRASH_ACCEL_THRESHOLD && !crashCandidateAt) crashCandidateAt = Date.now();
+  };
+  window.addEventListener("devicemotion", crashMotionHandler);
+}
+function stopCrashDetection(){
+  if(crashMotionHandler){ window.removeEventListener("devicemotion", crashMotionHandler); crashMotionHandler=null; }
+  crashCandidateAt = null;
+}
+// Called from onNavPosition() on every GPS fix -- the second half of the
+// two-signal check described above.
+function checkCrashStillness(speedMs){
+  if(!crashCandidateAt) return;
+  if(Date.now()-crashCandidateAt < CRASH_STILL_CONFIRM_MS) return;
+  var stopped = speedMs==null || speedMs < CRASH_STILL_SPEED_MS;
+  crashCandidateAt = null; // one check per spike either way, confirmed or stale
+  if(stopped) triggerCrashCheck();
+}
+function triggerCrashCheck(){
+  if(state.crashCheckActive) return;
+  state.crashCheckActive = true;
+  if(navigator.vibrate) navigator.vibrate([200,100,200,100,200]);
+  $("crashCheckOverlay").classList.remove("hidden");
+}
+function dismissCrashCheck(){
+  state.crashCheckActive = false;
+  $("crashCheckOverlay").classList.add("hidden");
+}
 
 /* ---------- theme / map layers ---------- */
 
@@ -1915,6 +2035,13 @@ function applyRouteResponse(data, ep){
   // Synchronous and before the first render, unlike the flat/quiet
   // preferences below -- looksRestricted() needs no fetch, so there's no
   // reason to flash the riskier route first and switch a moment later.
+  // Personal avoid-list first, legal-safety last -- if they disagree about
+  // which alternative to land on, a parkway/highway-type road still wins
+  // out as the more serious concern.
+  if(state.avoidedRoads.length){
+    var leastIdx = leastAvoidedRouteIndex();
+    if(leastIdx>-1) state.activeRoute = leastIdx;
+  }
   if(state.avoidRestrictedRoads){
     var safeIdx = safestRouteIndex();
     if(safeIdx>-1) state.activeRoute = safeIdx;
@@ -2215,6 +2342,73 @@ function exportGpx(){
   setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
 }
 
+/* ---------- offline map tiles for a saved route ---------- */
+// Caches the actual tile IMAGES for the route's area (via the Cache API,
+// shared with sw.js -- see TILE_CACHE there), not just the routing data
+// GPX already covers, so a saved commute still *shows* a map with no
+// signal. One zoom level only: enough to actually be useful without
+// downloading hundreds of tiles per route, which would be slow and heavy
+// on both data and device storage for routes offering little payoff from
+// a second zoom level anyway.
+var TILE_CACHE = "ebikemaps-tiles-v1";
+var OFFLINE_TILE_ZOOM = 15;
+var OFFLINE_TILE_MAX = 400; // a sane cap on a single download -- a very long point-to-point route could otherwise ask for thousands
+var offlineMapDownloading = false;
+function lonToTileX(lon, z){ return Math.floor((lon+180)/360*Math.pow(2,z)); }
+function latToTileY(lat, z){
+  var rad = lat*Math.PI/180;
+  return Math.floor((1-Math.log(Math.tan(rad)+1/Math.cos(rad))/Math.PI)/2*Math.pow(2,z));
+}
+// Leaflet round-robins the a/b/c tile subdomains per-tile for load spreading,
+// so a live request for a given (z,x,y) can land on any of the three --
+// cache (and look up) tiles under one canonical hostname regardless of
+// which subdomain actually served the download, or a cache-hit would depend
+// on which subdomain Leaflet happens to pick at render time.
+function canonicalTileUrl(z,x,y){ return "https://tile.openstreetmap.org/"+z+"/"+x+"/"+y+".png"; }
+
+function downloadOfflineMap(){
+  if(!("caches" in window)){ toast("Offline maps aren't supported on this browser.", 3500); return; }
+  if(offlineMapDownloading) return;
+  var route = state.routes[state.activeRoute];
+  if(!route) return;
+  var b = routeBoundingBox(route, 0.01); // generous padding so panning around the route still shows map
+  var z = OFFLINE_TILE_ZOOM;
+  var x0 = lonToTileX(b.west, z), x1 = lonToTileX(b.east, z);
+  var y0 = latToTileY(b.north, z), y1 = latToTileY(b.south, z);
+  var urls = [];
+  for(var x=x0;x<=x1;x++){ for(var y=y0;y<=y1;y++){ urls.push({ fetchUrl:"https://a.tile.openstreetmap.org/"+z+"/"+x+"/"+y+".png", key:canonicalTileUrl(z,x,y) }); } }
+  var total = urls.length;
+  if(!total) return;
+  if(total > OFFLINE_TILE_MAX){
+    toast("This route's area is too large to download in one go ("+total+" tiles) — try a shorter route or a smaller area.", 4500);
+    return;
+  }
+  offlineMapDownloading = true;
+  toast("Downloading offline map ("+total+" tiles)…", 5000);
+  caches.open(TILE_CACHE).then(function(cache){
+    var failed = 0;
+    function worker(){
+      var item = urls.shift();
+      if(!item) return Promise.resolve();
+      return fetch(item.fetchUrl).then(function(res){
+        if(res.ok) return cache.put(item.key, res);
+        failed++;
+      }).catch(function(){ failed++; }).then(worker);
+    }
+    // A few tiles in parallel, not all at once -- polite to the tile server, not a flood.
+    var workers = [worker(), worker(), worker(), worker()];
+    Promise.all(workers).then(function(){
+      offlineMapDownloading = false;
+      toast("Offline map saved: "+(total-failed)+" of "+total+" tiles"+(failed?" (some failed — try again on a better connection)":""), 4000);
+      if(state.routes.length && !state.navigating) showRouteCard();
+    });
+  });
+}
+function clearOfflineMaps(){
+  if(!("caches" in window)) return;
+  caches.delete(TILE_CACHE).then(function(){ toast("Offline maps cleared", 2000); });
+}
+
 function showRouteCard(){
   if(!state.routes.length) return;
   var r = state.routes[state.activeRoute];
@@ -2244,6 +2438,10 @@ function showRouteCard(){
     html += '<div class="banner info">'+ICONS.traffic+
       '<div><b>Includes busy roads</b>Part of this route runs along a primary, secondary, or trunk road (marked below) — may have more traffic than quieter streets nearby.</div></div>';
   }
+  if(routeHasAvoidedRoad(r)){
+    html += '<div class="banner info">'+ICONS.ban+
+      '<div><b>Includes a road you asked to avoid</b>Marked below — tap the avoid button on that step again to allow it back in.</div></div>';
+  }
   var steepGrade = steepestGradeSegment(r);
   if(steepGrade){
     html += '<div class="banner info">'+ICONS.incline+
@@ -2263,6 +2461,11 @@ function showRouteCard(){
         ? '<div><b>It\'s already dark out</b>Make sure your bike has working lights before you ride.</div>'
         : '<div><b>Sunset during this ride</b>Sunset is around '+sunsetInfo.sunset.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+' — consider lights if you\'ll still be riding after dark.</div>')+
       '</div>';
+  }
+  if(maintenanceReminderDue()){
+    html += '<div class="banner info">'+ICONS.wrench+
+      '<div><b>Quick bike check</b>You\'ve logged a bunch of rides since your last reminder — worth checking tire pressure and lights before heading out.'+
+      '<button id="dismissMaintenanceBtn">Got it</button></div></div>';
   }
   if(insufficient){
     html += '<div class="banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>'+
@@ -2338,6 +2541,10 @@ function showRouteCard(){
     '<button class="avoid-chip'+(state.preferLowTraffic?" active":"")+'" id="avoidBusyChip">'+ICONS.traffic+'Avoid busy roads</button>'+
     '</div>';
 
+  if(savedIdx>-1){
+    html += '<button class="secondary-btn" id="downloadMapBtn" style="width:100%;margin:-4px 0 10px;">Download offline map</button>';
+  }
+
   html += '<div class="stat-row">'+
     '<div class="stat-card"><div class="v">'+fmtDuration(r.durationMin)+'</div><div class="l">Ride time</div></div>'+
     '<div class="stat-card"><div class="v">'+fmtDist(r.distanceM)+'</div><div class="l">Distance</div></div>'+
@@ -2389,6 +2596,11 @@ function showRouteCard(){
   Array.prototype.forEach.call(document.querySelectorAll("#assistRowSheet .assist-chip"), function(el){
     el.addEventListener("click", function(){ setAssist(el.getAttribute("data-k")); });
   });
+  Array.prototype.forEach.call(document.querySelectorAll(".avoid-road-btn"), function(btn){
+    btn.addEventListener("click", function(){ toggleAvoidRoad(btn.getAttribute("data-road")); showRouteCard(); });
+  });
+  var dismissMaintenanceBtn=$("dismissMaintenanceBtn"); if(dismissMaintenanceBtn) dismissMaintenanceBtn.addEventListener("click", function(){ dismissMaintenanceReminder(); showRouteCard(); });
+  var downloadMapBtn=$("downloadMapBtn"); if(downloadMapBtn) downloadMapBtn.addEventListener("click", downloadOfflineMap);
 }
 
 // Tapping/dragging across the chart shows the distance-into-route and
@@ -2481,6 +2693,54 @@ function safestRouteIndex(){
   return best;
 }
 
+/* ---------- personal "avoid this road" list ---------- */
+
+function isAvoidedRoad(name){
+  if(!name) return false;
+  return state.avoidedRoads.some(function(a){ return a.toLowerCase()===name.toLowerCase(); });
+}
+// No separate on/off toggle -- adding a road to the list IS the opt-in,
+// same as the list being non-empty meaning "yes, apply this."
+function toggleAvoidRoad(name){
+  if(!name) return;
+  var idx = state.avoidedRoads.findIndex(function(a){ return a.toLowerCase()===name.toLowerCase(); });
+  if(idx>-1) state.avoidedRoads.splice(idx,1);
+  else state.avoidedRoads.push(name);
+  saveJSON("ebm_avoidedroads", state.avoidedRoads);
+  // Re-evaluate right away, same as setPreferFlatRoute()/setAvoidRestrictedRoads()
+  // do on toggle -- without this, marking a road avoided only took effect on
+  // the NEXT fresh route fetch, not the one already on screen.
+  if(state.routes.length && !state.userPickedRoute){
+    var leastIdx = leastAvoidedRouteIndex();
+    if(leastIdx>-1 && leastIdx!==state.activeRoute) selectRoute(leastIdx, true);
+  }
+}
+function routeHasAvoidedRoad(route){
+  return route.steps.some(function(s){ return isAvoidedRoad(s.name); });
+}
+// Same shape as safestRouteIndex()/quietestRouteIndex()/flattestRouteIndex().
+function leastAvoidedRouteIndex(){
+  if(state.routes.length<2 || !state.avoidedRoads.length) return -1;
+  var counts = state.routes.map(function(r){ return r.steps.filter(function(s){ return isAvoidedRoad(s.name); }).length; });
+  var allSame = counts.every(function(c){ return c===counts[0]; });
+  if(allSame) return -1;
+  var best=0;
+  for(var i=1;i<counts.length;i++){ if(counts[i]<counts[best]) best=i; }
+  return best;
+}
+
+/* ---------- periodic bike maintenance reminder ---------- */
+
+var MAINTENANCE_REMINDER_INTERVAL = 10; // rides
+function maintenanceReminderDue(){
+  if(!state.maintenanceReminders) return false;
+  var lastAt = Number(localStorage.getItem("ebm_lastmaintenancecount")) || 0;
+  return state.tripHistory.length - lastAt >= MAINTENANCE_REMINDER_INTERVAL;
+}
+function dismissMaintenanceReminder(){
+  localStorage.setItem("ebm_lastmaintenancecount", String(state.tripHistory.length));
+}
+
 function stepIconHtml(s){
   if(s.type==="depart") return ICONS.depart;
   if(s.type==="arrive") return ICONS.arrive;
@@ -2502,12 +2762,14 @@ function stepRowHtml(s,i,all){
   var flagged = looksRestricted(s.name);
   var unpaved = !flagged && stepOnUnpavedSurface(s); // a restricted-road name is the more serious call if both somehow apply
   var busy = !flagged && !unpaved && stepOnBusyRoad(s); // least severe of the three -- only shown when nothing else already flagged this step
+  var avoided = isAvoidedRoad(s.name); // a personal choice, independent of (and shown alongside) the auto-detected flags above
   var cls = flagged ? " flagged" : (unpaved ? " unpaved" : (busy ? " busy" : ""));
   var iconCls = flagged ? " warn" : (unpaved ? " unpaved" : (busy ? " busy" : ""));
   var icon = flagged ? ICONS.warn : (unpaved ? ICONS.gravel : (busy ? ICONS.traffic : stepIconHtml(s)));
   var label = flagged ? '<span class="warn-label">may not allow bikes</span>' : (unpaved ? '<span class="unpaved-label">unpaved surface</span>' : (busy ? '<span class="busy-label">busy road</span>' : ""));
-  return '<div class="step-row'+cls+'"><div class="step-icon'+iconCls+'">'+icon+'</div><div><div class="step-text">'+escapeHtml(stepText(s))+'</div>'+
-    '<div class="step-meta">'+(s.distance>0?fmtDist(s.distance):"")+' '+label+'</div></div></div>';
+  var avoidBtn = s.name ? '<button class="avoid-road-btn'+(avoided?" active":"")+'" data-road="'+escapeHtml(s.name)+'" aria-label="'+(avoided?"Stop avoiding "+escapeHtml(s.name):"Avoid "+escapeHtml(s.name))+'">'+ICONS.ban+'</button>' : "";
+  return '<div class="step-row'+cls+'"><div class="step-icon'+iconCls+'">'+icon+'</div><div style="flex:1;min-width:0;"><div class="step-text">'+escapeHtml(stepText(s))+(avoided?' <span class="avoided-label">avoided</span>':"")+'</div>'+
+    '<div class="step-meta">'+(s.distance>0?fmtDist(s.distance):"")+' '+label+'</div></div>'+avoidBtn+'</div>';
 }
 
 function clearRoute(){
@@ -2588,6 +2850,7 @@ function startNavigation(){
   state.advanceWarnedStep=-1;
   $("recenterBtn").classList.remove("active");
   requestWakeLock();
+  startCrashDetection();
   var r = state.routes[state.activeRoute];
   state.tripStart = {
     time:Date.now(), distanceM:r.distanceM, energyWh:energyForRoute(r), destName:state.destination.name, assistLevel:state.assist, bikeClass:state.bikeClass,
@@ -2611,6 +2874,8 @@ function startNavigation(){
 function exitNavigation(){
   state.navigating=false;
   releaseWakeLock();
+  stopCrashDetection();
+  dismissCrashCheck();
   if(state.watchId!=null && navigator.geolocation){ navigator.geolocation.clearWatch(state.watchId); state.watchId=null; }
   $("navOverlay").classList.add("hidden");
   $("searchLayer").classList.remove("hidden");
@@ -2784,6 +3049,7 @@ function onNavPosition(pos){
   if(state.followMode) map.panTo([lat,lon], { animate:true });
   checkSpeedAgainstClass(pos.coords.speed);
   updateSpeedDisplay(pos.coords.speed);
+  checkCrashStillness(pos.coords.speed);
   refreshAutoTheme(); // so a ride that crosses sunset switches to the dark map on its own
 
   var route = state.routes[state.activeRoute];
@@ -3049,9 +3315,12 @@ function openSettings(){
   setSeg("preferLowTrafficSeg", state.preferLowTraffic?"on":"off");
   setSeg("preferFlatSeg", state.preferFlatRoute?"on":"off");
   setSeg("avoidRestrictedSeg", state.avoidRestrictedRoads?"on":"off");
+  setSeg("maintenanceSeg", state.maintenanceReminders?"on":"off");
+  setSeg("crashDetectSeg", state.crashDetection?"on":"off");
   renderSavedPlaces();
   renderFavoritesList();
   renderSavedRoutesList();
+  renderAvoidedRoadsList();
   renderTripHistory();
 }
 function closeSettings(){ $("settingsBackdrop").classList.add("hidden"); $("settingsPanel").classList.add("hidden"); }
@@ -3097,6 +3366,27 @@ function renderSavedRoutesList(){
       state.savedRoutes.splice(Number(btn.getAttribute("data-i")),1);
       saveJSON("ebm_savedroutes", state.savedRoutes);
       renderSavedRoutesList();
+    });
+  });
+}
+
+function renderAvoidedRoadsList(){
+  var box=$("avoidedRoadsList");
+  var hint=$("avoidedRoadsEmptyHint");
+  if(!state.avoidedRoads.length){ box.innerHTML=""; hint.classList.remove("hidden"); return; }
+  hint.classList.add("hidden");
+  box.innerHTML = state.avoidedRoads.map(function(name,i){
+    return '<div class="step-row"><div class="step-icon">'+ICONS.ban+'</div>'+
+      '<div style="flex:1;min-width:0;"><div class="step-text">'+escapeHtml(name)+'</div></div>'+
+      '<button class="icon-btn" data-i="'+i+'" aria-label="Stop avoiding '+escapeHtml(name)+'" style="width:26px;height:26px;flex:none;">'+
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>';
+  }).join("");
+  Array.prototype.forEach.call(box.querySelectorAll("button[data-i]"), function(btn){
+    btn.addEventListener("click", function(){
+      state.avoidedRoads.splice(Number(btn.getAttribute("data-i")),1);
+      saveJSON("ebm_avoidedroads", state.avoidedRoads);
+      renderAvoidedRoadsList();
+      if(state.routes.length && !state.navigating) showRouteCard();
     });
   });
 }
@@ -3320,6 +3610,7 @@ function wireUI(){
     state.tripHistory=[]; saveJSON("ebm_trips", []); renderTripHistory();
   });
   $("exportTripsBtn").addEventListener("click", exportTripsCsv);
+  $("clearOfflineMapsBtn").addEventListener("click", clearOfflineMaps);
 
   $("capacityInput").addEventListener("change", function(e){ state.capacityWh=clamp(Number(e.target.value)||500,50,3000); localStorage.setItem("ebm_capacity",state.capacityWh); if(state.routes.length) showRouteCard(); });
   $("weightInput").addEventListener("change", function(e){
@@ -3382,6 +3673,15 @@ function wireUI(){
   wireSeg("preferLowTrafficSeg", function(v){ setPreferLowTraffic(v==="on"); });
   wireSeg("preferFlatSeg", function(v){ setPreferFlatRoute(v==="on"); });
   wireSeg("avoidRestrictedSeg", function(v){ setAvoidRestrictedRoads(v==="on"); });
+  wireSeg("maintenanceSeg", function(v){
+    state.maintenanceReminders = v==="on";
+    localStorage.setItem("ebm_maintenancereminders", v);
+    if(state.routes.length && !state.navigating) showRouteCard();
+  });
+  wireSeg("crashDetectSeg", function(v){
+    if(v==="on") enableCrashDetection();
+    else disableCrashDetection();
+  });
 
   $("themeBtn").addEventListener("click", function(){
     state.theme = state.theme==="auto" ? "light" : (state.theme==="light" ? "dark" : "auto");
@@ -3399,6 +3699,8 @@ function wireUI(){
   $("recenterBtn").addEventListener("click", recenterNav);
   $("reportMapIssueBtn").addEventListener("click", reportMapIssue);
   $("muteBtn").addEventListener("click", function(){ state.voiceOn=!state.voiceOn; speechOn=state.voiceOn; localStorage.setItem("ebm_voice", state.voiceOn?"on":"off"); toast(state.voiceOn?"Voice guidance on":"Voice guidance off", 1500); });
+  $("crashImOkBtn").addEventListener("click", dismissCrashCheck);
+  $("crashShareBtn").addEventListener("click", function(){ shareMyLocation(); dismissCrashCheck(); });
 
   if(window.matchMedia){
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function(){ if(state.theme==="auto") applyTheme(); });
