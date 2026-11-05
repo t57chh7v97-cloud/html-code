@@ -224,7 +224,7 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    per frame) so the pole direction never swings as Earth orbits — this
    fixed-in-space tilt is exactly what produces the seasons. */
 const DEG = Math.PI/180, RAD = 180/Math.PI;
-const EARTH_R = 1, EARTH_TILT = 23.44*DEG, EARTH_SPIN_PERIOD_DAYS = 0.99726968;
+const EARTH_R = 1, EARTH_TILT = 23.44*DEG;
 const SUN_R = 5.4, EARTH_ORBIT_R = 74, YEAR_DAYS = 365.2422;
 
 function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
@@ -798,6 +798,24 @@ setView('globe');
 const earthNorthWorld = new THREE.Vector3(0,1,0).applyAxisAngle(new THREE.Vector3(1,0,0), EARTH_TILT);
 const eclipticUp = new THREE.Vector3(0,1,0);
 
+// The spin angle that actually makes the correct longitude face the Sun, derived
+// directly from solarCalc's subsolar point rather than from a separately-clocked
+// "one rotation per day" formula — the previous version kept correct RATE but had
+// no phase tie to the real subsolar longitude, so the day/night terminator shown
+// on the globe could land anywhere relative to where it actually belongs, while
+// the HUD's own day/night badge (driven by solarCalc directly) stayed correct —
+// the two disagreeing is what actually produced the "wrong"/"upside down" look.
+function currentSpinAngle(simDate){
+  const theta = orbitAngleFromDate(simDate);
+  const earthPos = new THREE.Vector3(EARTH_ORBIT_R*Math.cos(theta), 0, -EARTH_ORBIT_R*Math.sin(theta));
+  const sunDir = earthPos.multiplyScalar(-1).normalize();
+  const subsolarLon = solarCalc(simDate, 0, 0).subsolarLon;
+  const t = sunDir.applyAxisAngle(new THREE.Vector3(1,0,0), -EARTH_TILT);
+  const alphaTarget = Math.atan2(-t.z, t.x);
+  const alphaLocal = -subsolarLon*DEG;
+  return alphaTarget - alphaLocal;
+}
+
 // Turn the camera to face a given lat/lon head-on, accounting for Earth's current
 // spin (which direction faces a fixed outside point changes continuously as Earth
 // rotates) and its fixed axial tilt. Called whenever the location changes, so the
@@ -805,7 +823,7 @@ const eclipticUp = new THREE.Vector3(0,1,0);
 // facing the camera's arbitrary default angle at that moment.
 function recenterOn(lat, lon){
   const local = latLonToPos(lat, lon, 1);
-  const spinAngle = (dayFrac(new Date()) % EARTH_SPIN_PERIOD_DAYS) / EARTH_SPIN_PERIOD_DAYS * Math.PI*2;
+  const spinAngle = currentSpinAngle(new Date());
   local.applyAxisAngle(new THREE.Vector3(0,1,0), spinAngle);
   local.applyAxisAngle(new THREE.Vector3(1,0,0), EARTH_TILT);
   local.normalize();
@@ -905,9 +923,8 @@ function frame(now){
   const theta = orbitAngleFromDate(simDate);
   earthOrbitAnchor.position.set(EARTH_ORBIT_R*Math.cos(theta), 0, -EARTH_ORBIT_R*Math.sin(theta));
 
-  // daily spin
-  const spinAngle = (dayFrac(simDate) % EARTH_SPIN_PERIOD_DAYS) / EARTH_SPIN_PERIOD_DAYS * Math.PI*2;
-  spinGroup.rotation.y = spinAngle;
+  // daily spin, phase-locked to the real subsolar point (see currentSpinAngle)
+  spinGroup.rotation.y = currentSpinAngle(simDate);
 
   // sun direction uniform (world space, earth -> sun)
   earthOrbitAnchor.getWorldPosition(tmpV1);
