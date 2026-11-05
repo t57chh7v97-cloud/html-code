@@ -1096,10 +1096,28 @@ document.getElementById('mobileToggle').addEventListener('click', ()=>{
   document.getElementById('mobileSheet').classList.toggle('open');
 });
 
+// A fixed vertical FOV alone leaves portrait screens with a much narrower
+// horizontal FOV (tan(hFov/2) = tan(vFov/2) * aspect), so a single north-south
+// coastline can end up filling the whole screen width and looking stretched
+// and unrecognizable. Solve for whichever FOV keeps BOTH dimensions at least
+// BASE_FOV, instead of leaving the narrower one to shrink unchecked.
+const BASE_FOV = 50;
+function fitCameraFov(){
+  const aspect = innerWidth/innerHeight;
+  if(aspect < 1){
+    const half = (BASE_FOV*DEG)/2;
+    camera.fov = (2*Math.atan(Math.tan(half)/aspect))*RAD;
+  } else {
+    camera.fov = BASE_FOV;
+  }
+  camera.aspect = aspect;
+  camera.updateProjectionMatrix();
+}
 window.addEventListener('resize', ()=>{
-  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  fitCameraFov();
   renderer.setSize(innerWidth, innerHeight);
 });
+fitCameraFov();
 renderer.setSize(innerWidth, innerHeight);
 
 updateHUD(new Date());
