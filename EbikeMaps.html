@@ -110,12 +110,17 @@
     display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;padding:0;}
   .stop-drag-handle svg{width:16px;height:16px;}
   .step-row.dragging{background:var(--accent-soft);border-radius:8px;opacity:.85;position:relative;z-index:1;}
-  .avoid-row{display:flex;gap:8px;margin:-4px 0 10px;}
-  .avoid-chip{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 6px;
+  .avoid-row{display:flex;flex-wrap:wrap;gap:8px;margin:-4px 0 10px;}
+  .avoid-chip{flex:1 1 90px;display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 6px;
     border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--sub);
     font-size:12.5px;font-weight:700;cursor:pointer;}
   .avoid-chip svg{width:14px;height:14px;}
   .avoid-chip.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent);}
+  .depart-row{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:12.5px;}
+  .depart-row label{color:var(--sub);font-weight:700;flex:none;}
+  .depart-row input[type="time"]{border:1px solid var(--border);border-radius:8px;padding:5px 7px;
+    font-size:13px;background:var(--bg);color:var(--text);flex:none;}
+  .depart-eta{color:var(--sub);flex:1;text-align:right;}
   .stop-marker{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;
     font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;
     box-shadow:0 1px 4px rgba(0,0,0,.35);transform:translate(-11px,-11px);}
@@ -407,6 +412,13 @@
     <button data-v="off">Off</button>
   </div>
   <p class="hint">Flags turn-by-turn steps that run along a primary, secondary, or trunk road (marked below), based on map data.</p>
+
+  <div class="section-title">Avoid restricted roads</div>
+  <div class="seg" id="avoidRestrictedSeg">
+    <button data-v="on" class="active">On</button>
+    <button data-v="off">Off</button>
+  </div>
+  <p class="hint">When alternatives are available, prefers whichever one has fewer parkway/expressway/freeway/turnpike/interstate-type roads flagged below — places that often don't legally allow bikes. This is a best-effort name match against map data, not a guarantee: it can't invent a route that avoids one entirely if every alternative includes it, and it can miss roads the pattern doesn't catch. On by default; always double-check the route-level warning and local signage yourself.</p>
 
   <div class="section-title">Prefer low-traffic routes</div>
   <div class="seg" id="preferLowTrafficSeg">
@@ -733,6 +745,11 @@ var state = {
   showBusyRoadWarnings: localStorage.getItem("ebm_showbusyroad") !== "off",
   preferLowTraffic: localStorage.getItem("ebm_preferlowtraffic") === "on",
   preferFlatRoute: localStorage.getItem("ebm_preferflat") === "on",
+  // On by default, unlike the comfort-only preferences above -- a parkway/
+  // expressway/freeway-type road can mean real legal trouble for a cyclist,
+  // not just a less pleasant ride.
+  avoidRestrictedRoads: localStorage.getItem("ebm_avoidrestricted") !== "off",
+  plannedDepartureAt: null, // ms epoch, or null for "leave now" -- never persisted; a per-planning-session choice, not a standing preference
   userPickedRoute: false,
   bikeLanes: [],
   transitPOIs: [],
@@ -1028,7 +1045,13 @@ function fetchCurrentTemp(){
       var t = d && d.current && d.current.temperature_2m;
       if(typeof t === "number") state.currentTempC = t;
       if(d && d.hourly && Array.isArray(d.hourly.time) && Array.isArray(d.hourly.precipitation_probability)){
-        state.hourlyForecast = d.hourly.time.map(function(iso,i){ return { time:new Date(iso), precipProb:d.hourly.precipitation_probability[i] }; });
+        // The request above never passes a "timezone" param, so Open-Meteo
+        // returns hourly.time as GMT/UTC instants -- but formatted bare,
+        // without a trailing "Z" or offset. A date-time string with no
+        // timezone designator is parsed as LOCAL time per spec, so without
+        // forcing UTC here, every rider outside UTC+0 would have their rain
+        // forecast silently shifted by their own UTC offset.
+        state.hourlyForecast = d.hourly.time.map(function(iso,i){ return { time:new Date(iso+"Z"), precipProb:d.hourly.precipitation_probability[i] }; });
       }
       if(state.routes.length && !state.navigating) showRouteCard();
     })
@@ -1080,9 +1103,12 @@ function sunTimesFor(lat, lon, date){
 }
 
 // Warns when it's already dark, or sunset falls before the ride is over.
+// Uses the rider's planned departure time if they set one on the route
+// card, so checking the card ahead of an evening ride reflects conditions
+// at the time they'll actually leave, not conditions right now.
 function sunsetDuringRide(rideMinutes){
   if(!state.userLatLng) return null;
-  var now = new Date();
+  var now = new Date(state.plannedDepartureAt || Date.now());
   var times = sunTimesFor(state.userLatLng.lat, state.userLatLng.lon, now);
   if(!times) return null;
   var nowMs = now.getTime();
@@ -1097,7 +1123,7 @@ function sunsetDuringRide(rideMinutes){
 var RAIN_WARNING_THRESHOLD_PCT = 40;
 function rainDuringRide(rideMinutes){
   if(!state.hourlyForecast || !state.hourlyForecast.length || rideMinutes<30) return null;
-  var now = Date.now(), endTime = now + rideMinutes*60000;
+  var now = state.plannedDepartureAt || Date.now(), endTime = now + rideMinutes*60000;
   var worst = null;
   state.hourlyForecast.forEach(function(h){
     var t = h.time.getTime();
@@ -1106,6 +1132,24 @@ function rainDuringRide(rideMinutes){
   });
   if(!worst || worst.precipProb < RAIN_WARNING_THRESHOLD_PCT) return null;
   return worst;
+}
+
+// Only meaningful right when the ride would start rainy -- looks past that
+// moment (not past the whole ride) for the first forecast hour whose chance
+// drops back under the warning threshold, so the rain banner can suggest a
+// concrete wait instead of just "it's raining."
+var RAIN_CLEAR_LOOKAHEAD_MIN = 180; // don't suggest waiting more than 3 hours
+function rainClearsBy(fromTime){
+  if(!state.hourlyForecast || !state.hourlyForecast.length) return null;
+  var lookEnd = fromTime + RAIN_CLEAR_LOOKAHEAD_MIN*60000;
+  for(var i=0;i<state.hourlyForecast.length;i++){
+    var h = state.hourlyForecast[i];
+    var t = h.time.getTime();
+    if(t+3600000 < fromTime) continue;
+    if(t > lookEnd) break;
+    if(h.precipProb < RAIN_WARNING_THRESHOLD_PCT) return h.time;
+  }
+  return null;
 }
 
 /* ---------- nearby transit (subway + ferry) + bike parking ---------- */
@@ -1724,6 +1768,31 @@ function removeWaypoint(i){
   fetchRoute();
 }
 
+// Greedy nearest-neighbor over straight-line distance -- not a true
+// shortest-route solver (that would need the actual road network, which
+// means a real routing call per candidate order), but a cheap, no-network
+// heuristic that's right far more often than the order stops happened to
+// be added in, especially once there are 3+ of them.
+function optimizeStopOrder(){
+  if(state.waypoints.length<2 || !state.userLatLng) return;
+  var remaining = state.waypoints.slice();
+  var ordered = [];
+  var from = state.userLatLng;
+  while(remaining.length){
+    var bestIdx=0, bestD=Infinity;
+    remaining.forEach(function(w,i){
+      var d = haversine(from.lat, from.lon, w.lat, w.lon);
+      if(d<bestD){ bestD=d; bestIdx=i; }
+    });
+    var next = remaining.splice(bestIdx,1)[0];
+    ordered.push(next);
+    from = next;
+  }
+  state.waypoints = ordered;
+  setStopMarkers();
+  fetchRoute();
+}
+
 function stopRowHtml(w, i){
   var handle = state.waypoints.length>1 ? '<button class="stop-drag-handle" aria-label="Reorder stop '+escapeHtml(w.name)+'">'+ICONS.dragHandle+'</button>' : '';
   return '<div class="step-row" data-i="'+i+'">'+handle+'<div class="step-icon" style="font-size:13px;font-weight:700;">'+(i+1)+'</div>'+
@@ -1843,6 +1912,13 @@ function applyRouteResponse(data, ep){
   state.advanceWarnedStep = -1;
   state.userPickedRoute = false;
   state.routeNotBikeAware = !ep.bikeAware;
+  // Synchronous and before the first render, unlike the flat/quiet
+  // preferences below -- looksRestricted() needs no fetch, so there's no
+  // reason to flash the riskier route first and switch a moment later.
+  if(state.avoidRestrictedRoads){
+    var safeIdx = safestRouteIndex();
+    if(safeIdx>-1) state.activeRoute = safeIdx;
+  }
   map.fitBounds(L.latLngBounds(state.routes[0].latlngs), { padding:[60,60] });
   renderRouteLines();
   showRouteCard();
@@ -1918,6 +1994,16 @@ function setPreferLowTraffic(on){
       var qIdx = quietestRouteIndex();
       if(qIdx>-1 && qIdx!==state.activeRoute) selectRoute(qIdx, true);
     }
+  }
+}
+function setAvoidRestrictedRoads(on){
+  state.avoidRestrictedRoads = on;
+  localStorage.setItem("ebm_avoidrestricted", on?"on":"off");
+  // No fetch to wait on -- looksRestricted() is a pure name check, so this
+  // can re-evaluate immediately.
+  if(on && state.routes.length && !state.userPickedRoute){
+    var safeIdx = safestRouteIndex();
+    if(safeIdx>-1 && safeIdx!==state.activeRoute) selectRoute(safeIdx, true);
   }
 }
 
@@ -2078,8 +2164,9 @@ function enableChipKeyboard(container){
 // you'll get there -- not a live/continuous location share.
 function shareEtaText(){
   var r = state.routes[state.activeRoute];
-  var etaDate = new Date(Date.now() + r.durationMin*60000);
-  return "Heading to "+state.destination.name+" by e-bike — ETA "+fmtClock(etaDate)+" ("+fmtDist(r.distanceM)+", about "+fmtDuration(r.durationMin)+").";
+  var etaDate = new Date((state.plannedDepartureAt || Date.now()) + r.durationMin*60000);
+  var verb = state.plannedDepartureAt ? "Planning to head to " : "Heading to ";
+  return verb+state.destination.name+" by e-bike — ETA "+fmtClock(etaDate)+" ("+fmtDist(r.distanceM)+", about "+fmtDuration(r.durationMin)+").";
 }
 function shareEta(){
   var text = shareEtaText();
@@ -2138,6 +2225,7 @@ function showRouteCard(){
   var ecoWouldWork = ecoEnergy <= avail*0.92;
   var flattest = flattestRouteIndex();
   var quietest = quietestRouteIndex();
+  var safest = safestRouteIndex();
 
   var html = "";
   if(state.routeNotBikeAware){
@@ -2163,8 +2251,10 @@ function showRouteCard(){
   }
   var rain = rainDuringRide(r.durationMin);
   if(rain){
+    var clearsAt = rainClearsBy(state.plannedDepartureAt || Date.now());
     html += '<div class="banner info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 13v4M8 13v4M12 15v4M20 16.58A5 5 0 0018 7h-1.26A8 8 0 104 15.25"/></svg>'+
-      '<div><b>Rain likely during this ride</b>'+Math.round(rain.precipProb)+'% chance around '+rain.time.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+', based on the current forecast.</div></div>';
+      '<div><b>Rain likely during this ride</b>'+Math.round(rain.precipProb)+'% chance around '+rain.time.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+', based on the current forecast.'+
+      (clearsAt?' Looks clearer by '+fmtClock(clearsAt)+' — consider waiting.':'')+'</div></div>';
   }
   var sunsetInfo = sunsetDuringRide(r.durationMin);
   if(sunsetInfo){
@@ -2194,8 +2284,21 @@ function showRouteCard(){
     '<svg viewBox="0 0 24 24" fill="'+(fav?"currentColor":"none")+'" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M12 17.3l-5.4 3.2 1.4-6-4.6-4 6-0.5L12 4l2.6 5.9 6 0.5-4.6 4 1.4 6z"/></svg>'+
     '</button></div></div>';
 
+  var etaRef = state.plannedDepartureAt || Date.now();
+  var departValue = "";
+  if(state.plannedDepartureAt){
+    var dd = new Date(state.plannedDepartureAt);
+    departValue = (dd.getHours()<10?"0":"")+dd.getHours()+":"+(dd.getMinutes()<10?"0":"")+dd.getMinutes();
+  }
+  html += '<div class="depart-row"><label for="departTimeInput">Leave</label>'+
+    '<input type="time" id="departTimeInput" value="'+departValue+'">'+
+    (state.plannedDepartureAt?'<button class="icon-btn" id="clearDepartBtn" aria-label="Leave now" style="width:22px;height:22px;flex:none;">'+
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>':'')+
+    '<span class="depart-eta">Arrive '+fmtClock(new Date(etaRef + r.durationMin*60000))+'</span></div>';
+
   if(state.waypoints.length){
     html += '<div id="stopList">'+state.waypoints.map(stopRowHtml).join("")+'</div>';
+    if(state.waypoints.length>1) html += '<button class="secondary-btn" id="optimizeStopsBtn" style="width:100%;margin:2px 0 6px;">Optimize stop order</button>';
   }
   html += '<button class="secondary-btn" id="addStopBtn" style="width:100%;margin:2px 0 10px;">+ Add stop</button>';
 
@@ -2221,6 +2324,7 @@ function showRouteCard(){
   var savedIdx = matchingSavedRouteIndex();
   var altIdx = (state.activeRoute+1)%state.routes.length;
   var altHints = [];
+  if(safest===altIdx) altHints.push("safer");
   if(flattest===altIdx) altHints.push("flatter");
   if(quietest===altIdx) altHints.push("quieter");
   var altHintStr = altHints.length ? " ("+altHints.join(", ")+")" : "";
@@ -2229,6 +2333,7 @@ function showRouteCard(){
     (state.routes.length>1?'<button class="secondary-btn" id="altRouteBtn">Other route'+altHintStr+'</button>':'')+'</div>';
 
   html += '<div class="avoid-row">'+
+    '<button class="avoid-chip'+(state.avoidRestrictedRoads?" active":"")+'" id="avoidHighwaysChip">'+ICONS.warn+'Avoid highways</button>'+
     '<button class="avoid-chip'+(state.preferFlatRoute?" active":"")+'" id="avoidHillsChip">'+ICONS.incline+'Avoid hills</button>'+
     '<button class="avoid-chip'+(state.preferLowTraffic?" active":"")+'" id="avoidBusyChip">'+ICONS.traffic+'Avoid busy roads</button>'+
     '</div>';
@@ -2239,7 +2344,7 @@ function showRouteCard(){
     '<div class="stat-card'+(insufficient?" warn":"")+'"><div class="v">'+(r.elevationPending?"…":Math.round(energy)+" Wh")+'</div><div class="l">Battery use</div></div>'+
     '</div>';
 
-  html += '<div class="elev-note">'+(r.elevationPending?"Checking elevation along the route…": (r.elevationGainM!=null ? ("Climbs "+Math.round(r.elevationGainM)+" m · descends "+Math.round(r.elevationLossM)+" m"+(flattest===state.activeRoute?" · flattest option":"")+(quietest===state.activeRoute?" · quietest option":"")) : "Elevation data unavailable — estimate ignores climbs."))+'</div>';
+  html += '<div class="elev-note">'+(r.elevationPending?"Checking elevation along the route…": (r.elevationGainM!=null ? ("Climbs "+Math.round(r.elevationGainM)+" m · descends "+Math.round(r.elevationLossM)+" m"+(safest===state.activeRoute?" · safest option":"")+(flattest===state.activeRoute?" · flattest option":"")+(quietest===state.activeRoute?" · quietest option":"")) : "Elevation data unavailable — estimate ignores climbs."))+'</div>';
   if(r.elevationProfile) html += buildElevationSvg(r.elevationProfile);
   if(state.currentTempC!=null && batteryTempFactor(state.currentTempC)>1.02){
     html += '<div class="elev-note">Cold weather ('+Math.round(state.currentTempC)+'°C) reduces usable battery range — factored into this estimate.</div>';
@@ -2265,6 +2370,18 @@ function showRouteCard(){
   $("exportGpxBtn").addEventListener("click", exportGpx);
   $("addStopBtn").addEventListener("click", beginAddStop);
   wireStopListHandlers();
+  var optimizeBtn=$("optimizeStopsBtn"); if(optimizeBtn) optimizeBtn.addEventListener("click", optimizeStopOrder);
+  $("departTimeInput").addEventListener("change", function(e){
+    var val = e.target.value;
+    if(!val){ state.plannedDepartureAt = null; showRouteCard(); return; }
+    var parts = val.split(":");
+    var d = new Date();
+    d.setHours(Number(parts[0]), Number(parts[1]), 0, 0);
+    state.plannedDepartureAt = d.getTime();
+    showRouteCard();
+  });
+  var clearDepartBtn=$("clearDepartBtn"); if(clearDepartBtn) clearDepartBtn.addEventListener("click", function(){ state.plannedDepartureAt = null; showRouteCard(); });
+  $("avoidHighwaysChip").addEventListener("click", function(){ setAvoidRestrictedRoads(!state.avoidRestrictedRoads); showRouteCard(); });
   $("avoidHillsChip").addEventListener("click", function(){ setPreferFlatRoute(!state.preferFlatRoute); showRouteCard(); });
   $("avoidBusyChip").addEventListener("click", function(){ setPreferLowTraffic(!state.preferLowTraffic); showRouteCard(); });
   var altBtn=$("altRouteBtn"); if(altBtn) altBtn.addEventListener("click", function(){ selectRoute((state.activeRoute+1)%state.routes.length); });
@@ -2346,6 +2463,24 @@ function routeHasRestrictedRoad(route){
   return route.steps.some(function(s){ return looksRestricted(s.name); });
 }
 
+// Like flattestRouteIndex()/quietestRouteIndex(), but needs no fetch at all --
+// looksRestricted() is a pure name check already run on every step for the
+// warning banner, so this is just counting what's already known the moment
+// a route response arrives. Still just a heuristic over whatever alternatives
+// OSRM happened to return: it can pick the alternative with fewer flagged
+// roads, but can't guarantee one exists that has none, or that the pattern
+// match itself is complete -- the warning banner and the rider's own
+// judgment remain the real backstop.
+function safestRouteIndex(){
+  if(state.routes.length<2) return -1;
+  var counts = state.routes.map(function(r){ return r.steps.filter(function(s){ return looksRestricted(s.name); }).length; });
+  var allSame = counts.every(function(c){ return c===counts[0]; });
+  if(allSame) return -1;
+  var best=0;
+  for(var i=1;i<counts.length;i++){ if(counts[i]<counts[best]) best=i; }
+  return best;
+}
+
 function stepIconHtml(s){
   if(s.type==="depart") return ICONS.depart;
   if(s.type==="arrive") return ICONS.arrive;
@@ -2379,6 +2514,7 @@ function clearRoute(){
   state.routes=[]; state.destination=null; state.routeNotBikeAware=false;
   state.waypoints=[]; state.addingStop=false;
   state.userPickedRoute=false;
+  state.plannedDepartureAt=null;
   clearNavSnapshot();
   clearRouteLines();
   clearBikeLaneLayers();
@@ -2444,6 +2580,7 @@ function startNavigation(){
   if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
   window.scrollTo(0,0);
   state.navigating=true;
+  state.plannedDepartureAt=null; // you're actually leaving now -- any planned-later preview is moot
   state.offRouteStreak=0; state.rerouting=false; state.lastGoodFixTime=null;
   state.speedOverStreak=0; state.lastSpeedWarnAt=null;
   state.lowBatteryWarned=false;
@@ -2911,6 +3048,7 @@ function openSettings(){
   setSeg("busyRoadSeg", state.showBusyRoadWarnings?"on":"off");
   setSeg("preferLowTrafficSeg", state.preferLowTraffic?"on":"off");
   setSeg("preferFlatSeg", state.preferFlatRoute?"on":"off");
+  setSeg("avoidRestrictedSeg", state.avoidRestrictedRoads?"on":"off");
   renderSavedPlaces();
   renderFavoritesList();
   renderSavedRoutesList();
@@ -3243,6 +3381,7 @@ function wireUI(){
   });
   wireSeg("preferLowTrafficSeg", function(v){ setPreferLowTraffic(v==="on"); });
   wireSeg("preferFlatSeg", function(v){ setPreferFlatRoute(v==="on"); });
+  wireSeg("avoidRestrictedSeg", function(v){ setAvoidRestrictedRoads(v==="on"); });
 
   $("themeBtn").addEventListener("click", function(){
     state.theme = state.theme==="auto" ? "light" : (state.theme==="light" ? "dark" : "auto");
