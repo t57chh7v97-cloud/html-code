@@ -32,19 +32,20 @@ on your device.
 
 ## EarthClock.html
 
-A 3D model (Three.js) of Earth spinning on its real 23.5° axial tilt while it
-orbits the Sun with the Moon in tow. Set your location by clicking the globe,
-searching a city, typing coordinates, or using your device's time zone as a
-rough guess — no GPS is used, since the browser sandbox here can't request
-it — and the panel shows your local solar time, whether you're in daylight
-or night, the current season for your hemisphere, and a countdown to the
-next equinox/solstice. The Equator, Tropics and Arctic/Antarctic Circles are
-drawn on the globe as the lines that mark the seasons. Four view presets
-(Surface, Globe, Earth–Moon, Solar System) zoom out to show the Moon's orbit
-and then Earth's orbit around the Sun, each labeled with its direction of
-travel, with your location marker staying visible even at the zoomed-out
-solar view. A speed control lets the simulated clock run in real time or
-fast-forward (up to a simulated week per second) to watch the seasons cycle.
-Everything is procedurally generated (no external map imagery), so it needs
-network access only to load the Three.js library and fonts. Open the file
-directly in a browser, or visit the live site above.
+A live 3D globe (Three.js) that shows you where and when you are. Earth spins
+on its real 23.5° axial tilt with day and night shaded from an actual
+sun-position calculation, rendered on real coastline data (Natural Earth, via
+the `world-atlas` dataset) rather than a drawn approximation. Find your
+location with one tap of "Use My Location" (real device GPS, permission
+prompt and all), by searching any place by name, by typing coordinates, or by
+clicking directly on the globe — the camera turns to face wherever you set.
+The time panel shows your device's exact real clock (DST included) when
+you're using your own location, a civil-time estimate for anywhere else, and
+true solar time as a secondary reference, with a 12h/24h toggle. Switch to
+"Your Orbit Around the Sun" to zoom out and see Earth's current position on
+its yearly path, with the four equinox/solstice points marked and your
+location still visible as a pin on the tiny Earth. Place search and GPS both
+need network/device access, so they work fully on the live site above; a
+sandboxed preview (like a Claude artifact) falls back to clicking the globe
+or typing coordinates. Open the file directly in a browser, or visit the live
+site above.
