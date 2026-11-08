@@ -213,6 +213,7 @@
     box-shadow:0 8px 30px rgba(0,0,0,.4);text-align:center;}
   .crash-title{font-size:20px;font-weight:700;margin-bottom:6px;}
   .crash-sub{font-size:14px;color:var(--sub);margin-bottom:16px;}
+  .crash-countdown{font-size:12px;color:var(--danger);margin:-10px 0 14px;}
   .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:700;}
   .modal{position:absolute;left:0;right:0;bottom:0;z-index:701;background:var(--card-solid);
     border-radius:16px 16px 0 0;max-height:82vh;overflow-y:auto;padding:4px 18px calc(20px + env(safe-area-inset-bottom));
@@ -396,6 +397,9 @@
     <button data-v="off" class="active">Off</button>
   </div>
   <p class="hint">During navigation, watches for a sudden hard stop (a possible crash) using your device's motion sensor, then asks if you're OK and offers to share your location. Off by default — needs motion-sensor permission, is experimental, and can occasionally trigger on a hard pothole or curb hit. Not a substitute for calling emergency services yourself if you're actually hurt.</p>
+  <div class="field-row"><label>Emergency contact</label>
+    <input type="tel" id="emergencyContactInput" placeholder="Phone number" style="flex:1;min-width:0;border:1px solid var(--border);border-radius:8px;padding:9px 10px;font-size:14px;background:var(--bg);color:var(--text);"></div>
+  <p class="hint" style="margin-top:-6px;">If you don't respond to the "Are you OK?" check within 30 seconds, we'll open a text message to this number pre-filled with your last known location — most phones still require you to hit send yourself. Leave blank to skip this.</p>
 
   <div class="section-title">Nearby transit</div>
   <div class="seg" id="transitSeg">
@@ -424,6 +428,13 @@
     <button data-v="off" class="active">Off</button>
   </div>
   <p class="hint">Highlights streets with a dedicated bike lane or path near your route, so you can eyeball how much of it is protected before you ride. Off by default — can be visually dense in built-up areas.</p>
+
+  <div class="section-title">Rain radar</div>
+  <div class="seg" id="rainRadarSeg">
+    <button data-v="on">On</button>
+    <button data-v="off" class="active">Off</button>
+  </div>
+  <p class="hint">Overlays live precipitation radar on the map, so you can see rain moving in before or during a ride. Refreshes every few minutes while on. Off by default.</p>
 
   <div class="section-title">Surface warnings</div>
   <div class="seg" id="surfaceWarnSeg">
@@ -459,6 +470,13 @@
     <button data-v="off" class="active">Off</button>
   </div>
   <p class="hint">When alternatives are available, automatically picks whichever one climbs the least, instead of just flagging it as an option. Off by default.</p>
+
+  <div class="section-title">Battery range ring</div>
+  <div class="seg" id="rangeRingSeg">
+    <button data-v="on">On</button>
+    <button data-v="off" class="active">Off</button>
+  </div>
+  <p class="hint">Draws a circle around your current position showing roughly how far your remaining charge can take you at your current pace. Flat-ground estimate — doesn't know which direction has hills. Off by default.</p>
 
   <p class="hint">Range and battery estimates are approximate — based on your assist mode's typical power draw plus climbing along the route, and current temperature where available. Actual range varies with rider weight, tires and wind.</p>
 
@@ -528,6 +546,9 @@
     <button class="icon-btn-lg" id="reportMapIssueBtn" aria-label="Report a map problem here">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
     </button>
+    <button class="icon-btn-lg" id="liveShareBtn" aria-label="Share your live location">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2.5"/><path d="M8.5 15.5a5 5 0 010-7M15.5 15.5a5 5 0 000-7M5.3 18.7a9 9 0 010-13.4M18.7 18.7a9 9 0 000-13.4"/></svg>
+    </button>
     <button class="icon-btn-lg" id="recenterBtn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg>
     </button>
@@ -538,6 +559,7 @@
   <div class="crash-card">
     <div class="crash-title">Are you OK?</div>
     <div class="crash-sub">We noticed a sudden stop during your ride.</div>
+    <div class="crash-countdown hidden" id="crashCountdown"></div>
     <button class="primary-btn" id="crashImOkBtn">I'm OK</button>
     <button class="secondary-btn" id="crashShareBtn" style="margin-top:8px;">Share my location</button>
   </div>
@@ -799,6 +821,10 @@ var state = {
   avoidedRoads: loadJSON("ebm_avoidedroads", []), // road names the rider tapped to avoid, from the turn-by-turn list
   maintenanceReminders: localStorage.getItem("ebm_maintenancereminders") !== "off",
   crashDetection: localStorage.getItem("ebm_crashdetection") === "on", // opt-in -- needs a sensor permission and has real false-positive risk
+  emergencyContact: localStorage.getItem("ebm_emergencycontact") || "", // phone number used only to pre-fill an SMS if a crash check goes unacknowledged
+  showRangeRing: localStorage.getItem("ebm_showrangering") === "on",
+  showRainRadar: localStorage.getItem("ebm_showrainradar") === "on",
+  liveShareActive: false, // in-session only -- a live-share session never survives a reload, same as navigation itself not resuming into one
   bikeLanes: [],
   transitPOIs: [],
   favorites: loadJSON("ebm_favorites", []),
@@ -990,15 +1016,50 @@ function checkCrashStillness(speedMs){
   crashCandidateAt = null; // one check per spike either way, confirmed or stale
   if(stopped) triggerCrashCheck();
 }
+// If a real emergency contact is on file, an unacknowledged check escalates
+// on its own after this long -- long enough that a brief fumble for the
+// phone doesn't trigger it, short enough to matter if the rider can't
+// respond at all.
+var CRASH_AUTO_NOTIFY_MS = 30000;
+var crashAutoNotifyTimer = null;
 function triggerCrashCheck(){
   if(state.crashCheckActive) return;
   state.crashCheckActive = true;
   if(navigator.vibrate) navigator.vibrate([200,100,200,100,200]);
   $("crashCheckOverlay").classList.remove("hidden");
+  var countdown = $("crashCountdown");
+  if(state.emergencyContact){
+    countdown.textContent = "Notifying your emergency contact in 30s if you don't respond…";
+    countdown.classList.remove("hidden");
+    crashAutoNotifyTimer = setTimeout(function(){
+      if(state.crashCheckActive) notifyEmergencyContact();
+    }, CRASH_AUTO_NOTIFY_MS);
+  } else {
+    countdown.classList.add("hidden");
+  }
 }
 function dismissCrashCheck(){
   state.crashCheckActive = false;
   $("crashCheckOverlay").classList.add("hidden");
+  if(crashAutoNotifyTimer){ clearTimeout(crashAutoNotifyTimer); crashAutoNotifyTimer=null; }
+}
+// Actually SENDING a text with no tap isn't something a web page is allowed
+// to do (nor should it be) -- this opens the device's own messaging app
+// with the number and message pre-filled, which is the most "automatic"
+// a browser can honestly get. If the rider really is incapacitated, at
+// least the draft is sitting there ready for whoever picks up the phone.
+function notifyEmergencyContact(){
+  var text = "Possible crash detected during an e-bike ride and wasn't acknowledged."+
+    (state.userLatLng ? " Last known location: https://www.google.com/maps?q="+state.userLatLng.lat+","+state.userLatLng.lon : "");
+  var digits = state.emergencyContact.replace(/[^0-9+]/g, "");
+  // window.open(), not window.location.href= -- assigning THIS document's
+  // location to an app-handled scheme is still, by spec, a navigation
+  // attempt on the current page, and confirmed (via Playwright) to leave
+  // this page's own input briefly unresponsive while the browser decides
+  // what to do with it -- exactly the wrong moment for "I'm OK" to go
+  // dead. Opening it as a new context instead leaves this page alone.
+  try{ window.open("sms:"+digits+"?body="+encodeURIComponent(text), "_blank"); }catch(e){}
+  toast("Opening a message to your emergency contact…", 3500);
 }
 
 /* ---------- theme / map layers ---------- */
@@ -1136,6 +1197,7 @@ function locateMe(fly){
     setUserMarker(state.userLatLng.lat, state.userLatLng.lon, null);
     if(fly) map.flyTo([state.userLatLng.lat, state.userLatLng.lon], 15);
     refreshAutoTheme();
+    renderRangeRing();
     fetchCurrentTemp();
     fetchNearbyTransit(state.userLatLng.lat, state.userLatLng.lon);
     checkParkingDistance();
@@ -1149,6 +1211,7 @@ function useFallbackStart(){
   state.userLatLng = { lat:FALLBACK_START.lat, lon:FALLBACK_START.lon };
   setUserMarker(state.userLatLng.lat, state.userLatLng.lon, null);
   refreshAutoTheme();
+  renderRangeRing();
   fetchCurrentTemp();
   fetchNearbyTransit(state.userLatLng.lat, state.userLatLng.lon);
   checkParkingDistance();
@@ -1389,6 +1452,49 @@ function shareMyLocation(){
   }
 }
 
+// A real continuously-updating share needs a server to relay new
+// coordinates to whoever you sent the link to -- this app has none, by
+// design. The honest version of "live sharing" a static page can offer is a
+// session that reminds you to re-share your position every few minutes;
+// each reminder still requires your own tap to actually invoke the share
+// sheet, since browsers won't let a page pop it on its own without one.
+var LIVE_SHARE_INTERVAL_MS = 5*60*1000;
+var liveShareTimer = null;
+function liveShareText(isUpdate){
+  if(!state.userLatLng) return null;
+  var link = "https://www.google.com/maps?q="+state.userLatLng.lat+","+state.userLatLng.lon;
+  if(isUpdate) return "Location update: "+link;
+  var dest = state.destination ? (" Heading to "+state.destination.name+".") : "";
+  return "I'm sharing my live location during this ride — I'll send updates every few minutes."+dest+" "+link;
+}
+function sendLiveShareUpdate(isUpdate){
+  var text = liveShareText(isUpdate);
+  if(!text){ toast("No location yet"); return; }
+  if(navigator.share){
+    navigator.share({ text:text }).catch(function(){ /* user cancelled, or no share target -- nothing to do */ });
+  } else if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){ toast(isUpdate?"Update copied to clipboard":"Live location copied to clipboard"); }).catch(function(){ toast("Couldn't copy — try again", 3500); });
+  } else {
+    toast("Sharing isn't supported on this browser", 3500);
+  }
+}
+function toggleLiveShare(){
+  if(state.liveShareActive){ sendLiveShareUpdate(true); return; }
+  if(!state.userLatLng){ toast("No location yet"); return; }
+  state.liveShareActive = true;
+  $("liveShareBtn").classList.add("active");
+  $("liveShareBtn").setAttribute("aria-label", "Send a live location update");
+  sendLiveShareUpdate(false);
+  liveShareTimer = setInterval(function(){ toast("Tap the live-share button to send a location update", 3500); }, LIVE_SHARE_INTERVAL_MS);
+}
+function stopLiveShare(){
+  state.liveShareActive = false;
+  if(liveShareTimer){ clearInterval(liveShareTimer); liveShareTimer=null; }
+  var btn = $("liveShareBtn");
+  btn.classList.remove("active");
+  btn.setAttribute("aria-label", "Share your live location");
+}
+
 function shareParkingSpot(){
   if(!state.parkingPin) return;
   var p = state.parkingPin;
@@ -1486,6 +1592,35 @@ function renderBikeLanes(){
     line.bringToBack();
     bikeLaneLayers.push(line);
   });
+}
+
+/* ---------- rain radar overlay ---------- */
+
+var rainRadarLayer = null;
+var rainRadarRefreshTimer = null;
+var RAIN_RADAR_REFRESH_MS = 10*60*1000; // RainViewer publishes a fresh frame roughly this often
+
+function fetchRainRadarFrame(){
+  fetch("https://api.rainviewer.com/public/weather-maps.json")
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(data){
+      if(!state.showRainRadar) return; // toggled off again while this was in flight
+      if(!data || !data.radar || !data.radar.past || !data.radar.past.length) return;
+      var last = data.radar.past[data.radar.past.length-1];
+      var url = (data.host||"https://tilecache.rainviewer.com")+last.path+"/256/{z}/{x}/{y}/2/1_1.png";
+      if(rainRadarLayer) map.removeLayer(rainRadarLayer);
+      rainRadarLayer = L.tileLayer(url, { opacity:.55, zIndex:50 }).addTo(map);
+    })
+    .catch(function(){ /* a missed radar refresh just means no overlay this round, not worth bothering the rider about */ });
+}
+function toggleRainRadar(){
+  if(state.showRainRadar){
+    fetchRainRadarFrame();
+    if(!rainRadarRefreshTimer) rainRadarRefreshTimer = setInterval(fetchRainRadarFrame, RAIN_RADAR_REFRESH_MS);
+  } else {
+    if(rainRadarLayer){ map.removeLayer(rainRadarLayer); rainRadarLayer=null; }
+    if(rainRadarRefreshTimer){ clearInterval(rainRadarRefreshTimer); rainRadarRefreshTimer=null; }
+  }
 }
 
 /* ---------- unpaved/gravel surface warnings ---------- */
@@ -1780,10 +1915,19 @@ function runSearch(q){
   if(searchAbort) searchAbort.abort();
   searchAbort = new AbortController();
   var bias = state.userLatLng ? ("&viewbox="+(state.userLatLng.lon-0.4)+","+(state.userLatLng.lat+0.4)+","+(state.userLatLng.lon+0.4)+","+(state.userLatLng.lat-0.4)) : "";
-  var url = "https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6"+bias+"&q="+encodeURIComponent(q);
+  // A higher limit than we'll necessarily show gives the distance sort below
+  // actual candidates to work with -- e.g. several same-named chain
+  // locations, where the nearest one should float to the top.
+  var url = "https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=8"+bias+"&q="+encodeURIComponent(q);
   fetch(url, { signal:searchAbort.signal, headers:{ "Accept-Language": navigator.language || "en" } })
     .then(function(r){ if(!r.ok) throw new Error("search failed"); return r.json(); })
-    .then(function(results){ renderSuggestions(results); })
+    .then(function(results){
+      if(state.userLatLng){
+        results.forEach(function(r){ r._distM = haversine(state.userLatLng.lat, state.userLatLng.lon, Number(r.lat), Number(r.lon)); });
+        results.sort(function(a,b){ return a._distM-b._distM; });
+      }
+      renderSuggestions(results);
+    })
     .catch(function(err){ if(err.name!=="AbortError"){ box.innerHTML='<div class="suggestion-empty">Couldn\'t search right now. Check your connection and try again.</div>'; box.classList.remove("hidden"); } });
 }
 var debouncedSearch = debounce(runSearch, 350);
@@ -1794,7 +1938,8 @@ function renderSuggestions(results){
   box.innerHTML = results.map(function(r,i){
     var main = r.namedetails && r.namedetails.name ? r.namedetails.name : (r.display_name.split(",")[0]);
     var sub = r.display_name.split(",").slice(1,4).join(",").trim();
-    return '<div class="suggestion-row" data-i="'+i+'" tabindex="0" role="button"><div class="pin">'+ICONS.pin+'</div><div><div class="suggestion-main">'+escapeHtml(main)+'</div><div class="suggestion-sub">'+escapeHtml(sub)+'</div></div></div>';
+    var distText = r._distM!=null ? (" · "+fmtDist(r._distM)) : "";
+    return '<div class="suggestion-row" data-i="'+i+'" tabindex="0" role="button"><div class="pin">'+ICONS.pin+'</div><div><div class="suggestion-main">'+escapeHtml(main)+'</div><div class="suggestion-sub">'+escapeHtml(sub)+escapeHtml(distText)+'</div></div></div>';
   }).join("");
   box.classList.remove("hidden");
   Array.prototype.forEach.call(box.querySelectorAll(".suggestion-row"), function(el){
@@ -2223,6 +2368,40 @@ function energyForRoute(route){
   return Math.max(0, (base+climb)*batteryTempFactor(state.currentTempC));
 }
 function availableWh(){ return state.capacityWh * (state.chargePct/100); }
+
+/* ---------- battery range ring ---------- */
+
+var rangeRingLayer = null;
+// Flat-ground, no-climb estimate -- a ring has no "direction," so unlike
+// energyForRoute() it can't factor in any particular route's elevation.
+// Same weight/temperature derating as the real route estimate, just without
+// the climb term.
+function estimatedRangeMeters(){
+  var whPerKmEff = getAssistLevels()[state.assist].whPerKm * weightFactor() * batteryTempFactor(state.currentTempC);
+  if(!whPerKmEff) return 0;
+  return (availableWh()/whPerKmEff)*1000;
+}
+function renderRangeRing(){
+  if(!state.showRangeRing || !state.userLatLng){
+    if(rangeRingLayer){ map.removeLayer(rangeRingLayer); rangeRingLayer=null; }
+    return;
+  }
+  var r = estimatedRangeMeters();
+  if(!r){
+    if(rangeRingLayer){ map.removeLayer(rangeRingLayer); rangeRingLayer=null; }
+    return;
+  }
+  if(!rangeRingLayer){
+    rangeRingLayer = L.circle([state.userLatLng.lat, state.userLatLng.lon], {
+      radius:r, color:getComputedStyle(document.body).getPropertyValue("--accent").trim()||"#1f8bff",
+      weight:2, dashArray:"4 6", fillOpacity:.05, interactive:false
+    }).addTo(map);
+    rangeRingLayer.bringToBack();
+  } else {
+    rangeRingLayer.setLatLng([state.userLatLng.lat, state.userLatLng.lon]);
+    rangeRingLayer.setRadius(r);
+  }
+}
 
 /* ---------- UI: cards ---------- */
 
@@ -2794,6 +2973,7 @@ function setAssist(k){
   state.assist=k; localStorage.setItem("ebm_assist",k);
   recomputeDurations();
   document.querySelectorAll(".assist-chip").forEach(function(el){ el.classList.toggle("active", el.getAttribute("data-k")===k); });
+  renderRangeRing();
   if(state.routes.length && !state.navigating) showRouteCard();
 }
 
@@ -2803,6 +2983,7 @@ function setBikeClass(k){
   if($("classRowSettings")) $("classRowSettings").innerHTML = buildClassRow();
   wireClassRow();
   refreshSettingsPaceUI();
+  renderRangeRing();
   if(state.routes.length && !state.navigating) showRouteCard();
 }
 function refreshSettingsPaceUI(){
@@ -2876,6 +3057,7 @@ function exitNavigation(){
   releaseWakeLock();
   stopCrashDetection();
   dismissCrashCheck();
+  stopLiveShare();
   if(state.watchId!=null && navigator.geolocation){ navigator.geolocation.clearWatch(state.watchId); state.watchId=null; }
   $("navOverlay").classList.add("hidden");
   $("searchLayer").classList.remove("hidden");
@@ -3046,6 +3228,7 @@ function onNavPosition(pos){
   if(heading==null && state.userLatLng){ heading = bearing(state.userLatLng.lat, state.userLatLng.lon, lat, lon); }
   state.userLatLng = { lat:lat, lon:lon };
   setUserMarker(lat,lon,heading);
+  renderRangeRing();
   if(state.followMode) map.panTo([lat,lon], { animate:true });
   checkSpeedAgainstClass(pos.coords.speed);
   updateSpeedDisplay(pos.coords.speed);
@@ -3317,6 +3500,9 @@ function openSettings(){
   setSeg("avoidRestrictedSeg", state.avoidRestrictedRoads?"on":"off");
   setSeg("maintenanceSeg", state.maintenanceReminders?"on":"off");
   setSeg("crashDetectSeg", state.crashDetection?"on":"off");
+  $("emergencyContactInput").value = state.emergencyContact;
+  setSeg("rangeRingSeg", state.showRangeRing?"on":"off");
+  setSeg("rainRadarSeg", state.showRainRadar?"on":"off");
   renderSavedPlaces();
   renderFavoritesList();
   renderSavedRoutesList();
@@ -3612,15 +3798,16 @@ function wireUI(){
   $("exportTripsBtn").addEventListener("click", exportTripsCsv);
   $("clearOfflineMapsBtn").addEventListener("click", clearOfflineMaps);
 
-  $("capacityInput").addEventListener("change", function(e){ state.capacityWh=clamp(Number(e.target.value)||500,50,3000); localStorage.setItem("ebm_capacity",state.capacityWh); if(state.routes.length) showRouteCard(); });
+  $("capacityInput").addEventListener("change", function(e){ state.capacityWh=clamp(Number(e.target.value)||500,50,3000); localStorage.setItem("ebm_capacity",state.capacityWh); renderRangeRing(); if(state.routes.length) showRouteCard(); });
   $("weightInput").addEventListener("change", function(e){
     var entered = Number(e.target.value) || (state.units==="mi" ? kgToLb(WEIGHT_BASELINE_KG) : WEIGHT_BASELINE_KG);
     state.riderWeightKg = clamp(state.units==="mi" ? lbToKg(entered) : entered, 30, 300);
     localStorage.setItem("ebm_weightkg", state.riderWeightKg);
     refreshWeightInput();
+    renderRangeRing();
     if(state.routes.length) showRouteCard();
   });
-  $("chargeRange").addEventListener("input", function(e){ state.chargePct=Number(e.target.value); $("chargeLabel").textContent=state.chargePct+"%"; localStorage.setItem("ebm_charge",state.chargePct); if(state.routes.length) showRouteCard(); });
+  $("chargeRange").addEventListener("input", function(e){ state.chargePct=Number(e.target.value); $("chargeLabel").textContent=state.chargePct+"%"; localStorage.setItem("ebm_charge",state.chargePct); renderRangeRing(); if(state.routes.length) showRouteCard(); });
 
   wireSeg("unitsSeg", function(v){
     state.units=v; localStorage.setItem("ebm_units",v);
@@ -3682,6 +3869,20 @@ function wireUI(){
     if(v==="on") enableCrashDetection();
     else disableCrashDetection();
   });
+  $("emergencyContactInput").addEventListener("change", function(e){
+    state.emergencyContact = e.target.value.trim();
+    localStorage.setItem("ebm_emergencycontact", state.emergencyContact);
+  });
+  wireSeg("rangeRingSeg", function(v){
+    state.showRangeRing = v==="on";
+    localStorage.setItem("ebm_showrangering", v);
+    renderRangeRing();
+  });
+  wireSeg("rainRadarSeg", function(v){
+    state.showRainRadar = v==="on";
+    localStorage.setItem("ebm_showrainradar", v);
+    toggleRainRadar();
+  });
 
   $("themeBtn").addEventListener("click", function(){
     state.theme = state.theme==="auto" ? "light" : (state.theme==="light" ? "dark" : "auto");
@@ -3698,6 +3899,7 @@ function wireUI(){
   $("exitNavBtn").addEventListener("click", exitNavigation);
   $("recenterBtn").addEventListener("click", recenterNav);
   $("reportMapIssueBtn").addEventListener("click", reportMapIssue);
+  $("liveShareBtn").addEventListener("click", toggleLiveShare);
   $("muteBtn").addEventListener("click", function(){ state.voiceOn=!state.voiceOn; speechOn=state.voiceOn; localStorage.setItem("ebm_voice", state.voiceOn?"on":"off"); toast(state.voiceOn?"Voice guidance on":"Voice guidance off", 1500); });
   $("crashImOkBtn").addEventListener("click", dismissCrashCheck);
   $("crashShareBtn").addEventListener("click", function(){ shareMyLocation(); dismissCrashCheck(); });
@@ -3733,6 +3935,7 @@ function boot(){
     initDrag();
     wireUI();
     updateOfflineBanner();
+    if(state.showRainRadar) toggleRainRadar();
     locateMe(false);
     restoreLastNav();
     handleLaunchShortcut();
