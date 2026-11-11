@@ -83,7 +83,9 @@ night-side city lights placed at real city coordinates.
     stop is marked on the globe: gold once visited, faint until then. Tap a stop
     to see when Santa gets there. **🔍 Zoom in on Santa** swoops the camera to an
     animated 3D sleigh with Santa, his sack of presents and nine reindeer led by
-    a glowing-nosed Rudolph, which you can orbit and pinch-zoom around. A
+    a glowing-nosed Rudolph, which you can orbit and pinch-zoom around. Up close,
+    the ground is labelled with town and country names, and a banner says what
+    Santa is flying over. A
     "Santa's coming to your house soon — go to bed now!" alert appears when he
     gets close.
   - 🎆 New Year (Dec 30 – Jan 15): a countdown to midnight at your pin, and a

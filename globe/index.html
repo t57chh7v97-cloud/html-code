@@ -93,6 +93,11 @@
   .lbl.santa{background:rgba(200,30,40,.92);color:#fff;border-color:transparent;font-size:13px}
   .btn.tog.on{border-color:rgba(255,200,97,.55);color:var(--accent)}
   .clbl{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;white-space:nowrap;font-size:11.5px;font-weight:500;color:#e6ecfa;text-shadow:0 0 3px #000,0 0 6px #000,0 1px 2px #000;display:flex;align-items:center;gap:5px;will-change:transform;padding:1px 2px}
+  #overChip{position:fixed;left:50%;top:20px;transform:translateX(-50%);z-index:5;padding:9px 14px;border-radius:999px;font-size:14px;font-weight:600;white-space:nowrap;max-width:calc(100vw - 24px);overflow:hidden;text-overflow:ellipsis;
+    background:rgba(16,60,40,.85);border-color:rgba(120,220,160,.35);color:#fff6d6}
+  @media (min-width:721px) and (max-width:1180px){ #overChip{top:auto;bottom:20px} }
+  .ctry{position:absolute;left:0;top:0;pointer-events:none;white-space:nowrap;font-size:13px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:rgba(235,240,255,.78);
+    text-shadow:0 0 4px #000,0 0 10px #000,0 1px 2px #000;will-change:transform}
   .clbl i{width:5px;height:5px;border-radius:50%;background:#e6ecfa;box-shadow:0 0 4px #000;flex:none}
   .clbl.big{font-size:13px;font-weight:600;color:#fff} .clbl.big i{width:6px;height:6px;background:var(--accent)}
   .clbl.small{font-size:11px;color:#c9d3ea} .clbl.small i{width:4px;height:4px}
@@ -276,6 +281,7 @@
 <div id="legend" class="glass"><span>Drag to spin · scroll / pinch to zoom · tap globe to pick a spot</span></div>
 <div id="credit">Coastlines: Natural Earth · 193k places: GeoNames · Santa route: Google Santa Tracker<br>Sun &amp; Moon positions computed live from your clock</div>
 <div id="toast" class="glass"></div>
+<div id="overChip" class="glass" style="display:none"></div>
 <div id="bedtime" role="alert"><button id="bedClose" aria-label="Close">✕</button><div class="big">🎅 Santa's coming to your house soon —<br>go to bed now! 🛏️</div><div class="sub" id="bedSub"></div></div>
 <div id="loading"><div><div class="spin"></div><p>Building Earth from coastline data…</p></div></div>
 
@@ -834,7 +840,7 @@ function frame(){
   if (mode==='globe' && santaCam){
     if (!santaCardOn()) exitSantaCam();
     else { stepSantaCam(); renderer.render(globeScene,camS);
-      hideCityLabels(); pinLbl.style.display='none'; moonLbl.style.display='none'; santaLbl.style.display='none';
+      updateCityLabels(M, camS, true); updateOverChip(); pinLbl.style.display='none'; moonLbl.style.display='none'; santaLbl.style.display='none';
       sunLbl.style.display='none'; earthLbl.style.display='none'; seasonMarks.forEach(m=>m.el.style.display='none'); }
   }
   if (mode==='globe' && !santaCam){
@@ -887,39 +893,99 @@ for (let k=0;k<CMAX;k++){ const el=document.createElement('div'); el.className='
   el.addEventListener('click',ev=>{ ev.stopPropagation(); const i=+el.dataset.i; if (i>=0) choose({i}); }); cityLayer.appendChild(el); CPOOL.push({el,i:-1,w:0}); }
 let chosenCities=[], lastPick=0, lastPickDist=0;
 const _e=new THREE.Vector3();
-function hideCityLabels(){ for (const c of CPOOL) if (c.i!==-1){ c.el.style.display='none'; c.i=-1; } chosenCities=[]; }
+function hideCityLabels(){ for (const c of CPOOL) if (c.i!==-1){ c.el.style.display='none'; c.i=-1; } for (const c of KPOOL) if (c.i!==-1){ c.el.style.display='none'; c.i=-1; } chosenCities=[]; chosenCountries=[]; }
 function cityWorld(i,M,out){ return out.set(P.x[i],P.y[i],P.z[i]).applyMatrix4(M); }
-function updateCityLabels(M){
-  if (!P.ready || !showNames){ if (chosenCities.length) hideCityLabels(); return; }
-  const camPos=camG.position, d=camPos.length(), W=innerWidth, H=innerHeight;
+// country name anchors (largest landmass of each country), built when the coastline data loads
+const COUNTRIES=[]; const KPOOL=[];
+function buildCountryAnchors(world){
+  const fc=topojson.feature(world, world.objects.countries);
+  for (const f of fc.features){ const nm=f.properties&&f.properties.name; if (!nm) continue;
+    let geom=f.geometry; if (!geom) continue;
+    if (geom.type==='MultiPolygon'){ let best=null,ba=-1; for (const poly of geom.coordinates){ const g={type:'Polygon',coordinates:poly}; const a=d3.geoArea(g); if (a>ba){ba=a;best=g;} } geom=best; }
+    const [lon,lat]=d3.geoCentroid(geom); const area=d3.geoArea(f); const v=llToEcef(lat,lon);
+    const bb=d3.geoBounds(f);
+    COUNTRIES.push({ f, bb, name:nm.replace(/^United States of America$/,'United States').replace(/^Dem\. Rep\. Congo$/,'DR Congo').replace(/^Central African Rep\.$/,'Central African Republic'), x:v.x, y:v.y, z:v.z, area }); }
+  COUNTRIES.sort((a,b)=>b.area-a.area);
+  for (let k=0;k<18;k++){ const el=document.createElement('div'); el.className='ctry'; el.style.display='none'; cityLayer.appendChild(el); KPOOL.push({el,i:-1}); }
+}
+const _kv=new THREE.Vector3();
+function countryAt(lat,lon){
+  for (const c of COUNTRIES){ const [[w,so],[e,no]]=c.bb; if (lat<so-.5||lat>no+.5) continue; const inLon = w<=e ? (lon>=w-.5&&lon<=e+.5) : (lon>=w-.5||lon<=e+.5); if (!inLon) continue;
+    if (d3.geoContains(c.f,[lon,lat])) return c.name; }
+  return null; }
+let overAt=0;
+function updateOverChip(force){
+  const el=$('overChip'); if (!santaCam){ el.style.display='none'; return; }
+  const t=performance.now(); if (!force && t-overAt<1000) return; overAt=t;
+  let lat,lon; if (santa.on){ lat=santa.lat; lon=santa.lon; } else { lat=ROUTE[0][2]; lon=ROUTE[0][3]; }
+  const ctry=countryAt(lat,lon); const np=nearestPlace(lat,lon);
+  let txt;
+  if (!santa.on && !santa.done) txt='🛷 Parked at the North Pole · getting ready';
+  else if (santa.done) txt='🛷 Home at the North Pole';
+  else if (ctry){ const town = np && np.km<60 ? P.name[np.i]+(P.ad[np.i]&&P.cc[np.i]==='US'?', '+P.ad[np.i]:'')+', ' : (np && np.km<250 ? `near ${P.name[np.i]}, ` : ''); txt=`🛷 Flying over ${town}${ctry}`; }
+  else txt = np ? `🛷 Flying over the ocean · ${Math.round(np.km).toLocaleString()} km from ${P.name[np.i]}` : '🛷 Flying over the ocean';
+  el.textContent=txt; el.style.display='block';
+  const top=$('top').getBoundingClientRect(); if (innerWidth<=720) el.style.top=(top.bottom+8)+'px'; else el.style.top='';
+}
+let chosenCountries=[];
+function updateCityLabels(M, cam=camG, near=false){
+  if (!P.ready || !showNames){ if (chosenCities.length||chosenCountries.length) hideCityLabels(); return; }
+  const camPos=cam.position, d=camPos.length(), W=innerWidth, H=innerHeight, horizon = near?1.0003:1.04;
   const now=performance.now();
-  if (now-lastPick>140 || Math.abs(d-lastPickDist)>.02){
+  if (now-lastPick>140 || Math.abs(d-lastPickDist)>.02*(near?.05:1)){
     lastPick=now; lastPickDist=d;
-    const gd=globeDist(); const zoom=(gd-1)/Math.max(d-1,0.02);   // 1 at default view, >1 when zoomed in
-    const scanN=Math.min(P.n, Math.floor(260*Math.pow(Math.max(zoom,0.6),3.2)));
-    const boxes=[]; const pick=[];
-    if (current && pinLbl.style.display!=='none'){ const r=pinLbl.getBoundingClientRect(); boxes.push([r.left-4,r.top-4,r.right+4,r.bottom+4]); }
-    for (const id of ['card','top']){ const r=$(id).getBoundingClientRect(); boxes.push([r.left,r.top,r.right,r.bottom]); }
-    const fixed=boxes.length;
-    for (let i=0;i<scanN && pick.length<CMAX;i++){
-      cityWorld(i,M,_e); if (_e.dot(camPos) < 1.04) continue;           // behind the limb
-      _e.project(camG); if (_e.z>1) continue;
-      const x=(_e.x+1)/2*W, y=(1-_e.y)/2*H; if (x<0||x>W||y<0||y>H) continue;
-      const big=P.pop[i]>=1e6; const w=P.name[i].length*(big?7.4:6.6)+18, h=big?19:17;
-      if (x+w>W-4) continue;
-      const b=[x-5,y-h/2,x+w,y+h/2];
-      let hit=false; for (const o of boxes){ if (b[0]<o[2]&&b[2]>o[0]&&b[1]<o[3]&&b[3]>o[1]){hit=true;break;} } if (hit) continue;
-      boxes.push(b); pick.push(i);
+    const gd=globeDist(); const zoom=(gd-1)/Math.max(d-1,0.002);   // 1 at default view, >1 when zoomed in
+    const boxes=[]; const pick=[], kpick=[];
+    if (!near && current && pinLbl.style.display!=='none'){ const r=pinLbl.getBoundingClientRect(); boxes.push([r.left-4,r.top-4,r.right+4,r.bottom+4]); }
+    for (const id of (near?['top','santaCard']:['card','top'])){ const r=$(id).getBoundingClientRect(); if (r.width) boxes.push([r.left,r.top,r.right,r.bottom]); }
+    if (near){ // keep names off the sleigh itself
+      const c=santaWorld(new THREE.Vector3()), e=santaRig.matrixWorld.elements, f=new THREE.Vector3(e[8],e[9],e[10]).normalize();
+      const pts=[c.clone(), c.clone().addScaledVector(f,0.05), c.clone().addScaledVector(f,-0.015)].map(v=>v.project(cam)).filter(v=>v.z<1);
+      if (pts.length){ const xs=pts.map(v=>(v.x+1)/2*W), ys=pts.map(v=>(1-v.y)/2*H); const pad=Math.min(80, 16+0.18*(Math.max(...xs)-Math.min(...xs)));
+        boxes.push([Math.min(...xs)-pad*.3, Math.min(...ys)-pad*1.6, Math.max(...xs)+pad*.3, Math.max(...ys)+pad*.4]); } }
+    // countries first (bigger, fewer), once zoomed in a bit
+    if (near || zoom>2.2){
+      for (let k=0;k<COUNTRIES.length && kpick.length<KPOOL.length;k++){ const c=COUNTRIES[k]; _kv.set(c.x,c.y,c.z).applyMatrix4(M); if (_kv.dot(camPos)<horizon) continue;
+        _kv.project(cam); if (_kv.z>1) continue; const x=(_kv.x+1)/2*W, y=(1-_kv.y)/2*H; const w=c.name.length*8.6+10, h=18;
+        const b=[x-w/2,y-h/2,x+w/2,y+h/2]; if (b[0]<2||b[2]>W-2||b[1]<2||b[3]>H-2) continue;
+        let hit=false; for (const o of boxes){ if (b[0]<o[2]&&b[2]>o[0]&&b[1]<o[3]&&b[3]>o[1]){hit=true;break;} } if (hit) continue; boxes.push(b); kpick.push(k); }
     }
-    chosenCities=pick;
-    CPOOL.forEach((c,k)=>{ const i=k<pick.length?pick[k]:-1; if (c.i===i) return; c.i=i; c.el.dataset.i=i;
+    const label = i => near && P.ad[i] ? `${P.name[i]}, ${P.ad[i]}` : P.name[i];
+    if (near){
+      // close to the ground: prefer places near the camera, weighted by size
+      const cand=[];
+      for (let i=0;i<P.n;i++){ _e.set(P.x[i],P.y[i],P.z[i]).applyMatrix4(M); if (_e.dot(camPos)<horizon) continue; const dist=_e.distanceTo(camPos);
+        _e.project(cam); if (_e.z>1) continue; const x=(_e.x+1)/2*W, y=(1-_e.y)/2*H; if (x<0||x>W||y<0||y>H) continue;
+        cand.push([i,x,y,Math.log10(P.pop[i]+10)-2.2*Math.log10(dist)]); }
+      cand.sort((a,b)=>b[3]-a[3]);
+      for (const [i,x,y] of cand){ if (pick.length>=CMAX) break; const big=P.pop[i]>=1e6, t=label(i); const w=t.length*(big?7.4:6.6)+18, h=big?19:17; if (x+w>W-4) continue;
+        const b=[x-5,y-h/2,x+w,y+h/2]; let hit=false; for (const o of boxes){ if (b[0]<o[2]&&b[2]>o[0]&&b[1]<o[3]&&b[3]>o[1]){hit=true;break;} } if (hit) continue; boxes.push(b); pick.push(i); }
+    } else {
+      const scanN=Math.min(P.n, Math.floor(260*Math.pow(Math.max(zoom,0.6),3.2)));
+      for (let i=0;i<scanN && pick.length<CMAX;i++){
+        cityWorld(i,M,_e); if (_e.dot(camPos) < horizon) continue;           // behind the limb
+        _e.project(cam); if (_e.z>1) continue;
+        const x=(_e.x+1)/2*W, y=(1-_e.y)/2*H; if (x<0||x>W||y<0||y>H) continue;
+        const big=P.pop[i]>=1e6; const w=P.name[i].length*(big?7.4:6.6)+18, h=big?19:17;
+        if (x+w>W-4) continue;
+        const b=[x-5,y-h/2,x+w,y+h/2];
+        let hit=false; for (const o of boxes){ if (b[0]<o[2]&&b[2]>o[0]&&b[1]<o[3]&&b[3]>o[1]){hit=true;break;} } if (hit) continue;
+        boxes.push(b); pick.push(i);
+      }
+    }
+    chosenCities=pick; chosenCountries=kpick;
+    CPOOL.forEach((c,k)=>{ const i=k<pick.length?pick[k]:-1; const t=i<0?'':label(i); if (c.i===i && c.t===t) return; c.i=i; c.t=t; c.el.dataset.i=i;
       if (i<0){ c.el.style.display='none'; return; }
-      c.el.lastChild.textContent=P.name[i]; c.el.className='clbl'+(P.pop[i]>=1e6?' big':P.pop[i]<20000?' small':''); c.el.style.display='block'; });
+      c.el.lastChild.textContent=t; c.el.className='clbl'+(P.pop[i]>=1e6?' big':(P.pop[i]<20000 && !near)?' small':''); c.el.style.display='block'; });
+    KPOOL.forEach((c,k)=>{ const i=k<kpick.length?kpick[k]:-1; if (c.i===i) return; c.i=i; if (i<0){ c.el.style.display='none'; return; } c.el.textContent=COUNTRIES[i].name; c.el.style.display='block'; });
   }
   // reposition every frame so names stay glued while you drag
   for (const c of CPOOL){ if (c.i<0) continue; cityWorld(c.i,M,_e);
-    if (_e.dot(camPos)<1.0){ c.el.style.visibility='hidden'; continue; } c.el.style.visibility='';
-    _e.project(camG); c.el.style.transform=`translate(${((_e.x+1)/2*innerWidth-4).toFixed(1)}px,${((1-_e.y)/2*innerHeight-8).toFixed(1)}px)`; }
+    if (_e.dot(camPos)<(near?1.0:1.0)){ c.el.style.visibility='hidden'; continue; } c.el.style.visibility='';
+    _e.project(cam); c.el.style.transform=`translate(${((_e.x+1)/2*innerWidth-4).toFixed(1)}px,${((1-_e.y)/2*innerHeight-8).toFixed(1)}px)`; }
+  for (const c of KPOOL){ if (c.i<0) continue; const q=COUNTRIES[c.i]; _kv.set(q.x,q.y,q.z).applyMatrix4(M);
+    if (_kv.dot(camPos)<1.0){ c.el.style.visibility='hidden'; continue; } c.el.style.visibility='';
+    _kv.project(cam); c.el.style.transform=`translate(calc(${((_kv.x+1)/2*innerWidth).toFixed(1)}px - 50%),${((1-_kv.y)/2*innerHeight-9).toFixed(1)}px)`; }
 }
 let showNames=store.get('names',true);
 
@@ -1223,7 +1289,7 @@ function enterSantaCam(){
 }
 let santaSwoop=null;
 function exitSantaCam(){ if (!santaCam) return; santaCam=false; if (ctlS){ ctlS.dispose(); ctlS=null; } ctlG.enabled = mode==='globe';
-  $('santaBack').style.display='none'; $('santaZoom').style.display=''; document.body.classList.remove('santa-cam'); layout(); if (current) flyTo(); }
+  $('santaBack').style.display='none'; $('santaZoom').style.display=''; document.body.classList.remove('santa-cam'); $('overChip').style.display='none'; layout(); if (current) flyTo(); }
 function stepSantaCam(){
   const T=santaWorld(_st);
   camS.position.add(T.clone().sub(_prevT)); ctlS.target.copy(T); _prevT.copy(T);       // ride along with the sleigh as Earth turns and Santa flies
@@ -1265,12 +1331,12 @@ function checkBedtime(now, v){
   const el=$('bedtime'); let near=false, msg='';
   if (santa.on && v.stop){
     const km=gcDist(current.lat,current.lon,santa.lat,santa.lon), until=(v.at-now)/60000;
-    near = km<1200 || (until>-10 && until<45);
-    if (near) msg = until>1 ? `He's ${Math.round(km).toLocaleString()} km away and due at ${esc(placeName(v.stop))} in about ${Math.round(until)} min.` : `He's ${Math.round(km).toLocaleString()} km away — right around your area now!`;
+    near = until>0 && (km<1200 || until<45);          // only BEFORE he reaches your stop — once he's there the card takes over
+    if (near) msg = until>=1.5 ? `He's ${Math.round(km).toLocaleString()} km away and due at ${placeName(v.stop)} in about ${Math.round(until)} min.` : `He's ${Math.round(km).toLocaleString()} km away and lands at ${placeName(v.stop)} any moment!`;
   }
   const key=`${santa.y}|${current.lat.toFixed(2)},${current.lon.toFixed(2)}`;
   const show = near && bedDismissed!==key;
-  if (show){ $('bedSub').textContent=msg.replace(/&amp;/g,'&'); el.dataset.key=key; }
+  if (show){ $('bedSub').textContent=msg; el.dataset.key=key; }
   el.classList.toggle('show', show);
   const base=`${current.kind==='device'?'You · ':''}${shortName(current)}`, want=near?base+' · 🎅 nearby!':base; if (pinLbl.textContent!==want) pinLbl.textContent=want;
 }
@@ -1551,7 +1617,7 @@ layout(); orbitHome();
    BOOT
    ========================================================= */
 loadText('countries-50m.json').then(t=>JSON.parse(t)).then(world=>{
-  drawMaps(world);
+  drawMaps(world); buildCountryAnchors(world);
   if (P.ready) addCityLights();
   $('loading').classList.add('hide');
 }).catch(e=>{ $('loading').querySelector('p').textContent='Couldn’t load the coastline data. Please reload.'; console.error(e); });
