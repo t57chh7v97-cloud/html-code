@@ -93,10 +93,13 @@ night-side city lights placed at real city coordinates.
 
   Developers can preview any of them from ⏱ Time travel. Anyone can turn
   them off with the 🎉 button.
+- **Time travel (developer mode):** jump ±1 min, 30 min, 1 h, 1 d, 1 wk,
+  1 mo, 6 mo or 1 yr, or go to an exact date and time at your pin. You can also
+  play time at 1 hr/sec or 1 day/sec.
 - **Developer mode:** ⏱ Time travel, including the holiday previews, is
   hidden unless you unlock it. Tap the big clock 5 times, or open the page with
   `#dev`, then enter the passphrase. It stays unlocked on that device until you
-  tap 🔒 Lock. Only a SHA-256 hash of the passphrase is stored in the page. The
+  tap 🔒 Lock. The page stores only a double SHA-256 hash of the passphrase, so the passphrase isn't in the code. The
   site has no server, so this hides the feature from normal use but can't stop
   someone who edits the page code.
 
