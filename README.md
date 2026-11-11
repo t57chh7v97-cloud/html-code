@@ -75,7 +75,7 @@ night-side city lights placed at real city coordinates.
   adds its own colours, city lights, effects and a countdown:
   - 🎃 Halloween (Oct 1 – Nov 1): purple-and-orange lights and bats
   - 🦃 Thanksgiving (Nov 2 – Thanksgiving Day): falling leaves
-  - 🎄 Christmas (day after Thanksgiving – Dec 26): snow and multicolour
+  - 🎄 Christmas (day after Thanksgiving – Dec 29): snow and multicolour
     lights. On Christmas Eve, a Santa tracker flies **Google Santa Tracker's
     real 420-stop route** (the 2019 flight, shifted to this year), with his
     path drawn in green (Google-tracker style) and a Google-style tracker card: when he arrives near you, a live

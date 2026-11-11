@@ -1101,12 +1101,12 @@ const dayNum=(y,m,d)=>Date.UTC(y,m,d)/86400000;
 function nthWeekday(y,m,wd,n){ const first=new Date(Date.UTC(y,m,1)).getUTCDay(); return 1+((wd-first+7)%7)+7*(n-1); }
 function thanksgivingOf(y,cc){ return cc==='CA' ? {m:9,d:nthWeekday(y,9,1,2),ca:true} : {m:10,d:nthWeekday(y,10,4,4)}; }
 function holidayDates(y,cc){
-  // Liam's calendar: Halloween Oct 1–Nov 1 · Thanksgiving Nov 2–Thanksgiving Day · Christmas day after (US) Thanksgiving–Dec 26 · New Year Dec 30–Jan 15
+  // Liam's calendar: Halloween Oct 1–Nov 1 · Thanksgiving Nov 2–Thanksgiving Day · Christmas day after (US) Thanksgiving–Dec 29 · New Year Dec 30–Jan 15
   const us=nthWeekday(y,10,4,4), t=thanksgivingOf(y,cc);
   const tg = t.ca ? {k:'thanksgiving',y,m:t.m,d:t.d,from:dayNum(y,t.m,t.d)-3,to:dayNum(y,t.m,t.d),ca:true}
                   : {k:'thanksgiving',y,m:10,d:us,from:dayNum(y,10,2),to:dayNum(y,10,us)};
   const list=[ {k:'halloween',y,m:9,d:31,from:dayNum(y,9,1),to:dayNum(y,10,1)}, tg,
-           {k:'christmas',y,m:11,d:25,from:dayNum(y,10,us)+1,to:dayNum(y,11,26)},
+           {k:'christmas',y,m:11,d:25,from:dayNum(y,10,us)+1,to:dayNum(y,11,29)},
            {k:'newyear',y:y+1,m:0,d:1,from:dayNum(y,11,30),to:dayNum(y+1,0,15)} ];
   if (t.ca) list.unshift(list.splice(1,1)[0]);   // Canadian Thanksgiving (in October) wins over Halloween on its days
   return list;
