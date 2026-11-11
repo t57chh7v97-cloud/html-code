@@ -78,7 +78,8 @@ night-side city lights placed at real city coordinates.
   - 🎄 Christmas (day after Thanksgiving – Dec 26): snow and multicolour
     lights. On Christmas Eve, a Santa tracker flies **Google Santa Tracker's
     real 420-stop route** (the 2019 flight, shifted to this year), with his
-    trail, presents delivered, his next stop and the stop nearest your pin. A
+    trail and a Google-style tracker card: when he arrives near you, a live
+    gifts-delivered counter, and his next stop with an arrival countdown. A
     "Santa's coming to your house soon — go to bed now!" alert appears when he
     gets close.
   - 🎆 New Year (Dec 30 – Jan 15): a countdown to midnight at your pin, and a

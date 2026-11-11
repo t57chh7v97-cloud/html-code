@@ -63,6 +63,20 @@
   body[data-theme=newyear]{--accent:#ffd166;--accent2:#c77dff;--line:rgba(255,209,102,.28)}
   body[data-theme=newyear] #holStrip{background:linear-gradient(90deg,rgba(255,200,80,.22),rgba(170,100,255,.22))}
   body[data-theme] .btn.primary{background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 70%,#000),var(--accent));color:#140c02}
+  #santaCard{position:fixed;z-index:4;right:20px;top:20px;width:min(340px,calc(100vw - 24px));border-radius:16px;overflow:hidden;display:none;
+    background:#4cbf8c;color:#ffe46b;box-shadow:0 12px 36px rgba(0,0,0,.45);font-family:'Space Grotesk',system-ui,sans-serif}
+  #santaCard.show{display:block}
+  body.santa-on #credit{display:none}
+  #santaCard .sc-top{padding:12px 16px 12px}
+  #santaCard .sc-bot{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;padding:10px 16px 12px;border-top:1.5px solid rgba(255,255,255,.35)}
+  #santaCard .sc-k{font-size:11px;font-weight:700;letter-spacing:.08em;color:#fff6d6}
+  #santaCard .sc-arr{font-size:18px;font-weight:600;margin-top:2px;line-height:1.25}
+  #santaCard .sc-gifts{font-size:22px;font-weight:700;margin-top:1px;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+  #santaCard .sc-stop{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:600;margin-top:3px}
+  #santaCard .sleigh{width:20px;height:14px;flex:none}
+  #santaCard .sc-right{text-align:right;flex:none}
+  #santaCard .sc-in{font-size:17px;font-weight:600;margin-top:3px;font-variant-numeric:tabular-nums}
+  @media (max-width:720px){ #santaCard{left:12px;right:auto;top:auto;bottom:0} #santaCard .sc-top{padding:10px 14px} #santaCard .sc-bot{padding:8px 14px 10px} #santaCard .sc-arr{font-size:16px} #santaCard .sc-gifts{font-size:19px} }
   #bedtime{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.9);opacity:0;pointer-events:none;transition:.45s cubic-bezier(.2,1.4,.4,1);z-index:12;
     width:min(440px,calc(100vw - 32px));padding:22px 22px 18px;border-radius:20px;text-align:center;color:#fff;
     background:linear-gradient(150deg,rgba(200,30,45,.96),rgba(140,15,30,.96));border:2px solid rgba(255,255,255,.35);box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 0 6px rgba(40,160,90,.55)}
@@ -198,6 +212,19 @@
   </form>
 </div>
 
+<div id="santaCard" aria-live="polite">
+  <div class="sc-top">
+    <div class="sc-k" id="scArrK">ARRIVAL</div>
+    <div class="sc-arr" id="scArr">—</div>
+    <div class="sc-k" style="margin-top:10px" id="scGiftK">GIFTS DELIVERED</div>
+    <div class="sc-gifts" id="scGifts">0</div>
+  </div>
+  <div class="sc-bot">
+    <div><div class="sc-k" id="scStopK">NEXT STOP</div>
+      <div class="sc-stop"><svg class="sleigh" viewBox="0 0 32 20" aria-hidden="true"><path d="M3 4c0-1.1.9-2 2-2h1v7h12l4-5h4c.6 0 1 .4 1 1v3c0 3.3-2.7 6-6 6H8c-2.8 0-5-2.2-5-5V4z" fill="currentColor"/><path d="M2 17h22c2.5 0 4.5-1.5 5.5-3.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M8 13.5V17M20 13.5V17" stroke="currentColor" stroke-width="2"/></svg><span id="scStop">—</span></div></div>
+    <div class="sc-right"><div class="sc-k" id="scInK">ARRIVING IN</div><div class="sc-in" id="scIn">—</div></div>
+  </div>
+</div>
 <div id="card" class="glass">
   <div id="holStrip"></div>
   <div id="cardHead">
@@ -829,7 +856,7 @@ function frame(){
     seasonMarks.forEach(m=>placeLabel3D(m.el, m.mesh.position, camO, 10, -8));
   }
   // holidays: santa + effects
-  updateSanta(now); trail.visible = santa.on || (theme==='christmas' && santa.done);
+  updateSanta(now); updateSantaCard(now); trail.visible = santa.on || (theme==='christmas' && santa.done);
   if (santa.on && mode==='globe'){ const sp=new THREE.Vector3().copy(llToEcef(santa.lat,santa.lon)).multiplyScalar(1.07).applyMatrix4(M);
     placeLabel3D(santaLbl, sp, camG, -30, -12, sp.dot(camG.position)<1.07, true); } else santaLbl.style.display='none';
   fx.step();
@@ -1006,6 +1033,29 @@ function updateTrailTip(lat,lon){ if (!trailCount) return; const pos=trail.geome
 const santaLbl=document.createElement('div'); santaLbl.className='lbl santa'; santaLbl.textContent='🎅🛷 Santa'; labelsEl.appendChild(santaLbl); santaLbl.style.display='none';
 
 const lpYear = now => localParts(now,current).year;
+// ---- Google-style tracker card
+function santaCardOn(){ return theme==='christmas' && ROUTE.length && (santa.on || (santa.takeoffIn>0 && santa.takeoffIn<12*3600) || (santa.done && (simNow()-(routeT0(santa.y)+ROUTE[ROUTE.length-1][4]*1000))<12*3600000)); }
+const mmss = ms => { ms=Math.max(0,ms); const t=Math.floor(ms/1000), h=Math.floor(t/3600), m=Math.floor(t%3600/60), sc=t%60; return h? `${h}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}` : `${m}:${String(sc).padStart(2,'0')}`; };
+function aboutText(ms){ const min=ms/60000; if (min<1) return 'any moment now!'; if (min<55) return `in about ${Math.max(1,Math.round(min))} minute${Math.round(min)===1?'':'s'}`; const h=Math.round(min/60); return `in about ${h} hour${h===1?'':'s'}`; }
+let scLast=0;
+function updateSantaCard(now){
+  const el=$('santaCard'), on=!!current && santaCardOn();
+  if (el.classList.contains('show')!==on){ el.classList.toggle('show',on); document.body.classList.toggle('santa-on',on); layout(); if (innerWidth<=720 && mode==='globe') camG.position.setLength(globeDist()); }
+  if (!on) return;
+  const t=performance.now(); if (t-scLast<100) return; scLast=t;
+  const set=(id,v)=>{ const e=$(id); if (e.textContent!==v) e.textContent=v; };
+  const v=santaVisitFor(current, santa.y), T0=routeT0(santa.y);
+  // arrival line, like Google's tracker
+  if (!santa.on && !santa.done){ set('scArrK','TAKEOFF'); set('scArr',`Santa takes off from the North Pole ${aboutText(santa.takeoffIn*1000)}`); }
+  else { set('scArrK','ARRIVAL'); const until=v.at-now;
+    set('scArr', santa.done || until<-15*60000 ? 'Santa has visited your area! 🎁' : until<=0 ? 'Santa is in your area now!' : `Santa will arrive ${aboutText(until)}`); }
+  set('scGifts', (santa.presents||0).toLocaleString('en-US'));
+  if (!santa.on && !santa.done){ set('scStopK','FIRST STOP'); set('scStop', placeName(ROUTE[1])); set('scInK','TAKEOFF IN'); set('scIn', mmss(santa.takeoffIn*1000)); }
+  else if (santa.done){ set('scStopK','LANDED'); set('scStop','North Pole'); set('scInK','SEE YOU NEXT YEAR'); set('scIn','🎄'); }
+  else if (santa.status==='at'){ set('scStopK','CURRENT STOP'); set('scStop', placeName(santa.stop)); set('scInK','DEPARTING IN'); set('scIn', mmss(T0+santa.stop[5]*1000-now)); }
+  else { set('scStopK','NEXT STOP'); set('scStop', placeName(santa.next)); set('scInK','ARRIVING IN'); set('scIn', mmss(santa.eta-now)); }
+}
+
 // "go to bed!" when Santa is close to the pin: within ~1,200 km, or under 45 min before his nearest stop
 let bedDismissed=store.get('bedDismissed','');
 function checkBedtime(now, v){
@@ -1037,12 +1087,8 @@ function updateHoliday(now){
     } else if (a.k==='christmas'){
       html = dd>1 ? `🎄 ${dd} days until Christmas` : dd===1 ? `🎄 Christmas Eve — Christmas is tomorrow!` : dd===0 ? `🎄 Merry Christmas!` : `🎄 Merry Christmas! Hope it was a good one`;
       const v=santaVisitFor(current, santa.y||lpYear(now));
-      const visit = v.stop ? ` · Santa's stop nearest you: ${esc(placeName(v.stop))}, ${fmtTime(v.at,current,false)}` : '';
       checkBedtime(now, v);
-      if (santa.on && santa.status==='at') html += `<small>🎅 Delivering presents in <b>${esc(placeName(santa.stop))}</b> · 🎁 ${santa.presents.toLocaleString()} delivered${visit}</small>`;
-      else if (santa.on) html += `<small>🎅 Flying to <b>${esc(placeName(santa.next))}</b> — arrives ${fmtTime(new Date(santa.eta),current,false)} · 🎁 ${santa.presents.toLocaleString()} delivered${visit}</small>`;
-      else if (santa.done && dd<=0) html += `<small>🎅 Santa is back at the North Pole after delivering ${(santa.presents||0).toLocaleString()} presents</small>`;
-      else if (santa.takeoffIn>0 && santa.takeoffIn<86400) html += `<small>🎅 Santa takes off from the North Pole in <span class="cd">${fmtCountdown(santa.takeoffIn*1000)}</span>${visit}</small>`;
+      if (santaCardOn()) html += `<small>🎅 Santa's stop nearest you: ${esc(placeName(v.stop))}</small>`;
       else if (dd>=1) html += `<small>Santa's route comes from Google Santa Tracker — try ⏱ Time travel → 🎅 Christmas Eve</small>`;
     } else {
       const label = a.k==='thanksgiving' && a.ca ? 'Thanksgiving (Canada)' : info.name;
@@ -1265,13 +1311,21 @@ $('collapse').onclick=()=>{ const c=$('card').classList.toggle('collapsed'); $('
 let toastT; function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),6500); }
 
 function fitDist(cam, radius){ const vh=cam.fov/2*D2R, hh=Math.atan(Math.tan(vh)*cam.aspect); return radius/Math.sin(Math.min(vh,hh)); }
-function globeDist(){ return fitDist(camG, innerWidth<=720 ? 1.06 : 1.12); }
+function globeDist(){
+  let d=fitDist(camG, innerWidth<=720 ? 1.06 : 1.12);
+  if (innerWidth<=720){ // phones: also fit the height left between the top bar and the bottom cards
+    const top=$('top').getBoundingClientRect().bottom, card=$('card').getBoundingClientRect().height, sc=$('santaCard');
+    const used=top+card+12+(sc.classList.contains('show')?sc.getBoundingClientRect().height+8:0), avail=Math.max(120,innerHeight-used-10);
+    const vh=Math.atan(Math.tan(camG.fov/2*D2R)*avail/innerHeight); d=Math.max(d, 1.04/Math.sin(vh)); }
+  return d; }
 function orbitHome(){ const dir = camO.aspect<1 ? new THREE.Vector3(0,1.5,1) : new THREE.Vector3(0,.55,1); camO.position.copy(dir.normalize().multiplyScalar(fitDist(camO, camO.aspect<1?13.2:13))); ctlO.target.set(0,0,0); }
 function layout(){
   renderer.setSize(innerWidth,innerHeight);
   const W=innerWidth, H=innerHeight, card=$('card').getBoundingClientRect(), top=$('top').getBoundingClientRect();
   let ox=0, oy=0;
-  if (W<=720){ oy = Math.round((card.height - top.bottom)/2 + 6); }      // centre the globe in the space between bar and card
+  const sc=$('santaCard'); let stack=card.height;
+  if (sc && sc.classList.contains('show')){ if (W<=720){ sc.style.bottom=(card.height+12+8)+'px'; stack+=sc.getBoundingClientRect().height+8; } else sc.style.bottom=''; }
+  if (W<=720){ oy = Math.round((stack - top.bottom)/2 + 6); }      // centre the globe in the space between bar and card
   else if (W>=900){ ox = -Math.round(Math.min(card.width+20, W*.32)/2); } // nudge right of the side card
   for (const c of [camG,camO]){ c.aspect=W/H; c.setViewOffset(W,H,ox,oy,W,H); c.updateProjectionMatrix(); }
 }
