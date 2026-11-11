@@ -1321,18 +1321,47 @@ const stopDotTex=(()=>{ const c=document.createElement('canvas'); c.width=c.heig
 const STOPS=ROUTE.filter(r=>r[6]>0 && r[0]!=="Santa's Village");
 const stopGeo=new THREE.BufferGeometry(), stopPos=new Float32Array(STOPS.length*3), stopCol=new Float32Array(STOPS.length*3);
 STOPS.forEach((r,i)=>{ const v=llToEcef(r[2],r[3]).multiplyScalar(1.0025); stopPos.set([v.x,v.y,v.z],i*3); });
-stopGeo.setAttribute('position',new THREE.BufferAttribute(stopPos,3)); stopGeo.setAttribute('color',new THREE.BufferAttribute(stopCol,3));
+stopGeo.setAttribute('position',new THREE.BufferAttribute(stopPos,3));
 const stopGrayTex=(()=>{ const c=document.createElement('canvas'); c.width=c.height=64; const x=c.getContext('2d');
   x.beginPath(); x.arc(32,32,27,0,7); x.fillStyle='rgba(255,255,255,.95)'; x.fill();            // thin light rim so the dot shows on the dark night side
   x.beginPath(); x.arc(32,32,21,0,7); x.fillStyle='#5f6368'; x.fill(); return new THREE.CanvasTexture(c); })();
-const stopDots=new THREE.Points(stopGeo,new THREE.PointsMaterial({size:8,sizeAttenuation:false,map:stopGrayTex,vertexColors:true,transparent:true,depthWrite:false,alphaTest:.1}));
-stopDots.visible=false; G.frame.add(stopDots);
-let stopsPaintedFor=-2;
+// two layers share the stop positions: gray dots for stops still to come, festive red-and-green ones once Santa has been
+const festiveTex=(()=>{ const c=document.createElement('canvas'); c.width=c.height=64; const x=c.getContext('2d');
+  x.beginPath(); x.arc(32,32,30,0,7); x.fillStyle='#ffffff'; x.fill();
+  x.beginPath(); x.arc(32,32,26,0,7); x.fillStyle='#18b04a'; x.fill();                          // green ring
+  const g=x.createRadialGradient(27,26,2,32,32,15); g.addColorStop(0,'#ff6b6b'); g.addColorStop(.45,'#ff1428'); g.addColorStop(1,'#c40018');
+  x.beginPath(); x.arc(32,32,16,0,7); x.fillStyle=g; x.fill(); return new THREE.CanvasTexture(c); })();
+stopGeo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(STOPS.length*4),4));       // rgba: alpha hides the dot on this layer
+const litGeo=new THREE.BufferGeometry(); litGeo.setAttribute('position',stopGeo.attributes.position); litGeo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(STOPS.length*4),4));
+const stopDots=new THREE.Points(stopGeo,new THREE.PointsMaterial({size:8,sizeAttenuation:false,map:stopGrayTex,vertexColors:true,transparent:true,depthWrite:false,alphaTest:.05}));
+const litDots=new THREE.Points(litGeo,new THREE.PointsMaterial({size:13,sizeAttenuation:false,map:festiveTex,vertexColors:true,transparent:true,depthWrite:false,alphaTest:.05}));
+litDots.renderOrder=3;
+// arrival flash: pulsing rings that alternate red and green over the stop Santa is at
+const pulseGeo=new THREE.BufferGeometry(); pulseGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(3),3));
+const pulseTex=(()=>{ const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d'); x.lineWidth=10; x.strokeStyle='#fff';
+  x.beginPath(); x.arc(64,64,50,0,7); x.stroke(); const g=x.createRadialGradient(64,64,0,64,64,60); g.addColorStop(0,'rgba(255,255,255,.55)'); g.addColorStop(1,'rgba(255,255,255,0)'); x.fillStyle=g; x.fill(); return new THREE.CanvasTexture(c); })();
+const pulse=new THREE.Points(pulseGeo,new THREE.PointsMaterial({size:30,sizeAttenuation:false,map:pulseTex,color:0xff2a3a,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
+pulse.renderOrder=4;
+const pulse2=new THREE.Points(pulseGeo,pulse.material.clone()); pulse2.material.color.setHex(0x22c55e); pulse2.renderOrder=4;
+for (const o of [stopDots,litDots,pulse,pulse2]){ o.visible=false; o.frustumCulled=false; G.frame.add(o); }
+let stopsPaintedFor=-2, flashStop=-1, flashAt=0;
 function updateStopDots(){
-  const show=santaCardOn() && mode==='globe'; stopDots.visible=show; if (!show) return;
-  const T0=routeT0(santa.y), nowS=(simNow()-T0)/1000; const key=santa.done?99999:santa.on?santa.idx:-1; if (key===stopsPaintedFor) return; stopsPaintedFor=key;
-  STOPS.forEach((r,i)=>{ const visited=nowS>=r[4]; const k = visited ? 1 : 0.8; stopCol.set([k,k,k],i*3); });     // gray dots; upcoming ones a touch softer
-  stopGeo.attributes.color.needsUpdate=true;
+  const show=santaCardOn() && mode==='globe'; stopDots.visible=litDots.visible=show; if (!show){ pulse.visible=pulse2.visible=false; return; }
+  const T0=routeT0(santa.y), nowS=(simNow()-T0)/1000;
+  // pulse: from the moment he lands until a few seconds after, then gently while he's still there
+  const at = santa.on && santa.status==='at' ? STOPS.indexOf(santa.stop) : -1;
+  if (at!==flashStop){ flashStop=at; flashAt=performance.now(); if (at>=0){ const v=stopGeo.attributes.position.array; pulseGeo.attributes.position.array.set([v[at*3]*1.0005,v[at*3+1]*1.0005,v[at*3+2]*1.0005]); pulseGeo.attributes.position.needsUpdate=true; } }
+  if (at>=0){ const t=(performance.now()-flashAt)/1000, ph=(t*1.6)%1, burst=t<4;
+    const ph2=(ph+.5)%1;                                                     // red ring and green ring, half a beat apart
+    pulse.visible=pulse2.visible=true;
+    pulse.material.size=(burst?50:46)+ph*(burst?110:70);  pulse.material.opacity=Math.min(1,(1-ph)*1.4)*(burst?1:.75);
+    pulse2.material.size=(burst?50:46)+ph2*(burst?110:70); pulse2.material.opacity=Math.min(1,(1-ph2)*1.4)*(burst?1:.75); }
+  else pulse.visible=pulse2.visible=false;
+  const key=santa.done?99999:santa.on?santa.idx*2+(santa.status==='at'?1:0):-1; if (key===stopsPaintedFor) return; stopsPaintedFor=key;
+  const gc=stopGeo.attributes.color.array, lc=litGeo.attributes.color.array;
+  STOPS.forEach((r,i)=>{ const lit = nowS>=r[4];                       // lights up the moment he arrives
+    gc.set([.85,.85,.85, lit?0:1], i*4); lc.set([1,1,1, lit?1:0], i*4); });
+  stopGeo.attributes.color.needsUpdate=true; litGeo.attributes.color.needsUpdate=true;
 }
 function nearestStop(lat,lon,maxKm){ let best=null,bd=maxKm; for (const r of STOPS){ const d=gcDist(lat,lon,r[2],r[3]); if (d<bd){bd=d;best=r;} } return best; }
 
@@ -1701,7 +1730,7 @@ else setPlace(deviceApprox(), { save:false, fly:false });
 { const d=globeDist(); camG.position.copy(pinWorld().normalize().multiplyScalar(d)); follow=true; }
 frame();
 try{ if (window.top===window && !store.get('last',null) && !home) setTimeout(()=>$('locBtn').click(), 600); }catch(e){}
-function exposeDbg(){ window.__dbg = { setOffset:v=>{simOffset=v;}, tick:()=>tick(true), cam:camG, moonState, moonAltAt, moonInfo, simNow, sunState, earthMatrix, ecefToScene, sunDirScene, llToEcef, setPlace, setMode, get current(){return current;} }; }
+function exposeDbg(){ window.__dbg = { pulseInfo:()=>({v:pulse.visible,size:pulse.material.size,op:pulse.material.opacity,flash:flashStop,status:santa.status,stop:santa.stop&&santa.stop[0]}), setOffset:v=>{simOffset=v;}, tick:()=>tick(true), cam:camG, moonState, moonAltAt, moonInfo, simNow, sunState, earthMatrix, ecefToScene, sunDirScene, llToEcef, setPlace, setMode, get current(){return current;} }; }
 if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) exposeDbg();
 </script>
 </body>

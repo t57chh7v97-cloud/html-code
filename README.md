@@ -80,7 +80,9 @@ night-side city lights placed at real city coordinates.
     real 420-stop route** (the 2019 flight, shifted to this year), with his
     path drawn in green (Google-tracker style) and a Google-style tracker card: when he arrives near you, a live
     gifts-delivered counter, and his next stop with an arrival countdown. Every
-    stop is marked with a small gray dot, Santa is a round red marker, and city
+    stop is marked with a small gray dot. When Santa arrives, the dot flashes
+    with red and green rings and then stays lit red and green. Santa is a round
+    red marker, and city
     lights dim while he flies so he and his stops stand out. Tap a stop
     to see when Santa gets there. **🔍 Zoom in on Santa** swoops the camera to an
     animated 3D sleigh with Santa, his sack of presents and nine reindeer led by
