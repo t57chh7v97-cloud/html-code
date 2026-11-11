@@ -48,6 +48,22 @@
   .tbTop{display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--muted)} .tbTop b{color:var(--text);font-weight:600}
   .tbRow{display:flex;gap:6px;flex-wrap:wrap;align-items:center} .tbRow .btn{flex:1;justify-content:center;padding:7px 6px} .tbk{color:var(--muted);font-size:12px}
   .short{display:none}
+  #fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+  #holStrip{display:none;margin:-4px 0 10px;padding:7px 10px;border-radius:10px;font-size:13.5px;font-weight:600;background:rgba(255,255,255,.06);border:1px solid var(--line);line-height:1.35}
+  #holStrip.show{display:block}
+  #holStrip.soon{font-weight:500;color:var(--muted);background:none;border-style:dashed}
+  #holStrip .cd{font-family:'JetBrains Mono',monospace;font-size:1.15em;letter-spacing:-.01em}
+  #holStrip small{display:block;font-weight:500;color:var(--muted);font-size:12px;margin-top:2px}
+  body[data-theme=halloween]{--accent:#ff8a1f;--accent2:#b46bff;--line:rgba(255,138,31,.25)}
+  body[data-theme=halloween] #holStrip{background:linear-gradient(90deg,rgba(255,120,20,.22),rgba(150,70,255,.22))}
+  body[data-theme=thanksgiving]{--accent:#ffb14a;--accent2:#e0703a;--line:rgba(255,170,80,.25)}
+  body[data-theme=thanksgiving] #holStrip{background:linear-gradient(90deg,rgba(214,110,40,.25),rgba(255,190,80,.18))}
+  body[data-theme=christmas]{--accent:#ff6464;--accent2:#4fd18b;--line:rgba(120,220,160,.25)}
+  body[data-theme=christmas] #holStrip{background:linear-gradient(90deg,rgba(220,40,60,.28),rgba(30,160,90,.28))}
+  body[data-theme=newyear]{--accent:#ffd166;--accent2:#c77dff;--line:rgba(255,209,102,.28)}
+  body[data-theme=newyear] #holStrip{background:linear-gradient(90deg,rgba(255,200,80,.22),rgba(170,100,255,.22))}
+  body[data-theme] .btn.primary{background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 70%,#000),var(--accent));color:#140c02}
+  .lbl.santa{background:rgba(200,30,40,.92);color:#fff;border-color:transparent;font-size:13px}
   .btn.tog.on{border-color:rgba(255,200,97,.55);color:var(--accent)}
   .clbl{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;white-space:nowrap;font-size:11.5px;font-weight:500;color:#e6ecfa;text-shadow:0 0 3px #000,0 0 6px #000,0 1px 2px #000;display:flex;align-items:center;gap:5px;will-change:transform;padding:1px 2px}
   .clbl i{width:5px;height:5px;border-radius:50%;background:#e6ecfa;box-shadow:0 0 4px #000;flex:none}
@@ -117,7 +133,7 @@
     #legend,#credit{display:none}
     #row{gap:6px} #row .btn{padding:8px 11px;font-size:13px} .seg button{padding:6px 9px;font-size:13px}
     #modeSeg button[data-m=orbit] .long{display:none}
-    #coordToggle .long,#tBtn .long,#namesBtn .long,#locBtn .long{display:none} #locBtn .short{display:inline}
+    #coordToggle .long,#tBtn .long,#namesBtn .long,#holBtn .long,#locBtn .long{display:none} #locBtn .short{display:inline}
     #clock{font-size:36px}
     #top{max-width:none}
     #card{padding:13px 15px 12px}
@@ -138,6 +154,7 @@
 </head>
 <body>
 <canvas id="gl"></canvas>
+<canvas id="fx"></canvas>
 <div id="labels"></div>
 
 <div id="top">
@@ -153,6 +170,7 @@
     <button class="btn" id="coordToggle" title="Enter coordinates">⌖<span class="long"> Coordinates</span></button>
     <button class="btn tog" id="tBtn" title="Time travel">⏱<span class="long"> Time travel</span></button>
     <button class="btn tog" id="namesBtn" title="Show city names">Aa<span class="long"> Names</span></button>
+    <button class="btn tog" id="holBtn" title="Holiday themes">🎉<span class="long"> Holidays</span></button>
   </div>
   <div id="timeBar" class="glass">
     <div class="tbTop"><span>Showing <b id="simWhen"></b></span><button class="btn mini" id="liveBtn">● Live</button></div>
@@ -160,6 +178,9 @@
       <button class="btn mini" data-step="-1mo">−1 mo</button><button class="btn mini" data-step="-1d">−1 d</button><button class="btn mini" data-step="-1h">−1 h</button>
       <button class="btn mini" data-step="1h">+1 h</button><button class="btn mini" data-step="1d">+1 d</button><button class="btn mini" data-step="1mo">+1 mo</button>
     </div>
+    <div class="tbRow"><span class="tbk">Preview</span>
+      <button class="btn mini" data-jump="halloween">🎃 Halloween</button><button class="btn mini" data-jump="thanksgiving">🦃 Thanksgiving</button>
+      <button class="btn mini" data-jump="christmas">🎅 Christmas Eve</button><button class="btn mini" data-jump="newyear">🎆 New Year</button></div>
     <div class="tbRow"><span class="tbk">Speed</span><div class="seg" id="speedSeg"><button data-v="1" class="on">Real</button><button data-v="3600">1 hr/sec</button><button data-v="86400">1 day/sec</button></div></div>
   </div>
   <form id="coordBox" class="glass">
@@ -171,6 +192,7 @@
 </div>
 
 <div id="card" class="glass">
+  <div id="holStrip"></div>
   <div id="cardHead">
     <div>
       <div id="placeName">Finding you…</div>
@@ -423,11 +445,11 @@ dayCanvas.width=nightCanvas.width=TW; dayCanvas.height=nightCanvas.height=TH;
 const dayTex=new THREE.CanvasTexture(dayCanvas), nightTex=new THREE.CanvasTexture(nightCanvas);
 for (const t of [dayTex,nightTex]){ t.anisotropy=maxAniso; t.colorSpace=THREE.NoColorSpace; t.minFilter=THREE.LinearMipmapLinearFilter; }
 
-const uniforms = { dayMap:{value:dayTex}, nightMap:{value:nightTex}, sunDir:{value:new THREE.Vector3(1,0,0)} };
+const uniforms = { dayMap:{value:dayTex}, nightMap:{value:nightTex}, sunDir:{value:new THREE.Vector3(1,0,0)}, atmoColor:{value:new THREE.Vector3(0.32,0.58,1.0)} };
 const earthMat = new THREE.ShaderMaterial({ uniforms,
   vertexShader:`varying vec2 vUv; varying vec3 vN; varying vec3 vW;
     void main(){ vUv=uv; vN=normalize(mat3(modelMatrix)*normal); vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
-  fragmentShader:`uniform sampler2D dayMap; uniform sampler2D nightMap; uniform vec3 sunDir;
+  fragmentShader:`uniform sampler2D dayMap; uniform sampler2D nightMap; uniform vec3 sunDir; uniform vec3 atmoColor;
     varying vec2 vUv; varying vec3 vN; varying vec3 vW;
     void main(){
       vec3 N=normalize(vN); float d=dot(N,normalize(sunDir));
@@ -437,15 +459,15 @@ const earthMat = new THREE.ShaderMaterial({ uniforms,
       vec3 col=mix(night,dayLit,lit);
       float band=exp(-pow((d+0.02)/0.075,2.0)); col+=vec3(1.0,0.42,0.12)*band*0.20;  // sunset glow on the terminator
       vec3 V=normalize(cameraPosition-vW); float fr=pow(1.0-max(dot(N,V),0.0),3.0);
-      col+=vec3(0.32,0.58,1.0)*fr*0.55*smoothstep(-0.25,0.35,d);
+      col+=atmoColor*fr*0.55*smoothstep(-0.25,0.35,d);
       gl_FragColor=vec4(col,1.0);
     }` });
-const atmoMat = new THREE.ShaderMaterial({ uniforms:{ sunDir:uniforms.sunDir }, side:THREE.BackSide, blending:THREE.AdditiveBlending, transparent:true, depthWrite:false,
+const atmoMat = new THREE.ShaderMaterial({ uniforms:{ sunDir:uniforms.sunDir, atmoColor:uniforms.atmoColor }, side:THREE.BackSide, blending:THREE.AdditiveBlending, transparent:true, depthWrite:false,
   vertexShader:`varying vec3 vN; varying vec3 vW; void main(){ vN=normalize(mat3(modelMatrix)*normal); vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
-  fragmentShader:`uniform vec3 sunDir; varying vec3 vN; varying vec3 vW;
+  fragmentShader:`uniform vec3 sunDir; uniform vec3 atmoColor; varying vec3 vN; varying vec3 vW;
     void main(){ vec3 V=normalize(cameraPosition-vW); float rim=1.0-abs(dot(normalize(vN),V)); float i=pow(rim,5.0)*1.6;
       float s=smoothstep(-0.4,0.5,dot(normalize(vN),normalize(sunDir)));
-      gl_FragColor=vec4(vec3(0.30,0.55,1.0)*i*(0.15+0.85*s),1.0); }` });
+      gl_FragColor=vec4(atmoColor*i*(0.15+0.85*s),1.0); }` });
 
 function makeRig(scene, pinScale=1){
   const frame=new THREE.Object3D(); frame.matrixAutoUpdate=false; scene.add(frame);
@@ -583,16 +605,20 @@ function drawMaps(world){
   x.beginPath(); path(borders); x.strokeStyle='rgba(130,160,230,.12)'; x.lineWidth=1*k; x.stroke();
   x.beginPath(); path(coast); x.strokeStyle='rgba(120,170,255,.32)'; x.lineWidth=1.3*k; x.stroke();
   dayTex.needsUpdate=true; nightTex.needsUpdate=true;
+  nightBase=document.createElement('canvas'); nightBase.width=TW; nightBase.height=TH; nightBase.getContext('2d').drawImage(nightCanvas,0,0);
 }
+let nightBase=null, lightPalette=null;
 // Night-side city lights drawn from the real places list
 function addCityLights(){
-  const x=nightCanvas.getContext('2d'); x.globalCompositeOperation='lighter';
+  if (!P.ready || !nightBase) return;
+  const x=nightCanvas.getContext('2d'); x.globalCompositeOperation='source-over'; x.drawImage(nightBase,0,0); x.globalCompositeOperation='lighter';
   for (let i=0;i<P.n;i++){ const pop=P.pop[i]; if (pop<15000) break;
     const px=(P.lon[i]+180)/360*TW, py=(90-P.lat[i])/180*TH;
     const r=Math.max(1, Math.log10(pop)-3.2)*1.15*(TW/4096);
     const a=Math.min(.75,(Math.log10(pop)-4)*.22+.12);
-    x.fillStyle=`rgba(255,196,110,${a*.45})`; x.beginPath(); x.arc(px,py,r*2.2,0,7); x.fill();
-    x.fillStyle=`rgba(255,226,170,${a})`; x.beginPath(); x.arc(px,py,r*.8,0,7); x.fill(); }
+    const [g,c] = lightPalette ? lightPalette(i) : [[255,196,110],[255,226,170]];
+    x.fillStyle=`rgba(${g},${a*.45})`; x.beginPath(); x.arc(px,py,r*2.2,0,7); x.fill();
+    x.fillStyle=`rgba(${c},${a})`; x.beginPath(); x.arc(px,py,r*.8,0,7); x.fill(); }
   x.globalCompositeOperation='source-over'; nightTex.needsUpdate=true;
 }
 
@@ -705,6 +731,7 @@ function tick(force){
   if (current.approx) tzHtml += `<span style="width:100%">Pin is approximate (from your time zone) — search your town for an exact spot.</span>`;
   $('tzLine').innerHTML = tzHtml;
 
+  updateHoliday(now);
   const s=sunState(now); const sa=sunAt(current.lat,current.lon,s,now);
   let status, col;
   if (sa.alt>-0.833){ status=`Daytime — sun ${sa.alt.toFixed(1)}° above the horizon`; col='radial-gradient(circle,#fff3c4,#ffc861 60%,#ff9d2f)'; }
@@ -790,6 +817,11 @@ function frame(){
     placeLabel3D(earthLbl, ep.clone().add(new THREE.Vector3(0,-ORBIT_EARTH_R*1.6,0)), camO, -50, 6);
     seasonMarks.forEach(m=>placeLabel3D(m.el, m.mesh.position, camO, 10, -8));
   }
+  // holidays: santa + effects
+  updateSanta(now, s);
+  if (santa.on && mode==='globe'){ const sp=new THREE.Vector3().copy(llToEcef(santa.lat,santa.lon)).multiplyScalar(1.07).applyMatrix4(M);
+    placeLabel3D(santaLbl, sp, camG, -30, -12, sp.dot(camG.position)<1.07, true); } else santaLbl.style.display='none';
+  fx.step(theme==='newyear' ? (frame._fwc = (tNow-(frame._fwt||0)>250 ? (frame._fwt=tNow, celebratingCities(M)) : frame._fwc)) : null);
   tick(false);
 }
 
@@ -860,6 +892,172 @@ $('tBtn').onclick=()=>{ $('timeBar').classList.toggle('show'); layout(); };
 $('namesBtn').onclick=()=>{ showNames=!showNames; store.set('names',showNames); $('namesBtn').classList.toggle('on',showNames); };
 $('namesBtn').classList.toggle('on',showNames);
 setInterval(()=>{ if ($('timeBar').classList.contains('show')) $('simWhen').textContent = simNow().toLocaleString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',hour12:h12}); }, 250);
+
+/* =========================================================
+   HOLIDAYS — themes switch on by the local date at your pin
+   ========================================================= */
+const HOL = {
+  halloween:   { name:'Halloween',    icon:'🎃', greet:'Happy Halloween!',   atmo:[0.80,0.38,1.00], fx:'bats',
+                 lights:i=> i%3===0 ? ['170,80,255','220,170,255'] : ['255,130,25','255,190,90'] },
+  thanksgiving:{ name:'Thanksgiving', icon:'🦃', greet:'Happy Thanksgiving!', atmo:[1.00,0.62,0.30], fx:'leaves',
+                 lights:i=> i%4===0 ? ['255,120,40','255,180,110'] : ['255,180,80','255,220,150'] },
+  christmas:   { name:'Christmas',    icon:'🎄', greet:'Merry Christmas!',    atmo:[0.62,0.86,1.00], fx:'snow',
+                 lights:i=> [['255,70,80','255,160,160'],['70,230,120','170,255,190'],['255,240,210','255,250,240'],['255,200,70','255,230,160']][i%4] },
+  newyear:     { name:"New Year's",   icon:'🎆', greet:'Happy New Year!',     atmo:[1.00,0.84,0.45], fx:'fireworks',
+                 lights:i=> i%5===0 ? ['190,130,255','235,210,255'] : ['255,205,100','255,240,190'] },
+};
+let holOn = store.get('holidays', true), theme=null;
+const fmtCache=new Map();
+function partsIn(tz, date){ let f=fmtCache.get(tz); if(!f){ try{ f=new Intl.DateTimeFormat('en-US',{timeZone:tz,year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric',second:'numeric',hourCycle:'h23'}); }catch(e){ f=fmtCache.get('UTC')||new Intl.DateTimeFormat('en-US',{timeZone:'UTC',year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric',second:'numeric',hourCycle:'h23'}); } fmtCache.set(tz,f); }
+  const o={}; for (const x of f.formatToParts(date)) if (x.type!=='literal') o[x.type]=+x.value; o.month-=1; o.hour%=24; return o; }
+function localParts(date,p){ const z=zoneFor(p); return partsIn(z.tz, new Date(+date+z.shift)); }
+function localToUTC(p,y,mo,d,h=0,mi=0,sec=0){ const want=Date.UTC(y,mo,d,h,mi,sec); let t=want; const z=zoneFor(p);
+  for (let k=0;k<3;k++){ const lp=localParts(new Date(t),p); t += want-Date.UTC(lp.year,lp.month,lp.day,lp.hour,lp.minute,lp.second); } return new Date(t); }
+const dayNum=(y,m,d)=>Date.UTC(y,m,d)/86400000;
+function nthWeekday(y,m,wd,n){ const first=new Date(Date.UTC(y,m,1)).getUTCDay(); return 1+((wd-first+7)%7)+7*(n-1); }
+function thanksgivingOf(y,cc){ return cc==='CA' ? {m:9,d:nthWeekday(y,9,1,2),ca:true} : {m:10,d:nthWeekday(y,10,4,4)}; }
+function holidayDates(y,cc){
+  // Liam's calendar: Halloween Oct 1–Nov 1 · Thanksgiving Nov 2–Thanksgiving Day · Christmas day after (US) Thanksgiving–Dec 26 · New Year Dec 30–Jan 15
+  const us=nthWeekday(y,10,4,4), t=thanksgivingOf(y,cc);
+  const tg = t.ca ? {k:'thanksgiving',y,m:t.m,d:t.d,from:dayNum(y,t.m,t.d)-3,to:dayNum(y,t.m,t.d),ca:true}
+                  : {k:'thanksgiving',y,m:10,d:us,from:dayNum(y,10,2),to:dayNum(y,10,us)};
+  const list=[ {k:'halloween',y,m:9,d:31,from:dayNum(y,9,1),to:dayNum(y,10,1)}, tg,
+           {k:'christmas',y,m:11,d:25,from:dayNum(y,10,us)+1,to:dayNum(y,11,26)},
+           {k:'newyear',y:y+1,m:0,d:1,from:dayNum(y,11,30),to:dayNum(y+1,0,15)} ];
+  if (t.ca) list.unshift(list.splice(1,1)[0]);   // Canadian Thanksgiving (in October) wins over Halloween on its days
+  return list;
+}
+function holidayState(now){
+  const lp=localParts(now,current), today=dayNum(lp.year,lp.month,lp.day);
+  const list=[...holidayDates(lp.year-1,current.cc),...holidayDates(lp.year,current.cc),...holidayDates(lp.year+1,current.cc)];
+  const active=list.find(h=>today>=h.from && today<=h.to)||null;
+  const next=list.filter(h=>dayNum(h.y,h.m,h.d)>=today && (!active||h!==active)).sort((a,b)=>dayNum(a.y,a.m,a.d)-dayNum(b.y,b.m,b.d))[0];
+  return { lp, today, active, next, daysTo:h=>dayNum(h.y,h.m,h.d)-today };
+}
+function applyTheme(k){
+  if (k===theme) return; theme=k;
+  if (k) document.body.dataset.theme=k; else delete document.body.dataset.theme;
+  const a=k?HOL[k].atmo:[0.32,0.58,1.0]; uniforms.atmoColor.value.set(a[0],a[1],a[2]);
+  lightPalette = k?HOL[k].lights:null; addCityLights();
+  fx.reset(k?HOL[k].fx:null);
+}
+// --- New Year: which time zones are in their first hour of the year / already past midnight
+const nyState={ at:0, celebrating:new Uint8Array(0), passed:0, total:0, year:0 };
+function updateNewYearZones(now, year){
+  if (Math.abs(now-nyState.at)<4000 && nyState.year===year) return; nyState.at=+now; nyState.year=year;
+  if (!P.ready) return; const n=P.tzList.length; if (nyState.celebrating.length!==n) nyState.celebrating=new Uint8Array(n);
+  const offs=new Set(); let passed=0;
+  for (let i=0;i<n;i++){ const lp=partsIn(P.tzList[i],now); const inNew = lp.year>=year; nyState.celebrating[i] = (inNew && lp.month===0 && lp.day===1 && lp.hour===0) ? 1 : 0;
+    const off=Math.round((Date.UTC(lp.year,lp.month,lp.day,lp.hour,lp.minute)-Math.floor(now/60000)*60000)/60000); if (!offs.has(off)){ offs.add(off); if (inNew) passed++; } }
+  nyState.passed=passed; nyState.total=offs.size;
+}
+// --- Santa rides the midnight line on Christmas Eve night
+let santa={on:false,lat:0,lon:0,near:'',nearAt:0};
+function updateSanta(now, s){
+  const t=+now, start=Date.UTC(new Date(t).getUTCFullYear(),11,24,9), end=Date.UTC(new Date(t).getUTCFullYear(),11,25,12);
+  santa.on = theme==='christmas' && t>=start && t<=end;
+  if (!santa.on) return;
+  let lon=s.subLon+180; lon=((lon+180)%360+360)%360-180;
+  santa.lon=lon; santa.lat=18+32*Math.sin(t/5400000) ;
+  if (t-santa.nearAt>3000 || Math.abs(t-santa.nearAt)>600000){ santa.nearAt=t; const d=describePoint(santa.lat,santa.lon); santa.near=d.name.replace(/^Near /,''); santa.over=/Open water|Polar/.test(d.name); }
+}
+const santaLbl=document.createElement('div'); santaLbl.className='lbl santa'; santaLbl.textContent='🎅🛷 Santa'; labelsEl.appendChild(santaLbl); santaLbl.style.display='none';
+
+function fmtCountdown(ms){ ms=Math.max(0,ms); const h=Math.floor(ms/3600000), m=Math.floor(ms%3600000/60000), sc=Math.floor(ms%60000/1000); return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`; }
+function updateHoliday(now){
+  const strip=$('holStrip');
+  if (!holOn || !current){ applyTheme(null); strip.className=''; return; }
+  const H=holidayState(now), a=H.active; applyTheme(a?a.k:null);
+  let html='', cls='show';
+  if (a){
+    const info=HOL[a.k], dd=H.daysTo(a);
+    if (a.k==='newyear'){
+      const target=localToUTC(current,a.y,0,1), ms=target-now; updateNewYearZones(now,a.y);
+      const zones = P.ready ? `<small>Already ${a.y} in ${nyState.passed} of ${nyState.total} time zones${nyState.passed&&nyState.passed<nyState.total?' — watch for fireworks along midnight':''}</small>` : '';
+      html = ms>0 ? `🎆 ${a.y} in <span class="cd">${fmtCountdown(ms)}</span> here${zones}` : `🎆 Happy New Year ${a.y}!${zones}`;
+      if (ms<=0 && ms>-90000) fx.celebrate();
+    } else if (a.k==='christmas'){
+      html = dd>1 ? `🎄 ${dd} days until Christmas` : dd===1 ? `🎄 Christmas Eve — Christmas is tomorrow!` : dd===0 ? `🎄 Merry Christmas!` : `🎄 Merry Christmas! Hope it was a good one`;
+      if (santa.on && santa.near) html += `<small>🎅 Santa is ${santa.over?'flying over the ocean':'near '+esc(santa.near)} right now — following midnight west</small>`;
+      else if (dd>=1) html += `<small>Santa flies Christmas Eve night — use ⏱ Time travel → 🎅 Christmas Eve to preview</small>`;
+    } else {
+      const label = a.k==='thanksgiving' && a.ca ? 'Thanksgiving (Canada)' : info.name;
+      html = dd>1 ? `${info.icon} ${label} in ${dd} days` : dd===1 ? `${info.icon} ${label} is tomorrow!` : dd===0 ? `${info.icon} ${info.greet}` : `${info.icon} Hope you had a great ${label}!`;
+    }
+  } else if (H.next){ cls='show soon'; const n=H.next, info=HOL[n.k], dd=H.daysTo(n);
+    html = `${info.icon} ${n.k==='newyear'?`New Year ${n.y}`:(n.k==='thanksgiving'&&n.ca?'Thanksgiving (Canada)':info.name)} in ${dd} day${dd===1?'':'s'}`; }
+  if (strip.innerHTML!==html) strip.innerHTML=html; strip.className=cls;
+}
+// jump buttons (time travel previews)
+document.querySelectorAll('#timeBar [data-jump]').forEach(b=>b.onclick=()=>{
+  if (!current) return; if (!holOn){ holOn=true; store.set('holidays',true); $('holBtn').classList.add('on'); }
+  const now=simNow(), lp=localParts(now,current); let t=null;
+  for (const y of [lp.year-1, lp.year, lp.year+1]){            // nearest occurrence, past or upcoming
+    const d=holidayDates(y,current.cc).find(h=>h.k===b.dataset.jump);
+    const at = d.k==='halloween'? localToUTC(current,y,9,31,20) : d.k==='thanksgiving'? localToUTC(current,y,d.m,d.d,15) : d.k==='christmas'? localToUTC(current,y,11,24,22,30) : localToUTC(current,y,11,31,23,59,45);
+    if (!t || Math.abs(at-now)<Math.abs(t-now)) t=at; }
+  if (!t) return; simOffset += t-now; setSpeed(1); if (mode==='globe') follow=true; tick(true);
+});
+$('holBtn').classList.toggle('on',holOn);
+$('holBtn').onclick=()=>{ holOn=!holOn; store.set('holidays',holOn); $('holBtn').classList.toggle('on',holOn); tick(true); };
+
+/* ---------- particle effects layer ---------- */
+const fx = (()=>{
+  const cv=$('fx'), cx=cv.getContext('2d'); let W=0,H=0,dpr=1, kind=null, parts=[], bursts=[], t0=performance.now(), party=0;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; const many=(n)=>Math.round(n*(reduce?.35:1)*(innerWidth<=720?.6:1));
+  function size(){ dpr=Math.min(devicePixelRatio,2); W=innerWidth; H=innerHeight; cv.width=W*dpr; cv.height=H*dpr; cx.setTransform(dpr,0,0,dpr,0,0); }
+  size(); addEventListener('resize',size);
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+  function spawn(k, init){
+    if (k==='snow') return { x:rnd(0,W), y:init?rnd(-H,H):-10, r:rnd(1,3.2), vy:rnd(.35,1.1), sw:rnd(0,6.3), a:rnd(.5,.95) };
+    if (k==='leaves') return { x:rnd(0,W), y:init?rnd(-H,H):-20, s:rnd(7,13), vy:rnd(.5,1.2), sw:rnd(0,6.3), rot:rnd(0,6.3), vr:rnd(-.04,.04), c:['#d9531e','#f08c2a','#e7b23a','#b8401a','#c96a1f'][Math.floor(rnd(0,5))] };
+    if (k==='bats')  return { x:init?rnd(0,W):(Math.random()<.5?-40:W+40), y:rnd(H*.08,H*.6), s:rnd(9,17), vx:0, ph:rnd(0,6.3), dir:0 };
+    return null;
+  }
+  function reset(k){ kind=k; parts=[]; bursts=[]; const n = k==='snow'?many(140):k==='leaves'?many(28):k==='bats'?many(9):0;
+    for (let i=0;i<n;i++){ const p=spawn(k,true); if (k==='bats'){ p.dir=Math.random()<.5?1:-1; p.vx=p.dir*rnd(.6,1.4); } parts.push(p); }
+    if (!k) cx.clearRect(0,0,W,H); }
+  function burst(x,y,big){ const n=big?90:46, hue=rnd(0,360), sp=big?rnd(2.6,4.2):rnd(1.4,2.6);
+    for (let i=0;i<n;i++){ const a=i/n*6.283+rnd(-.05,.05), v=sp*rnd(.6,1); bursts.push({x,y,px:x,py:y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:1,dec:rnd(.010,.018),col:`hsl(${(hue+rnd(-25,25)+360)%360} 95% 65%)`}); } }
+  function celebrate(){ party=performance.now()+6000; }
+  function drawBat(p,t){ const f=Math.sin(t*.018+p.ph)*.9; cx.save(); cx.translate(p.x,p.y); cx.scale(p.dir,1); cx.fillStyle='rgba(18,10,26,.92)';
+    cx.beginPath(); cx.ellipse(0,0,p.s*.22,p.s*.32,0,0,7); cx.fill();
+    for (const sd of [-1,1]){ cx.beginPath(); cx.moveTo(0,-p.s*.08); cx.quadraticCurveTo(sd*p.s*.6,-p.s*(.55*f+.2),sd*p.s*1.2,-p.s*(.25*f)); cx.quadraticCurveTo(sd*p.s*.9,p.s*.05,sd*p.s*.75,p.s*.12); cx.quadraticCurveTo(sd*p.s*.45,0,sd*p.s*.3,p.s*.18); cx.quadraticCurveTo(sd*p.s*.15,p.s*.05,0,p.s*.08); cx.fill(); }
+    cx.fillStyle='rgba(255,150,40,.9)'; cx.fillRect(p.s*.06,-p.s*.12,2,2); cx.restore(); }
+  function drawLeaf(p){ cx.save(); cx.translate(p.x,p.y); cx.rotate(p.rot); cx.fillStyle=p.c; cx.globalAlpha=.9;
+    cx.beginPath(); cx.moveTo(0,-p.s); cx.quadraticCurveTo(p.s*.75,-p.s*.2,0,p.s); cx.quadraticCurveTo(-p.s*.75,-p.s*.2,0,-p.s); cx.fill();
+    cx.strokeStyle='rgba(80,30,10,.55)'; cx.lineWidth=1; cx.beginPath(); cx.moveTo(0,-p.s*.8); cx.lineTo(0,p.s*1.25); cx.stroke(); cx.restore(); }
+  function step(cities){
+    const t=performance.now(); const dt=Math.min(3,(t-t0)/16.7); t0=t;
+    if (!kind && !bursts.length){ return; }
+    cx.clearRect(0,0,W,H);
+    for (const p of parts){
+      if (kind==='snow'){ p.sw+=.02*dt; p.y+=p.vy*dt; p.x+=Math.sin(p.sw)*.4*dt; if (p.y>H+5){ Object.assign(p,spawn('snow',false)); }
+        cx.fillStyle=`rgba(255,255,255,${p.a})`; cx.beginPath(); cx.arc(p.x,p.y,p.r,0,7); cx.fill(); }
+      else if (kind==='leaves'){ p.sw+=.03*dt; p.y+=p.vy*dt; p.x+=Math.sin(p.sw)*1.1*dt; p.rot+=p.vr*dt; if (p.y>H+20) Object.assign(p,spawn('leaves',false)); drawLeaf(p); }
+      else if (kind==='bats'){ p.x+=p.vx*dt; p.y+=Math.sin(t*.002+p.ph)*.35*dt; if (p.x<-60||p.x>W+60){ Object.assign(p,spawn('bats',false)); p.dir=p.x<0?1:-1; p.vx=p.dir*rnd(.6,1.4);} drawBat(p,t); }
+    }
+    if (kind==='fireworks'){
+      if (cities && cities.length && Math.random()<Math.min(.5,.05*cities.length)*dt){ const c=cities[Math.floor(Math.random()*cities.length)]; burst(c[0]+rnd(-6,6), c[1]-rnd(20,45), false); }
+      if (party>t && Math.random()<.22*dt) burst(rnd(W*.1,W*.9), rnd(H*.1,H*.5), true);
+    }
+    if (bursts.length){ cx.globalCompositeOperation='lighter'; cx.lineCap='round';
+      for (let i=bursts.length-1;i>=0;i--){ const b=bursts[i]; b.px=b.x; b.py=b.y; b.vx*=.985; b.vy=b.vy*.985+.035*dt; b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=b.dec*dt;
+        if (b.life<=0){ bursts.splice(i,1); continue; }
+        cx.globalAlpha=Math.min(1,b.life*1.3); cx.strokeStyle=b.col; cx.lineWidth=2; cx.beginPath(); cx.moveTo(b.px,b.py); cx.lineTo(b.x,b.y); cx.stroke(); }
+      cx.globalAlpha=1; cx.globalCompositeOperation='source-over'; }
+  }
+  return { reset, step, celebrate, burst };
+})();
+// screen positions of visible cities celebrating midnight right now
+const _fw=new THREE.Vector3();
+function celebratingCities(M){
+  if (theme!=='newyear' || !P.ready || mode!=='globe' || !nyState.celebrating.length) return null;
+  const out=[], cam=camG.position; const lim=Math.min(P.n,6000);
+  for (let i=0;i<lim;i++){ if (!nyState.celebrating[P.tz[i]]) continue; _fw.set(P.x[i],P.y[i],P.z[i]).applyMatrix4(M); if (_fw.dot(cam)<1.05) continue;
+    _fw.project(camG); if (_fw.z>1) continue; const x=(_fw.x+1)/2*innerWidth, y=(1-_fw.y)/2*innerHeight; if (x<0||x>innerWidth||y<0||y>innerHeight) continue; out.push([x,y]); if (out.length>60) break; }
+  return out;
+}
 
 /* =========================================================
    INTERACTION
@@ -1034,7 +1232,7 @@ else setPlace(deviceApprox(), { save:false, fly:false });
 { const d=globeDist(); camG.position.copy(pinWorld().normalize().multiplyScalar(d)); follow=true; }
 frame();
 try{ if (window.top===window && !store.get('last',null) && !home) setTimeout(()=>$('locBtn').click(), 600); }catch(e){}
-window.__dbg = { cam:camG, moonState, moonAltAt, moonInfo, simNow, sunState, earthMatrix, ecefToScene, sunDirScene, llToEcef, setPlace, setMode, get current(){return current;} };
+window.__dbg = { setOffset:v=>{simOffset=v;}, tick:()=>tick(true), cam:camG, moonState, moonAltAt, moonInfo, simNow, sunState, earthMatrix, ecefToScene, sunDirScene, llToEcef, setPlace, setMode, get current(){return current;} };
 </script>
 </body>
 </html>

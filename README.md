@@ -71,5 +71,17 @@ night-side city lights placed at real city coordinates.
 - **"Your Orbit Around the Sun":** Earth's current spot on its yearly path, the
   next equinoxes and solstices, the distance to the Sun and orbital speed.
 
+- **Holiday themes** turn on automatically by the date at your pin. Each one
+  adds its own colours, city lights, effects and a countdown:
+  - 🎃 Halloween (Oct 1 – Nov 1): purple-and-orange lights and bats
+  - 🦃 Thanksgiving (Nov 2 – Thanksgiving Day): falling leaves
+  - 🎄 Christmas (day after Thanksgiving – Dec 26): snow, multicolour lights,
+    and a Santa tracker that follows the midnight line on Christmas Eve
+  - 🎆 New Year (Dec 30 – Jan 15): a midnight countdown and fireworks over
+    each city as its own time zone reaches midnight
+
+  You can preview any of them from ⏱ Time travel, and turn them off with the
+  🎉 button.
+
 Everything runs in the browser. The only network use is loading Three.js and
 d3 from public CDNs.
