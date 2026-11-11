@@ -79,7 +79,11 @@ night-side city lights placed at real city coordinates.
     lights. On Christmas Eve, a Santa tracker flies **Google Santa Tracker's
     real 420-stop route** (the 2019 flight, shifted to this year), with his
     trail and a Google-style tracker card: when he arrives near you, a live
-    gifts-delivered counter, and his next stop with an arrival countdown. A
+    gifts-delivered counter, and his next stop with an arrival countdown. Every
+    stop is marked on the globe: gold once visited, faint until then. Tap a stop
+    to see when Santa gets there. **🔍 Zoom in on Santa** swoops the camera to an
+    animated 3D sleigh with Santa, his sack of presents and nine reindeer led by
+    a glowing-nosed Rudolph, which you can orbit and pinch-zoom around. A
     "Santa's coming to your house soon — go to bed now!" alert appears when he
     gets close.
   - 🎆 New Year (Dec 30 – Jan 15): a countdown to midnight at your pin, and a
