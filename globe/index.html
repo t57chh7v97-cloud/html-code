@@ -1334,7 +1334,7 @@ const festiveTex=(()=>{ const c=document.createElement('canvas'); c.width=c.heig
 stopGeo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(STOPS.length*4),4));       // rgba: alpha hides the dot on this layer
 const litGeo=new THREE.BufferGeometry(); litGeo.setAttribute('position',stopGeo.attributes.position); litGeo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(STOPS.length*4),4));
 const stopDots=new THREE.Points(stopGeo,new THREE.PointsMaterial({size:8,sizeAttenuation:false,map:stopGrayTex,vertexColors:true,transparent:true,depthWrite:false,alphaTest:.05}));
-const litDots=new THREE.Points(litGeo,new THREE.PointsMaterial({size:13,sizeAttenuation:false,map:festiveTex,vertexColors:true,transparent:true,depthWrite:false,alphaTest:.05}));
+const litDots=new THREE.Points(litGeo,new THREE.PointsMaterial({size:10,sizeAttenuation:false,map:festiveTex,vertexColors:true,transparent:true,depthWrite:false,alphaTest:.05}));
 litDots.renderOrder=3;
 // arrival flash: pulsing rings that alternate red and green over the stop Santa is at
 const pulseGeo=new THREE.BufferGeometry(); pulseGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(3),3));
@@ -1354,8 +1354,8 @@ function updateStopDots(){
   if (at>=0){ const t=(performance.now()-flashAt)/1000, ph=(t*1.6)%1, burst=t<4;
     const ph2=(ph+.5)%1;                                                     // red ring and green ring, half a beat apart
     pulse.visible=pulse2.visible=true;
-    pulse.material.size=(burst?50:46)+ph*(burst?110:70);  pulse.material.opacity=Math.min(1,(1-ph)*1.4)*(burst?1:.75);
-    pulse2.material.size=(burst?50:46)+ph2*(burst?110:70); pulse2.material.opacity=Math.min(1,(1-ph2)*1.4)*(burst?1:.75); }
+    pulse.material.size=(burst?40:36)+ph*(burst?72:46);  pulse.material.opacity=Math.min(1,(1-ph)*1.4)*(burst?1:.75);
+    pulse2.material.size=(burst?40:36)+ph2*(burst?72:46); pulse2.material.opacity=Math.min(1,(1-ph2)*1.4)*(burst?1:.75); }
   else pulse.visible=pulse2.visible=false;
   const key=santa.done?99999:santa.on?santa.idx*2+(santa.status==='at'?1:0):-1; if (key===stopsPaintedFor) return; stopsPaintedFor=key;
   const gc=stopGeo.attributes.color.array, lc=litGeo.attributes.color.array;
