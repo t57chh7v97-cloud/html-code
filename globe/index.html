@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Where & When — Live Globe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#02050c; --panel:rgba(10,16,30,.78); --panel-solid:#0b1222; --line:rgba(140,170,230,.18);
+    --text:#e8eefc; --muted:#8b98b8; --accent:#ffc861; --accent2:#6fb6ff; --good:#7be0a8;
+    --r:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:'Space Grotesk',system-ui,sans-serif;overflow:hidden;overscroll-behavior:none}
+  canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+  canvas#gl:active{cursor:grabbing}
+  button,input{font:inherit;color:inherit}
+  .glass{background:var(--panel);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 10px 40px rgba(0,0,0,.45)}
+
+  /* top bar */
+  #top{position:fixed;left:12px;right:12px;top:12px;display:flex;flex-direction:column;gap:8px;z-index:5;max-width:460px}
+  #searchWrap{position:relative}
+  #search{width:100%;padding:13px 44px 13px 42px;border-radius:14px;border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);outline:none;font-size:16px}
+  #search:focus{border-color:rgba(111,182,255,.6);box-shadow:0 0 0 3px rgba(111,182,255,.15)}
+  #search::placeholder{color:#7482a3}
+  #searchIcon{position:absolute;left:14px;top:50%;transform:translateY(-50%);opacity:.6;pointer-events:none}
+  #clearBtn{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;padding:8px 10px;opacity:.55;cursor:pointer;display:none}
+  #results{position:absolute;left:0;right:0;top:calc(100% + 6px);padding:6px;display:none;max-height:min(52vh,420px);overflow:auto}
+  #results.show{display:block}
+  .res{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;border-radius:10px;cursor:pointer}
+  .res:hover,.res.sel{background:rgba(111,182,255,.12)}
+  .res b{font-weight:600}
+  .res small{color:var(--muted);font-size:12px;white-space:nowrap}
+  .res .sub{color:var(--muted);font-size:13px}
+  .note{padding:10px 12px;color:var(--muted);font-size:13px}
+  #row{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border-radius:12px;border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);cursor:pointer;font-size:14px;font-weight:500;white-space:nowrap}
+  .btn:hover{border-color:rgba(140,170,230,.4)}
+  .btn.primary{background:linear-gradient(135deg,#2a6fe0,#4c8dff);border-color:transparent;color:#fff}
+  .seg{display:inline-flex;padding:3px;border-radius:12px;border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  .seg button{border:0;background:none;padding:6px 11px;border-radius:9px;cursor:pointer;font-size:13.5px;font-weight:500;color:var(--muted)}
+  .seg button.on{background:rgba(255,255,255,.1);color:var(--text)}
+  #timeBar{display:none;padding:10px;flex-direction:column;gap:8px;font-size:13px}
+  #timeBar.show{display:flex}
+  .tbTop{display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--muted)} .tbTop b{color:var(--text);font-weight:600}
+  .tbRow{display:flex;gap:6px;flex-wrap:wrap;align-items:center} .tbRow .btn{flex:1;justify-content:center;padding:7px 6px} .tbk{color:var(--muted);font-size:12px}
+  .short{display:none}
+  .btn.tog.on{border-color:rgba(255,200,97,.55);color:var(--accent)}
+  .clbl{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;white-space:nowrap;font-size:11.5px;font-weight:500;color:#e6ecfa;text-shadow:0 0 3px #000,0 0 6px #000,0 1px 2px #000;display:flex;align-items:center;gap:5px;will-change:transform;padding:1px 2px}
+  .clbl i{width:5px;height:5px;border-radius:50%;background:#e6ecfa;box-shadow:0 0 4px #000;flex:none}
+  .clbl.big{font-size:13px;font-weight:600;color:#fff} .clbl.big i{width:6px;height:6px;background:var(--accent)}
+  .clbl.small{font-size:11px;color:#c9d3ea} .clbl.small i{width:4px;height:4px}
+  .clbl:hover span{text-decoration:underline}
+  #coordBox{display:none;gap:6px;align-items:center;padding:8px;flex-wrap:wrap}
+  #coordBox.show{display:flex}
+  #coordBox input{width:110px;flex:1;padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.25);outline:none;font-family:'JetBrains Mono',monospace;font-size:14px}
+  #coordBox span{color:var(--muted);font-size:12px;width:100%}
+
+  /* time card */
+  #card{position:fixed;left:12px;bottom:12px;z-index:4;width:min(400px,calc(100vw - 24px));padding:16px 18px 14px}
+  #cardHead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  #placeName{font-size:18px;font-weight:600;line-height:1.2}
+  #placeSub{color:var(--muted);font-size:13px;margin-top:3px}
+  #clock{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:clamp(34px,10vw,46px);letter-spacing:-.02em;margin:10px 0 0;line-height:1}
+  #clock .ampm{font-size:.42em;margin-left:6px;color:var(--muted);letter-spacing:0}
+  #clock .sec{color:var(--muted)}
+  #date{font-size:15px;margin-top:6px}
+  #tzLine{display:flex;align-items:center;gap:7px;margin-top:8px;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;font-size:11.5px;font-weight:600;letter-spacing:.02em}
+  .pill.live{background:rgba(123,224,168,.14);color:var(--good)}
+  .pill.est{background:rgba(255,200,97,.14);color:var(--accent)}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .live .dot{animation:pulse 1.6s infinite}
+  @keyframes pulse{50%{opacity:.25}}
+  #sunBox{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;font-size:13px}
+  #sunBox .k{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.06em}
+  #sunBox .v{font-weight:500;margin-top:2px}
+  #sunStatus{grid-column:1/-1;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500}
+  #sunIcon{width:22px;height:22px;border-radius:50%;flex:none}
+  #moonStatus{grid-column:1/-1;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;margin-top:4px;padding-top:10px;border-top:1px dashed var(--line)}
+  #moonIcon{width:22px;height:22px;flex:none}
+  .lbl.moon{background:rgba(20,24,40,.75);color:#e9e4d2;font-weight:500;font-size:12px}
+  #orbitBox{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-size:13px;gap:8px 14px;grid-template-columns:1fr 1fr}
+  #orbitBox.show{display:grid}
+  #orbitBox .k{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.06em}
+  #orbitBox .v{font-weight:500;margin-top:2px}
+  #cardFoot{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .mini{padding:7px 11px;font-size:13px;border-radius:10px}
+  #collapse{border:0;background:none;color:var(--muted);cursor:pointer;padding:2px 4px;font-size:18px;line-height:1}
+  #card.collapsed #sunBox,#card.collapsed #cardFoot,#card.collapsed #orbitBox{display:none}
+  #card.collapsed #clock{font-size:32px}
+  #card.collapsed #tzLine span:last-child[style]{display:none}
+
+  /* labels */
+  #labels{position:fixed;inset:0;pointer-events:none;z-index:3}
+  .lbl{position:absolute;left:0;top:0;transform-origin:0 0;white-space:nowrap;font-size:12.5px;font-weight:600;padding:4px 9px;border-radius:8px;background:rgba(8,12,24,.72);border:1px solid var(--line);will-change:transform}
+  .lbl.you{background:rgba(255,200,97,.95);color:#1b1404;border-color:transparent}
+  .lbl.season{font-weight:500;font-size:11.5px;color:#cfe2ff}
+  .lbl.season small{display:block;color:var(--muted);font-weight:500}
+  .lbl.sun{background:none;border:0;color:#ffe3a3;font-size:13px}
+
+  #toast{position:fixed;left:50%;top:calc(12px + 110px);transform:translateX(-50%) translateY(-8px);opacity:0;transition:.3s;z-index:9;max-width:min(440px,calc(100vw - 24px));padding:12px 14px;font-size:13.5px;line-height:1.4;pointer-events:none}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  #loading{position:fixed;inset:0;display:grid;place-items:center;z-index:20;background:var(--bg);transition:opacity .6s}
+  #loading.hide{opacity:0;pointer-events:none}
+  #loading .spin{width:38px;height:38px;border-radius:50%;border:3px solid rgba(255,255,255,.12);border-top-color:var(--accent2);animation:sp 1s linear infinite;margin:0 auto 14px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  #loading p{color:var(--muted);font-size:14px;margin:0;text-align:center}
+
+  #legend{position:fixed;right:12px;bottom:12px;z-index:4;padding:8px 12px;font-size:12px;color:var(--muted);display:flex;gap:10px;align-items:center}
+  #credit{position:fixed;right:12px;top:12px;z-index:4;font-size:11px;color:#5d6a8a;text-align:right;line-height:1.5}
+  @media (max-width:720px){
+    #legend,#credit{display:none}
+    #row{gap:6px} #row .btn{padding:8px 11px;font-size:13px} .seg button{padding:6px 9px;font-size:13px}
+    #modeSeg button[data-m=orbit] .long{display:none}
+    #coordToggle .long,#tBtn .long,#namesBtn .long,#locBtn .long{display:none} #locBtn .short{display:inline}
+    #clock{font-size:36px}
+    #top{max-width:none}
+    #card{padding:13px 15px 12px}
+    #sunBox{font-size:12.5px}
+  }
+  @media (min-width:721px){
+    #top{left:20px;top:20px} #card{left:20px;bottom:20px}
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="labels"></div>
+
+<div id="top">
+  <div id="searchWrap">
+    <svg id="searchIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="search" type="search" autocomplete="off" spellcheck="false" placeholder="Search any town, village or city…" aria-label="Search places">
+    <button id="clearBtn" aria-label="Clear">✕</button>
+    <div id="results" class="glass"></div>
+  </div>
+  <div id="row">
+    <button class="btn primary" id="locBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7.5"/></svg><span class="long">Use My Location</span><span class="short">My Location</span></button>
+    <div class="seg" id="modeSeg"><button data-m="globe" class="on">Globe</button><button data-m="orbit"><span class="long">Your </span>Orbit<span class="long"> Around the Sun</span></button></div>
+    <button class="btn" id="coordToggle" title="Enter coordinates">⌖<span class="long"> Coordinates</span></button>
+    <button class="btn tog" id="tBtn" title="Time travel">⏱<span class="long"> Time travel</span></button>
+    <button class="btn tog" id="namesBtn" title="Show city names">Aa<span class="long"> Names</span></button>
+  </div>
+  <div id="timeBar" class="glass">
+    <div class="tbTop"><span>Showing <b id="simWhen"></b></span><button class="btn mini" id="liveBtn">● Live</button></div>
+    <div class="tbRow">
+      <button class="btn mini" data-step="-1mo">−1 mo</button><button class="btn mini" data-step="-1d">−1 d</button><button class="btn mini" data-step="-1h">−1 h</button>
+      <button class="btn mini" data-step="1h">+1 h</button><button class="btn mini" data-step="1d">+1 d</button><button class="btn mini" data-step="1mo">+1 mo</button>
+    </div>
+    <div class="tbRow"><span class="tbk">Speed</span><div class="seg" id="speedSeg"><button data-v="1" class="on">Real</button><button data-v="3600">1 hr/sec</button><button data-v="86400">1 day/sec</button></div></div>
+  </div>
+  <form id="coordBox" class="glass">
+    <input id="latIn" inputmode="decimal" placeholder="Lat  e.g. 40.71">
+    <input id="lonIn" inputmode="decimal" placeholder="Lon  e.g. -74.01">
+    <button class="btn primary mini" type="submit">Go</button>
+    <span>Decimal degrees — negative for South / West. You can also tap anywhere on the globe.</span>
+  </form>
+</div>
+
+<div id="card" class="glass">
+  <div id="cardHead">
+    <div>
+      <div id="placeName">Finding you…</div>
+      <div id="placeSub"></div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <div class="seg" id="fmtSeg"><button data-f="12" class="on">12h</button><button data-f="24">24h</button></div>
+      <button id="collapse" title="Collapse">▾</button>
+    </div>
+  </div>
+  <div id="clock">--:--</div>
+  <div id="date"></div>
+  <div id="tzLine"></div>
+  <div id="sunBox">
+    <div id="sunStatus"><div id="sunIcon"></div><span id="sunText"></span></div>
+    <div><div class="k">Sunrise</div><div class="v" id="sunrise">—</div></div>
+    <div><div class="k">Sunset</div><div class="v" id="sunset">—</div></div>
+    <div><div class="k">Sun overhead at</div><div class="v" id="subsolar">—</div></div>
+    <div><div class="k">Day length</div><div class="v" id="daylen">—</div></div>
+    <div id="moonStatus"><svg id="moonIcon" viewBox="0 0 24 24"></svg><span id="moonText">—</span></div>
+    <div><div class="k">Moonrise</div><div class="v" id="moonrise">—</div></div>
+    <div><div class="k">Moonset</div><div class="v" id="moonset">—</div></div>
+    <div><div class="k">Next full moon</div><div class="v" id="nextFull">—</div></div>
+    <div><div class="k">Next new moon</div><div class="v" id="nextNew">—</div></div>
+  </div>
+  <div id="orbitBox">
+    <div><div class="k">Distance to Sun</div><div class="v" id="oDist">—</div></div>
+    <div><div class="k">Orbital speed</div><div class="v" id="oSpeed">—</div></div>
+    <div><div class="k">Through this orbit</div><div class="v" id="oProg">—</div></div>
+    <div><div class="k">Next</div><div class="v" id="oNext">—</div></div>
+  </div>
+  <div id="cardFoot">
+    <button class="btn mini" id="recenter">◎ Recenter</button>
+    <button class="btn mini" id="homeBtn">★ This is me</button>
+    <button class="btn mini" id="moonBtn">☾ See the Moon</button>
+  </div>
+</div>
+
+<div id="legend" class="glass"><span>Drag to spin · scroll / pinch to zoom · tap globe to pick a spot</span></div>
+<div id="credit">Coastlines: Natural Earth · 193k places: GeoNames<br>Sun &amp; Moon positions computed live from your clock</div>
+<div id="toast" class="glass"></div>
+<div id="loading"><div><div class="spin"></div><p>Building Earth from coastline data…</p></div></div>
+
+<script>window.TZ_ZONES = [["Europe/Andorra",42.5,1.52,["AD"]],["Asia/Dubai",25.3,55.3,["AE","OM","RE","SC","TF"]],["Asia/Kabul",34.52,69.2,["AF"]],["Europe/Tirane",41.33,19.83,["AL"]],["Asia/Yerevan",40.18,44.5,["AM"]],["Antarctica/Casey",-65.72,110.52,["AQ"]],["Antarctica/Davis",-67.42,77.97,["AQ"]],["Antarctica/Mawson",-66.4,62.88,["AQ"]],["Antarctica/Palmer",-63.2,-63.9,["AQ"]],["Antarctica/Rothera",-66.43,-67.87,["AQ"]],["Antarctica/Troll",-71.99,2.54,["AQ"]],["Antarctica/Vostok",-77.6,106.9,["AQ"]],["America/Argentina/Buenos_Aires",-33.4,-57.55,["AR"]],["America/Argentina/Cordoba",-30.6,-63.82,["AR"]],["America/Argentina/Salta",-23.22,-64.58,["AR"]],["America/Argentina/Jujuy",-23.82,-64.7,["AR"]],["America/Argentina/Tucuman",-25.18,-64.78,["AR"]],["America/Argentina/Catamarca",-27.53,-64.22,["AR"]],["America/Argentina/La_Rioja",-28.57,-65.15,["AR"]],["America/Argentina/San_Juan",-30.47,-67.48,["AR"]],["America/Argentina/Mendoza",-31.12,-67.18,["AR"]],["America/Argentina/San_Luis",-32.68,-65.65,["AR"]],["America/Argentina/Rio_Gallegos",-50.37,-68.78,["AR"]],["America/Argentina/Ushuaia",-53.2,-67.7,["AR"]],["Pacific/Pago_Pago",-13.73,-169.3,["AS","UM"]],["Europe/Vienna",48.22,16.33,["AT"]],["Australia/Lord_Howe",-30.45,159.08,["AU"]],["Antarctica/Macquarie",-53.5,158.95,["AU"]],["Australia/Hobart",-41.12,147.32,["AU"]],["Australia/Melbourne",-36.18,144.97,["AU"]],["Australia/Sydney",-32.13,151.22,["AU"]],["Australia/Broken_Hill",-30.05,141.45,["AU"]],["Australia/Brisbane",-26.53,153.03,["AU"]],["Australia/Lindeman",-19.73,149,["AU"]],["Australia/Adelaide",-33.08,138.58,["AU"]],["Australia/Darwin",-11.53,130.83,["AU"]],["Australia/Perth",-30.05,115.85,["AU"]],["Australia/Eucla",-30.28,128.87,["AU"]],["Asia/Baku",40.38,49.85,["AZ"]],["America/Barbados",13.1,-58.38,["BB"]],["Asia/Dhaka",23.72,90.42,["BD"]],["Europe/Brussels",50.83,4.33,["BE","LU","NL"]],["Europe/Sofia",42.68,23.32,["BG"]],["Atlantic/Bermuda",32.28,-63.23,["BM"]],["America/La_Paz",-15.5,-67.85,["BO"]],["America/Noronha",-2.15,-31.58,["BR"]],["America/Belem",-0.55,-47.52,["BR"]],["America/Fortaleza",-2.28,-37.5,["BR"]],["America/Recife",-7.95,-33.1,["BR"]],["America/Araguaina",-6.8,-47.8,["BR"]],["America/Maceio",-8.33,-34.28,["BR"]],["America/Bahia",-11.02,-37.48,["BR"]],["America/Sao_Paulo",-22.47,-45.38,["BR"]],["America/Campo_Grande",-19.55,-53.38,["BR"]],["America/Cuiaba",-14.42,-55.92,["BR"]],["America/Santarem",-1.57,-53.13,["BR"]],["America/Porto_Velho",-7.23,-62.1,["BR"]],["America/Boa_Vista",2.82,-59.33,["BR"]],["America/Manaus",-2.87,-59.98,["BR"]],["America/Eirunepe",-5.33,-68.13,["BR"]],["America/Rio_Branco",-8.03,-66.2,["BR"]],["Asia/Thimphu",27.47,89.65,["BT"]],["Europe/Minsk",53.9,27.57,["BY"]],["America/Belize",17.5,-87.8,["BZ"]],["America/St_Johns",47.57,-51.28,["CA"]],["America/Halifax",44.65,-62.4,["CA"]],["America/Glace_Bay",46.2,-58.05,["CA"]],["America/Moncton",46.1,-63.22,["CA"]],["America/Goose_Bay",53.33,-59.58,["CA"]],["America/Toronto",43.65,-78.62,["CA","BS"]],["America/Iqaluit",63.73,-67.53,["CA"]],["America/Winnipeg",49.88,-96.85,["CA"]],["America/Resolute",74.7,-93.17,["CA"]],["America/Rankin_Inlet",62.82,-91.92,["CA"]],["America/Regina",50.4,-103.35,["CA"]],["America/Swift_Current",50.28,-106.17,["CA"]],["America/Edmonton",53.55,-112.53,["CA"]],["America/Cambridge_Bay",69.11,-104.95,["CA"]],["America/Inuvik",68.35,-132.28,["CA"]],["America/Vancouver",49.27,-122.88,["CA"]],["America/Dawson_Creek",55.77,-119.77,["CA"]],["America/Fort_Nelson",58.8,-121.3,["CA"]],["America/Whitehorse",60.72,-134.95,["CA"]],["America/Dawson",64.07,-138.58,["CA"]],["Europe/Zurich",47.38,8.53,["CH","DE","LI"]],["Africa/Abidjan",5.32,-3.97,["CI","BF","GH","GM","GN","IS","ML","MR","SH","SL","SN","TG"]],["Pacific/Rarotonga",-20.77,-158.23,["CK"]],["America/Santiago",-32.55,-69.33,["CL"]],["America/Coyhaique",-44.43,-71.93,["CL"]],["America/Punta_Arenas",-52.85,-69.08,["CL"]],["Pacific/Easter",-26.85,-108.57,["CL"]],["Asia/Shanghai",31.23,121.47,["CN"]],["Asia/Urumqi",43.8,87.58,["CN"]],["America/Bogota",4.6,-73.92,["CO"]],["America/Costa_Rica",9.93,-83.92,["CR"]],["America/Havana",23.13,-81.63,["CU"]],["Atlantic/Cape_Verde",14.92,-22.48,["CV"]],["Asia/Nicosia",35.17,33.37,["CY"]],["Asia/Famagusta",35.12,33.95,["CY"]],["Europe/Prague",50.08,14.43,["CZ","SK"]],["Europe/Berlin",52.5,13.37,["DE","DK","NO","SE","SJ"]],["America/Santo_Domingo",18.47,-68.1,["DO"]],["Africa/Algiers",36.78,3.05,["DZ"]],["America/Guayaquil",-1.83,-78.17,["EC"]],["Pacific/Galapagos",0.9,-88.4,["EC"]],["Europe/Tallinn",59.42,24.75,["EE"]],["Africa/Cairo",30.05,31.25,["EG"]],["Africa/El_Aaiun",27.15,-12.8,["EH"]],["Europe/Madrid",40.4,-2.32,["ES"]],["Africa/Ceuta",35.88,-4.68,["ES"]],["Atlantic/Canary",28.1,-14.6,["ES"]],["Europe/Helsinki",60.17,24.97,["FI","AX"]],["Pacific/Fiji",-17.87,178.42,["FJ"]],["Atlantic/Stanley",-50.3,-56.15,["FK"]],["Pacific/Kosrae",5.32,162.98,["FM"]],["Atlantic/Faroe",62.02,-5.23,["FO"]],["Europe/Paris",48.87,2.33,["FR","MC"]],["Europe/London",51.51,0.13,["GB","GG","IM","JE"]],["Asia/Tbilisi",41.72,44.82,["GE"]],["America/Cayenne",4.93,-51.67,["GF"]],["Europe/Gibraltar",36.13,-4.65,["GI"]],["America/Nuuk",64.18,-50.27,["GL"]],["America/Danmarkshavn",76.77,-17.33,["GL"]],["America/Scoresbysund",70.48,-20.03,["GL"]],["America/Thule",76.57,-67.22,["GL"]],["Europe/Athens",37.97,23.72,["GR"]],["Atlantic/South_Georgia",-53.73,-35.47,["GS"]],["America/Guatemala",14.63,-89.48,["GT"]],["Pacific/Guam",13.47,144.75,["GU","MP"]],["Africa/Bissau",11.85,-14.42,["GW"]],["America/Guyana",6.8,-57.83,["GY"]],["Asia/Hong_Kong",22.28,114.15,["HK"]],["America/Tegucigalpa",14.1,-86.78,["HN"]],["America/Port-au-Prince",18.53,-71.67,["HT"]],["Europe/Budapest",47.5,19.08,["HU"]],["Asia/Jakarta",-5.83,106.8,["ID"]],["Asia/Pontianak",0.03,109.33,["ID"]],["Asia/Makassar",-4.88,119.4,["ID"]],["Asia/Jayapura",-1.47,140.7,["ID"]],["Europe/Dublin",53.33,-5.75,["IE"]],["Asia/Jerusalem",31.78,35.22,["IL"]],["Asia/Kolkata",22.53,88.37,["IN"]],["Indian/Chagos",-6.67,72.42,["IO"]],["Asia/Baghdad",33.35,44.42,["IQ"]],["Asia/Tehran",35.67,51.43,["IR"]],["Europe/Rome",41.9,12.48,["IT","SM","VA"]],["America/Jamaica",17.97,-75.21,["JM"]],["Asia/Amman",31.95,35.93,["JO"]],["Asia/Tokyo",35.65,139.74,["JP","AU"]],["Africa/Nairobi",-0.72,36.82,["KE","DJ","ER","ET","KM","MG","SO","TZ","UG","YT"]],["Asia/Bishkek",42.9,74.6,["KG"]],["Pacific/Tarawa",1.42,173,["KI","MH","TV","UM","WF"]],["Pacific/Kanton",-1.22,-170.28,["KI"]],["Pacific/Kiritimati",1.87,-156.67,["KI"]],["Asia/Pyongyang",39.02,125.75,["KP"]],["Asia/Seoul",37.55,126.97,["KR"]],["Asia/Almaty",43.25,76.95,["KZ"]],["Asia/Qyzylorda",44.8,65.47,["KZ"]],["Asia/Qostanay",53.2,63.62,["KZ"]],["Asia/Aqtobe",50.28,57.17,["KZ"]],["Asia/Aqtau",44.52,50.27,["KZ"]],["Asia/Atyrau",47.12,51.93,["KZ"]],["Asia/Oral",51.22,51.35,["KZ"]],["Asia/Beirut",33.88,35.5,["LB"]],["Asia/Colombo",6.93,79.85,["LK"]],["Africa/Monrovia",6.3,-9.22,["LR"]],["Europe/Vilnius",54.68,25.32,["LT"]],["Europe/Riga",56.95,24.1,["LV"]],["Africa/Tripoli",32.9,13.18,["LY"]],["Africa/Casablanca",33.65,-6.42,["MA"]],["Europe/Chisinau",47,28.83,["MD"]],["Pacific/Kwajalein",9.08,167.33,["MH"]],["Asia/Yangon",16.78,96.17,["MM","CC"]],["Asia/Ulaanbaatar",47.92,106.88,["MN"]],["Asia/Hovd",48.02,91.65,["MN"]],["Asia/Macau",22.2,113.54,["MO"]],["America/Martinique",14.6,-60.92,["MQ"]],["Europe/Malta",35.9,14.52,["MT"]],["Indian/Mauritius",-19.83,57.5,["MU"]],["Indian/Maldives",4.17,73.5,["MV","TF"]],["America/Mexico_City",19.4,-98.85,["MX"]],["America/Cancun",21.08,-85.23,["MX"]],["America/Merida",20.97,-88.38,["MX"]],["America/Monterrey",25.67,-99.68,["MX"]],["America/Matamoros",25.83,-96.5,["MX"]],["America/Chihuahua",28.63,-105.92,["MX"]],["America/Ciudad_Juarez",31.73,-105.52,["MX"]],["America/Ojinaga",29.57,-103.58,["MX"]],["America/Mazatlan",23.22,-105.58,["MX"]],["America/Bahia_Banderas",20.8,-104.75,["MX"]],["America/Hermosillo",29.07,-109.03,["MX"]],["America/Tijuana",32.53,-116.98,["MX"]],["Asia/Kuching",1.55,110.33,["MY","BN"]],["Africa/Maputo",-24.03,32.58,["MZ","BI","BW","CD","MW","RW","ZM","ZW"]],["Africa/Windhoek",-21.43,17.1,["NA"]],["Pacific/Noumea",-21.73,166.45,["NC"]],["Pacific/Norfolk",-28.95,167.97,["NF"]],["Africa/Lagos",6.45,3.4,["NG","AO","BJ","CD","CF","CG","CM","GA","GQ","NE"]],["America/Managua",12.15,-85.72,["NI"]],["Asia/Kathmandu",27.72,85.32,["NP"]],["Pacific/Nauru",0.52,166.92,["NR"]],["Pacific/Niue",-18.98,-168.08,["NU"]],["Pacific/Auckland",-35.13,174.77,["NZ","AQ"]],["Pacific/Chatham",-42.05,-175.45,["NZ"]],["America/Panama",8.97,-78.47,["PA","CA","KY"]],["America/Lima",-11.95,-76.95,["PE"]],["Pacific/Tahiti",-16.47,-148.43,["PF"]],["Pacific/Marquesas",-9,-138.5,["PF"]],["Pacific/Gambier",-22.87,-133.05,["PF"]],["Pacific/Port_Moresby",-8.5,147.17,["PG","AQ","FM"]],["Pacific/Bougainville",-5.78,155.57,["PG"]],["Asia/Manila",14.59,120.97,["PH"]],["Asia/Karachi",24.87,67.05,["PK"]],["Europe/Warsaw",52.25,21,["PL"]],["America/Miquelon",47.05,-55.67,["PM"]],["Pacific/Pitcairn",-24.93,-129.92,["PN"]],["America/Puerto_Rico",18.47,-65.89,["PR","AG","CA","AI","AW","BL","BQ","CW","DM","GD","GP","KN","LC","MF","MS","SX","TT","VC","VG","VI"]],["Asia/Gaza",31.5,34.47,["PS"]],["Asia/Hebron",31.53,35.09,["PS"]],["Europe/Lisbon",38.72,-8.87,["PT"]],["Atlantic/Madeira",32.63,-15.1,["PT"]],["Atlantic/Azores",37.73,-24.33,["PT"]],["Pacific/Palau",7.33,134.48,["PW"]],["America/Asuncion",-24.73,-56.33,["PY"]],["Asia/Qatar",25.28,51.53,["QA","BH"]],["Europe/Bucharest",44.43,26.1,["RO"]],["Europe/Belgrade",44.83,20.5,["RS","BA","HR","ME","MK","SI"]],["Europe/Kaliningrad",54.72,20.5,["RU"]],["Europe/Moscow",55.76,37.62,["RU"]],["Europe/Simferopol",44.95,34.1,["RU","UA"]],["Europe/Kirov",58.6,49.65,["RU"]],["Europe/Volgograd",48.73,44.42,["RU"]],["Europe/Astrakhan",46.35,48.05,["RU"]],["Europe/Saratov",51.57,46.03,["RU"]],["Europe/Ulyanovsk",54.33,48.4,["RU"]],["Europe/Samara",53.2,50.15,["RU"]],["Asia/Yekaterinburg",56.85,60.6,["RU"]],["Asia/Omsk",55,73.4,["RU"]],["Asia/Novosibirsk",55.03,82.92,["RU"]],["Asia/Barnaul",53.37,83.75,["RU"]],["Asia/Tomsk",56.5,84.97,["RU"]],["Asia/Novokuznetsk",53.75,87.12,["RU"]],["Asia/Krasnoyarsk",56.02,92.83,["RU"]],["Asia/Irkutsk",52.27,104.33,["RU"]],["Asia/Chita",52.05,113.47,["RU"]],["Asia/Yakutsk",62,129.67,["RU"]],["Asia/Khandyga",62.66,135.55,["RU"]],["Asia/Vladivostok",43.17,131.93,["RU"]],["Asia/Ust-Nera",64.56,143.23,["RU"]],["Asia/Magadan",59.57,150.8,["RU"]],["Asia/Sakhalin",46.97,142.7,["RU"]],["Asia/Srednekolymsk",67.47,153.72,["RU"]],["Asia/Kamchatka",53.02,158.65,["RU"]],["Asia/Anadyr",64.75,177.48,["RU"]],["Asia/Riyadh",24.63,46.72,["SA","AQ","KW","YE"]],["Pacific/Guadalcanal",-8.47,160.2,["SB","FM"]],["Africa/Khartoum",15.6,32.53,["SD"]],["Asia/Singapore",1.28,103.85,["SG","AQ","MY"]],["America/Paramaribo",5.83,-54.83,["SR"]],["Africa/Juba",4.85,31.62,["SS"]],["Africa/Sao_Tome",0.33,6.73,["ST"]],["America/El_Salvador",13.7,-88.8,["SV"]],["Asia/Damascus",33.5,36.3,["SY"]],["America/Grand_Turk",21.47,-70.87,["TC"]],["Africa/Ndjamena",12.12,15.05,["TD"]],["Asia/Bangkok",13.75,100.52,["TH","CX","KH","LA","VN"]],["Asia/Dushanbe",38.58,68.8,["TJ"]],["Pacific/Fakaofo",-8.63,-170.77,["TK"]],["Asia/Dili",-7.45,125.58,["TL"]],["Asia/Ashgabat",37.95,58.38,["TM"]],["Africa/Tunis",36.8,10.18,["TN"]],["Pacific/Tongatapu",-20.87,-174.8,["TO"]],["Europe/Istanbul",41.02,28.97,["TR"]],["Asia/Taipei",25.05,121.5,["TW"]],["Europe/Kyiv",50.43,30.52,["UA"]],["America/New_York",40.71,-73.99,["US"]],["America/Detroit",42.33,-82.95,["US"]],["America/Kentucky/Louisville",38.25,-84.24,["US"]],["America/Kentucky/Monticello",36.83,-83.15,["US"]],["America/Indiana/Indianapolis",39.77,-85.84,["US"]],["America/Indiana/Vincennes",38.68,-86.47,["US"]],["America/Indiana/Winamac",41.05,-85.4,["US"]],["America/Indiana/Marengo",38.38,-85.66,["US"]],["America/Indiana/Petersburg",38.49,-86.72,["US"]],["America/Indiana/Vevay",38.75,-84.93,["US"]],["America/Chicago",41.85,-86.35,["US"]],["America/Indiana/Tell_City",37.95,-85.24,["US"]],["America/Indiana/Knox",41.3,-85.38,["US"]],["America/Menominee",45.11,-86.39,["US"]],["America/North_Dakota/Center",47.12,-100.7,["US"]],["America/North_Dakota/New_Salem",46.84,-100.59,["US"]],["America/North_Dakota/Beulah",47.26,-100.22,["US"]],["America/Denver",39.74,-103.02,["US"]],["America/Boise",43.61,-115.8,["US"]],["America/Phoenix",33.45,-111.93,["US","CA"]],["America/Los_Angeles",34.05,-117.76,["US"]],["America/Anchorage",61.22,-148.1,["US"]],["America/Juneau",58.3,-133.58,["US"]],["America/Sitka",57.18,-134.7,["US"]],["America/Metlakatla",55.13,-130.42,["US"]],["America/Yakutat",59.55,-138.27,["US"]],["America/Nome",64.5,-164.59,["US"]],["America/Adak",51.88,-175.34,["US"]],["Pacific/Honolulu",21.31,-156.14,["US"]],["America/Montevideo",-33.09,-55.79,["UY"]],["Asia/Samarkand",39.67,66.8,["UZ"]],["Asia/Tashkent",41.33,69.3,["UZ"]],["America/Caracas",10.5,-65.07,["VE"]],["Asia/Ho_Chi_Minh",10.75,106.67,["VN"]],["Pacific/Efate",-16.33,168.42,["VU"]],["Pacific/Apia",-12.17,-170.27,["WS"]],["Africa/Johannesburg",-25.75,28,["ZA","LS","SZ"]],["America/Antigua",17.05,-60.2,["AG"]],["America/Anguilla",18.2,-62.93,["AI"]],["Africa/Luanda",-7.2,13.23,["AO"]],["Antarctica/McMurdo",-76.17,166.6,["AQ"]],["Antarctica/DumontDUrville",-65.33,140.02,["AQ"]],["Antarctica/Syowa",-68.99,39.59,["AQ"]],["America/Aruba",12.5,-68.03,["AW"]],["Europe/Mariehamn",60.1,19.95,["AX"]],["Europe/Sarajevo",43.87,18.42,["BA"]],["Africa/Ouagadougou",12.37,-0.48,["BF"]],["Asia/Bahrain",26.38,50.58,["BH"]],["Africa/Bujumbura",-2.62,29.37,["BI"]],["Africa/Porto-Novo",6.48,2.62,["BJ"]],["America/St_Barthelemy",17.88,-61.15,["BL"]],["Asia/Brunei",4.93,114.92,["BN"]],["America/Kralendijk",12.15,-67.72,["BQ"]],["America/Nassau",25.08,-76.65,["BS"]],["Africa/Gaborone",-23.35,25.92,["BW"]],["America/Blanc-Sablon",51.42,-56.88,["CA"]],["America/Atikokan",48.76,-90.38,["CA"]],["America/Creston",49.1,-115.48,["CA"]],["Indian/Cocos",-11.83,96.92,["CC"]],["Africa/Kinshasa",-3.7,15.3,["CD"]],["Africa/Lubumbashi",-10.33,27.47,["CD"]],["Africa/Bangui",4.37,18.58,["CF"]],["Africa/Brazzaville",-3.73,15.28,["CG"]],["Africa/Douala",4.05,9.7,["CM"]],["America/Curacao",12.18,-69,["CW"]],["Indian/Christmas",-9.58,105.72,["CX"]],["Europe/Busingen",47.7,8.68,["DE"]],["Africa/Djibouti",11.6,43.15,["DJ"]],["Europe/Copenhagen",55.67,12.58,["DK"]],["America/Dominica",15.3,-60.6,["DM"]],["Africa/Asmara",15.33,38.88,["ER"]],["Africa/Addis_Ababa",9.03,38.7,["ET"]],["Pacific/Chuuk",7.42,151.78,["FM"]],["Pacific/Pohnpei",6.97,158.22,["FM"]],["Africa/Libreville",0.38,9.45,["GA"]],["America/Grenada",12.05,-60.25,["GD"]],["Europe/Guernsey",49.45,-1.46,["GG"]],["Africa/Accra",5.55,0.22,["GH"]],["Africa/Banjul",13.47,-15.35,["GM"]],["Africa/Conakry",9.52,-12.28,["GN"]],["America/Guadeloupe",16.23,-60.47,["GP"]],["Africa/Malabo",3.75,8.78,["GQ"]],["Europe/Zagreb",45.8,15.97,["HR"]],["Europe/Isle_of_Man",54.15,-3.53,["IM"]],["Atlantic/Reykjavik",64.15,-20.15,["IS"]],["Europe/Jersey",49.18,-1.89,["JE"]],["Asia/Phnom_Penh",11.55,104.92,["KH"]],["Indian/Comoro",-10.32,43.27,["KM"]],["America/St_Kitts",17.3,-61.28,["KN"]],["Asia/Kuwait",29.33,47.98,["KW"]],["America/Cayman",19.3,-80.62,["KY"]],["Asia/Vientiane",17.97,102.6,["LA"]],["America/St_Lucia",14.02,-61,["LC"]],["Europe/Vaduz",47.15,9.52,["LI"]],["Africa/Maseru",-28.53,27.5,["LS"]],["Europe/Luxembourg",49.6,6.15,["LU"]],["Europe/Monaco",43.7,7.38,["MC"]],["Europe/Podgorica",42.43,19.27,["ME"]],["America/Marigot",18.07,-62.92,["MF"]],["Indian/Antananarivo",-17.08,47.52,["MG"]],["Pacific/Majuro",7.15,171.2,["MH"]],["Europe/Skopje",41.98,21.43,["MK"]],["Africa/Bamako",12.65,-8,["ML"]],["Pacific/Saipan",15.2,145.75,["MP"]],["Africa/Nouakchott",18.1,-14.05,["MR"]],["America/Montserrat",16.72,-61.78,["MS"]],["Africa/Blantyre",-14.22,35,["MW"]],["Asia/Kuala_Lumpur",3.17,101.7,["MY"]],["Africa/Niamey",13.52,2.12,["NE"]],["Europe/Amsterdam",52.37,4.9,["NL"]],["Europe/Oslo",59.92,10.75,["NO"]],["Asia/Muscat",23.6,58.58,["OM"]],["Indian/Reunion",-19.13,55.47,["RE"]],["Africa/Kigali",-0.05,30.07,["RW"]],["Indian/Mahe",-3.33,55.47,["SC"]],["Europe/Stockholm",59.33,18.05,["SE"]],["Atlantic/St_Helena",-14.08,-4.3,["SH"]],["Europe/Ljubljana",46.05,14.52,["SI"]],["Arctic/Longyearbyen",78,16,["SJ"]],["Europe/Bratislava",48.15,17.12,["SK"]],["Africa/Freetown",8.5,-12.75,["SL"]],["Europe/San_Marino",43.92,12.47,["SM"]],["Africa/Dakar",14.67,-16.57,["SN"]],["Africa/Mogadishu",2.07,45.37,["SO"]],["America/Lower_Princes",18.05,-62.95,["SX"]],["Africa/Mbabane",-25.7,31.1,["SZ"]],["Indian/Kerguelen",-48.65,70.22,["TF"]],["Africa/Lome",6.13,1.22,["TG"]],["America/Port_of_Spain",10.65,-60.48,["TT"]],["Pacific/Funafuti",-7.48,179.22,["TV"]],["Africa/Dar_es_Salaam",-5.2,39.28,["TZ"]],["Africa/Kampala",0.32,32.42,["UG"]],["Pacific/Midway",28.22,-176.63,["UM"]],["Pacific/Wake",19.28,166.62,["UM"]],["Europe/Vatican",41.9,12.45,["VA"]],["America/St_Vincent",13.15,-60.77,["VC"]],["America/Tortola",18.45,-63.38,["VG"]],["America/St_Thomas",18.35,-63.07,["VI"]],["Pacific/Wallis",-12.7,-175.83,["WF"]],["Asia/Aden",12.75,45.2,["YE"]],["Indian/Mayotte",-11.22,45.23,["YT"]],["Africa/Lusaka",-14.58,28.28,["ZM"]],["Africa/Harare",-16.17,31.05,["ZW"]]];</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const $ = id => document.getElementById(id);
+const D2R = Math.PI/180, R2D = 180/Math.PI;
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem('wwglobe.'+k); return v==null?d:JSON.parse(v);}catch(e){return d;} },
+  set(k,v){ try{ localStorage.setItem('wwglobe.'+k, JSON.stringify(v)); }catch(e){} }
+};
+const regionName = (()=>{ try{ const dn=new Intl.DisplayNames(['en'],{type:'region'}); return cc=>{ try{return dn.of(cc)||cc;}catch(e){return cc;} }; }catch(e){ return cc=>cc; } })();
+const DEVICE_TZ = (()=>{ try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; }catch(e){ return 'UTC'; } })();
+
+/* =========================================================
+   SUN POSITION  (NOAA / Astronomical Almanac low-precision)
+   ========================================================= */
+function sunState(date){
+  const jd = date.getTime()/86400000 + 2440587.5;
+  const n = jd - 2451545.0;
+  const L = ((280.460 + 0.9856474*n) % 360 + 360) % 360;
+  const g = (((357.528 + 0.9856003*n) % 360 + 360) % 360) * D2R;
+  const lambda = (L + 1.915*Math.sin(g) + 0.020*Math.sin(2*g)) * D2R;      // ecliptic longitude
+  const eps = (23.439 - 0.0000004*n) * D2R;                                 // obliquity (axial tilt)
+  const R = 1.00014 - 0.01671*Math.cos(g) - 0.00014*Math.cos(2*g);          // AU
+  const alpha = Math.atan2(Math.cos(eps)*Math.sin(lambda), Math.cos(lambda)); // right ascension
+  const delta = Math.asin(Math.sin(eps)*Math.sin(lambda));                   // declination
+  const gmst = (((280.46061837 + 360.98564736629*n) % 360) + 360) % 360 * D2R; // Greenwich sidereal angle
+  let eotDeg = L - alpha*R2D; eotDeg = ((eotDeg+180)%360+360)%360-180;      // equation of time (deg)
+  let sLon = (alpha - gmst)*R2D; sLon = ((sLon+180)%360+360)%360-180;      // subsolar longitude
+  return { lambda, eps, R, alpha, delta, gmst, eotDeg, subLat: delta*R2D, subLon: sLon };
+}
+// Earth-fixed (lat/lon) unit vector  ->  scene coordinates (ecliptic frame, Y = ecliptic north)
+function ecefToScene(v, s){
+  const c=Math.cos(s.gmst), sn=Math.sin(s.gmst);
+  const xi = v.x*c - v.y*sn, yi = v.x*sn + v.y*c, zi = v.z;              // inertial equatorial
+  const ce=Math.cos(s.eps), se=Math.sin(s.eps);
+  const xe = xi, ye = ce*yi + se*zi, ze = -se*yi + ce*zi;                // ecliptic
+  return new THREE.Vector3(xe, ze, -ye);
+}
+function earthMatrix(s){
+  const ex=ecefToScene({x:1,y:0,z:0},s), ey=ecefToScene({x:0,y:1,z:0},s), ez=ecefToScene({x:0,y:0,z:1},s);
+  return new THREE.Matrix4().makeBasis(ex,ey,ez);
+}
+const sunDirScene = s => new THREE.Vector3(Math.cos(s.lambda), 0, -Math.sin(s.lambda));
+const llToEcef = (lat,lon) => { const a=lat*D2R,b=lon*D2R; return new THREE.Vector3(Math.cos(a)*Math.cos(b), Math.cos(a)*Math.sin(b), Math.sin(a)); };
+
+function sunAt(lat, lon, s, now){
+  // local hour angle of the sun
+  let ha = (s.gmst*R2D + lon - s.alpha*R2D); ha = ((ha+180)%360+360)%360-180;
+  const φ=lat*D2R, δ=s.delta;
+  const alt = Math.asin(Math.sin(φ)*Math.sin(δ) + Math.cos(φ)*Math.cos(δ)*Math.cos(ha*D2R))*R2D;
+  // nearest solar noon, then rise/set via hour angle at -0.833°
+  const noon = new Date(now.getTime() - (ha/15)*3600000);
+  const cosH0 = (Math.sin(-0.833*D2R) - Math.sin(φ)*Math.sin(δ)) / (Math.cos(φ)*Math.cos(δ));
+  let rise=null, set=null, polar=null, dayHours;
+  if (cosH0 > 1){ polar='night'; dayHours=0; }
+  else if (cosH0 < -1){ polar='day'; dayHours=24; }
+  else { const H0=Math.acos(cosH0)*R2D; rise=new Date(noon.getTime()-H0/15*3600000); set=new Date(noon.getTime()+H0/15*3600000); dayHours=2*H0/15; }
+  return { alt, ha, noon, rise, set, polar, dayHours };
+}
+
+/* =========================================================
+   MOON  (truncated Meeus/Schlyter lunar theory, ~0.3° accuracy)
+   ========================================================= */
+function moonState(date, s){
+  const d = date.getTime()/86400000 + 2440587.5 - 2451545.0;
+  const r = x => (((x%360)+360)%360)*D2R;
+  const L=218.316+13.176396*d, M=r(134.963+13.064993*d), F=r(93.272+13.229350*d), D=r(297.850+12.190749*d), Ms=r(357.529+0.98560028*d);
+  const lon = L + 6.289*Math.sin(M) - 1.274*Math.sin(M-2*D) + 0.658*Math.sin(2*D) - 0.186*Math.sin(Ms) - 0.059*Math.sin(2*M-2*D)
+            - 0.057*Math.sin(M-2*D+Ms) + 0.053*Math.sin(M+2*D) + 0.046*Math.sin(2*D-Ms) + 0.041*Math.sin(M-Ms) - 0.035*Math.sin(D) - 0.031*Math.sin(M+Ms);
+  const lat = 5.128*Math.sin(F) - 0.173*Math.sin(F-2*D) - 0.055*Math.sin(M-F-2*D) - 0.046*Math.sin(M+F-2*D) + 0.033*Math.sin(F+2*D) + 0.017*Math.sin(2*M+F);
+  const dist = 385001 - 20905*Math.cos(M) - 3699*Math.cos(2*D-M) - 2956*Math.cos(2*D);   // km
+  const l=lon*D2R, b=lat*D2R;
+  const ex=Math.cos(b)*Math.cos(l), ey=Math.cos(b)*Math.sin(l), ez=Math.sin(b);
+  const e=s.eps, qy=ey*Math.cos(e)-ez*Math.sin(e), qz=ey*Math.sin(e)+ez*Math.cos(e);
+  const ra=Math.atan2(qy,ex), dec=Math.asin(qz);
+  const elong=(((lon - s.lambda*R2D)%360)+360)%360;               // 0 new → 180 full
+  const cosPsi=Math.cos(b)*Math.cos(elong*D2R);
+  return { lon, lat, dist, ra, dec, elong, illum:(1-cosPsi)/2, dirScene:()=>new THREE.Vector3(ex, ez, -ey) };
+}
+function moonAltAt(lat, lon, t){ const s=sunState(t), m=moonState(t,s); const ha=s.gmst - m.ra + lon*D2R, φ=lat*D2R;
+  return Math.asin(Math.sin(φ)*Math.sin(m.dec)+Math.cos(φ)*Math.cos(m.dec)*Math.cos(ha))*R2D; }
+const MOON_H0 = 0.125;   // standard altitude for moonrise/set (parallax − refraction − semidiameter)
+function nextCross(f, t0, hours, stepMin, wantUp){
+  let a=t0, fa=f(new Date(a)); const step=stepMin*60000, end=t0+hours*3600000;
+  while (a<end){ const b=a+step, fb=f(new Date(b));
+    if ((wantUp && fa<0 && fb>=0) || (!wantUp && fa>=0 && fb<0)){ let lo=a, hi=b; for (let k=0;k<12;k++){ const m=(lo+hi)/2, fm=f(new Date(m)); if ((fm>=0)===wantUp) hi=m; else lo=m; } return new Date(hi); }
+    a=b; fa=fb; }
+  return null;
+}
+function phaseName(e){ return e<7||e>=353?'New moon':e<83?'Waxing crescent':e<97?'First quarter':e<173?'Waxing gibbous':e<187?'Full moon':e<263?'Waning gibbous':e<277?'Last quarter':'Waning crescent'; }
+function nextPhase(t0, target){ const f=t=>{ const s=sunState(t); return ((moonState(t,s).elong-target+540)%360)-180; }; return nextCross(f, t0, 24*31, 12*60, true); }
+function moonSvg(elong, south){
+  const c=12, r=10.5, k=Math.cos(elong*D2R), waxing=elong<180; let right=waxing; if (south) right=!right;
+  const rx=Math.max(0.01,Math.abs(k)*r), limb=right?1:0, term = k>0 ? (right?0:1) : (right?1:0);
+  return `<circle cx="12" cy="12" r="${r}" fill="#2b3350" stroke="rgba(255,255,255,.15)" stroke-width=".6"/>`+
+         `<path d="M ${c} ${c-r} A ${r} ${r} 0 0 ${limb} ${c} ${c+r} A ${rx.toFixed(2)} ${r} 0 0 ${term} ${c} ${c-r} Z" fill="#f2ecd6"/>`;
+}
+let moonCache={key:''};
+function moonInfo(lat, lon, now){
+  const key=`${lat.toFixed(3)},${lon.toFixed(3)},${Math.floor(now/300000)}`;
+  if (moonCache.key!==key){
+    const f=t=>moonAltAt(lat,lon,t)-MOON_H0, t0=+now;
+    const prev=moonCache, ok=x=>x && x>now && x-now<29.2*86400000;
+    moonCache={ key, rise:nextCross(f,t0,50,10,true), set:nextCross(f,t0,50,10,false),
+      full: ok(prev.full)?prev.full:nextPhase(t0,180), nw: ok(prev.nw)?prev.nw:nextPhase(t0,0) };
+  }
+  return moonCache;
+}
+
+/* =========================================================
+   TIME ZONES  (IANA zone reference points, nearest-in-country)
+   ========================================================= */
+const ZONES = (window.TZ_ZONES||[]).filter(z=>{ try{ new Intl.DateTimeFormat('en',{timeZone:z[0]}); return true;}catch(e){return false;} });
+const zonesByCC = {}; for (const z of ZONES) for (const cc of z[3]) (zonesByCC[cc] ||= []).push(z);
+function gcDist(lat1,lon1,lat2,lon2){ const a=lat1*D2R,b=lat2*D2R,d=(lon2-lon1)*D2R; return Math.acos(Math.min(1,Math.sin(a)*Math.sin(b)+Math.cos(a)*Math.cos(b)*Math.cos(d)))*6371; }
+function guessZone(lat, lon, cc){
+  const list = cc && zonesByCC[cc];
+  if (list && list.length){ let best=list[0], bd=1e9; for (const z of list){ const d=gcDist(lat,lon,z[1],z[2]); if(d<bd){bd=d;best=z;} } return { tz:best[0], multi:list.length>1 }; }
+  return { tz:null, nautical: Math.round(lon/15) };
+}
+
+/* =========================================================
+   PLACES (GeoNames, ~135k towns & cities, loaded in background)
+   ========================================================= */
+const P = { ready:false, n:0 };
+let simOffset=0, simSpeed=1;            // time travel: ms added to the real clock, and sim-ms per real-ms
+const simNow = () => new Date(Date.now()+simOffset);
+const traveling = () => Math.abs(simOffset)>1500 || simSpeed!==1;
+const fold = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[’'`.]/g,'').replace(/[-\s]+/g,' ').trim();
+const loadText = name => { const el=document.getElementById('data-'+name); return el ? Promise.resolve(el.textContent) : fetch(name).then(r=>{ if(!r.ok) throw new Error(name+' '+r.status); return r.text(); }); };
+const loadPlaces = loadText('places.txt').then(txt=>{
+  const nl=txt.indexOf('\n'); P.tzList=JSON.parse(txt.slice(0,nl));
+  const lines = txt.slice(nl+1).split('\n'); if (!lines[lines.length-1]) lines.pop(); const n=lines.length;
+  P.name=new Array(n); P.key=new Array(n); P.cc=new Array(n); P.ad=new Array(n); P.alt=new Array(n);
+  P.lat=new Float32Array(n); P.lon=new Float32Array(n); P.pop=new Uint32Array(n); P.tz=new Uint16Array(n);
+  P.x=new Float32Array(n); P.y=new Float32Array(n); P.z=new Float32Array(n);
+  for (let i=0;i<n;i++){ const f=lines[i].split('|'); P.name[i]=f[0]; P.key[i]=fold(f[0]); P.cc[i]=f[1]; P.ad[i]=f[2]; const la=+f[3], lo=+f[4]; P.lat[i]=la; P.lon[i]=lo; P.pop[i]=+f[5]; P.tz[i]=+f[6]; P.alt[i]=f[7]?f[7].split(';').map(fold):null;
+    const a=la*D2R, b=lo*D2R; P.x[i]=Math.cos(a)*Math.cos(b); P.y[i]=Math.cos(a)*Math.sin(b); P.z[i]=Math.sin(a); }
+  P.n=n; P.ready=true;
+  addCityLights();
+  if (searchEl.value.trim()) runSearch();
+  if (current && current.needsName) { const p = describePoint(current.lat,current.lon); Object.assign(current,p,{needsName:false}); if (p.tz && current.kind!=='device') current.tz=p.tz; updateStatic(); }
+}).catch(e=>{ console.warn(e); });
+const tzOf = i => { const z=P.tzList[P.tz[i]]; try{ new Intl.DateTimeFormat('en',{timeZone:z}); return z; }catch(e){ return null; } };
+
+function placeLabel(i){ const parts=[P.name[i]]; if (P.ad[i] && (P.cc[i]==='US'||P.cc[i]==='CA')) parts.push(P.ad[i]); parts.push(P.cc[i]==='US'?'USA':regionName(P.cc[i])); return parts; }
+function nearestPlace(lat,lon){
+  if (!P.ready) return null; let best=-1, bd=1e9; const cl=Math.cos(lat*D2R);
+  for (let i=0;i<P.n;i++){ const dy=P.lat[i]-lat; let dx=P.lon[i]-lon; if(dx>180)dx-=360; if(dx<-180)dx+=360; dx*=cl; const d=dx*dx+dy*dy; if(d<bd){bd=d;best=i;} }
+  return best<0?null:{ i:best, km: gcDist(lat,lon,P.lat[best],P.lon[best]) };
+}
+function describePoint(lat,lon){
+  const np = nearestPlace(lat,lon);
+  if (!np) return { name: fmtLL(lat,lon), sub:'', cc:null, needsName:true };
+  const [nm,...rest] = placeLabel(np.i);
+  if (np.km < 8) return { name:nm, sub:rest.join(', '), cc:P.cc[np.i], tz:tzOf(np.i) };
+  if (np.km < 250) return { name:`Near ${nm}`, sub:`${Math.round(np.km)} km from ${nm}, ${rest.join(', ')}`, cc:P.cc[np.i], tz:tzOf(np.i) };
+  return { name: Math.abs(lat)>60 ? 'Polar region' : 'Open water', sub:`Nearest town: ${nm}, ${rest.join(', ')} (${Math.round(np.km).toLocaleString()} km)`, cc:null };
+}
+function fmtLL(lat,lon){ return `${Math.abs(lat).toFixed(2)}°${lat>=0?'N':'S'}  ${Math.abs(lon).toFixed(2)}°${lon>=0?'E':'W'}`; }
+
+/* =========================================================
+   RENDERER / SCENES
+   ========================================================= */
+const canvas = $('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth, innerHeight);
+const maxAniso = renderer.capabilities.getMaxAnisotropy();
+
+const globeScene = new THREE.Scene(), orbitScene = new THREE.Scene();
+const camG = new THREE.PerspectiveCamera(40, innerWidth/innerHeight, 0.01, 500);
+const camO = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.05, 800);
+camG.position.set(0,0.6,3.6); 
+const ctlG = new OrbitControls(camG, canvas); ctlG.enableDamping=true; ctlG.dampingFactor=.08; ctlG.enablePan=false; ctlG.minDistance=1.25; ctlG.maxDistance=14; ctlG.rotateSpeed=.55; ctlG.zoomSpeed=.8;
+const ctlO = new OrbitControls(camO, canvas); ctlO.enableDamping=true; ctlO.dampingFactor=.08; ctlO.enablePan=false; ctlO.minDistance=4; ctlO.maxDistance=110; ctlO.enabled=false;
+
+// starfield
+function stars(scene, radius, count){
+  const g=new THREE.BufferGeometry(), p=new Float32Array(count*3), c=new Float32Array(count*3);
+  for (let i=0;i<count;i++){ const u=Math.random()*2-1, t=Math.random()*Math.PI*2, s=Math.sqrt(1-u*u);
+    p[i*3]=radius*s*Math.cos(t); p[i*3+1]=radius*u; p[i*3+2]=radius*s*Math.sin(t);
+    const k=.55+Math.random()*.45, warm=Math.random(); c[i*3]=k*(warm>.8?1:.85); c[i*3+1]=k*.9; c[i*3+2]=k*(warm<.3?1:.9); }
+  g.setAttribute('position',new THREE.BufferAttribute(p,3)); g.setAttribute('color',new THREE.BufferAttribute(c,3));
+  scene.add(new THREE.Points(g,new THREE.PointsMaterial({size:1.6,sizeAttenuation:false,vertexColors:true,transparent:true,opacity:.85,depthWrite:false})));
+}
+stars(globeScene,200,2600); stars(orbitScene,400,3200);
+
+// Sphere built directly in Earth-fixed coordinates: x→(0°,0°), y→(0°,90°E), z→North Pole
+function earthGeometry(seg=256, rings=128){
+  const pos=[], uv=[], idx=[];
+  for (let j=0;j<=rings;j++){ const lat=-90+180*j/rings, a=lat*D2R;
+    for (let i=0;i<=seg;i++){ const lon=-180+360*i/seg, b=lon*D2R;
+      pos.push(Math.cos(a)*Math.cos(b), Math.cos(a)*Math.sin(b), Math.sin(a)); uv.push(i/seg, j/rings); } }
+  for (let j=0;j<rings;j++) for (let i=0;i<seg;i++){ const a=j*(seg+1)+i, b=a+seg+1; idx.push(a,a+1,b, b,a+1,b+1); }
+  const g=new THREE.BufferGeometry(); g.setIndex(idx);
+  const P3=new THREE.Float32BufferAttribute(pos,3); g.setAttribute('position',P3); g.setAttribute('normal',P3.clone()); g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+  return g;
+}
+const EARTH_GEO = earthGeometry();
+
+const dayCanvas=document.createElement('canvas'), nightCanvas=document.createElement('canvas');
+const TW = Math.min(4096, renderer.capabilities.maxTextureSize), TH = TW/2;
+dayCanvas.width=nightCanvas.width=TW; dayCanvas.height=nightCanvas.height=TH;
+const dayTex=new THREE.CanvasTexture(dayCanvas), nightTex=new THREE.CanvasTexture(nightCanvas);
+for (const t of [dayTex,nightTex]){ t.anisotropy=maxAniso; t.colorSpace=THREE.NoColorSpace; t.minFilter=THREE.LinearMipmapLinearFilter; }
+
+const uniforms = { dayMap:{value:dayTex}, nightMap:{value:nightTex}, sunDir:{value:new THREE.Vector3(1,0,0)} };
+const earthMat = new THREE.ShaderMaterial({ uniforms,
+  vertexShader:`varying vec2 vUv; varying vec3 vN; varying vec3 vW;
+    void main(){ vUv=uv; vN=normalize(mat3(modelMatrix)*normal); vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
+  fragmentShader:`uniform sampler2D dayMap; uniform sampler2D nightMap; uniform vec3 sunDir;
+    varying vec2 vUv; varying vec3 vN; varying vec3 vW;
+    void main(){
+      vec3 N=normalize(vN); float d=dot(N,normalize(sunDir));
+      vec3 day=texture2D(dayMap,vUv).rgb; vec3 night=texture2D(nightMap,vUv).rgb;
+      float lit=smoothstep(-0.105,0.035,d);                       // ~6° civil twilight band
+      vec3 dayLit=day*(0.50+0.55*clamp(d*1.3+0.12,0.0,1.0));
+      vec3 col=mix(night,dayLit,lit);
+      float band=exp(-pow((d+0.02)/0.075,2.0)); col+=vec3(1.0,0.42,0.12)*band*0.20;  // sunset glow on the terminator
+      vec3 V=normalize(cameraPosition-vW); float fr=pow(1.0-max(dot(N,V),0.0),3.0);
+      col+=vec3(0.32,0.58,1.0)*fr*0.55*smoothstep(-0.25,0.35,d);
+      gl_FragColor=vec4(col,1.0);
+    }` });
+const atmoMat = new THREE.ShaderMaterial({ uniforms:{ sunDir:uniforms.sunDir }, side:THREE.BackSide, blending:THREE.AdditiveBlending, transparent:true, depthWrite:false,
+  vertexShader:`varying vec3 vN; varying vec3 vW; void main(){ vN=normalize(mat3(modelMatrix)*normal); vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
+  fragmentShader:`uniform vec3 sunDir; varying vec3 vN; varying vec3 vW;
+    void main(){ vec3 V=normalize(cameraPosition-vW); float rim=1.0-abs(dot(normalize(vN),V)); float i=pow(rim,5.0)*1.6;
+      float s=smoothstep(-0.4,0.5,dot(normalize(vN),normalize(sunDir)));
+      gl_FragColor=vec4(vec3(0.30,0.55,1.0)*i*(0.15+0.85*s),1.0); }` });
+
+function makeRig(scene, pinScale=1){
+  const frame=new THREE.Object3D(); frame.matrixAutoUpdate=false; scene.add(frame);
+  const earth=new THREE.Mesh(EARTH_GEO, earthMat); frame.add(earth);
+  const atmo=new THREE.Mesh(EARTH_GEO, atmoMat); atmo.scale.setScalar(1.045); frame.add(atmo);
+  // axis through the poles
+  const axG=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,-1.45),new THREE.Vector3(0,0,1.45)]);
+  const axis=new THREE.Line(axG,new THREE.LineDashedMaterial({color:0x9fc3ff,dashSize:.04,gapSize:.03,transparent:true,opacity:.55})); axis.computeLineDistances(); frame.add(axis);
+  const np=new THREE.Mesh(new THREE.ConeGeometry(.025,.07,12),new THREE.MeshBasicMaterial({color:0x9fc3ff})); np.position.set(0,0,1.47); np.rotation.x=Math.PI/2; frame.add(np);
+  // pin
+  const pin=new THREE.Group(); frame.add(pin);
+  const pinMat=new THREE.MeshBasicMaterial({color:0xffc861});
+  const stem=new THREE.Mesh(new THREE.CylinderGeometry(.0035*pinScale,.0035*pinScale,.07*pinScale,8),pinMat); stem.position.y=.035*pinScale; pin.add(stem);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.016*pinScale,16,12),pinMat); head.position.y=.075*pinScale; pin.add(head);
+  const ring=new THREE.Mesh(new THREE.RingGeometry(.018*pinScale,.026*pinScale,40),new THREE.MeshBasicMaterial({color:0xffc861,transparent:true,opacity:.9,side:THREE.DoubleSide,depthWrite:false}));
+  ring.rotation.x=-Math.PI/2; ring.position.y=.002; pin.add(ring);
+  pin.visible=false;
+  return { frame, earth, pin, ring, head };
+}
+const G = makeRig(globeScene, 1);
+const O = makeRig(orbitScene, 2.6);
+const ORBIT_EARTH_R = 0.55, ORBIT_SCALE = 11;
+
+// ---- orbit scene: sun, path, season markers
+const sunCore=new THREE.Mesh(new THREE.SphereGeometry(1.15,48,32),new THREE.MeshBasicMaterial({color:0xffe6a8}));
+orbitScene.add(sunCore);
+function glowTex(stops){ const c=document.createElement('canvas'); c.width=c.height=256; const x=c.getContext('2d'); const g=x.createRadialGradient(128,128,0,128,128,128); stops.forEach(([o,col])=>g.addColorStop(o,col)); x.fillStyle=g; x.fillRect(0,0,256,256); const t=new THREE.CanvasTexture(c); return t; }
+const sunGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex([[0,'rgba(255,230,170,1)'],[.25,'rgba(255,190,90,.55)'],[.6,'rgba(255,140,40,.12)'],[1,'rgba(255,120,30,0)']]),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true}));
+sunGlow.scale.setScalar(9); orbitScene.add(sunGlow);
+const sunGlowG=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex([[0,'rgba(255,240,200,1)'],[.3,'rgba(255,210,140,.35)'],[1,'rgba(255,170,80,0)']]),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true}));
+sunGlowG.scale.setScalar(14); globeScene.add(sunGlowG); // distant sun in globe view
+// Moon: procedural surface with the major maria at their real selenographic positions
+const moonCanvas=document.createElement('canvas'); moonCanvas.width=1024; moonCanvas.height=512;
+{ const x=moonCanvas.getContext('2d'); x.fillStyle='#a9a7a1'; x.fillRect(0,0,1024,512);
+  const P2=(la,lo)=>[(lo+180)/360*1024,(90-la)/180*512];
+  const maria=[[33,-16,15,12],[28,17,9,8],[8,31,11,8],[17,59,6,5],[-8,51,7,6],[-21,-17,9,7],[10,-57,22,18],[56,0,20,4],[-13,-39,6,5],[-24,-38,5,4],[-15,35,6,5],[30,-46,6,5],[7,18,6,4],[20,-10,4,3]];
+  x.filter='blur(14px)'; for (const [la,lo,w,h] of maria){ const [px,py]=P2(la,lo); x.fillStyle='rgba(70,72,80,.75)'; x.beginPath(); x.ellipse(px,py,w*2.9,h*2.9,0,0,7); x.fill(); }
+  x.filter='none';
+  for (let i=0;i<1400;i++){ const px=Math.random()*1024, py=40+Math.random()*432, rr=Math.pow(Math.random(),3)*9+1;
+    x.strokeStyle=`rgba(255,255,255,${.05+Math.random()*.1})`; x.lineWidth=1; x.beginPath(); x.arc(px,py,rr,0,7); x.stroke();
+    x.fillStyle=`rgba(0,0,0,${.05+Math.random()*.08})`; x.beginPath(); x.arc(px+rr*.25,py+rr*.25,rr*.8,0,7); x.fill(); }
+  for (let i=0;i<20000;i++){ x.fillStyle=`rgba(${Math.random()<.5?'0,0,0':'255,255,255'},${Math.random()*.06})`; x.fillRect(Math.random()*1024,Math.random()*512,2,2); }
+  const [tx,ty]=P2(-43,-11); const g=x.createRadialGradient(tx,ty,0,tx,ty,26); g.addColorStop(0,'rgba(255,255,255,.55)'); g.addColorStop(1,'rgba(255,255,255,0)'); x.fillStyle=g; x.fillRect(tx-30,ty-30,60,60); }
+const moonTex=new THREE.CanvasTexture(moonCanvas); moonTex.colorSpace=THREE.NoColorSpace;
+const moonMat=new THREE.ShaderMaterial({ uniforms:{ map:{value:moonTex}, sunDir:uniforms.sunDir },
+  vertexShader:`varying vec2 vUv; varying vec3 vN; void main(){ vUv=uv; vN=normalize(mat3(modelMatrix)*normal); gl_Position=projectionMatrix*viewMatrix*modelMatrix*vec4(position,1.0); }`,
+  fragmentShader:`uniform sampler2D map; uniform vec3 sunDir; varying vec2 vUv; varying vec3 vN;
+    void main(){ float d=dot(normalize(vN),normalize(sunDir)); vec3 c=texture2D(map,vUv).rgb; gl_FragColor=vec4(c*(0.035+1.1*smoothstep(-0.02,0.25,d)*max(d,0.0)+0.25*smoothstep(-0.02,0.1,d)),1.0); }` });
+const MOON_GEO = earthGeometry(96,48);
+function makeMoon(scene, radius){ const m=new THREE.Mesh(MOON_GEO, moonMat); m.scale.setScalar(radius); m.matrixAutoUpdate=false; scene.add(m); return m; }
+const moonG = makeMoon(globeScene, 0.2727), moonO = makeMoon(orbitScene, 0.17);
+const _mx=new THREE.Vector3(), _my=new THREE.Vector3(), _mz=new THREE.Vector3(), _up=new THREE.Vector3(0,1,0);
+function placeMoon(mesh, pos, dir, radius){            // tidally locked: selenographic 0°,0° faces Earth
+  _mx.copy(dir).negate(); _mz.copy(_up).addScaledVector(_mx,-_up.dot(_mx)).normalize(); _my.crossVectors(_mz,_mx);
+  mesh.matrix.makeBasis(_mx,_my,_mz).scale(new THREE.Vector3(radius,radius,radius)).setPosition(pos); mesh.matrixWorldNeedsUpdate=true; }
+const eclipticPlane=new THREE.Mesh(new THREE.RingGeometry(1.6,ORBIT_SCALE*1.25,128),new THREE.MeshBasicMaterial({color:0x3a5a9a,transparent:true,opacity:.05,side:THREE.DoubleSide,depthWrite:false}));
+eclipticPlane.rotation.x=-Math.PI/2; orbitScene.add(eclipticPlane);
+
+const earthPosAt = d => { const s=sunState(d); return sunDirScene(s).multiplyScalar(-s.R*ORBIT_SCALE); };
+let orbitLine=null, travelledLine=null, seasonMarks=[];
+function buildOrbit(now){
+  if (orbitLine){ orbitScene.remove(orbitLine); orbitScene.remove(travelledLine); seasonMarks.forEach(m=>{orbitScene.remove(m.mesh); m.el.remove();}); seasonMarks=[]; }
+  const pts=[]; const t0=now.getTime();
+  for (let i=0;i<=400;i++) pts.push(earthPosAt(new Date(t0 + i/400*365.256*86400000)));
+  orbitLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x7fa6e6,transparent:true,opacity:.45}));
+  orbitScene.add(orbitLine);
+  // travelled since last March equinox
+  const seasons=findSeasons(now);
+  const startEq=seasons.prevMarch; const tp=[]; const span=now-startEq;
+  for (let i=0;i<=200;i++) tp.push(earthPosAt(new Date(startEq.getTime()+span*i/200)));
+  travelledLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints(tp),new THREE.LineBasicMaterial({color:0xffc861,transparent:true,opacity:.85}));
+  orbitScene.add(travelledLine);
+  const names=['March equinox','June solstice','September equinox','December solstice'];
+  seasons.next.forEach(ev=>{
+    const mesh=new THREE.Mesh(new THREE.SphereGeometry(.13,16,12),new THREE.MeshBasicMaterial({color:0xbad3ff}));
+    mesh.position.copy(earthPosAt(ev.date)); orbitScene.add(mesh);
+    const el=document.createElement('div'); el.className='lbl season';
+    el.innerHTML=`${names[ev.k]}<small>${ev.date.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}</small>`;
+    labelsEl.appendChild(el); seasonMarks.push({mesh,el});
+  });
+  orbitState.seasons=seasons;
+}
+// Times when the Sun's ecliptic longitude crosses 0°, 90°, 180°, 270°
+function findSeasons(now){
+  const lam = d => { let l=sunState(d).lambda*R2D; return (l%360+360)%360; };
+  const crossAfter = (start, target) => {
+    let a=new Date(start), la=lam(a);
+    const diff=x=>((x-target+540)%360)-180;
+    for (let i=0;i<400;i++){ const b=new Date(a.getTime()+86400000), lb=lam(b);
+      if (diff(la)<0 && diff(lb)>=0){ let lo=a.getTime(), hi=b.getTime(); for(let k=0;k<30;k++){ const m=(lo+hi)/2; if(diff(lam(new Date(m)))<0) lo=m; else hi=m; } return new Date(hi); }
+      a=b; la=lb; }
+    return null; };
+  const next=[0,90,180,270].map((t,k)=>({k, date:crossAfter(now,t)})).sort((a,b)=>a.date-b.date);
+  const prevMarch=crossAfter(new Date(now.getTime()-366*86400000),0);
+  return { next, prevMarch: prevMarch>now ? crossAfter(new Date(now.getTime()-732*86400000),0) : prevMarch };
+}
+const orbitState={};
+
+/* =========================================================
+   MAP TEXTURES from Natural Earth (world-atlas)
+   ========================================================= */
+function drawMaps(world){
+  const land=topojson.feature(world, world.objects.land);
+  const borders=topojson.mesh(world, world.objects.countries, (a,b)=>a!==b);
+  const coast=topojson.mesh(world, world.objects.land);
+  const proj=d3.geoEquirectangular().scale(TW/(2*Math.PI)).translate([TW/2,TH/2]).precision(.1);
+  const grat=d3.geoGraticule().step([15,15])();
+  const k=TW/4096;
+
+  // ---- day
+  let x=dayCanvas.getContext('2d'); let path=d3.geoPath(proj,x);
+  let og=x.createLinearGradient(0,0,0,TH);
+  og.addColorStop(0,'#3e6c92'); og.addColorStop(.18,'#1f5585'); og.addColorStop(.5,'#16497b'); og.addColorStop(.82,'#1f5585'); og.addColorStop(1,'#5a7f9e');
+  x.fillStyle=og; x.fillRect(0,0,TW,TH);
+  // land tinted by latitude (ice → taiga → temperate → desert belt → tropics)
+  const lc=document.createElement('canvas'); lc.width=TW; lc.height=TH; const lx=lc.getContext('2d'); const lp=d3.geoPath(proj,lx);
+  lx.beginPath(); lp(land); lx.fillStyle='#fff'; lx.fill();
+  lx.globalCompositeOperation='source-in';
+  const lg=lx.createLinearGradient(0,0,0,TH); const at=(lat)=> (90-lat)/180;
+  [[90,'#eef3f6'],[74,'#dfe6e6'],[66,'#9aa883'],[55,'#5f8048'],[42,'#6f8a4c'],[33,'#b89f6a'],[24,'#cdb27c'],[14,'#7f8f4d'],[5,'#3f7434'],[-5,'#3f7434'],[-15,'#6f8a48'],[-25,'#c2a774'],[-34,'#9a9a5f'],[-46,'#5f8048'],[-58,'#a7b0a0'],[-63,'#eef3f6'],[-90,'#f4f7f9']].forEach(([l,c])=>lg.addColorStop(at(l),c));
+  lx.fillStyle=lg; lx.fillRect(0,0,TW,TH);
+  // subtle noise for texture
+  lx.globalCompositeOperation='source-atop';
+  for (let i=0;i<9000*k*k;i++){ lx.fillStyle=`rgba(${Math.random()<.5?'0,0,0':'255,255,255'},${Math.random()*.05})`; const r=(2+Math.random()*10)*k; lx.fillRect(Math.random()*TW,Math.random()*TH,r,r); }
+  x.drawImage(lc,0,0);
+  x.beginPath(); path(grat); x.strokeStyle='rgba(255,255,255,.07)'; x.lineWidth=1.2*k; x.stroke();
+  x.beginPath(); path(borders); x.strokeStyle='rgba(255,255,255,.28)'; x.lineWidth=1.1*k; x.stroke();
+  x.beginPath(); path(coast); x.strokeStyle='rgba(225,240,255,.55)'; x.lineWidth=1.4*k; x.stroke();
+
+  // ---- night
+  x=nightCanvas.getContext('2d'); path=d3.geoPath(proj,x);
+  x.fillStyle='#02060f'; x.fillRect(0,0,TW,TH);
+  x.beginPath(); path(land); x.fillStyle='#0a1322'; x.fill();
+  x.beginPath(); path(grat); x.strokeStyle='rgba(120,160,255,.05)'; x.lineWidth=1.2*k; x.stroke();
+  x.beginPath(); path(borders); x.strokeStyle='rgba(130,160,230,.12)'; x.lineWidth=1*k; x.stroke();
+  x.beginPath(); path(coast); x.strokeStyle='rgba(120,170,255,.32)'; x.lineWidth=1.3*k; x.stroke();
+  dayTex.needsUpdate=true; nightTex.needsUpdate=true;
+}
+// Night-side city lights drawn from the real places list
+function addCityLights(){
+  const x=nightCanvas.getContext('2d'); x.globalCompositeOperation='lighter';
+  for (let i=0;i<P.n;i++){ const pop=P.pop[i]; if (pop<15000) break;
+    const px=(P.lon[i]+180)/360*TW, py=(90-P.lat[i])/180*TH;
+    const r=Math.max(1, Math.log10(pop)-3.2)*1.15*(TW/4096);
+    const a=Math.min(.75,(Math.log10(pop)-4)*.22+.12);
+    x.fillStyle=`rgba(255,196,110,${a*.45})`; x.beginPath(); x.arc(px,py,r*2.2,0,7); x.fill();
+    x.fillStyle=`rgba(255,226,170,${a})`; x.beginPath(); x.arc(px,py,r*.8,0,7); x.fill(); }
+  x.globalCompositeOperation='source-over'; nightTex.needsUpdate=true;
+}
+
+/* =========================================================
+   LABELS
+   ========================================================= */
+const labelsEl=$('labels');
+const pinLbl=document.createElement('div'); pinLbl.className='lbl you'; labelsEl.appendChild(pinLbl);
+const sunLbl=document.createElement('div'); sunLbl.className='lbl sun'; sunLbl.textContent='☀ Sun'; labelsEl.appendChild(sunLbl);
+const moonLbl=document.createElement('div'); moonLbl.className='lbl moon'; labelsEl.appendChild(moonLbl);
+const earthLbl=document.createElement('div'); earthLbl.className='lbl season'; earthLbl.textContent='Earth (not to scale)'; labelsEl.appendChild(earthLbl);
+const _v=new THREE.Vector3();
+function placeLabel3D(el, worldPos, cam, dx=12, dy=-14, hidden=false, strict=false){
+  _v.copy(worldPos).project(cam);
+  if (hidden || _v.z>1 || _v.z<-1 || (strict && (Math.abs(_v.x)>1 || Math.abs(_v.y)>1))){ el.style.display='none'; return; }
+  el.style.display='block';
+  const x=Math.max(4,Math.min((_v.x+1)/2*innerWidth+dx, innerWidth-el.offsetWidth-4)); const y=Math.max(4,(1-_v.y)/2*innerHeight+dy);
+  el.style.transform=`translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+}
+
+/* =========================================================
+   STATE: selected place, mode, clock format
+   ========================================================= */
+let mode='globe', h12=store.get('h12', true), current=null, follow=false, fly=null;
+let home = store.get('home', null);
+
+function setPlace(p, opts={}){
+  current = { ...p };
+  if (current.kind!=='device'){
+    current.exactTz = !!current.tz;
+    if (!current.tz){ const g = guessZone(current.lat,current.lon,current.cc); current.tz=g.tz; current.nautical=g.nautical; }
+  } else current.tz = DEVICE_TZ;
+  if (opts.save!==false) store.set('last', { name:current.name, sub:current.sub, lat:current.lat, lon:current.lon, cc:current.cc, kind:current.kind, approx:current.approx, tz: current.exactTz?current.tz:undefined });
+  G.pin.visible = O.pin.visible = true;
+  const up=new THREE.Vector3(0,1,0), n=llToEcef(current.lat,current.lon);
+  for (const R of [G,O]){ R.pin.position.copy(n); R.pin.quaternion.setFromUnitVectors(up,n); }
+  pinLbl.textContent = current.kind==='device' ? `You · ${shortName(current)}` : shortName(current);
+  updateStatic(); tick(true); if (typeof layout==='function') layout();
+  if (opts.fly!==false) flyTo();
+}
+const shortName = p => (p.name||'').replace(/^Near /,'≈ ');
+
+function flyTo(){
+  if (mode!=='globe'){ follow=false; return; }
+  const target=pinWorld().normalize();
+  const from=camG.position.clone(); const gd=globeDist(); const dist=Math.min(Math.max(from.length(),1.15),gd);
+  fly={ t0:performance.now(), dur:1400, from:from.clone().normalize(), fromD:from.length(), to:target, toD:dist, toFn:()=>pinWorld().normalize() };
+  follow=true;
+}
+function pinWorld(){ G.frame.updateMatrixWorld(); return G.pin.getWorldPosition(new THREE.Vector3()); }
+ctlG.addEventListener('start',()=>{ follow=false; fly=null; });
+// camera spot that shows the Moon just beside the Earth: stand behind Earth, offset sideways
+function moonViewDir(){ const t=simNow(), s=sunState(t), md=moonState(t,s).dirScene();
+  const u=new THREE.Vector3(0,1,0).addScaledVector(md,-md.y).normalize();          // screen-vertical offset works on phones too
+  return md.clone().multiplyScalar(-7).addScaledVector(u,-2.6).normalize(); }
+function flyToMoon(){ if (mode!=='globe') setMode('globe'); const from=camG.position.clone(); const d=7.7;
+  fly={ t0:performance.now(), dur:1600, from:from.clone().normalize(), fromD:from.length(), to:moonViewDir(), toD:d, toFn:moonViewDir }; follow='moon'; }
+
+/* =========================================================
+   TIME FORMATTING
+   ========================================================= */
+function fmtParts(date, tz, opts){ try{ return new Intl.DateTimeFormat('en-US',{timeZone:tz,...opts}).format(date); }catch(e){ return new Intl.DateTimeFormat('en-US',{timeZone:'UTC',...opts}).format(date); } }
+function zoneFor(p){ // returns {tz, shift} ; shift in ms for nautical time formatted as UTC
+  if (p.kind==='device') return { tz: DEVICE_TZ, shift:0 };
+  if (p.tz) return { tz:p.tz, shift:0 };
+  return { tz:'UTC', shift:(p.nautical||0)*3600000 };
+}
+function fmtTime(date, p, withSec=true){
+  const z=zoneFor(p); const d=new Date(date.getTime()+z.shift);
+  return fmtParts(d, z.tz, { hour: h12?'numeric':'2-digit', minute:'2-digit', ...(withSec?{second:'2-digit'}:{}), hour12:h12, hourCycle: h12?'h12':'h23' });
+}
+function offsetName(date,p){
+  const z=zoneFor(p);
+  if (z.shift || (!p.tz && p.kind!=='device')) { const n=p.nautical||0; return `UTC${n>=0?'+':'−'}${Math.abs(n)}`; }
+  let short='', off='';
+  try{ short=new Intl.DateTimeFormat('en-US',{timeZone:z.tz,timeZoneName:'short'}).formatToParts(date).find(x=>x.type==='timeZoneName').value; }catch(e){}
+  try{ off=new Intl.DateTimeFormat('en-US',{timeZone:z.tz,timeZoneName:'shortOffset'}).formatToParts(date).find(x=>x.type==='timeZoneName').value.replace('GMT','UTC').replace('-','−'); if(off==='UTC') off='UTC+0'; }catch(e){}
+  return short && !/^GMT/.test(short) && short!==off ? `${short} · ${off}` : off||short;
+}
+
+function updateStatic(){
+  if (!current) return;
+  $('placeName').textContent = current.name;
+  const sub=[current.sub, fmtLL(current.lat,current.lon)].filter(Boolean).join(' · ');
+  $('placeSub').textContent = sub;
+  const isHome = home && Math.abs(home.lat-current.lat)<1e-4 && Math.abs(home.lon-current.lon)<1e-4;
+  $('homeBtn').style.display = (current.kind==='device' || isHome) ? 'none' : '';
+}
+
+let lastSec=-1;
+function tick(force){
+  const now=simNow(); const sec=Math.floor(now.getTime()/1000);
+  if (!force && sec===lastSec) return; lastSec=sec;
+  if (!current) return;
+  const t = fmtTime(now,current);
+  const m = t.match(/^(.*?)(:\d\d)?\s?(AM|PM)?$/);
+  const main = m ? m[1] : t; const secs = m && m[2] ? m[2] : ''; const ap = m && m[3] ? m[3] : '';
+  $('clock').innerHTML = `${main}<span class="sec">${secs}</span>${ap?`<span class="ampm">${ap}</span>`:''}`;
+  const z=zoneFor(current); const dd=new Date(now.getTime()+z.shift);
+  $('date').textContent = fmtParts(dd, z.tz, { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+
+  const off=offsetName(now,current);
+  let tzHtml;
+  if (traveling()) tzHtml = `<span class="pill est">⏱ TIME TRAVEL · ${travelDesc()}</span><span>${(zoneFor(current).tz||'').replace(/_/g,' ')} · ${off}</span>`;
+  else if (current.kind==='device') tzHtml = `<span class="pill live"><span class="dot"></span>YOUR DEVICE CLOCK</span><span>${DEVICE_TZ.replace(/_/g,' ')} · ${off}</span>`;
+  else if (current.tz && current.tz===DEVICE_TZ) tzHtml = `<span class="pill live"><span class="dot"></span>SAME ZONE AS YOU</span><span>${current.tz.replace(/_/g,' ')} · ${off}</span>`;
+  else if (current.tz && current.exactTz) tzHtml = `<span class="pill live"><span class="dot"></span>LOCAL TIME</span><span>${current.tz.replace(/_/g,' ')} · ${off}</span>`;
+  else if (current.tz) tzHtml = `<span class="pill est">≈ ESTIMATED LOCAL TIME</span><span>${current.tz.replace(/_/g,' ')} · ${off}</span>`;
+  else tzHtml = `<span class="pill est">≈ NAUTICAL TIME</span><span>by longitude · ${off}</span>`;
+  if (current.approx) tzHtml += `<span style="width:100%">Pin is approximate (from your time zone) — search your town for an exact spot.</span>`;
+  $('tzLine').innerHTML = tzHtml;
+
+  const s=sunState(now); const sa=sunAt(current.lat,current.lon,s,now);
+  let status, col;
+  if (sa.alt>-0.833){ status=`Daytime — sun ${sa.alt.toFixed(1)}° above the horizon`; col='radial-gradient(circle,#fff3c4,#ffc861 60%,#ff9d2f)'; }
+  else if (sa.alt>-6){ status=`Civil twilight — sun ${(-sa.alt).toFixed(1)}° below the horizon`; col='linear-gradient(#ffb36b,#6d4fa8)'; }
+  else if (sa.alt>-12){ status=`Nautical twilight — sun ${(-sa.alt).toFixed(1)}° below`; col='linear-gradient(#5b4aa0,#1d2b5c)'; }
+  else if (sa.alt>-18){ status=`Astronomical twilight — sun ${(-sa.alt).toFixed(1)}° below`; col='linear-gradient(#24306a,#0b1230)'; }
+  else { status=`Night — sun ${(-sa.alt).toFixed(1)}° below the horizon`; col='radial-gradient(circle at 35% 35%,#e9eefc,#aab6d6 55%,#6c7aa3)'; }
+  $('sunText').textContent=status; $('sunIcon').style.background=col;
+  const tOnly = d => fmtTime(d,current,false);
+  if (sa.polar==='night'){ $('sunrise').textContent='Polar night'; $('sunset').textContent='—'; }
+  else if (sa.polar==='day'){ $('sunrise').textContent='Midnight sun'; $('sunset').textContent='—'; }
+  else { $('sunrise').textContent=tOnly(sa.rise); $('sunset').textContent=tOnly(sa.set); }
+  const dh=sa.dayHours; $('daylen').textContent = `${Math.floor(dh)}h ${String(Math.round((dh%1)*60)).padStart(2,'0')}m`;
+  $('subsolar').textContent = fmtLL(s.subLat,s.subLon);
+  { const m=moonState(now,s); const mi=moonInfo(current.lat,current.lon,now);
+    $('moonIcon').innerHTML=moonSvg(m.elong, current.lat<0);
+    const alt=moonAltAt(current.lat,current.lon,now);
+    $('moonText').textContent=`${phaseName(m.elong)} · ${Math.round(m.illum*100)}% lit · ${alt>MOON_H0?'up now':'below horizon'}`;
+    const z=zoneFor(current); const dayKey=d=>fmtParts(new Date(+d+z.shift), z.tz, {year:'numeric',month:'numeric',day:'numeric'});
+    const today=dayKey(now), tom=dayKey(new Date(+now+86400000));
+    const when=d=>{ if(!d) return 'None in next 2 days'; const k=dayKey(d); return tOnly(d)+(k===today?'':k===tom?' tomorrow':' '+fmtParts(new Date(+d+z.shift),z.tz,{weekday:'short'})); };
+    $('moonrise').textContent=when(mi.rise); $('moonset').textContent=when(mi.set);
+    const dd=d=>d? fmtParts(new Date(+d+z.shift),z.tz,{month:'short',day:'numeric'})+', '+tOnly(d) : '—';
+    $('nextFull').textContent=dd(mi.full); $('nextNew').textContent=dd(mi.nw); }
+
+  if (mode==='orbit' && orbitState.seasons){
+    const km=s.R*149597870.7; $('oDist').textContent=`${(km/1e6).toFixed(2)} million km`;
+    const v = 29.78*Math.sqrt(2/s.R - 1/1.000001); $('oSpeed').textContent=`${v.toFixed(2)} km/s`;
+    const frac=(now-orbitState.seasons.prevMarch)/(365.2422*86400000); $('oProg').textContent=`${(frac*100).toFixed(1)}% since March equinox`;
+    const nx=orbitState.seasons.next[0]; const names=['March equinox','June solstice','September equinox','December solstice'];
+    $('oNext').textContent=`${names[nx.k]} in ${Math.ceil((nx.date-now)/86400000)} days`;
+  }
+}
+
+/* =========================================================
+   FRAME LOOP
+   ========================================================= */
+let lastOrbitBuild=0, orbitBuiltFor=0, lastFrameT=performance.now();
+function frame(){
+  requestAnimationFrame(frame);
+  const tNow=performance.now(), dt=Math.min(100,tNow-lastFrameT); lastFrameT=tNow;
+  if (simSpeed!==1) simOffset += dt*(simSpeed-1);
+  const now=simNow(); const s=sunState(now);
+  const M=earthMatrix(s); const sd=sunDirScene(s);
+  uniforms.sunDir.value.copy(sd);
+  G.frame.matrix.copy(M); G.frame.matrixWorldNeedsUpdate=true;
+  sunGlowG.position.copy(sd).multiplyScalar(150);
+  const ms=moonState(now,s), mdir=ms.dirScene();
+  const moonTxt=`☾ Moon · ${Math.round(ms.illum*100)}% lit`;
+  if (moonLbl.textContent!==moonTxt) moonLbl.textContent=moonTxt;
+  const pulse=1+.35*Math.sin(performance.now()/380); G.ring.scale.setScalar(pulse); O.ring.scale.setScalar(pulse);
+
+  if (mode==='globe'){
+    if (fly){ const k=Math.min(1,(performance.now()-fly.t0)/fly.dur), e=k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;
+      const dir=fly.from.clone().lerp(fly.to,e); if (dir.lengthSq()<1e-6) dir.copy(fly.to); dir.normalize();
+      // great-circle-ish: re-target live pin so we land on it even as Earth turns
+      fly.to=fly.toFn();
+      camG.position.copy(dir.multiplyScalar(fly.fromD+(fly.toD-fly.fromD)*e));
+      if (k>=1) fly=null; }
+    else if (follow==='moon'){ const d=camG.position.length(); const dir=camG.position.clone().normalize().lerp(moonViewDir(),.08).normalize(); camG.position.copy(dir.multiplyScalar(d)); }
+    else if (follow && current){ const d=camG.position.length(); const dir=camG.position.clone().normalize().lerp(pinWorld().normalize(),.08).normalize(); camG.position.copy(dir.multiplyScalar(d)); }
+    ctlG.update();
+    const mpos=mdir.clone().multiplyScalar(ms.dist/6371*0.25); placeMoon(moonG, mpos, mdir, 0.2727);   // true size, distance shown at 1/4
+    renderer.render(globeScene,camG);
+    placeLabel3D(moonLbl, mpos, camG, 12, -10, false, true);
+    updateCityLabels(M);
+    if (current){ const pw=pinWorld(); const facing=pw.clone().normalize().dot(camG.position.clone().normalize()) > .15; placeLabel3D(pinLbl, pw.multiplyScalar(1.08), camG, 12, -16, !facing); }
+    sunLbl.style.display='none'; earthLbl.style.display='none'; seasonMarks.forEach(m=>m.el.style.display='none');
+  } else {
+    hideCityLabels();
+    if (performance.now()-lastOrbitBuild>3600000 || Math.abs(now-orbitBuiltFor)>(simSpeed>1000?6:1)*86400000){ buildOrbit(now); lastOrbitBuild=performance.now(); orbitBuiltFor=+now; }
+    const ep=sd.clone().multiplyScalar(-s.R*ORBIT_SCALE);
+    O.frame.matrix.copy(new THREE.Matrix4().makeTranslation(ep.x,ep.y,ep.z).multiply(M).multiply(new THREE.Matrix4().makeScale(ORBIT_EARTH_R,ORBIT_EARTH_R,ORBIT_EARTH_R)));
+    O.frame.matrixWorldNeedsUpdate=true;
+    const mpo=ep.clone().addScaledVector(mdir, 1.75); placeMoon(moonO, mpo, mdir, 0.17);
+    ctlO.update(); renderer.render(orbitScene,camO);
+    placeLabel3D(moonLbl, mpo, camO, 10, -8, false, true);
+    O.frame.updateMatrixWorld(); const pw=O.pin.getWorldPosition(new THREE.Vector3());
+    const facing = pw.clone().sub(ep).normalize().dot(camO.position.clone().sub(ep).normalize())>0;
+    placeLabel3D(pinLbl, pw, camO, 12, -16, !current);
+    pinLbl.style.opacity = facing? '1':'.6';
+    placeLabel3D(sunLbl, new THREE.Vector3(0,1.6,0), camO, -22, -10);
+    placeLabel3D(earthLbl, ep.clone().add(new THREE.Vector3(0,-ORBIT_EARTH_R*1.6,0)), camO, -50, 6);
+    seasonMarks.forEach(m=>placeLabel3D(m.el, m.mesh.position, camO, 10, -8));
+  }
+  tick(false);
+}
+
+/* =========================================================
+   CITY NAMES ON THE GLOBE (zoom-dependent, collision-free)
+   ========================================================= */
+const cityLayer=document.createElement('div'); labelsEl.prepend(cityLayer);
+const CPOOL=[]; const CMAX = innerWidth<=720 ? 34 : 70;
+for (let k=0;k<CMAX;k++){ const el=document.createElement('div'); el.className='clbl'; el.style.display='none'; el.innerHTML='<i></i><span></span>';
+  el.addEventListener('click',ev=>{ ev.stopPropagation(); const i=+el.dataset.i; if (i>=0) choose({i}); }); cityLayer.appendChild(el); CPOOL.push({el,i:-1,w:0}); }
+let chosenCities=[], lastPick=0, lastPickDist=0;
+const _e=new THREE.Vector3();
+function hideCityLabels(){ for (const c of CPOOL) if (c.i!==-1){ c.el.style.display='none'; c.i=-1; } chosenCities=[]; }
+function cityWorld(i,M,out){ return out.set(P.x[i],P.y[i],P.z[i]).applyMatrix4(M); }
+function updateCityLabels(M){
+  if (!P.ready || !showNames){ if (chosenCities.length) hideCityLabels(); return; }
+  const camPos=camG.position, d=camPos.length(), W=innerWidth, H=innerHeight;
+  const now=performance.now();
+  if (now-lastPick>140 || Math.abs(d-lastPickDist)>.02){
+    lastPick=now; lastPickDist=d;
+    const gd=globeDist(); const zoom=(gd-1)/Math.max(d-1,0.02);   // 1 at default view, >1 when zoomed in
+    const scanN=Math.min(P.n, Math.floor(260*Math.pow(Math.max(zoom,0.6),3.2)));
+    const boxes=[]; const pick=[];
+    if (current && pinLbl.style.display!=='none'){ const r=pinLbl.getBoundingClientRect(); boxes.push([r.left-4,r.top-4,r.right+4,r.bottom+4]); }
+    for (const id of ['card','top']){ const r=$(id).getBoundingClientRect(); boxes.push([r.left,r.top,r.right,r.bottom]); }
+    const fixed=boxes.length;
+    for (let i=0;i<scanN && pick.length<CMAX;i++){
+      cityWorld(i,M,_e); if (_e.dot(camPos) < 1.04) continue;           // behind the limb
+      _e.project(camG); if (_e.z>1) continue;
+      const x=(_e.x+1)/2*W, y=(1-_e.y)/2*H; if (x<0||x>W||y<0||y>H) continue;
+      const big=P.pop[i]>=1e6; const w=P.name[i].length*(big?7.4:6.6)+18, h=big?19:17;
+      if (x+w>W-4) continue;
+      const b=[x-5,y-h/2,x+w,y+h/2];
+      let hit=false; for (const o of boxes){ if (b[0]<o[2]&&b[2]>o[0]&&b[1]<o[3]&&b[3]>o[1]){hit=true;break;} } if (hit) continue;
+      boxes.push(b); pick.push(i);
+    }
+    chosenCities=pick;
+    CPOOL.forEach((c,k)=>{ const i=k<pick.length?pick[k]:-1; if (c.i===i) return; c.i=i; c.el.dataset.i=i;
+      if (i<0){ c.el.style.display='none'; return; }
+      c.el.lastChild.textContent=P.name[i]; c.el.className='clbl'+(P.pop[i]>=1e6?' big':P.pop[i]<20000?' small':''); c.el.style.display='block'; });
+  }
+  // reposition every frame so names stay glued while you drag
+  for (const c of CPOOL){ if (c.i<0) continue; cityWorld(c.i,M,_e);
+    if (_e.dot(camPos)<1.0){ c.el.style.visibility='hidden'; continue; } c.el.style.visibility='';
+    _e.project(camG); c.el.style.transform=`translate(${((_e.x+1)/2*innerWidth-4).toFixed(1)}px,${((1-_e.y)/2*innerHeight-8).toFixed(1)}px)`; }
+}
+let showNames=store.get('names',true);
+
+/* =========================================================
+   TIME TRAVEL
+   ========================================================= */
+function travelDesc(){
+  const ms=simOffset, a=Math.abs(ms), dir=ms>=0?'ahead':'ago';
+  const parts=[]; const d=Math.floor(a/86400000), h=Math.floor(a%86400000/3600000), m=Math.round(a%3600000/60000);
+  if (d) parts.push(`${d.toLocaleString()} d`); if (h) parts.push(`${h} h`); if (!d && m) parts.push(`${m} min`);
+  const sp = simSpeed===3600? ' · 1 hr/sec' : simSpeed===86400? ' · 1 day/sec' : '';
+  return (parts.length? parts.join(' ')+(ms>=0?' ahead':' back') : 'now') + sp;
+}
+function setSpeed(v){ simSpeed=v; if (v!==1 && mode==='globe' && current) follow=true; $('speedSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',+b.dataset.v===v)); refreshTravel(); }
+function refreshTravel(){ $('liveBtn').classList.toggle('primary', traveling()); $('tBtn').classList.toggle('on', traveling()); tick(true); }
+document.querySelectorAll('#timeBar [data-step]').forEach(b=>b.onclick=()=>{
+  const st=b.dataset.step; const now=simNow(); let t=new Date(now);
+  if (st.endsWith('mo')) t.setMonth(t.getMonth()+parseInt(st)); else if (st.endsWith('d')) t=new Date(+now+parseInt(st)*86400000); else t=new Date(+now+parseInt(st)*3600000);
+  simOffset += t-now; if (mode==='globe' && current) follow=true; refreshTravel(); });
+$('speedSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>setSpeed(+b.dataset.v));
+$('liveBtn').onclick=()=>{ simOffset=0; setSpeed(1); };
+$('tBtn').onclick=()=>{ $('timeBar').classList.toggle('show'); layout(); };
+$('namesBtn').onclick=()=>{ showNames=!showNames; store.set('names',showNames); $('namesBtn').classList.toggle('on',showNames); };
+$('namesBtn').classList.toggle('on',showNames);
+setInterval(()=>{ if ($('timeBar').classList.contains('show')) $('simWhen').textContent = simNow().toLocaleString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',hour12:h12}); }, 250);
+
+/* =========================================================
+   INTERACTION
+   ========================================================= */
+// tap / click on globe
+const ray=new THREE.Raycaster(); let downAt=null;
+canvas.addEventListener('pointerdown',e=>{ downAt={x:e.clientX,y:e.clientY,t:performance.now()}; });
+canvas.addEventListener('pointerup',e=>{
+  if (!downAt || mode!=='globe') return;
+  const moved=Math.hypot(e.clientX-downAt.x,e.clientY-downAt.y), dt=performance.now()-downAt.t; downAt=null;
+  if (moved>7 || dt>600) return;
+  const ndc=new THREE.Vector2(e.clientX/innerWidth*2-1, -(e.clientY/innerHeight)*2+1);
+  ray.setFromCamera(ndc,camG); G.frame.updateMatrixWorld();
+  const hit=ray.intersectObject(G.earth,false)[0]; if(!hit) return;
+  const local=G.frame.worldToLocal(hit.point.clone()).normalize();
+  const lat=Math.asin(local.z)*R2D, lon=Math.atan2(local.y,local.x)*R2D;
+  closeResults();
+  setPlace({ ...describePoint(lat,lon), lat, lon, kind:'point' });
+});
+
+// Use My Location
+$('locBtn').onclick=()=>{
+  const btn=$('locBtn'); btn.disabled=true; const old=btn.innerHTML; btn.innerHTML='Locating…';
+  const done=()=>{ btn.disabled=false; btn.innerHTML=old; };
+  const fallback=(why)=>{
+    done();
+    if (home){ setPlace({...home, kind:'device', approx:false}); toast(`${why} Showing your saved spot, ${home.name}.`); }
+    else { setPlace(deviceApprox()); toast(`${why} Pinned your time zone's city instead. Search your town and tap “★ This is me” to save your exact spot.`); }
+  };
+  if (!navigator.geolocation) return fallback('This browser has no location access.');
+  try{
+    navigator.geolocation.getCurrentPosition(pos=>{
+      done(); const {latitude:lat, longitude:lon}=pos.coords;
+      const d=describePoint(lat,lon);
+      const p={ ...d, lat, lon, kind:'device', approx:false };
+      if (d.name==='Open water' || d.name==='Polar region') p.name='Your location';
+      setPlace(p); store.set('home',{name:p.name,sub:p.sub,lat,lon,cc:p.cc}); home=store.get('home',null);
+    }, err=>{ fallback(err && err.code===1 ? 'Location permission is blocked in this view.' : 'Couldn’t get a GPS fix.'); }, { enableHighAccuracy:true, timeout:12000, maximumAge:60000 });
+  }catch(e){ fallback('Location access is blocked in this view.'); }
+};
+function deviceApprox(){
+  const z = ZONES.find(z=>z[0]===DEVICE_TZ);
+  if (z){ const city=DEVICE_TZ.split('/').pop().replace(/_/g,' '); return { name:city, sub:`${regionName(z[3][0]||'')}`.replace(/^$/,''), lat:z[1], lon:z[2], cc:z[3][0]||null, kind:'device', approx:true }; }
+  const off=-new Date().getTimezoneOffset()/60; return { name:'Your time zone', sub:'', lat:20, lon:off*15, cc:null, kind:'device', approx:true };
+}
+$('homeBtn').onclick=()=>{
+  if (!current) return; home={ name:current.name, sub:current.sub, lat:current.lat, lon:current.lon, cc:current.cc, tz:current.tz };
+  store.set('home',home); setPlace({ ...home, kind:'device', approx:false }, {fly:false}); toast(`Saved ${home.name} as your location. “Use My Location” will come back here.`);
+};
+
+// Search
+const searchEl=$('search'), resultsEl=$('results'); let resIdx=-1, resList=[], sTimer=null;
+searchEl.addEventListener('input',()=>{ $('clearBtn').style.display=searchEl.value?'block':'none'; clearTimeout(sTimer); sTimer=setTimeout(runSearch,110); });
+searchEl.addEventListener('focus',()=>{ if (searchEl.value.trim()) runSearch(); });
+$('clearBtn').onclick=()=>{ searchEl.value=''; $('clearBtn').style.display='none'; closeResults(); searchEl.focus(); };
+searchEl.addEventListener('keydown',e=>{
+  if (e.key==='ArrowDown'){ resIdx=Math.min(resList.length-1,resIdx+1); paintSel(); e.preventDefault(); }
+  else if (e.key==='ArrowUp'){ resIdx=Math.max(0,resIdx-1); paintSel(); e.preventDefault(); }
+  else if (e.key==='Enter'){ const r=resList[Math.max(0,resIdx)]; if (r) choose(r); e.preventDefault(); }
+  else if (e.key==='Escape'){ closeResults(); searchEl.blur(); }
+});
+document.addEventListener('pointerdown',e=>{ if (!$('searchWrap').contains(e.target)) closeResults(); });
+function closeResults(){ resultsEl.classList.remove('show'); resIdx=-1; }
+function paintSel(){ [...resultsEl.querySelectorAll('.res')].forEach((el,i)=>el.classList.toggle('sel',i===resIdx)); }
+function parseCoords(q){
+  const m=q.trim().match(/^(-?\d+(?:\.\d+)?)\s*°?\s*([NSns])?\s*[,;\s]\s*(-?\d+(?:\.\d+)?)\s*°?\s*([EWew])?$/);
+  if (!m) return null; let lat=+m[1], lon=+m[3];
+  if (m[2] && /s/i.test(m[2])) lat=-Math.abs(lat); if (m[4] && /w/i.test(m[4])) lon=-Math.abs(lon);
+  if (Math.abs(lat)>90 || Math.abs(lon)>180) return null; return {lat,lon};
+}
+const ccNameCache={};
+function ccMatches(cc,q){ if (cc.toLowerCase()===q) return true; const n=ccNameCache[cc] ||= fold(regionName(cc)); return n.startsWith(q) || (cc==='US' && /^(usa|united states|america)/.test(q)) || (cc==='GB' && /^(uk|england|scotland|wales|britain)/.test(q)); }
+function runSearch(){
+  const raw=searchEl.value.trim(); resList=[]; resIdx=-1;
+  if (!raw){ closeResults(); return; }
+  const c=parseCoords(raw);
+  if (c) resList.push({ coords:c, title:`Go to ${fmtLL(c.lat,c.lon)}`, sub:'Coordinates' });
+  if (!P.ready){ resultsEl.innerHTML = (c?resHtml():'') + `<div class="note">Loading 193,000 cities, towns & villages…</div>`; resultsEl.classList.add('show'); return; }
+  if (!c){
+    const parts=raw.split(',').map(fold).filter(Boolean); const q=parts[0]||''; const qual=parts.slice(1).join(' ');
+    if (q.length>=1){
+      const exact=[], pre=[], wordpre=[], cont=[], altm=[]; const LIM=40;
+      for (let i=0;i<P.n && exact.length<LIM;i++){
+        const k=P.key[i]; if (k.length<q.length && !P.alt[i]) continue;
+        let bucket=null;
+        if (k===q) bucket=exact; else if (k.startsWith(q)) bucket=pre; else if (q.length>=3 && k.includes(' '+q)) bucket=wordpre; else if (q.length>=4 && k.includes(q)) bucket=cont;
+        else if (q.length>=3 && P.alt[i] && P.alt[i].some(a=>a.startsWith(q))) bucket=altm;
+        if (!bucket || bucket.length>=LIM) continue;
+        if (qual){ const a=P.ad[i].toLowerCase(); if (!(a===qual || ccMatches(P.cc[i],qual))) continue; }
+        bucket.push(i);
+      }
+      const score=new Map();
+      const put=(i,v)=>{ if (!(score.get(i)>=v)) score.set(i,v); };
+      exact.forEach(i=>put(i,(P.pop[i]+50)*25)); pre.forEach(i=>put(i,P.pop[i]+50)); wordpre.forEach(i=>put(i,(P.pop[i]+50)*.5)); cont.forEach(i=>put(i,(P.pop[i]+50)*.2)); altm.forEach(i=>put(i,(P.pop[i]+50)*.6));
+      const pick=[...score.keys()].sort((a,b)=>score.get(b)-score.get(a));
+      const seen=new Set(); const out=[];
+      for (const i of pick){ const key=P.name[i]+P.cc[i]+P.ad[i]+Math.round(P.lat[i]); if (seen.has(key)) continue; seen.add(key); out.push(i); if (out.length>=8) break; }
+      for (const i of out){ const [nm,...rest]=placeLabel(i); resList.push({ i, title:nm, sub:rest.join(', '), pop:P.pop[i] }); }
+    }
+  }
+  resultsEl.innerHTML = resList.length ? resHtml() : `<div class="note">No match. Try a nearby larger town, add the country (“Springfield, Ireland”), or type coordinates like 51.5, -0.12.</div>`;
+  resultsEl.classList.add('show');
+  resultsEl.querySelectorAll('.res').forEach((el,ix)=>el.onclick=()=>choose(resList[ix]));
+}
+function fmtPop(n){ return n>=1e6?(n/1e6).toFixed(1).replace(/\.0$/,'')+'M':n>=1e3?Math.round(n/1e3)+'k':String(n); }
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function resHtml(){ return resList.map(r=>`<div class="res"><div><b>${esc(r.title)}</b><div class="sub">${esc(r.sub)}</div></div>${r.pop?`<small>pop. ${fmtPop(r.pop)}</small>`:''}</div>`).join(''); }
+function choose(r){
+  closeResults(); searchEl.blur();
+  if (r.coords){ const {lat,lon}=r.coords; setPlace({ ...describePoint(lat,lon), lat, lon, kind:'point' }); return; }
+  const i=r.i; const [nm,...rest]=placeLabel(i);
+  const p={ name:nm, sub:rest.join(', '), lat:P.lat[i], lon:P.lon[i], cc:P.cc[i], tz:tzOf(i), kind:'place' };
+  if (home && Math.abs(home.lat-p.lat)<1e-3 && Math.abs(home.lon-p.lon)<1e-3) p.kind='device';
+  setPlace(p); searchEl.value=nm; $('clearBtn').style.display='block';
+}
+
+// Coordinates form
+$('coordToggle').onclick=()=>$('coordBox').classList.toggle('show');
+$('coordBox').addEventListener('submit',e=>{ e.preventDefault();
+  const lat=parseFloat($('latIn').value), lon=parseFloat($('lonIn').value);
+  if (!isFinite(lat)||!isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180){ toast('Latitude must be −90…90 and longitude −180…180.'); return; }
+  $('coordBox').classList.remove('show'); setPlace({ ...describePoint(lat,lon), lat, lon, kind:'point' }); });
+
+// Mode switch
+$('modeSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+function setMode(m){
+  mode=m; $('modeSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  ctlG.enabled = m==='globe'; ctlO.enabled = m==='orbit';
+  $('orbitBox').classList.toggle('show', m==='orbit');
+  if (m==='orbit'){ { buildOrbit(simNow()); lastOrbitBuild=performance.now(); orbitBuiltFor=+simNow(); } pinLbl.style.opacity='1'; }
+  else { pinLbl.style.opacity='1'; flyTo(); }
+  $('legend').firstElementChild.textContent = m==='globe' ? 'Drag to spin · scroll / pinch to zoom · tap globe to pick a spot' : 'Earth not to scale · gold arc = distance travelled since the March equinox';
+  tick(true); layout();
+}
+$('recenter').onclick=()=>{ if (mode==='orbit') orbitHome(); else flyTo(); };
+$('fmtSeg').querySelectorAll('button').forEach(b=>{ b.classList.toggle('on', (b.dataset.f==='12')===h12); b.onclick=()=>{ h12=b.dataset.f==='12'; store.set('h12',h12); $('fmtSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); tick(true); }; });
+$('moonBtn').onclick=()=>flyToMoon();
+$('collapse').onclick=()=>{ const c=$('card').classList.toggle('collapsed'); $('collapse').textContent=c?'▴':'▾'; layout(); };
+
+let toastT; function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),6500); }
+
+function fitDist(cam, radius){ const vh=cam.fov/2*D2R, hh=Math.atan(Math.tan(vh)*cam.aspect); return radius/Math.sin(Math.min(vh,hh)); }
+function globeDist(){ return fitDist(camG, innerWidth<=720 ? 1.06 : 1.12); }
+function orbitHome(){ const dir = camO.aspect<1 ? new THREE.Vector3(0,1.5,1) : new THREE.Vector3(0,.55,1); camO.position.copy(dir.normalize().multiplyScalar(fitDist(camO, camO.aspect<1?13.2:13))); ctlO.target.set(0,0,0); }
+function layout(){
+  renderer.setSize(innerWidth,innerHeight);
+  const W=innerWidth, H=innerHeight, card=$('card').getBoundingClientRect(), top=$('top').getBoundingClientRect();
+  let ox=0, oy=0;
+  if (W<=720){ oy = Math.round((card.height - top.bottom)/2 + 6); }      // centre the globe in the space between bar and card
+  else if (W>=900){ ox = -Math.round(Math.min(card.width+20, W*.32)/2); } // nudge right of the side card
+  for (const c of [camG,camO]){ c.aspect=W/H; c.setViewOffset(W,H,ox,oy,W,H); c.updateProjectionMatrix(); }
+}
+addEventListener('resize',()=>{ layout(); });
+if (innerWidth<=720){ $('card').classList.add('collapsed'); $('collapse').textContent='▴'; }
+layout(); orbitHome();
+
+/* =========================================================
+   BOOT
+   ========================================================= */
+loadText('countries-50m.json').then(t=>JSON.parse(t)).then(world=>{
+  drawMaps(world);
+  if (P.ready) addCityLights();
+  $('loading').classList.add('hide');
+}).catch(e=>{ $('loading').querySelector('p').textContent='Couldn’t load the coastline data. Please reload.'; console.error(e); });
+
+G.frame.matrix.copy(earthMatrix(sunState(simNow()))); G.frame.matrixWorldNeedsUpdate=true;
+const last=store.get('last',null);
+if (last) setPlace({ ...last }, { save:false, fly:false });
+else if (home) setPlace({ ...home, kind:'device' }, { save:false, fly:false });
+else setPlace(deviceApprox(), { save:false, fly:false });
+// start camera already facing the place
+{ const d=globeDist(); camG.position.copy(pinWorld().normalize().multiplyScalar(d)); follow=true; }
+frame();
+try{ if (window.top===window && !store.get('last',null) && !home) setTimeout(()=>$('locBtn').click(), 600); }catch(e){}
+window.__dbg = { cam:camG, moonState, moonAltAt, moonInfo, simNow, sunState, earthMatrix, ecefToScene, sunDirScene, llToEcef, setPlace, setMode, get current(){return current;} };
+</script>
+</body>
+</html>

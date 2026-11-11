@@ -49,3 +49,27 @@ need network/device access, so they work fully on the live site above; a
 sandboxed preview (like a Claude artifact) falls back to clicking the globe
 or typing coordinates. Open the file directly in a browser, or visit the live
 site above.
+
+## globe/ — Where & When (Live Globe)
+
+An upgraded live 3D globe (Three.js). Earth sits on its real 23.4° tilt and
+turns in real time, with day, twilight and night computed from the actual Sun
+position. The Moon is placed from a lunar ephemeris and lit by the Sun, so its
+phase is correct. The map is drawn from Natural Earth coastlines, with
+night-side city lights placed at real city coordinates.
+
+- **Find a place:** "Use My Location" (device GPS, asked automatically on first
+  visit), search about 193,000 cities, towns and villages offline (GeoNames
+  `cities500`, including local-language names such as "München"), type
+  coordinates, or tap the globe.
+- **Time panel:**
+  - your device clock, or the place's exact IANA time zone; 12h/24h
+  - sunrise, sunset and day length
+  - Moon phase, moonrise and moonset, and the next full and new moon
+- **City names** appear on the globe and get denser as you zoom in.
+- **Time travel:** step ±1 hour, day or month, or play at 1 hr/sec or 1 day/sec.
+- **"Your Orbit Around the Sun":** Earth's current spot on its yearly path, the
+  next equinoxes and solstices, the distance to the Sun and orbital speed.
+
+Everything runs in the browser. The only network use is loading Three.js and
+d3 from public CDNs.
