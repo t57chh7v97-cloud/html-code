@@ -91,8 +91,14 @@ night-side city lights placed at real city coordinates.
   - 🎆 New Year (Dec 30 – Jan 15): a countdown to midnight at your pin, and a
     30-second fireworks show each time you open the app
 
-  You can preview any of them from ⏱ Time travel, and turn them off with the
-  🎉 button.
+  Developers can preview any of them from ⏱ Time travel. Anyone can turn
+  them off with the 🎉 button.
+- **Developer mode:** ⏱ Time travel, including the holiday previews, is
+  hidden unless you unlock it. Tap the big clock 5 times, or open the page with
+  `#dev`, then enter the passphrase. It stays unlocked on that device until you
+  tap 🔒 Lock. Only a SHA-256 hash of the passphrase is stored in the page. The
+  site has no server, so this hides the feature from normal use but can't stop
+  someone who edits the page code.
 
 Everything runs in the browser. The only network use is loading Three.js and
 d3 from public CDNs.

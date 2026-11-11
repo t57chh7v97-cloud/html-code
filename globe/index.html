@@ -93,6 +93,16 @@
   .lbl.santa{background:rgba(200,30,40,.92);color:#fff;border-color:transparent;font-size:13px}
   .btn.tog.on{border-color:rgba(255,200,97,.55);color:var(--accent)}
   .clbl{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;white-space:nowrap;font-size:11.5px;font-weight:500;color:#e6ecfa;text-shadow:0 0 3px #000,0 0 6px #000,0 1px 2px #000;display:flex;align-items:center;gap:5px;will-change:transform;padding:1px 2px}
+  #devDlg{position:fixed;inset:0;z-index:30;display:none;place-items:center;background:rgba(0,0,0,.55);backdrop-filter:blur(3px)}
+  #devDlg.show{display:grid}
+  #devForm{width:min(360px,calc(100vw - 32px));padding:20px;display:flex;flex-direction:column;gap:10px}
+  #devTitle{font-size:18px;font-weight:700} #devForm .dsub{color:var(--muted);font-size:13.5px}
+  #devPass{padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.3);outline:none;font-size:16px}
+  #devPass:focus{border-color:rgba(111,182,255,.6)}
+  #devErr{color:#ff7a7a;font-size:13px;min-height:16px}
+  #devForm .drow{display:flex;gap:8px;justify-content:flex-end}
+  #devForm.shake{animation:shake .35s}
+  @keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
   #overChip{position:fixed;left:50%;top:20px;transform:translateX(-50%);z-index:5;padding:9px 14px;border-radius:999px;font-size:14px;font-weight:600;white-space:nowrap;max-width:calc(100vw - 24px);overflow:hidden;text-overflow:ellipsis;
     background:rgba(16,60,40,.85);border-color:rgba(120,220,160,.35);color:#fff6d6}
   @media (min-width:721px) and (max-width:1180px){ #overChip{top:auto;bottom:20px} }
@@ -200,13 +210,13 @@
     <button class="btn primary" id="locBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7.5"/></svg><span class="long">Use My Location</span><span class="short">My Location</span></button>
     <div class="seg" id="modeSeg"><button data-m="globe" class="on">Globe</button><button data-m="orbit"><span class="long">Your </span>Orbit<span class="long"> Around the Sun</span></button></div>
     <button class="btn" id="coordToggle" title="Enter coordinates">⌖<span class="long"> Coordinates</span></button>
-    <button class="btn tog" id="tBtn" title="Time travel">⏱<span class="long"> Time travel</span></button>
+    <button class="btn tog" id="tBtn" title="Time travel (developer)" style="display:none">⏱<span class="long"> Time travel</span></button>
     <button class="btn tog" id="namesBtn" title="Show city names">Aa<span class="long"> Names</span></button>
     <button class="btn primary" id="santaBack" style="display:none">🌍 Back to Earth</button>
     <button class="btn tog" id="holBtn" title="Holiday themes">🎉<span class="long"> Holidays</span></button>
   </div>
   <div id="timeBar" class="glass">
-    <div class="tbTop"><span>Showing <b id="simWhen"></b></span><button class="btn mini" id="liveBtn">● Live</button></div>
+    <div class="tbTop"><span>🛠 Dev · Showing <b id="simWhen"></b></span><span style="display:flex;gap:6px"><button class="btn mini" id="liveBtn">● Live</button><button class="btn mini" id="devLock" title="Lock developer mode">🔒 Lock</button></span></div>
     <div class="tbRow">
       <button class="btn mini" data-step="-1mo">−1 mo</button><button class="btn mini" data-step="-1d">−1 d</button><button class="btn mini" data-step="-1h">−1 h</button>
       <button class="btn mini" data-step="1h">+1 h</button><button class="btn mini" data-step="1d">+1 d</button><button class="btn mini" data-step="1mo">+1 mo</button>
@@ -282,6 +292,11 @@
 <div id="credit">Coastlines: Natural Earth · 193k places: GeoNames · Santa route: Google Santa Tracker<br>Sun &amp; Moon positions computed live from your clock</div>
 <div id="toast" class="glass"></div>
 <div id="overChip" class="glass" style="display:none"></div>
+<div id="devDlg" role="dialog" aria-modal="true" aria-labelledby="devTitle"><form id="devForm" class="glass">
+  <div id="devTitle">🛠 Developer access</div><div class="dsub">Enter the passphrase to unlock time travel on this device.</div>
+  <input id="devPass" type="password" autocomplete="current-password" placeholder="Passphrase" aria-label="Passphrase">
+  <div id="devErr" role="alert"></div>
+  <div class="drow"><button type="button" class="btn" id="devCancel">Cancel</button><button type="submit" class="btn primary">Unlock</button></div></form></div>
 <div id="bedtime" role="alert"><button id="bedClose" aria-label="Close">✕</button><div class="big">🎅 Santa's coming to your house soon —<br>go to bed now! 🛏️</div><div class="sub" id="bedSub"></div></div>
 <div id="loading"><div><div class="spin"></div><p>Building Earth from coastline data…</p></div></div>
 
@@ -1007,7 +1022,30 @@ document.querySelectorAll('#timeBar [data-step]').forEach(b=>b.onclick=()=>{
   simOffset += t-now; if (mode==='globe' && current) follow=true; refreshTravel(); });
 $('speedSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>setSpeed(+b.dataset.v));
 $('liveBtn').onclick=()=>{ simOffset=0; setSpeed(1); };
-$('tBtn').onclick=()=>{ $('timeBar').classList.toggle('show'); layout(); };
+/* ---- developer lock: only someone with the passphrase sees time travel.
+   The page stores just a SHA-256 fingerprint of it; this hides the feature from normal use,
+   but like any front-end-only check it can't stop someone who edits the page's code. */
+const DEV_HASH='ee381e5cac92c4451c68435a6e21d7470f383efe30df9e2974ad84e47c21ed77';
+let isDev = store.get('dev','')===DEV_HASH;
+async function sha256hex(t){ const b=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
+function applyDev(){
+  $('tBtn').style.display = isDev ? '' : 'none';
+  if (!isDev){ $('timeBar').classList.remove('show'); if (simOffset!==0 || simSpeed!==1){ simOffset=0; setSpeed(1); } }
+  layout();
+}
+function openDevDlg(){ if (isDev){ toast('Developer mode is already on — ⏱ Time travel is in the top bar.'); return; } $('devErr').textContent=''; $('devPass').value=''; $('devDlg').classList.add('show'); setTimeout(()=>$('devPass').focus(),50); }
+$('devCancel').onclick=()=>$('devDlg').classList.remove('show');
+$('devDlg').addEventListener('pointerdown',e=>{ if (e.target===$('devDlg')) $('devDlg').classList.remove('show'); });
+$('devForm').addEventListener('submit',async e=>{ e.preventDefault();
+  let h=''; try{ h=await sha256hex($('devPass').value.trim()); }catch(err){ $('devErr').textContent='This browser can’t check passphrases here (needs a secure https page).'; return; }
+  if (h===DEV_HASH){ isDev=true; store.set('dev',DEV_HASH); $('devDlg').classList.remove('show'); applyDev(); $('timeBar').classList.add('show'); layout(); toast('🛠 Developer mode on for this device. ⏱ Time travel unlocked.'); }
+  else { $('devErr').textContent='Wrong passphrase.'; const f=$('devForm'); f.classList.remove('shake'); void f.offsetWidth; f.classList.add('shake'); } });
+$('devLock').onclick=()=>{ isDev=false; store.set('dev',''); applyDev(); toast('🔒 Developer mode locked. Back to live time.'); };
+// secret ways in: tap the clock 5 times quickly, or open the page with #dev
+{ let taps=[]; $('clock').addEventListener('click',()=>{ const t=performance.now(); taps=taps.filter(x=>t-x<3000); taps.push(t); if (taps.length>=5){ taps=[]; openDevDlg(); } }); }
+function checkDevHash(){ if (location.hash==='#dev'){ try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){} openDevDlg(); } }
+addEventListener('hashchange',checkDevHash); setTimeout(checkDevHash,300);
+$('tBtn').onclick=()=>{ if (!isDev) return; $('timeBar').classList.toggle('show'); layout(); };
 $('namesBtn').onclick=()=>{ showNames=!showNames; store.set('names',showNames); $('namesBtn').classList.toggle('on',showNames); };
 $('namesBtn').classList.toggle('on',showNames);
 setInterval(()=>{ if ($('timeBar').classList.contains('show')) $('simWhen').textContent = simNow().toLocaleString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',hour12:h12}); }, 250);
@@ -1358,7 +1396,7 @@ function updateHoliday(now){
       const v=santaVisitFor(current, santa.y||lpYear(now));
       checkBedtime(now, v);
       if (santaCardOn()) html += `<small>🎅 Santa's stop nearest you: ${esc(placeName(v.stop))}</small>`;
-      else if (dd>=1) html += `<small>Santa's route comes from Google Santa Tracker — try ⏱ Time travel → 🎅 Christmas Eve</small>`;
+      else if (dd>=1) html += `<small>Santa's route comes from Google Santa Tracker — track him live on Christmas Eve</small>`;
     } else {
       const label = a.k==='thanksgiving' && a.ca ? 'Thanksgiving (Canada)' : info.name;
       html = dd>1 ? `${info.icon} ${label} in ${dd} days` : dd===1 ? `${info.icon} ${label} is tomorrow!` : dd===0 ? `${info.icon} ${info.greet}` : `${info.icon} Hope you had a great ${label}!`;
@@ -1611,7 +1649,7 @@ function layout(){
 }
 addEventListener('resize',()=>{ layout(); });
 if (innerWidth<=720){ $('card').classList.add('collapsed'); $('collapse').textContent='▴'; }
-layout(); orbitHome();
+layout(); orbitHome(); applyDev();
 
 /* =========================================================
    BOOT
@@ -1631,7 +1669,7 @@ else setPlace(deviceApprox(), { save:false, fly:false });
 { const d=globeDist(); camG.position.copy(pinWorld().normalize().multiplyScalar(d)); follow=true; }
 frame();
 try{ if (window.top===window && !store.get('last',null) && !home) setTimeout(()=>$('locBtn').click(), 600); }catch(e){}
-window.__dbg = { setOffset:v=>{simOffset=v;}, tick:()=>tick(true), cam:camG, moonState, moonAltAt, moonInfo, simNow, sunState, earthMatrix, ecefToScene, sunDirScene, llToEcef, setPlace, setMode, get current(){return current;} };
+if (isDev || /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__dbg = { setOffset:v=>{simOffset=v;}, tick:()=>tick(true), cam:camG, moonState, moonAltAt, moonInfo, simNow, sunState, earthMatrix, ecefToScene, sunDirScene, llToEcef, setPlace, setMode, get current(){return current;} };
 </script>
 </body>
 </html>
