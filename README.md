@@ -75,10 +75,14 @@ night-side city lights placed at real city coordinates.
   adds its own colours, city lights, effects and a countdown:
   - 🎃 Halloween (Oct 1 – Nov 1): purple-and-orange lights and bats
   - 🦃 Thanksgiving (Nov 2 – Thanksgiving Day): falling leaves
-  - 🎄 Christmas (day after Thanksgiving – Dec 26): snow, multicolour lights,
-    and a Santa tracker that follows the midnight line on Christmas Eve
-  - 🎆 New Year (Dec 30 – Jan 15): a midnight countdown and fireworks over
-    each city as its own time zone reaches midnight
+  - 🎄 Christmas (day after Thanksgiving – Dec 26): snow and multicolour
+    lights. On Christmas Eve, a Santa tracker flies **Google Santa Tracker's
+    real 420-stop route** (the 2019 flight, shifted to this year), with his
+    trail, presents delivered, his next stop and the stop nearest your pin. A
+    "Santa's coming to your house soon — go to bed now!" alert appears when he
+    gets close.
+  - 🎆 New Year (Dec 30 – Jan 15): a countdown to midnight at your pin, and a
+    30-second fireworks show each time you open the app
 
   You can preview any of them from ⏱ Time travel, and turn them off with the
   🎉 button.
