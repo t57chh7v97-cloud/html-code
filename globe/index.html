@@ -1788,7 +1788,7 @@ const Chip=(()=>{
 })();
 
 let musicOn=false, musicSrc=store.get('musicSrc','chip'), musicVol=store.get('musicVol',.8);
-const audioEl=new Audio(); audioEl.loop=true; audioEl.preload='none';
+const audioEl=new Audio(); audioEl.loop=true; audioEl.preload='none'; audioEl.setAttribute('playsinline','');
 let clubAvailable=false, localName=store.get('musicLocalName','');
 // club song: present only if the developer added globe/music/christmas.mp3
 fetch('music/christmas.mp3',{method:'HEAD'}).then(r=>{ clubAvailable=r.ok && /audio|mpeg|octet/.test(r.headers.get('content-type')||'audio'); renderMusicMenu(); }).catch(()=>{});
@@ -1818,10 +1818,17 @@ async function ytPlay(){
 }
 function ytStop(){ try{ ytPlayer&&ytPlayer.pauseVideo(); }catch(e){} $('musicCard').style.display='none'; }
 
+/* ---- iPhone/iPad: play through the ring/silent switch like a video does ---- */
+const silentKeeper=(()=>{ // 0.5 s of silence as a tiny WAV
+  const sr=8000, n=4000, b=new ArrayBuffer(44+n*2), v=new DataView(b), w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i));};
+  w(0,'RIFF'); v.setUint32(4,36+n*2,true); w(8,'WAVE'); w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true); v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true); w(36,'data'); v.setUint32(40,n*2,true);
+  const a=new Audio(URL.createObjectURL(new Blob([b],{type:'audio/wav'}))); a.loop=true; a.setAttribute('playsinline',''); a.volume=0.01; return a; })();
+function unlockAudioSession(){ try{ if (navigator.audioSession) navigator.audioSession.type='playback'; }catch(e){} try{ const p=silentKeeper.play(); if (p&&p.catch) p.catch(()=>{}); }catch(e){} }
+
 /* ---- one play/stop for whichever source is chosen ---- */
 let nowPlaying='';
 async function musicStart(){
-  musicOn=true; $('musicBtn').classList.add('on');
+  musicOn=true; $('musicBtn').classList.add('on'); unlockAudioSession();
   if (musicSrc==='chip'){ Chip.setVol(musicVol); Chip.start(); nowPlaying=Chip.song; }
   else if (musicSrc==='club' || musicSrc==='local'){
     const url = musicSrc==='club' ? 'music/christmas.mp3' : await localSongURL();
@@ -1833,7 +1840,7 @@ async function musicStart(){
   renderMusicMenu();
 }
 function musicStopped(){ musicOn=false; $('musicBtn').classList.remove('on'); renderMusicMenu(); }
-function musicStop(){ Chip.stop(); try{ audioEl.pause(); }catch(e){} ytStop(); musicStopped(); }
+function musicStop(){ Chip.stop(); try{ audioEl.pause(); }catch(e){} try{ silentKeeper.pause(); }catch(e){} ytStop(); musicStopped(); }
 Chip.onSong=name=>{ if (musicSrc==='chip'){ nowPlaying=name; renderMusicMenu(); } };
 
 /* ---- the 🎵 menu ---- */
