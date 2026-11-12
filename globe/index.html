@@ -100,6 +100,17 @@
   .lbl.santa{width:34px;height:34px;padding:0;border-radius:50%;display:grid;place-items:center;font-size:20px;line-height:1;background:radial-gradient(circle at 40% 35%,#ff4b4b,#c8102e 70%);border:2.5px solid #f2c14e;box-shadow:0 3px 10px rgba(0,0,0,.55),0 0 0 3px rgba(255,255,255,.85)}
   .btn.tog.on{border-color:rgba(255,200,97,.55);color:var(--accent)}
   .clbl{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;white-space:nowrap;font-size:11.5px;font-weight:500;color:#e6ecfa;text-shadow:0 0 3px #000,0 0 6px #000,0 1px 2px #000;display:flex;align-items:center;gap:5px;will-change:transform;padding:1px 2px}
+  #musicMenu{position:fixed;z-index:8;display:none;width:min(320px,calc(100vw - 16px));padding:12px;border-radius:14px;font-size:13.5px}
+  #musicMenu.show{display:block}
+  #musicMenu .mtop{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+  #musicMenu .mtop input[type=range]{flex:1;accent-color:var(--accent)}
+  #musicMenu .mnow{color:var(--muted);font-size:12.5px;margin-bottom:8px} #musicMenu .mnow b{color:var(--text)}
+  #musicMenu .mopt{display:flex;gap:9px;align-items:flex-start;padding:8px;border-radius:10px;cursor:pointer}
+  #musicMenu .mopt.on{background:rgba(255,255,255,.07)}
+  #musicMenu .mopt input{margin-top:3px;accent-color:var(--accent)}
+  #musicMenu .mopt small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+  #musicMenu .mopt a{color:var(--accent)}
+  #musicMenu button[disabled]{opacity:.4}
   #musicCard{position:fixed;z-index:6;right:20px;bottom:20px;padding:8px;border-radius:14px;width:216px}
   #musicCard .mhead{cursor:grab;touch-action:none;user-select:none;display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:600;margin:0 2px 6px}
   #musicCard .mhead button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:15px;padding:2px 4px}
@@ -311,6 +322,7 @@
 <div id="credit">Coastlines: Natural Earth · 193k places: GeoNames · Santa route: Google Santa Tracker<br>Sun &amp; Moon positions computed live from your clock</div>
 <div id="toast" class="glass"></div>
 <div id="overChip" class="glass" style="display:none"></div>
+<div id="musicMenu" class="glass" role="menu"></div><input id="mFile" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg" hidden>
 <div id="musicCard" class="glass" style="display:none"><div class="mhead" title="Drag to move"><span>⠿ 🎵 Christmas music</span><button id="musicOff" title="Turn music off" aria-label="Turn music off">✕</button></div><div id="ytBox"></div></div>
 <div id="devDlg" role="dialog" aria-modal="true" aria-labelledby="devTitle"><form id="devForm" class="glass">
   <div id="devTitle">🛠 Developer access</div><div class="dsub">Enter the passphrase to unlock time travel on this device.</div>
@@ -1692,31 +1704,167 @@ $('recenter').onclick=()=>{ if (mode==='orbit') orbitHome(); else flyTo(); };
 $('fmtSeg').querySelectorAll('button').forEach(b=>{ b.classList.toggle('on', (b.dataset.f==='12')===h12); b.onclick=()=>{ h12=b.dataset.f==='12'; store.set('h12',h12); $('fmtSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); tick(true); }; });
 $('moonBtn').onclick=()=>flyToMoon();
 $('santaZoom').onclick=()=>enterSantaCam();
-/* ---- Christmas music: YouTube's own embedded player (kept visible at 200×200, as YouTube requires).
-   Browsers only allow sound after a tap, so music starts from the 🎵 button. */
+/* =========================================================
+   CHRISTMAS MUSIC — four sources, chosen in the 🎵 menu
+   • Chiptune carols: public-domain carols synthesised in the browser (no player, no download)
+   • Club song: globe/music/christmas.mp3 in the repo, if present (plays hidden)
+   • A song from this device: picked by the viewer, kept only in their browser (plays hidden)
+   • YouTube: YouTube's own player, which must stay visible at 200×200
+   ========================================================= */
+const Chip=(()=>{
+  // melodies: NOTE+octave:beats, R = rest · chords: one root per bar (bass plays root/fifth)
+  const SONGS=[
+    { name:'Jingle Bells', bpm:168, bpb:4,
+      mel:`G4:1 E5:1 D5:1 C5:1 G4:3 G4:.5 G4:.5  G4:1 E5:1 D5:1 C5:1 A4:4  A4:1 F5:1 E5:1 D5:1 B4:4  G5:1 G5:1 F5:1 D5:1 E5:4
+           G4:1 E5:1 D5:1 C5:1 G4:3 G4:.5 G4:.5  G4:1 E5:1 D5:1 C5:1 A4:3 A4:1  A4:1 F5:1 E5:1 D5:1 G5:1 G5:1 G5:1 G5:1  A5:1 G5:1 F5:1 D5:1 C5:2 R:2
+           E5:1 E5:1 E5:2 E5:1 E5:1 E5:2 E5:1 G5:1 C5:1.5 D5:.5 E5:4  F5:1 F5:1 F5:1.5 F5:.5 F5:1 E5:1 E5:1 E5:.5 E5:.5 E5:1 D5:1 D5:1 E5:1 D5:2 G5:2
+           E5:1 E5:1 E5:2 E5:1 E5:1 E5:2 E5:1 G5:1 C5:1.5 D5:.5 E5:4  F5:1 F5:1 F5:1.5 F5:.5 F5:1 E5:1 E5:1 E5:.5 E5:.5 G5:1 G5:1 F5:1 D5:1 C5:4`,
+      chords:'C C C F F G G C C C C F F G G C  C C C C F C D G C C C C F C G C' },
+    { name:'Deck the Halls', bpm:136, bpb:4,
+      mel:`G5:1.5 F5:.5 E5:1 D5:1 C5:1 D5:1 E5:1 C5:1  D5:.5 E5:.5 F5:.5 D5:.5 E5:1.5 D5:.5 C5:1 B4:1 C5:2
+           G5:1.5 F5:.5 E5:1 D5:1 C5:1 D5:1 E5:1 C5:1  D5:.5 E5:.5 F5:.5 D5:.5 E5:1.5 D5:.5 C5:1 B4:1 C5:2
+           D5:1.5 E5:.5 F5:1 D5:1 E5:1.5 F5:.5 G5:1 D5:1  E5:.5 F5:.5 G5:1 A5:.5 B5:.5 C6:1 B5:1 A5:1 G5:2
+           G5:1.5 F5:.5 E5:1 D5:1 C5:1 D5:1 E5:1 C5:1  A5:.5 A5:.5 A5:.5 A5:.5 G5:1.5 F5:.5 E5:1 D5:1 C5:2`,
+      chords:'C C G C C C G C G C C G C C F C' },
+    { name:'We Wish You a Merry Christmas', bpm:156, bpb:3,
+      mel:`R:2 G4:1  C5:1 C5:.5 D5:.5 C5:.5 B4:.5  A4:1 A4:1 A4:1  D5:1 D5:.5 E5:.5 D5:.5 C5:.5  B4:1 G4:1 G4:1
+           E5:1 E5:.5 F5:.5 E5:.5 D5:.5  C5:1 A4:1 G4:.5 G4:.5  A4:1 D5:1 B4:1  C5:2 G4:1
+           C5:1 C5:1 C5:1  B4:2 B4:1  C5:1 B4:1 A4:1  G4:2 D5:1  E5:1 D5:1 C5:1  G5:1 G4:1 G4:.5 G4:.5  A4:1 D5:1 B4:1  C5:3`,
+      chords:'C C F D G E A G C C G A G C C G C' },
+  ];
+  const NOTE={C:0,'C#':1,D:2,'D#':3,E:4,F:5,'F#':6,G:7,'G#':8,A:9,'A#':10,B:11};
+  const midiOf=t=>{ const m=t.match(/^([A-G]#?)(\d)$/); return m ? 12*(+m[2]+1)+NOTE[m[1]] : null; };
+  const freq=m=>440*Math.pow(2,(m-69)/12);
+  function build(song){
+    const spb=60/song.bpm, ev=[]; let b=0;
+    for (const tok of song.mel.trim().split(/\s+/)){ const [n,d]=tok.split(':'); const beats=+d; const m=midiOf(n); if (m!=null) ev.push({k:'lead',t:b*spb,d:beats*spb,m}); b+=beats; }
+    const bars=Math.ceil(b/song.bpb), roots=song.chords.trim().split(/\s+/);
+    for (let i=0;i<bars;i++){ const r=midiOf((roots[i%roots.length]||'C')+'2'); const fifth=r+7;
+      for (let j=0;j<song.bpb;j++){ const t=(i*song.bpb+j)*spb; if (t>=b*spb) break;
+        ev.push({k:'bass',t,d:spb*.9,m: j===0?r : (song.bpb===4&&j===2? r+12 : fifth)});
+        ev.push({k:'hat',t:t+spb*.5,d:.04}); if (j===0) ev.push({k:'kick',t,d:.12}); } }
+    ev.sort((a,b)=>a.t-b.t); return { ev, len:b*spb };
+  }
+  let ctx=null, master=null, pulse=null, noise=null, timer=null, playing=false, idx=0, cur=null, evI=0, t0=0, vol=.8, onSong=null;
+  function ensure(){
+    if (ctx) return; const AC=window.AudioContext||window.webkitAudioContext; ctx=new AC();
+    const n=64, re=new Float32Array(n), im=new Float32Array(n); for (let k=1;k<n;k++){ re[k]=0; im[k]=(2/(k*Math.PI))*Math.sin(Math.PI*k*0.25); } pulse=ctx.createPeriodicWave(re,im); // 25% duty pulse, the classic console lead
+    noise=ctx.createBuffer(1,ctx.sampleRate*.5,ctx.sampleRate); const d=noise.getChannelData(0); for (let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+  }
+  function voice(e,when){
+    const g=ctx.createGain(); const lift=ctx.createGain(); lift.gain.value=1.45; g.connect(lift); lift.connect(master); const end=when+e.d;
+    if (e.k==='lead'){ const o=ctx.createOscillator(); o.setPeriodicWave(pulse); o.frequency.value=freq(e.m);
+      const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=3200; o.connect(lp); lp.connect(g);
+      g.gain.setValueAtTime(0,when); g.gain.linearRampToValueAtTime(.16,when+.006); g.gain.exponentialRampToValueAtTime(.09,when+.09); g.gain.setValueAtTime(.09,Math.max(when+.09,end-.03)); g.gain.linearRampToValueAtTime(0,end);
+      o.start(when); o.stop(end+.02);
+      const bell=ctx.createOscillator(); bell.type='triangle'; bell.frequency.value=freq(e.m+12); const bg=ctx.createGain(); bell.connect(bg); bg.connect(lift); // soft sparkle an octave up
+      bg.gain.setValueAtTime(.05,when); bg.gain.exponentialRampToValueAtTime(.001,when+Math.min(.5,e.d+.2)); bell.start(when); bell.stop(when+.55); }
+    else if (e.k==='bass'){ const o=ctx.createOscillator(); o.type='triangle'; o.frequency.value=freq(e.m); o.connect(g);
+      g.gain.setValueAtTime(.22,when); g.gain.linearRampToValueAtTime(.16,when+e.d*.7); g.gain.linearRampToValueAtTime(0,end); o.start(when); o.stop(end+.02); }
+    else if (e.k==='hat'){ const s=ctx.createBufferSource(); s.buffer=noise; const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=7000; s.connect(hp); hp.connect(g);
+      g.gain.setValueAtTime(.05,when); g.gain.exponentialRampToValueAtTime(.001,when+.05); s.start(when); s.stop(when+.06); }
+    else if (e.k==='kick'){ const o=ctx.createOscillator(); o.type='triangle'; o.frequency.setValueAtTime(150,when); o.frequency.exponentialRampToValueAtTime(45,when+.1); o.connect(g);
+      g.gain.setValueAtTime(.3,when); g.gain.exponentialRampToValueAtTime(.001,when+.13); o.start(when); o.stop(when+.15); }
+  }
+  function loadSong(i, at){ idx=(i+SONGS.length)%SONGS.length; cur=build(SONGS[idx]); evI=0; t0=at; onSong&&onSong(SONGS[idx].name); }
+  function tick(){
+    if (!playing) return; const ahead=ctx.currentTime+.25;
+    while (evI<cur.ev.length && t0+cur.ev[evI].t<ahead){ const e=cur.ev[evI++]; voice(e,Math.max(ctx.currentTime,t0+e.t)); }
+    if (evI>=cur.ev.length && ctx.currentTime>t0+cur.len+1.2) loadSong(idx+1, ctx.currentTime+.1);
+  }
+  function start(){ ensure(); ctx.resume(); if (playing) return; playing=true;
+    master=ctx.createGain(); master.gain.value=0; master.connect(ctx.destination); master.gain.linearRampToValueAtTime(vol,ctx.currentTime+.3);
+    loadSong(idx, ctx.currentTime+.15); timer=setInterval(tick,25); tick(); }
+  function stop(){ if (!playing) return; playing=false; clearInterval(timer); const m=master; try{ m.gain.cancelScheduledValues(ctx.currentTime); m.gain.setValueAtTime(m.gain.value,ctx.currentTime); m.gain.linearRampToValueAtTime(0,ctx.currentTime+.25); setTimeout(()=>m.disconnect(),400); }catch(e){} }
+  function next(){ if (!playing){ idx=(idx+1)%SONGS.length; onSong&&onSong(SONGS[idx].name); return; } stop(); idx=(idx+1)%SONGS.length; setTimeout(start,300); }
+  function setVol(v){ vol=v; if (master && playing) master.gain.setTargetAtTime(v,ctx.currentTime,.05); }
+  // render a song offline (used to preview/check the mix); returns an AudioBuffer
+  async function render(i){ const song=SONGS[i], b=build(song); const OC=window.OfflineAudioContext||window.webkitOfflineAudioContext; const oc=new OC(1,Math.ceil((b.len+1)*44100),44100);
+    const keep=[ctx,master]; ctx=oc; ensureParts(); master=oc.createGain(); master.gain.value=vol; master.connect(oc.destination);
+    for (const e of b.ev) voice(e,e.t+.05); const buf=await oc.startRendering(); [ctx,master]=keep; return buf; }
+  function ensureParts(){ const n=64, re=new Float32Array(n), im=new Float32Array(n); for (let k=1;k<n;k++){ im[k]=(2/(k*Math.PI))*Math.sin(Math.PI*k*0.25); } pulse=ctx.createPeriodicWave(re,im);
+    noise=ctx.createBuffer(1,ctx.sampleRate*.5,ctx.sampleRate); const d=noise.getChannelData(0); for (let i=0;i<d.length;i++) d[i]=Math.random()*2-1; }
+  return { render, start, stop, next, setVol, get playing(){return playing;}, get song(){return SONGS[idx].name;}, set onSong(f){onSong=f;}, songs:SONGS, _build:build };
+})();
+
+let musicOn=false, musicSrc=store.get('musicSrc','chip'), musicVol=store.get('musicVol',.8);
+const audioEl=new Audio(); audioEl.loop=true; audioEl.preload='none';
+let clubAvailable=false, localName=store.get('musicLocalName','');
+// club song: present only if the developer added globe/music/christmas.mp3
+fetch('music/christmas.mp3',{method:'HEAD'}).then(r=>{ clubAvailable=r.ok && /audio|mpeg|octet/.test(r.headers.get('content-type')||'audio'); renderMusicMenu(); }).catch(()=>{});
+// a viewer's own song is kept in their browser (IndexedDB) so it's still there next visit
+const idb={ open(){ return new Promise((res,rej)=>{ try{ const r=indexedDB.open('wwglobe',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){rej(e);} }); },
+  async get(k){ const db=await this.open(); return new Promise((res,rej)=>{ const q=db.transaction('kv').objectStore('kv').get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); },
+  async set(k,v){ const db=await this.open(); return new Promise((res,rej)=>{ const t=db.transaction('kv','readwrite'); t.objectStore('kv').put(v,k); t.oncomplete=res; t.onerror=()=>rej(t.error); }); } };
+let localURL=null;
+async function localSongURL(){ if (localURL) return localURL; try{ const b=await idb.get('song'); if (b){ localURL=URL.createObjectURL(b); return localURL; } }catch(e){} return null; }
+
+/* ---- YouTube (visible player only) ---- */
 const MUSIC_ID='gqVTwnMkTEg';
-let musicOn=false, ytPlayer=null, ytLoading=null;
+let ytPlayer=null, ytLoading=null;
 function loadYT(){ if (ytLoading) return ytLoading;
   ytLoading=new Promise((res,rej)=>{ if (window.YT && YT.Player) return res();
     const prev=window.onYouTubeIframeAPIReady; window.onYouTubeIframeAPIReady=()=>{ prev&&prev(); res(); };
     const sc=document.createElement('script'); sc.src='https://www.youtube.com/iframe_api'; sc.onerror=()=>rej(new Error('blocked')); document.head.appendChild(sc);
     setTimeout(()=>rej(new Error('timeout')),9000); });
   ytLoading.catch(()=>{ ytLoading=null; }); return ytLoading; }
-async function setMusic(on){
-  musicOn=on; store.set('music',on); $('musicBtn').classList.toggle('on',on);
-  if (!on){ try{ ytPlayer&&ytPlayer.pauseVideo(); }catch(e){} $('musicCard').style.display='none'; return; }
+async function ytPlay(){
   $('musicCard').style.display='';
-  try{ await loadYT(); }catch(e){ $('musicCard').style.display='none'; musicOn=false; $('musicBtn').classList.remove('on');
-    toast('🎵 Music can’t load here — YouTube is blocked on this page. It works on the GitHub site.'); return; }
-  if (!ytPlayer){
-    ytPlayer=new YT.Player('ytBox',{ width:200, height:200, videoId:MUSIC_ID,
-      playerVars:{ autoplay:1, loop:1, playlist:MUSIC_ID, playsinline:1, rel:0, controls:1 },
-      events:{ onReady:e=>{ try{ e.target.setVolume(60); if (musicOn) e.target.playVideo(); }catch(_){} },
-               onError:e=>{ toast(e.data===101||e.data===150 ? '🎵 The video’s owner doesn’t allow it to play on other sites.' : '🎵 That video couldn’t play.'); } } });
-  } else { try{ ytPlayer.playVideo(); }catch(e){} }
+  try{ await loadYT(); }catch(e){ $('musicCard').style.display='none'; toast('🎵 YouTube is blocked on this page — try 🎹 Chiptune carols, or use the GitHub site.'); musicStopped(); return; }
+  if (!ytPlayer){ ytPlayer=new YT.Player('ytBox',{ width:200, height:200, videoId:MUSIC_ID, playerVars:{ autoplay:1, loop:1, playlist:MUSIC_ID, playsinline:1, rel:0, controls:1 },
+      events:{ onReady:e=>{ try{ e.target.setVolume(Math.round(musicVol*100)); if (musicOn && musicSrc==='yt') e.target.playVideo(); }catch(_){} },
+               onError:e=>{ toast(e.data===101||e.data===150 ? '🎵 The video’s owner doesn’t allow it to play on other sites.' : '🎵 That video couldn’t play.'); } } }); }
+  else { try{ ytPlayer.setVolume(Math.round(musicVol*100)); ytPlayer.playVideo(); }catch(e){} }
 }
-$('musicBtn').onclick=()=>setMusic(!musicOn);
-// drag the player by its title bar; the spot is remembered on this device
+function ytStop(){ try{ ytPlayer&&ytPlayer.pauseVideo(); }catch(e){} $('musicCard').style.display='none'; }
+
+/* ---- one play/stop for whichever source is chosen ---- */
+let nowPlaying='';
+async function musicStart(){
+  musicOn=true; $('musicBtn').classList.add('on');
+  if (musicSrc==='chip'){ Chip.setVol(musicVol); Chip.start(); nowPlaying=Chip.song; }
+  else if (musicSrc==='club' || musicSrc==='local'){
+    const url = musicSrc==='club' ? 'music/christmas.mp3' : await localSongURL();
+    if (!url){ toast('🎵 Pick a song file first.'); musicStopped(); return; }
+    if (audioEl.src!==new URL(url,location.href).href) audioEl.src=url; audioEl.volume=musicVol;
+    try{ await audioEl.play(); nowPlaying = musicSrc==='club' ? 'Club song' : (localName||'Your song'); }catch(e){ toast('🎵 That song couldn’t play here.'); musicStopped(); return; } }
+  else if (musicSrc==='yt'){ await ytPlay(); nowPlaying='YouTube video'; }
+  try{ if ('mediaSession' in navigator) navigator.mediaSession.metadata=new MediaMetadata({title:nowPlaying, artist:'Where & When · Christmas'}); }catch(e){}
+  renderMusicMenu();
+}
+function musicStopped(){ musicOn=false; $('musicBtn').classList.remove('on'); renderMusicMenu(); }
+function musicStop(){ Chip.stop(); try{ audioEl.pause(); }catch(e){} ytStop(); musicStopped(); }
+Chip.onSong=name=>{ if (musicSrc==='chip'){ nowPlaying=name; renderMusicMenu(); } };
+
+/* ---- the 🎵 menu ---- */
+function renderMusicMenu(){
+  const m=$('musicMenu'); if (!m) return;
+  const opt=(v,label,extra='')=>`<label class="mopt${musicSrc===v?' on':''}"><input type="radio" name="msrc" value="${v}" ${musicSrc===v?'checked':''}><span>${label}${extra}</span></label>`;
+  m.innerHTML = `<div class="mtop"><button class="btn mini primary" id="mPlay">${musicOn?'⏸ Stop':'▶ Play'}</button>
+      <button class="btn mini" id="mNext" ${musicSrc==='chip'?'':'disabled'} title="Next carol">⏭</button>
+      <input id="mVol" type="range" min="0" max="1" step="0.05" value="${musicVol}" aria-label="Volume"></div>
+    <div class="mnow">${musicOn?`Now playing: <b>${esc(nowPlaying)}</b>`:'Music is off'}</div>
+    ${opt('chip','🎹 Chiptune carols',`<small>${Chip.songs.map(x=>x.name).join(' · ')}</small>`)}
+    ${clubAvailable?opt('club','🎧 Club song','<small>Chosen by the developer</small>'):''}
+    ${opt('local','📁 A song from this device',`<small>${localName?esc(localName)+' · <a href="#" id="mPick">change</a>':'<a href="#" id="mPick">Choose a file…</a>'} — stays on your device</small>`)}
+    ${opt('yt','📺 YouTube video','<small>Shows YouTube’s player (it can’t be hidden)</small>')}`;
+  $('mPlay').onclick=()=> musicOn ? musicStop() : musicStart();
+  $('mNext').onclick=()=>{ Chip.next(); };
+  $('mVol').oninput=e=>{ musicVol=+e.target.value; store.set('musicVol',musicVol); Chip.setVol(musicVol); audioEl.volume=musicVol; try{ ytPlayer&&ytPlayer.setVolume(Math.round(musicVol*100)); }catch(_){} };
+  m.querySelectorAll('input[name=msrc]').forEach(r=>r.onchange=async()=>{ const was=musicOn; if (was) musicStop(); musicSrc=r.value; store.set('musicSrc',musicSrc);
+    if (musicSrc==='local' && !(await localSongURL())){ $('mFile').click(); renderMusicMenu(); return; } renderMusicMenu(); if (was) musicStart(); });
+  const pick=$('mPick'); if (pick) pick.onclick=e=>{ e.preventDefault(); $('mFile').click(); };
+}
+$('mFile').addEventListener('change',async e=>{ const f=e.target.files[0]; e.target.value=''; if (!f) return;
+  if (!/^audio\//.test(f.type) && !/\.(mp3|m4a|aac|wav|ogg|flac)$/i.test(f.name)){ toast('🎵 That isn’t an audio file.'); return; }
+  try{ await idb.set('song',f); }catch(err){} if (localURL) URL.revokeObjectURL(localURL); localURL=URL.createObjectURL(f);
+  localName=f.name.replace(/\.[^.]+$/,''); store.set('musicLocalName',localName); musicSrc='local'; store.set('musicSrc','local');
+  if (musicOn) musicStop(); await musicStart(); });
+$('musicBtn').onclick=e=>{ e.stopPropagation(); const m=$('musicMenu'); const on=!m.classList.contains('show'); m.classList.toggle('show',on);
+  if (on){ renderMusicMenu(); const b=$('musicBtn').getBoundingClientRect(); m.style.left=Math.min(b.left, innerWidth-m.offsetWidth-8)+'px'; m.style.top=(b.bottom+8)+'px'; } };
+document.addEventListener('pointerdown',e=>{ const m=$('musicMenu'); if (m.classList.contains('show') && !m.contains(e.target) && e.target!==$('musicBtn') && !$('musicBtn').contains(e.target)) m.classList.remove('show'); });
+$('musicOff').onclick=()=>musicStop();
+// drag the YouTube player by its title bar; the spot is remembered on this device
 { const card=$('musicCard'), head=card.querySelector('.mhead'); let drag=null;
   const place=(x,y)=>{ const w=card.offsetWidth, h=card.offsetHeight; x=Math.max(4,Math.min(innerWidth-w-4,x)); y=Math.max(4,Math.min(innerHeight-h-4,y));
     card.style.left=x+'px'; card.style.top=y+'px'; card.style.right='auto'; card.style.bottom='auto'; return [x,y]; };
@@ -1725,10 +1873,9 @@ $('musicBtn').onclick=()=>setMusic(!musicOn);
   head.addEventListener('pointermove',e=>{ if (drag) place(e.clientX-drag.dx, e.clientY-drag.dy); });
   head.addEventListener('pointerup',()=>{ if (!drag) return; drag=null; const r=card.getBoundingClientRect(); store.set('musicPos',[r.left,r.top]); });
   addEventListener('resize',()=>{ const p=store.get('musicPos',null); if (p) place(p[0],p[1]); }); }
-$('musicOff').onclick=()=>setMusic(false);
 // only during the Christmas theme; leaving it stops the music
 function syncMusicButton(){ const xmas = theme==='christmas'; $('musicBtn').style.display = xmas ? '' : 'none';
-  if (!xmas && musicOn){ musicOn=false; try{ ytPlayer&&ytPlayer.pauseVideo(); }catch(e){} $('musicCard').style.display='none'; $('musicBtn').classList.remove('on'); } }
+  if (!xmas){ $('musicMenu').classList.remove('show'); if (musicOn) musicStop(); } }
 $('santaBack').onclick=()=>exitSantaCam();
 $('collapse').onclick=()=>{ const c=$('card').classList.toggle('collapsed'); $('collapse').textContent=c?'▴':'▾'; layout(); };
 
@@ -1776,7 +1923,7 @@ else setPlace(deviceApprox(), { save:false, fly:false });
 { const d=globeDist(); camG.position.copy(pinWorld().normalize().multiplyScalar(d)); follow=true; }
 frame();
 try{ if (window.top===window && !store.get('last',null) && !home) setTimeout(()=>$('locBtn').click(), 600); }catch(e){}
-function exposeDbg(){ window.__dbg = { pulseInfo:()=>({v:pulse.visible,size:pulse.material.size,op:pulse.material.opacity,flash:flashStop,status:santa.status,stop:santa.stop&&santa.stop[0]}), setOffset:v=>{simOffset=v;}, tick:()=>tick(true), cam:camG, moonState, moonAltAt, moonInfo, simNow, sunState, earthMatrix, ecefToScene, sunDirScene, llToEcef, setPlace, setMode, get current(){return current;} }; }
+function exposeDbg(){ window.__dbg = { Chip:()=>Chip, pulseInfo:()=>({v:pulse.visible,size:pulse.material.size,op:pulse.material.opacity,flash:flashStop,status:santa.status,stop:santa.stop&&santa.stop[0]}), setOffset:v=>{simOffset=v;}, tick:()=>tick(true), cam:camG, moonState, moonAltAt, moonInfo, simNow, sunState, earthMatrix, ecefToScene, sunDirScene, llToEcef, setPlace, setMode, get current(){return current;} }; }
 if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) exposeDbg();
 </script>
 </body>

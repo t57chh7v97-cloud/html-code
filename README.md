@@ -91,10 +91,19 @@ night-side city lights placed at real city coordinates.
     Santa is flying over. A
     "Santa's coming to your house soon — go to bed now!" alert appears when he
     gets close.
-  - 🎵 During Christmas, a 🎵 button turns themed music on and off. It plays
-    in YouTube's own embedded player, which stays visible at 200×200 as
-    YouTube requires and can be dragged anywhere. Browsers only allow sound
-    after a tap, so the music starts from the button.
+  - 🎵 During Christmas, a 🎵 menu plays themed music and turns it on and off,
+    with a next-song button and a volume slider. Sources:
+    - **🎹 Chiptune carols:** Jingle Bells, Deck the Halls and We Wish You a
+      Merry Christmas (all public domain), synthesised live in the browser
+      with Web Audio. There's no player and no download.
+    - **🎧 Club song:** `globe/music/christmas.mp3`, if it's added to the repo.
+      It plays in the background.
+    - **📁 A song from this device:** the viewer picks an audio file. It's kept
+      only in their browser and plays in the background.
+    - **📺 YouTube video:** YouTube's own player. It stays visible at 200×200,
+      as YouTube requires, and can be dragged around.
+
+    Browsers only allow sound after a tap, so music starts from the menu.
   - 🎆 New Year (Dec 30 – Jan 15): a countdown to midnight at your pin, and a
     30-second fireworks show each time you open the app
 
