@@ -91,6 +91,10 @@ night-side city lights placed at real city coordinates.
     Santa is flying over. A
     "Santa's coming to your house soon — go to bed now!" alert appears when he
     gets close.
+  - 🎵 During Christmas, a 🎵 button turns themed music on and off. It plays
+    in YouTube's own embedded player, which stays visible at 200×200 as
+    YouTube requires and can be dragged anywhere. Browsers only allow sound
+    after a tap, so the music starts from the button.
   - 🎆 New Year (Dec 30 – Jan 15): a countdown to midnight at your pin, and a
     30-second fireworks show each time you open the app
 
