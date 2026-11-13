@@ -111,6 +111,9 @@
   #musicMenu .mopt small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
   #musicMenu .mopt a{color:var(--accent)}
   #musicMenu button[disabled]{opacity:.4}
+  #musicMenu .mseek{display:flex;align-items:center;gap:6px;margin:-2px 0 8px;font:12px 'JetBrains Mono',monospace;color:var(--muted)}
+  #musicMenu .mseek input{flex:1;min-width:0;accent-color:var(--accent);height:22px}
+  #musicMenu .mseek .btn{padding:5px 7px;font-size:11.5px}
   #musicCard{position:fixed;z-index:6;right:20px;bottom:20px;padding:8px;border-radius:14px;width:216px}
   #musicCard .mhead{cursor:grab;touch-action:none;user-select:none;display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:600;margin:0 2px 6px}
   #musicCard .mhead button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:15px;padding:2px 4px}
@@ -972,6 +975,7 @@ function updateOverChip(force){
   let txt;
   if (!santa.on && !santa.done) txt='🛷 Parked at the North Pole · getting ready';
   else if (santa.done) txt='🛷 Home at the North Pole';
+  else if (santa.status==='at'){ const here=placeName(santa.stop); txt = stopPhase==='gifts' ? `🎁 Dropping presents down a chimney in ${here}` : stopPhase==='snack' ? `🍪 Snack break in ${here} — milk & cookies` : `🏠 Landing on a roof in ${here}`; }
   else if (ctry){ const town = np && np.km<60 ? P.name[np.i]+(P.ad[np.i]&&P.cc[np.i]==='US'?', '+P.ad[np.i]:'')+', ' : (np && np.km<250 ? `near ${P.name[np.i]}, ` : ''); txt=`🛷 Flying over ${town}${ctry}`; }
   else txt = np ? `🛷 Flying over the ocean · ${Math.round(np.km).toLocaleString()} km from ${P.name[np.i]}` : '🛷 Flying over the ocean';
   el.textContent=txt; el.style.display='block';
@@ -1209,6 +1213,7 @@ const santaModel = new THREE.Group(); santaRig.add(santaModel);
 const SANTA_SCALE = 0.02;                       // model units → globe units (model ≈ 2.9 units long ≈ 370 km, so it shows from orbit too)
 santaModel.scale.setScalar(SANTA_SCALE);
 const reindeerLegs=[], bells=[];
+const STOP={ santaG:null, arms:[], seat:new THREE.Vector3(0,.36,-.1), house:null, gifts:[], cookie:null, cookieBits:[], milk:null, milkFill:null, plate:null, smoke:[], crumbs:[] };
 {
   const M_ = (c,o={}) => new THREE.MeshStandardMaterial({ color:c, roughness:o.r??.6, metalness:o.m??0, emissive:o.e??0x000000, emissiveIntensity:o.ei??1 });
   const red=M_(0xc8102e,{r:.45}), darkRed=M_(0x8e0b20,{r:.5}), gold=M_(0xf2c14e,{r:.3,m:.8}), white=M_(0xf7f4ee,{r:.9}), black=M_(0x151515,{r:.5}),
@@ -1236,7 +1241,7 @@ const reindeerLegs=[], bells=[];
     for (const z of [-0.4,0.0,0.35]) add(sleigh,new THREE.CylinderGeometry(.014,.014,.17,6),gold,sx,0.04,z);
   }
   // ---- Santa
-  const santaG=new THREE.Group(); santaG.position.set(0,0.36,-0.1); sleigh.add(santaG);
+  const santaG=new THREE.Group(); santaG.position.set(0,0.36,-0.1); sleigh.add(santaG); STOP.santaG=santaG;
   const torso=add(santaG,new THREE.SphereGeometry(.2,24,18),red,0,.16,0); torso.scale.set(1,1.05,.95);
   add(santaG,new THREE.TorusGeometry(.19,.025,8,32),black,0,.11,0).rotation.x=Math.PI/2;
   add(santaG,new THREE.BoxGeometry(.06,.05,.02),gold,0,.11,.19);
@@ -1252,7 +1257,7 @@ const reindeerLegs=[], bells=[];
   const hat=add(head,new THREE.ConeGeometry(.095,.24,20),red,0,.18,-.03); hat.rotation.x=-.55;
   add(head,new THREE.SphereGeometry(.035,12,10),white,0,.25,-.14);                                    // pom-pom
   for (const sx of [-1,1]){                                                                          // arms holding the reins
-    const arm=add(santaG,new THREE.CapsuleGeometry(.045,.2,4,10),red,sx*.17,.2,.1); arm.rotation.set(-1.1,0,sx*.35);
+    const arm=add(santaG,new THREE.CapsuleGeometry(.045,.2,4,10),red,sx*.17,.2,.1); arm.rotation.set(-1.1,0,sx*.35); STOP.arms.push(arm);
     add(santaG,new THREE.TorusGeometry(.045,.018,8,16),white,sx*.2,.13,.2).rotation.x=.4;
     add(santaG,new THREE.SphereGeometry(.04,10,8),black,sx*.18,.1,.25);                             // mittens
   }
@@ -1298,6 +1303,35 @@ const reindeerLegs=[], bells=[];
   const reinMat=new THREE.LineBasicMaterial({color:0x8b5a2b});
   for (const sx of [-1,1]){ const pts=[new THREE.Vector3(sx*.18,.46+.36-.36,.15-.1+.25)]; for (let r=0;r<5;r++) pts.push(new THREE.Vector3(sx*(r<4?.13:0.03),.36,1.0+r*.36));
     santaModel.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),reinMat)); }
+  // ---- the house Santa visits at each stop: peaked snowy roof, chimney behind the sleigh, cookies & milk on the ridge
+  { const H=new THREE.Group(); H.visible=false; santaModel.add(H); STOP.house=H;
+    const wall=M_(0xd9b48c,{r:.85}), roofM=M_(0x9a2f22,{r:.8}), snow=M_(0xeef4ff,{r:.95}), brick=M_(0x9c3b2b,{r:.9}), win=M_(0xffd77a,{e:0xffb84d,ei:1.4,r:.5}), wood=M_(0x5b3a22,{r:.8});
+    const Z0=-1.95, LEN=3.15, ZC=Z0+LEN/2, YB=-.39, RH=.34, HW=.64;          // house spans z −1.95…1.2; roof base −.39, ridge −.05
+    add(H,new THREE.BoxGeometry(1.12,.42,LEN-.1),wall,0,YB-.21,ZC);
+    const roofShape=(hw,h,lift)=>{ const t=new THREE.Shape(); t.moveTo(-hw,lift); t.lineTo(hw,lift); t.lineTo(0,h+lift); t.lineTo(-hw,lift); return t; };
+    const rg=new THREE.ExtrudeGeometry(roofShape(HW,RH,0),{depth:LEN,bevelEnabled:false}); rg.translate(0,YB,Z0); add(H,rg,roofM);
+    const sg2=new THREE.ExtrudeGeometry(roofShape(HW-.05,RH-.01,.02),{depth:LEN-.12,bevelEnabled:false}); sg2.translate(0,YB,Z0+.06); add(H,sg2,snow);   // snow blanket, red eaves show
+    for (const z of [-1.5,-.7,.1,.8]) for (const sx of [-1,1]) add(H,new THREE.PlaneGeometry(.16,.13),win,sx*.561,YB-.19,z).rotation.y=sx*Math.PI/2;
+    add(H,new THREE.PlaneGeometry(.17,.27),wood,0,YB-.28,Z0+LEN-.05+.001);
+    add(H,new THREE.PlaneGeometry(.16,.13),win,-.3,YB-.17,Z0+LEN-.05+.001); add(H,new THREE.PlaneGeometry(.16,.13),win,.3,YB-.17,Z0+LEN-.05+.001);
+    const CX=.3, CZ=-1.35;                                                                           // chimney
+    add(H,new THREE.BoxGeometry(.17,.42,.17),brick,CX,-.03,CZ);
+    add(H,new THREE.BoxGeometry(.21,.04,.21),brick,CX,.19,CZ); add(H,new THREE.BoxGeometry(.13,.01,.13),M_(0x120806),CX,.211,CZ);
+    for (let i=0;i<4;i++){ const sm=add(H,new THREE.SphereGeometry(.05,10,8),new THREE.MeshStandardMaterial({color:0xdddddd,transparent:true,opacity:.5,roughness:1}),CX,.28,CZ); STOP.smoke.push(sm); }
+    // plate of cookies + glass of milk on the ridge, behind the chimney
+    const plate=new THREE.Group(); plate.position.set(0,-.04,-1.66); H.add(plate); STOP.plate=plate;
+    add(plate,new THREE.CylinderGeometry(.08,.06,.012,20),M_(0xffffff,{r:.3}));
+    const cookieMat=M_(0xc78a45,{r:.9}), chip=M_(0x3a2213,{r:.8});
+    const mkCookie=()=>{ const c=new THREE.Group(); add(c,new THREE.CylinderGeometry(.04,.04,.012,16),cookieMat); for (let k=0;k<5;k++){ const a=k*1.3; add(c,new THREE.SphereGeometry(.007,6,5),chip,Math.cos(a)*.022,.007,Math.sin(a)*.022); } return c; };
+    const ck=mkCookie(); ck.position.set(-.015,.015,0); plate.add(ck); STOP.cookie=ck;
+    const ck2=mkCookie(); ck2.position.set(.02,.012,.025); ck2.rotation.z=.15; plate.add(ck2);
+    const glass=new THREE.Group(); glass.position.set(.1,0,-.02); plate.add(glass); STOP.milk=glass;
+    add(glass,new THREE.CylinderGeometry(.025,.021,.09,16,1,true),new THREE.MeshStandardMaterial({color:0xcfe8ff,transparent:true,opacity:.35,roughness:.1,side:THREE.DoubleSide}),0,.045,0);
+    const fill=add(glass,new THREE.CylinderGeometry(.022,.019,.075,16),M_(0xfdfdfb,{r:.6}),0,.04,0); STOP.milkFill=fill;
+    const pcs=[0x2ea8ff,0xff4f7b,0x37c871];
+    for (let i=0;i<3;i++){ const g=add(H,new THREE.BoxGeometry(.075,.075,.075),M_(pcs[i],{r:.4}),0,0,0); add(g,new THREE.BoxGeometry(.077,.077,.016),gold); add(g,new THREE.BoxGeometry(.016,.077,.077),gold); g.visible=false; STOP.gifts.push(g); }
+    for (let i=0;i<10;i++){ const c=add(H,new THREE.SphereGeometry(.008,5,4),new THREE.MeshStandardMaterial({color:0xc78a45,transparent:true}),0,0,0); c.visible=false; STOP.crumbs.push({m:c,v:new THREE.Vector3(),life:0}); }
+  }
   // soft lights so the team reads even over the night side
   const hemi=new THREE.HemisphereLight(0xdfe8ff,0x40302a,0.55); santaRig.add(hemi);
   const key=new THREE.DirectionalLight(0xfff1dd,1.05); key.position.set(.6,1,.8); santaModel.add(key); key.target=sleigh;
@@ -1309,6 +1343,54 @@ dustGeo.setAttribute('position',new THREE.BufferAttribute(dustPos,3));
 const dust=new THREE.Points(dustGeo,new THREE.PointsMaterial({color:0xffe9a8,size:.045*SANTA_SCALE,map:stopDotTexEarly(),transparent:true,opacity:.9,depthWrite:false,blending:THREE.AdditiveBlending}));
 santaModel.add(dust); for (let i=0;i<dustN;i++) dustLife[i]=Math.random();
 const _sp=new THREE.Vector3(), _sf=new THREE.Vector3(), _sr=new THREE.Vector3(), _su=new THREE.Vector3();
+// ---- stop animation: hop out → presents down the chimney → cookie & milk → hop back (loops while he's there)
+const STOP_LOOP=12, CHIM=new THREE.Vector3(.3,.21,-1.35), ROOFSPOT=new THREE.Vector3(0,-.06,-1.02), SNACKSPOT=new THREE.Vector3(0,-.06,-1.28), FACE_CHIM=2.36, FACE_PLATE=Math.PI;
+let stopStart=0, stopWas=false, stopPhase='';
+const _a=new THREE.Vector3(), _b=new THREE.Vector3();
+const ease=x=>x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2;
+function hop(from,to,f,h=.28){ _a.lerpVectors(from,to,ease(f)); _a.y+=Math.sin(Math.PI*f)*h; return _a; }
+function animateStop(t, atStop){
+  const H=STOP.house, sg=STOP.santaG; if (!H) return;
+  if (atStop && !stopWas){ stopStart=t; } stopWas=atStop; H.visible=atStop;
+  if (!atStop){ sg.position.copy(STOP.seat); sg.rotation.set(0,0,0); STOP.arms[0].rotation.set(-1.1,0,-.35); STOP.arms[1].rotation.set(-1.1,0,.35); stopPhase=''; return; }
+  const L=((t-stopStart)/1000)%STOP_LOOP;
+  // reset props at the start of each loop (a new house, a fresh cookie and full glass)
+  if (L<.05){ STOP.cookie.scale.set(1,1,1); STOP.cookie.visible=true; STOP.milkFill.scale.set(1,1,1); STOP.milkFill.position.y=.04; STOP.cookie.position.set(-.015,.015,0); STOP.cookie.rotation.set(0,0,0); STOP.milk.position.set(.1,0,-.02); STOP.milk.rotation.set(0,0,0); }
+  const armR=STOP.arms[1], armL=STOP.arms[0]; armL.rotation.set(-1.1,0,-.35); armR.rotation.set(-1.1,0,.35);
+  STOP.gifts.forEach(g=>g.visible=false);
+  // chimney smoke drifts up (paused while presents go down)
+  STOP.smoke.forEach((sm,i)=>{ const k=((t/1000*.5)+i/4)%1; const busy=L>1.3&&L<4.8; sm.visible=!busy; sm.position.set(CHIM.x+k*.12, CHIM.y+.07+k*.4, CHIM.z-k*.05); sm.scale.setScalar(.6+k*1.6); sm.material.opacity=.45*(1-k); });
+  if (L<1.3){ stopPhase='hop';                                                     // hop from the seat onto the roof by the chimney
+    sg.position.copy(hop(STOP.seat, ROOFSPOT, L/1.3, .32)); sg.rotation.y=FACE_CHIM*ease(L/1.3); }
+  else if (L<4.8){ stopPhase='gifts'; sg.position.copy(ROOFSPOT); sg.rotation.y=FACE_CHIM;
+    const u=(L-1.3)/3.5;
+    // arms lift and toss, three presents arc into the chimney one after another
+    armR.rotation.set(-1.9+Math.sin(u*Math.PI*6)*.5,0,.2); armL.rotation.set(-1.9+Math.sin(u*Math.PI*6+1)*.5,0,-.2);
+    STOP.gifts.forEach((g,i)=>{ const f=(u-i*.28)/.34; if (f<0||f>1) return; g.visible=true;
+      _b.copy(ROOFSPOT).add(new THREE.Vector3(0,.5,.12).applyAxisAngle(new THREE.Vector3(0,1,0),FACE_CHIM));
+      if (f<.6){ g.position.copy(hop(_b, _a.set(CHIM.x,CHIM.y+.06,CHIM.z).clone(), f/.6, .18)); g.scale.setScalar(1); }
+      else { const d=(f-.6)/.4; g.position.set(CHIM.x, CHIM.y+.06-d*.3, CHIM.z); g.scale.setScalar(1-d*.5); if (d>.55) g.visible=false; }
+      g.rotation.set(f*6,f*4,0); }); }
+  else if (L<10.3){ stopPhase='snack';                                             // shuffle over to the plate and have a snack
+    const m=Math.min(1,(L-4.8)/.8); sg.position.lerpVectors(ROOFSPOT,SNACKSPOT,ease(m)); sg.rotation.y=FACE_CHIM+(FACE_PLATE-FACE_CHIM)*ease(m);
+    const mouth=new THREE.Vector3().copy(sg.position).add(new THREE.Vector3(0,.4,.11).applyAxisAngle(new THREE.Vector3(0,1,0),sg.rotation.y)).sub(STOP.plate.position);
+    const u=L-5.6;
+    if (u>0 && u<2.9){ // three bites of the cookie
+      const k=Math.min(1,u/.4), bite=Math.floor(u/.9), within=(u%.9)/.9;
+      STOP.cookie.position.lerpVectors(new THREE.Vector3(-.015,.015,0), mouth, ease(k)); STOP.cookie.rotation.set(Math.PI/2*ease(k),0,0);
+      STOP.cookie.scale.setScalar(Math.max(.05,1-bite*.33-(within>.5?.33:0)));
+      armR.rotation.set(-2.4,0,.6);
+      if (within>.5 && within<.56) for (const c of STOP.crumbs) if (c.life<=0 && Math.random()<.5){ c.life=1; c.m.visible=true; c.m.position.copy(mouth).add(STOP.plate.position); c.v.set((Math.random()-.5)*.25,.1+Math.random()*.1,(Math.random()-.5)*.25); }
+    } else if (u>=2.9){ STOP.cookie.visible=false;
+      const w=Math.min(1,(u-2.9)/.5); STOP.milk.position.lerpVectors(new THREE.Vector3(.1,0,-.02), mouth.clone().add(new THREE.Vector3(0,-.06,0)), ease(w));
+      const drink=Math.max(0,Math.min(1,(u-3.4)/1.2)); STOP.milk.rotation.x=-1.1*Math.sin(Math.PI*Math.min(1,drink*1.1)); STOP.milkFill.scale.y=Math.max(.05,1-drink); STOP.milkFill.position.y=.04-(.0375*drink);
+      armL.rotation.set(-2.3,0,-.6);
+      if (u>4.4){ const back=Math.min(1,(u-4.4)/.3); STOP.milk.position.lerp(new THREE.Vector3(.1,0,-.02),ease(back)); STOP.milk.rotation.x*= (1-back); } } }
+  else { stopPhase='hop'; const f=Math.min(1,(L-10.3)/1.7); sg.position.copy(hop(SNACKSPOT, STOP.seat, f, .4)); sg.rotation.y=FACE_PLATE*(1-ease(f)); }
+  // crumbs fall and fade
+  for (const c of STOP.crumbs){ if (c.life<=0) continue; c.life-=.02; c.v.y-=.012; c.m.position.addScaledVector(c.v,.02); c.m.material.opacity=c.life; if (c.life<=0) c.m.visible=false; }
+}
+
 function updateSantaModel(t){
   const show = santaCardOn() && mode==='globe';
   santaRig.visible = show; if (!show) return;
@@ -1321,11 +1403,14 @@ function updateSantaModel(t){
   if (!toward || _sf.lengthSq()<1e-10) _sf.set(0,0,1).addScaledVector(_su,-_su.z);
   _sf.normalize(); _sr.crossVectors(_su,_sf).normalize();
   const flying = santa.on && santa.status==='fly';
-  const alt = 1.004 + (flying?0.006:0.002) + Math.sin(t/650)*0.0006;
+  const atStop = santa.on && santa.status==='at';
+  const alt = atStop ? 1.0164 : 1.004 + (flying?0.006:0.002) + Math.sin(t/650)*0.0006;   // at a stop the sleigh sits on the house roof
+  animateStop(t, atStop);
   santaRig.matrix.makeBasis(_sr,_su,_sf).setPosition(_sp.copy(_su).multiplyScalar(alt)); santaRig.matrixAutoUpdate=false; santaRig.matrixWorldNeedsUpdate=true;
   // gallop + bob
   const speed = flying ? 1 : 0.25;
   santaModel.rotation.x = flying ? -0.06+Math.sin(t/500)*0.02 : 0;
+  if (atStop) santaModel.position.y=0; 
   for (const rd of reindeerLegs){ const a=t/110*speed+rd.ph; rd.g.position.y=.32+Math.abs(Math.sin(a))*.03*speed;
     rd.legs[0].rotation.x=Math.sin(a)*.8*speed; rd.legs[1].rotation.x=Math.sin(a+.6)*.8*speed; rd.legs[2].rotation.x=-Math.sin(a)*.8*speed; rd.legs[3].rotation.x=-Math.sin(a+.6)*.8*speed; }
   for (const b of bells) b.position.y=-.08+Math.sin(t/90)*.006;
@@ -1828,7 +1913,8 @@ function unlockAudioSession(){ try{ if (navigator.audioSession) navigator.audioS
 /* ---- one play/stop for whichever source is chosen ---- */
 let nowPlaying='';
 async function musicStart(){
-  musicOn=true; $('musicBtn').classList.add('on'); unlockAudioSession();
+  musicOn=true; $('musicBtn').classList.add('on');
+  if (musicSrc==='chip') unlockAudioSession(); else { try{ if (navigator.audioSession) navigator.audioSession.type='playback'; }catch(e){} try{ silentKeeper.pause(); }catch(e){} }
   if (musicSrc==='chip'){ Chip.setVol(musicVol); Chip.start(); nowPlaying=Chip.song; }
   else if (musicSrc==='club' || musicSrc==='local'){
     const url = musicSrc==='club' ? 'music/christmas.mp3' : await localSongURL();
@@ -1837,11 +1923,36 @@ async function musicStart(){
     try{ await audioEl.play(); nowPlaying = musicSrc==='club' ? 'Club song' : (localName||'Your song'); }catch(e){ toast('🎵 That song couldn’t play here.'); musicStopped(); return; } }
   else if (musicSrc==='yt'){ await ytPlay(); nowPlaying='YouTube video'; }
   try{ if ('mediaSession' in navigator) navigator.mediaSession.metadata=new MediaMetadata({title:nowPlaying, artist:'Where & When · Christmas'}); }catch(e){}
-  renderMusicMenu();
+  setupMediaSession(); renderMusicMenu();
 }
 function musicStopped(){ musicOn=false; $('musicBtn').classList.remove('on'); renderMusicMenu(); }
 function musicStop(){ Chip.stop(); try{ audioEl.pause(); }catch(e){} try{ silentKeeper.pause(); }catch(e){} ytStop(); musicStopped(); }
 Chip.onSong=name=>{ if (musicSrc==='chip'){ nowPlaying=name; renderMusicMenu(); } };
+
+/* ---- seeking for MP3 songs: in-app bar + lock screen / Control Center ---- */
+const isFileSrc=()=> musicSrc==='club' || musicSrc==='local';
+const mmss2=t=>{ if (!isFinite(t)) return '0:00'; t=Math.max(0,Math.floor(t)); return `${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`; };
+function seekTo(t){ if (!isFinite(audioEl.duration)) return; audioEl.currentTime=Math.max(0,Math.min(audioEl.duration-.25,t)); updateSeekUI(); pushPosition(); }
+function seekBy(d){ seekTo((audioEl.currentTime||0)+d); }
+function pushPosition(){ try{ if ('mediaSession' in navigator && isFileSrc() && isFinite(audioEl.duration)) navigator.mediaSession.setPositionState({duration:audioEl.duration, playbackRate:audioEl.playbackRate||1, position:Math.min(audioEl.currentTime,audioEl.duration)}); }catch(e){} }
+function setupMediaSession(){
+  if (!('mediaSession' in navigator)) return; const ms=navigator.mediaSession; const set=(a,f)=>{ try{ ms.setActionHandler(a,f); }catch(e){} };
+  set('play', ()=>{ if (!musicOn) musicStart(); else if (isFileSrc()) audioEl.play(); });
+  set('pause',()=>{ if (isFileSrc()){ audioEl.pause(); } else musicStop(); });
+  set('stop', ()=>musicStop());
+  if (isFileSrc()){ set('seekbackward',d=>seekBy(-((d&&d.seekOffset)||10))); set('seekforward',d=>seekBy((d&&d.seekOffset)||10));
+    set('seekto',d=>{ if (d && d.seekTime!=null){ if (d.fastSeek && audioEl.fastSeek) audioEl.fastSeek(d.seekTime); else seekTo(d.seekTime); } });
+    set('nexttrack',null); set('previoustrack',null); pushPosition(); }
+  else { set('seekbackward',null); set('seekforward',null); set('seekto',null); set('nexttrack', musicSrc==='chip' ? ()=>Chip.next() : null); set('previoustrack',null); }
+}
+['loadedmetadata','durationchange','seeked','ratechange'].forEach(ev=>audioEl.addEventListener(ev,()=>{ pushPosition(); updateSeekUI(); }));
+audioEl.addEventListener('timeupdate',updateSeekUI);
+audioEl.addEventListener('play',()=>{ try{ navigator.mediaSession.playbackState='playing'; }catch(e){} updateSeekUI(); });
+audioEl.addEventListener('pause',()=>{ try{ navigator.mediaSession.playbackState='paused'; }catch(e){} updateSeekUI(); });
+let seekDragging=false;
+function updateSeekUI(){ const r=$('mSeek'); if (!r || seekDragging) return; const d=audioEl.duration;
+  r.max=isFinite(d)?d:0; r.value=audioEl.currentTime||0; $('mCur').textContent=mmss2(audioEl.currentTime); $('mDur').textContent=mmss2(d);
+  r.style.setProperty('--p', (isFinite(d)&&d>0? (audioEl.currentTime/d*100):0)+'%'); }
 
 /* ---- the 🎵 menu ---- */
 function renderMusicMenu(){
@@ -1851,11 +1962,20 @@ function renderMusicMenu(){
       <button class="btn mini" id="mNext" ${musicSrc==='chip'?'':'disabled'} title="Next carol">⏭</button>
       <input id="mVol" type="range" min="0" max="1" step="0.05" value="${musicVol}" aria-label="Volume"></div>
     <div class="mnow">${musicOn?`Now playing: <b>${esc(nowPlaying)}</b>`:'Music is off'}</div>
+    ${isFileSrc()?`<div class="mseek"><button class="btn mini" id="mBack" title="Back 10 seconds">⏪ 10</button><span id="mCur">0:00</span>
+      <input id="mSeek" type="range" min="0" max="0" step="0.1" value="0" aria-label="Song position"><span id="mDur">0:00</span>
+      <button class="btn mini" id="mFwd" title="Forward 10 seconds">10 ⏩</button></div>`:''}
     ${opt('chip','🎹 Chiptune carols',`<small>${Chip.songs.map(x=>x.name).join(' · ')}</small>`)}
     ${clubAvailable?opt('club','🎧 Club song','<small>Chosen by the developer</small>'):''}
     ${opt('local','📁 A song from this device',`<small>${localName?esc(localName)+' · <a href="#" id="mPick">change</a>':'<a href="#" id="mPick">Choose a file…</a>'} — stays on your device</small>`)}
     ${opt('yt','📺 YouTube video','<small>Shows YouTube’s player (it can’t be hidden)</small>')}`;
   $('mPlay').onclick=()=> musicOn ? musicStop() : musicStart();
+  if (isFileSrc()){ const r=$('mSeek');
+    $('mBack').onclick=()=>seekBy(-10); $('mFwd').onclick=()=>seekBy(10);
+    r.addEventListener('pointerdown',()=>{ seekDragging=true; }); r.addEventListener('input',()=>{ $('mCur').textContent=mmss2(+r.value); r.style.setProperty('--p',(+r.value/(+r.max||1)*100)+'%'); });
+    r.addEventListener('change',()=>{ seekDragging=false; seekTo(+r.value); }); r.addEventListener('pointerup',()=>{ seekDragging=false; });
+    if (!audioEl.src || audioEl.readyState===0){ (async()=>{ const url = musicSrc==='club' ? 'music/christmas.mp3' : await localSongURL(); if (url && !musicOn){ audioEl.preload='metadata'; if (audioEl.src!==new URL(url,location.href).href) audioEl.src=url; } })(); }
+    updateSeekUI(); }
   $('mNext').onclick=()=>{ Chip.next(); };
   $('mVol').oninput=e=>{ musicVol=+e.target.value; store.set('musicVol',musicVol); Chip.setVol(musicVol); audioEl.volume=musicVol; try{ ytPlayer&&ytPlayer.setVolume(Math.round(musicVol*100)); }catch(_){} };
   m.querySelectorAll('input[name=msrc]').forEach(r=>r.onchange=async()=>{ const was=musicOn; if (was) musicStop(); musicSrc=r.value; store.set('musicSrc',musicSrc);
