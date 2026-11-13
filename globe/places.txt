@@ -10598,6 +10598,7 @@ Turnhout|BE||51.3225|4.9447|44000|37|T'ornkhaut;Tjurnkhaut;Turnaut;Turnholtum;Tu
 Piendamo|CO||2.6392|-76.5306|44000|107|
 Alapayevsk|RU||57.8516|61.6963|44000|288|Alapaevs'k;Alapaevsk;Alapajevsk;Alapajewsk;Alpaevsk;Ałapajewsk
 Xonobod|UZ||40.8026|72.975|44000|379|Karabagish;Khanabad;Khanabadskiy;Khonobod;Sovetabad
+Mount Pleasant|US|NY|41.11|-73.79|44000|351|
 Himi|JP||36.8467|136.9836|43995|181|bing jian;bing jian shi
 York|US|PA|39.9626|-76.7277|43992|351|Jork;Yarrick;yokeu;yoku;yue ke;ywrk  bnslfanya
 Nevers|FR||46.9896|3.159|43988|141|Never;Neveras;Neverso;Niverns;Nivernum;ne wei er

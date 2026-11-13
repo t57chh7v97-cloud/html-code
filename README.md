@@ -77,7 +77,11 @@ night-side city lights placed at real city coordinates.
   - 🦃 Thanksgiving (Nov 2 – Thanksgiving Day): falling leaves
   - 🎄 Christmas (day after Thanksgiving – Dec 29): snow and multicolour
     lights. On Christmas Eve, a Santa tracker flies **Google Santa Tracker's
-    real 420-stop route** (the 2019 flight, shifted to this year), with his
+    real 420-stop route** (the 2019 flight, shifted to this year), plus six
+    stops added for the club: West Palm Beach and Wellington, FL; and Yonkers,
+    Hempstead, Mount Pleasant and Pleasantville, NY. Each added stop is a
+    30-second visit, and the nearby Google stops shift by only 1–3 minutes. Every
+    stop comes with his
     path drawn in green (Google-tracker style) and a Google-style tracker card: when he arrives near you, a live
     gifts-delivered counter, and his next stop with an arrival countdown. Every
     stop is marked with a small gray dot. When Santa arrives, the dot flashes
