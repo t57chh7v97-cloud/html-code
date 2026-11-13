@@ -88,9 +88,11 @@ night-side city lights placed at real city coordinates.
     animated 3D sleigh with Santa, his sack of presents and nine reindeer led by
     a glowing-nosed Rudolph, which you can orbit and pinch-zoom around. Up close,
     the ground is labelled with town and country names, and a banner says what
-    Santa is flying over. At each stop the sleigh lands on a snowy house roof.
-    Santa hops out, drops presents down the chimney, eats a cookie and drinks
-    the milk, then hops back in. This repeats until he takes off. A
+    Santa is flying over. At each stop the whole team lands on a snowy house roof.
+    Santa hops onto the chimney with a present balanced on one finger, then
+    wiggles, kicks and squeezes down it. He disappears in a puff of soot, pops
+    back out, has milk and cookies, and hops back into the sleigh. Each loop
+    takes about 9 seconds and repeats until he takes off. A
     "Santa's coming to your house soon — go to bed now!" alert appears when he
     gets close.
   - 🎵 During Christmas, a 🎵 menu plays themed music and turns it on and off,

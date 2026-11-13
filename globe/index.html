@@ -975,7 +975,7 @@ function updateOverChip(force){
   let txt;
   if (!santa.on && !santa.done) txt='🛷 Parked at the North Pole · getting ready';
   else if (santa.done) txt='🛷 Home at the North Pole';
-  else if (santa.status==='at'){ const here=placeName(santa.stop); txt = stopPhase==='gifts' ? `🎁 Dropping presents down a chimney in ${here}` : stopPhase==='snack' ? `🍪 Snack break in ${here} — milk & cookies` : `🏠 Landing on a roof in ${here}`; }
+  else if (santa.status==='at'){ const here=placeName(santa.stop); txt = stopPhase==='gifts' ? `🎁 Squeezing down a chimney in ${here}` : stopPhase==='inside' ? `🎄 Leaving presents under the tree in ${here}` : stopPhase==='snack' ? `🍪 Snack break in ${here} — milk & cookies` : `🏠 Landing on a roof in ${here}`; }
   else if (ctry){ const town = np && np.km<60 ? P.name[np.i]+(P.ad[np.i]&&P.cc[np.i]==='US'?', '+P.ad[np.i]:'')+', ' : (np && np.km<250 ? `near ${P.name[np.i]}, ` : ''); txt=`🛷 Flying over ${town}${ctry}`; }
   else txt = np ? `🛷 Flying over the ocean · ${Math.round(np.km).toLocaleString()} km from ${P.name[np.i]}` : '🛷 Flying over the ocean';
   el.textContent=txt; el.style.display='block';
@@ -1261,6 +1261,21 @@ const STOP={ santaG:null, arms:[], seat:new THREE.Vector3(0,.36,-.1), house:null
     add(santaG,new THREE.TorusGeometry(.045,.018,8,16),white,sx*.2,.13,.2).rotation.x=.4;
     add(santaG,new THREE.SphereGeometry(.04,10,8),black,sx*.18,.1,.25);                             // mittens
   }
+  // legs (pivot at the hip) — tucked forward in the sleigh, kicking on the chimney
+  STOP.legs=[];
+  for (const sx of [-1,1]){ const hip=new THREE.Group(); hip.position.set(sx*.085,.06,.04); santaG.add(hip);
+    add(hip,new THREE.CapsuleGeometry(.05,.13,4,10),red,0,-.1,0);
+    add(hip,new THREE.TorusGeometry(.05,.016,8,16),white,0,-.2,0).rotation.x=Math.PI/2;
+    const boot=add(hip,new THREE.BoxGeometry(.085,.07,.13),black,0,-.25,.03); boot.geometry.translate(0,0,.02);
+    hip.rotation.x=-1.45; STOP.legs.push(hip); }
+  // raised right arm with a present balanced on one finger (only shown on the chimney)
+  { const up=new THREE.Group(); up.position.set(.16,.3,0); up.visible=false; santaG.add(up); STOP.armUp=up;
+    add(up,new THREE.CapsuleGeometry(.045,.24,4,10),red,0,.15,0);
+    add(up,new THREE.TorusGeometry(.046,.017,8,16),white,0,.29,0).rotation.x=Math.PI/2;
+    add(up,new THREE.SphereGeometry(.042,10,8),M_(0xf2c14e,{r:.5}),0,.34,0);                     // mitten
+    add(up,new THREE.CapsuleGeometry(.012,.04,3,6),M_(0xf2c14e,{r:.5}),0,.39,0);                 // finger
+    const gift=new THREE.Group(); gift.position.set(0,.47,0); up.add(gift); STOP.fingerGift=gift;
+    add(gift,new THREE.BoxGeometry(.11,.11,.11),green); add(gift,new THREE.BoxGeometry(.113,.113,.022),gold); add(gift,new THREE.BoxGeometry(.022,.113,.113),gold); }
   // ---- sack of presents
   const sackG=new THREE.Group(); sackG.position.set(0,.36,-.42); sleigh.add(sackG);
   add(sackG,new THREE.SphereGeometry(.2,20,16),sack,0,.1,0).scale.set(1.1,1.15,.9);
@@ -1303,23 +1318,26 @@ const STOP={ santaG:null, arms:[], seat:new THREE.Vector3(0,.36,-.1), house:null
   const reinMat=new THREE.LineBasicMaterial({color:0x8b5a2b});
   for (const sx of [-1,1]){ const pts=[new THREE.Vector3(sx*.18,.46+.36-.36,.15-.1+.25)]; for (let r=0;r<5;r++) pts.push(new THREE.Vector3(sx*(r<4?.13:0.03),.36,1.0+r*.36));
     santaModel.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),reinMat)); }
-  // ---- the house Santa visits at each stop: peaked snowy roof, chimney behind the sleigh, cookies & milk on the ridge
+  // ---- the house Santa visits at each stop: long peaked snowy roof (the whole team lands on it), wide open chimney
   { const H=new THREE.Group(); H.visible=false; santaModel.add(H); STOP.house=H;
-    const wall=M_(0xd9b48c,{r:.85}), roofM=M_(0x9a2f22,{r:.8}), snow=M_(0xeef4ff,{r:.95}), brick=M_(0x9c3b2b,{r:.9}), win=M_(0xffd77a,{e:0xffb84d,ei:1.4,r:.5}), wood=M_(0x5b3a22,{r:.8});
-    const Z0=-1.95, LEN=3.15, ZC=Z0+LEN/2, YB=-.39, RH=.34, HW=.64;          // house spans z −1.95…1.2; roof base −.39, ridge −.05
+    const wall=M_(0xd9b48c,{r:.85}), roofM=M_(0x9a2f22,{r:.8}), snow=M_(0xeef4ff,{r:.95}), brick=M_(0xa4442f,{r:.9}), soot=M_(0x0d0806,{r:1}), win=M_(0xffd77a,{e:0xffb84d,ei:1.4,r:.5}), wood=M_(0x5b3a22,{r:.8});
+    const Z0=-2.05, LEN=4.95, ZC=Z0+LEN/2, YB=-.39, RH=.34, HW=.64;          // house spans z −2.05…2.9; roof base −.39, ridge −.05
     add(H,new THREE.BoxGeometry(1.12,.42,LEN-.1),wall,0,YB-.21,ZC);
     const roofShape=(hw,h,lift)=>{ const t=new THREE.Shape(); t.moveTo(-hw,lift); t.lineTo(hw,lift); t.lineTo(0,h+lift); t.lineTo(-hw,lift); return t; };
     const rg=new THREE.ExtrudeGeometry(roofShape(HW,RH,0),{depth:LEN,bevelEnabled:false}); rg.translate(0,YB,Z0); add(H,rg,roofM);
-    const sg2=new THREE.ExtrudeGeometry(roofShape(HW-.05,RH-.01,.02),{depth:LEN-.12,bevelEnabled:false}); sg2.translate(0,YB,Z0+.06); add(H,sg2,snow);   // snow blanket, red eaves show
-    for (const z of [-1.5,-.7,.1,.8]) for (const sx of [-1,1]) add(H,new THREE.PlaneGeometry(.16,.13),win,sx*.561,YB-.19,z).rotation.y=sx*Math.PI/2;
-    add(H,new THREE.PlaneGeometry(.17,.27),wood,0,YB-.28,Z0+LEN-.05+.001);
-    add(H,new THREE.PlaneGeometry(.16,.13),win,-.3,YB-.17,Z0+LEN-.05+.001); add(H,new THREE.PlaneGeometry(.16,.13),win,.3,YB-.17,Z0+LEN-.05+.001);
-    const CX=.3, CZ=-1.35;                                                                           // chimney
-    add(H,new THREE.BoxGeometry(.17,.42,.17),brick,CX,-.03,CZ);
-    add(H,new THREE.BoxGeometry(.21,.04,.21),brick,CX,.19,CZ); add(H,new THREE.BoxGeometry(.13,.01,.13),M_(0x120806),CX,.211,CZ);
-    for (let i=0;i<4;i++){ const sm=add(H,new THREE.SphereGeometry(.05,10,8),new THREE.MeshStandardMaterial({color:0xdddddd,transparent:true,opacity:.5,roughness:1}),CX,.28,CZ); STOP.smoke.push(sm); }
+    const sg2=new THREE.ExtrudeGeometry(roofShape(HW-.05,RH-.01,.02),{depth:LEN-.12,bevelEnabled:false}); sg2.translate(0,YB,Z0+.06); add(H,sg2,snow);
+    for (const z of [-1.6,-.8,0,.8,1.6,2.4]) for (const sx of [-1,1]) add(H,new THREE.PlaneGeometry(.16,.13),win,sx*.561,YB-.19,z).rotation.y=sx*Math.PI/2;
+    const FZ=Z0+LEN-.05+.001; add(H,new THREE.PlaneGeometry(.17,.27),wood,0,YB-.28,FZ); add(H,new THREE.PlaneGeometry(.16,.13),win,-.3,YB-.17,FZ); add(H,new THREE.PlaneGeometry(.16,.13),win,.3,YB-.17,FZ);
+    // hollow chimney (four walls + rim) so Santa can squeeze down it
+    const CX=.32, CZ=-1.4, W=.5, T=.07, CH=.5, CY=-.06;                                              // outer width .5, opening .36
+    for (const [dx,dz,w,d] of [[-(W-T)/2,0,T,W],[(W-T)/2,0,T,W],[0,-(W-T)/2,W-2*T,T],[0,(W-T)/2,W-2*T,T]]) add(H,new THREE.BoxGeometry(w,CH,d),brick,CX+dx,CY,CZ+dz);
+    add(H,new THREE.BoxGeometry(W-2*T,.02,W-2*T),soot,CX,CY-.12,CZ);                                // dark inside
+    for (const [dx,dz,w,d] of [[-(W)/2+.02,0,.08,W+.06],[(W)/2-.02,0,.08,W+.06],[0,-(W)/2+.02,W+.06,.08],[0,(W)/2-.02,W+.06,.08]]) add(H,new THREE.BoxGeometry(w,.05,d),brick,CX+dx,CY+CH/2+.02,CZ+dz);
+    for (const [dx,dz,w,d] of [[-(W)/2+.02,0,.09,W+.08],[(W)/2-.02,0,.09,W+.08],[0,-(W)/2+.02,W+.08,.09],[0,(W)/2-.02,W+.08,.09]]) add(H,new THREE.BoxGeometry(w,.02,d),snow,CX+dx,CY+CH/2+.055,CZ+dz);
+    STOP.rimY=CY+CH/2+.065; STOP.chim=new THREE.Vector3(CX,STOP.rimY,CZ);
+    for (let i=0;i<6;i++){ const sm=add(H,new THREE.SphereGeometry(.06,10,8),new THREE.MeshStandardMaterial({color:0xdddddd,transparent:true,opacity:.5,roughness:1,depthWrite:false}),CX,STOP.rimY,CZ); STOP.smoke.push(sm); }
     // plate of cookies + glass of milk on the ridge, behind the chimney
-    const plate=new THREE.Group(); plate.position.set(0,-.04,-1.66); H.add(plate); STOP.plate=plate;
+    const plate=new THREE.Group(); plate.position.set(0,-.04,-1.86); H.add(plate); STOP.plate=plate;
     add(plate,new THREE.CylinderGeometry(.08,.06,.012,20),M_(0xffffff,{r:.3}));
     const cookieMat=M_(0xc78a45,{r:.9}), chip=M_(0x3a2213,{r:.8});
     const mkCookie=()=>{ const c=new THREE.Group(); add(c,new THREE.CylinderGeometry(.04,.04,.012,16),cookieMat); for (let k=0;k<5;k++){ const a=k*1.3; add(c,new THREE.SphereGeometry(.007,6,5),chip,Math.cos(a)*.022,.007,Math.sin(a)*.022); } return c; };
@@ -1328,8 +1346,6 @@ const STOP={ santaG:null, arms:[], seat:new THREE.Vector3(0,.36,-.1), house:null
     const glass=new THREE.Group(); glass.position.set(.1,0,-.02); plate.add(glass); STOP.milk=glass;
     add(glass,new THREE.CylinderGeometry(.025,.021,.09,16,1,true),new THREE.MeshStandardMaterial({color:0xcfe8ff,transparent:true,opacity:.35,roughness:.1,side:THREE.DoubleSide}),0,.045,0);
     const fill=add(glass,new THREE.CylinderGeometry(.022,.019,.075,16),M_(0xfdfdfb,{r:.6}),0,.04,0); STOP.milkFill=fill;
-    const pcs=[0x2ea8ff,0xff4f7b,0x37c871];
-    for (let i=0;i<3;i++){ const g=add(H,new THREE.BoxGeometry(.075,.075,.075),M_(pcs[i],{r:.4}),0,0,0); add(g,new THREE.BoxGeometry(.077,.077,.016),gold); add(g,new THREE.BoxGeometry(.016,.077,.077),gold); g.visible=false; STOP.gifts.push(g); }
     for (let i=0;i<10;i++){ const c=add(H,new THREE.SphereGeometry(.008,5,4),new THREE.MeshStandardMaterial({color:0xc78a45,transparent:true}),0,0,0); c.visible=false; STOP.crumbs.push({m:c,v:new THREE.Vector3(),life:0}); }
   }
   // soft lights so the team reads even over the night side
@@ -1343,51 +1359,60 @@ dustGeo.setAttribute('position',new THREE.BufferAttribute(dustPos,3));
 const dust=new THREE.Points(dustGeo,new THREE.PointsMaterial({color:0xffe9a8,size:.045*SANTA_SCALE,map:stopDotTexEarly(),transparent:true,opacity:.9,depthWrite:false,blending:THREE.AdditiveBlending}));
 santaModel.add(dust); for (let i=0;i<dustN;i++) dustLife[i]=Math.random();
 const _sp=new THREE.Vector3(), _sf=new THREE.Vector3(), _sr=new THREE.Vector3(), _su=new THREE.Vector3();
-// ---- stop animation: hop out → presents down the chimney → cookie & milk → hop back (loops while he's there)
-const STOP_LOOP=12, CHIM=new THREE.Vector3(.3,.21,-1.35), ROOFSPOT=new THREE.Vector3(0,-.06,-1.02), SNACKSPOT=new THREE.Vector3(0,-.06,-1.28), FACE_CHIM=2.36, FACE_PLATE=Math.PI;
+// ---- stop animation (about 15 s, loops while he's there):
+//   hop onto the chimney rim → present up on one finger → wiggle, kick and squeeze down → poof of soot →
+//   pop back out → milk & cookies on the ridge → hop back into the sleigh
+const STOP_LOOP=15, STOP_SPEED=1.65, SNACKSPOT=new THREE.Vector3(0,-.06,-1.5), FACE_OUT=Math.PI/2, FACE_PLATE=Math.PI;
 let stopStart=0, stopWas=false, stopPhase='';
 const _a=new THREE.Vector3(), _b=new THREE.Vector3();
 const ease=x=>x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2;
+const clamp01=x=>Math.max(0,Math.min(1,x));
 function hop(from,to,f,h=.28){ _a.lerpVectors(from,to,ease(f)); _a.y+=Math.sin(Math.PI*f)*h; return _a; }
+function setLegs(a,b){ STOP.legs[0].rotation.set(a,0,.12); STOP.legs[1].rotation.set(b,0,-.12); }
+function poseSeated(){ const sg=STOP.santaG; sg.position.copy(STOP.seat); sg.rotation.set(0,0,0); sg.scale.set(1,1,1); sg.visible=true;
+  STOP.arms[0].rotation.set(-1.1,0,-.35); STOP.arms[1].rotation.set(-1.1,0,.35); STOP.arms[1].visible=true; STOP.armUp.visible=false; setLegs(-1.45,-1.45); }
 function animateStop(t, atStop){
   const H=STOP.house, sg=STOP.santaG; if (!H) return;
-  if (atStop && !stopWas){ stopStart=t; } stopWas=atStop; H.visible=atStop;
-  if (!atStop){ sg.position.copy(STOP.seat); sg.rotation.set(0,0,0); STOP.arms[0].rotation.set(-1.1,0,-.35); STOP.arms[1].rotation.set(-1.1,0,.35); stopPhase=''; return; }
-  const L=((t-stopStart)/1000)%STOP_LOOP;
-  // reset props at the start of each loop (a new house, a fresh cookie and full glass)
+  if (atStop && !stopWas) stopStart=t; stopWas=atStop; H.visible=atStop;
+  if (!atStop){ poseSeated(); stopPhase=''; return; }
+  const L=((t-stopStart)/1000*STOP_SPEED)%STOP_LOOP, C=STOP.chim;          // ~9 s per loop
   if (L<.05){ STOP.cookie.scale.set(1,1,1); STOP.cookie.visible=true; STOP.milkFill.scale.set(1,1,1); STOP.milkFill.position.y=.04; STOP.cookie.position.set(-.015,.015,0); STOP.cookie.rotation.set(0,0,0); STOP.milk.position.set(.1,0,-.02); STOP.milk.rotation.set(0,0,0); }
-  const armR=STOP.arms[1], armL=STOP.arms[0]; armL.rotation.set(-1.1,0,-.35); armR.rotation.set(-1.1,0,.35);
-  STOP.gifts.forEach(g=>g.visible=false);
-  // chimney smoke drifts up (paused while presents go down)
-  STOP.smoke.forEach((sm,i)=>{ const k=((t/1000*.5)+i/4)%1; const busy=L>1.3&&L<4.8; sm.visible=!busy; sm.position.set(CHIM.x+k*.12, CHIM.y+.07+k*.4, CHIM.z-k*.05); sm.scale.setScalar(.6+k*1.6); sm.material.opacity=.45*(1-k); });
-  if (L<1.3){ stopPhase='hop';                                                     // hop from the seat onto the roof by the chimney
-    sg.position.copy(hop(STOP.seat, ROOFSPOT, L/1.3, .32)); sg.rotation.y=FACE_CHIM*ease(L/1.3); }
-  else if (L<4.8){ stopPhase='gifts'; sg.position.copy(ROOFSPOT); sg.rotation.y=FACE_CHIM;
-    const u=(L-1.3)/3.5;
-    // arms lift and toss, three presents arc into the chimney one after another
-    armR.rotation.set(-1.9+Math.sin(u*Math.PI*6)*.5,0,.2); armL.rotation.set(-1.9+Math.sin(u*Math.PI*6+1)*.5,0,-.2);
-    STOP.gifts.forEach((g,i)=>{ const f=(u-i*.28)/.34; if (f<0||f>1) return; g.visible=true;
-      _b.copy(ROOFSPOT).add(new THREE.Vector3(0,.5,.12).applyAxisAngle(new THREE.Vector3(0,1,0),FACE_CHIM));
-      if (f<.6){ g.position.copy(hop(_b, _a.set(CHIM.x,CHIM.y+.06,CHIM.z).clone(), f/.6, .18)); g.scale.setScalar(1); }
-      else { const d=(f-.6)/.4; g.position.set(CHIM.x, CHIM.y+.06-d*.3, CHIM.z); g.scale.setScalar(1-d*.5); if (d>.55) g.visible=false; }
-      g.rotation.set(f*6,f*4,0); }); }
-  else if (L<10.3){ stopPhase='snack';                                             // shuffle over to the plate and have a snack
-    const m=Math.min(1,(L-4.8)/.8); sg.position.lerpVectors(ROOFSPOT,SNACKSPOT,ease(m)); sg.rotation.y=FACE_CHIM+(FACE_PLATE-FACE_CHIM)*ease(m);
-    const mouth=new THREE.Vector3().copy(sg.position).add(new THREE.Vector3(0,.4,.11).applyAxisAngle(new THREE.Vector3(0,1,0),sg.rotation.y)).sub(STOP.plate.position);
-    const u=L-5.6;
-    if (u>0 && u<2.9){ // three bites of the cookie
-      const k=Math.min(1,u/.4), bite=Math.floor(u/.9), within=(u%.9)/.9;
+  sg.visible=true; sg.scale.set(1,1,1); sg.rotation.set(0,0,0); STOP.armUp.visible=false; STOP.arms[1].visible=true;
+  STOP.arms[0].rotation.set(-1.1,0,-.35); STOP.arms[1].rotation.set(-1.1,0,.35);
+  const sit=new THREE.Vector3(C.x,C.y-.02,C.z);                 // sitting on the rim, over the opening
+  let puff=0;
+  if (L<1.3){ stopPhase='hop'; const f=L/1.3; sg.position.copy(hop(STOP.seat, sit, f, .42)); sg.rotation.y=FACE_OUT*ease(f); setLegs(-1.45+f*.6,-1.45+f*.6); }
+  else if (L<2.5){ stopPhase='gifts'; const f=(L-1.3)/1.2; sg.position.copy(sit); sg.rotation.y=FACE_OUT;
+    STOP.arms[1].visible=false; STOP.armUp.visible=true; STOP.armUp.rotation.set(0,0,-.15+(1-ease(clamp01(f*2)))*1.2);     // present goes up on one finger
+    STOP.fingerGift.rotation.y=t/300; STOP.arms[0].rotation.set(-.5,0,-.9);
+    setLegs(-.85+Math.sin(t/180)*.15,-.85-Math.sin(t/180)*.15); }
+  else if (L<6.2){ stopPhase='gifts'; const f=(L-2.5)/3.7;                                  // wiggle, kick and squeeze down
+    const sink=ease(f)*.62; sg.position.set(sit.x, sit.y-sink, sit.z); sg.rotation.set(0,FACE_OUT,Math.sin(t/80)*.22*(1-f*.3));
+    sg.scale.set(1-.18*clamp01(f*3),1+.06*clamp01(f*3),1-.18*clamp01(f*3));                 // squash to fit
+    STOP.arms[1].visible=false; STOP.armUp.visible=true; STOP.armUp.rotation.set(0,0,-.15+Math.sin(t/200)*.08); STOP.fingerGift.rotation.y=t/300;
+    STOP.arms[0].rotation.set(-.6+Math.sin(t/140)*.5,0,-1.1);
+    const k=t/70; setLegs(-.7+Math.sin(k)*.75,-.7-Math.sin(k)*.75);                         // legs kicking
+    if (f>.93) puff=(f-.93)/.07; }
+  else if (L<7.6){ stopPhase='inside'; sg.visible=false; puff=1+ (L-6.2)/1.4; }              // delivering, out of sight
+  else if (L<8.5){ stopPhase='snack'; const f=(L-7.6)/.9;                                    // pop out and land on the ridge
+    _b.set(sit.x,sit.y-.5,sit.z); sg.position.copy(hop(_b, SNACKSPOT, f, .55)); sg.rotation.y=FACE_OUT+(FACE_PLATE-FACE_OUT)*ease(f); setLegs(-.4-f*.9,-.4-f*.9); }
+  else if (L<13.3){ stopPhase='snack'; sg.position.copy(SNACKSPOT); sg.rotation.y=FACE_PLATE; setLegs(-1.3,-1.3);
+    const mouth=new THREE.Vector3().copy(sg.position).add(new THREE.Vector3(0,.4,.11).applyAxisAngle(new THREE.Vector3(0,1,0),FACE_PLATE)).sub(STOP.plate.position);
+    const u=L-8.5, armR=STOP.arms[1], armL=STOP.arms[0];
+    if (u<2.9){ const k=Math.min(1,u/.4), bite=Math.floor(u/.9), within=(u%.9)/.9;
       STOP.cookie.position.lerpVectors(new THREE.Vector3(-.015,.015,0), mouth, ease(k)); STOP.cookie.rotation.set(Math.PI/2*ease(k),0,0);
-      STOP.cookie.scale.setScalar(Math.max(.05,1-bite*.33-(within>.5?.33:0)));
-      armR.rotation.set(-2.4,0,.6);
-      if (within>.5 && within<.56) for (const c of STOP.crumbs) if (c.life<=0 && Math.random()<.5){ c.life=1; c.m.visible=true; c.m.position.copy(mouth).add(STOP.plate.position); c.v.set((Math.random()-.5)*.25,.1+Math.random()*.1,(Math.random()-.5)*.25); }
-    } else if (u>=2.9){ STOP.cookie.visible=false;
-      const w=Math.min(1,(u-2.9)/.5); STOP.milk.position.lerpVectors(new THREE.Vector3(.1,0,-.02), mouth.clone().add(new THREE.Vector3(0,-.06,0)), ease(w));
-      const drink=Math.max(0,Math.min(1,(u-3.4)/1.2)); STOP.milk.rotation.x=-1.1*Math.sin(Math.PI*Math.min(1,drink*1.1)); STOP.milkFill.scale.y=Math.max(.05,1-drink); STOP.milkFill.position.y=.04-(.0375*drink);
-      armL.rotation.set(-2.3,0,-.6);
-      if (u>4.4){ const back=Math.min(1,(u-4.4)/.3); STOP.milk.position.lerp(new THREE.Vector3(.1,0,-.02),ease(back)); STOP.milk.rotation.x*= (1-back); } } }
-  else { stopPhase='hop'; const f=Math.min(1,(L-10.3)/1.7); sg.position.copy(hop(SNACKSPOT, STOP.seat, f, .4)); sg.rotation.y=FACE_PLATE*(1-ease(f)); }
-  // crumbs fall and fade
+      STOP.cookie.scale.setScalar(Math.max(.05,1-bite*.33-(within>.5?.33:0))); armR.rotation.set(-2.4,0,.6);
+      if (within>.5 && within<.56) for (const c of STOP.crumbs) if (c.life<=0 && Math.random()<.5){ c.life=1; c.m.visible=true; c.m.position.copy(mouth).add(STOP.plate.position); c.v.set((Math.random()-.5)*.25,.1+Math.random()*.1,(Math.random()-.5)*.25); } }
+    else { STOP.cookie.visible=false; const w=Math.min(1,(u-2.9)/.5);
+      STOP.milk.position.lerpVectors(new THREE.Vector3(.1,0,-.02), mouth.clone().add(new THREE.Vector3(0,-.06,0)), ease(w));
+      const drink=clamp01((u-3.4)/1.0); STOP.milk.rotation.x=-1.1*Math.sin(Math.PI*Math.min(1,drink*1.1)); STOP.milkFill.scale.y=Math.max(.05,1-drink); STOP.milkFill.position.y=.04-.0375*drink;
+      armL.rotation.set(-2.3,0,-.6); if (u>4.5){ const back=Math.min(1,(u-4.5)/.3); STOP.milk.position.lerp(new THREE.Vector3(.1,0,-.02),ease(back)); STOP.milk.rotation.x*=(1-back); } } }
+  else { stopPhase='hop'; const f=clamp01((L-13.3)/1.7); sg.position.copy(hop(SNACKSPOT, STOP.seat, f, .45)); sg.rotation.y=FACE_PLATE*(1-ease(f)); setLegs(-1.3-f*.15,-1.3-f*.15); }
+  // chimney smoke: normal wisps, a dark puff of soot when he drops in
+  STOP.smoke.forEach((sm,i)=>{ if (puff>0){ const k=clamp01(puff/2.4 + i*.04), a=i/6*Math.PI*2; sm.visible=true;
+      sm.position.set(C.x+Math.cos(a)*k*.35, C.y+.05+k*.45, C.z+Math.sin(a)*k*.35); sm.scale.setScalar(.8+k*2.4); sm.material.color.setHex(0x2b2724); sm.material.opacity=.75*(1-k); }
+    else { const k=((t/1000*.5)+i/6)%1; sm.material.color.setHex(0xdddddd); sm.visible=!(L>1.3&&L<6.2);
+      sm.position.set(C.x+k*.12, C.y+.07+k*.45, C.z-k*.05); sm.scale.setScalar(.6+k*1.6); sm.material.opacity=.45*(1-k); } });
   for (const c of STOP.crumbs){ if (c.life<=0) continue; c.life-=.02; c.v.y-=.012; c.m.position.addScaledVector(c.v,.02); c.m.material.opacity=c.life; if (c.life<=0) c.m.visible=false; }
 }
 
@@ -1408,10 +1433,10 @@ function updateSantaModel(t){
   animateStop(t, atStop);
   santaRig.matrix.makeBasis(_sr,_su,_sf).setPosition(_sp.copy(_su).multiplyScalar(alt)); santaRig.matrixAutoUpdate=false; santaRig.matrixWorldNeedsUpdate=true;
   // gallop + bob
-  const speed = flying ? 1 : 0.25;
+  const speed = flying ? 1 : atStop ? 0.12 : 0.25;
   santaModel.rotation.x = flying ? -0.06+Math.sin(t/500)*0.02 : 0;
   if (atStop) santaModel.position.y=0; 
-  for (const rd of reindeerLegs){ const a=t/110*speed+rd.ph; rd.g.position.y=.32+Math.abs(Math.sin(a))*.03*speed;
+  for (const rd of reindeerLegs){ const a=t/110*speed+rd.ph; rd.g.position.y=(atStop?.17:.32)+Math.abs(Math.sin(a))*.03*speed;
     rd.legs[0].rotation.x=Math.sin(a)*.8*speed; rd.legs[1].rotation.x=Math.sin(a+.6)*.8*speed; rd.legs[2].rotation.x=-Math.sin(a)*.8*speed; rd.legs[3].rotation.x=-Math.sin(a+.6)*.8*speed; }
   for (const b of bells) b.position.y=-.08+Math.sin(t/90)*.006;
   // sparkles drift off the back of the sleigh
@@ -2050,7 +2075,7 @@ else setPlace(deviceApprox(), { save:false, fly:false });
 { const d=globeDist(); camG.position.copy(pinWorld().normalize().multiplyScalar(d)); follow=true; }
 frame();
 try{ if (window.top===window && !store.get('last',null) && !home) setTimeout(()=>$('locBtn').click(), 600); }catch(e){}
-function exposeDbg(){ window.__dbg = { Chip:()=>Chip, pulseInfo:()=>({v:pulse.visible,size:pulse.material.size,op:pulse.material.opacity,flash:flashStop,status:santa.status,stop:santa.stop&&santa.stop[0]}), setOffset:v=>{simOffset=v;}, tick:()=>tick(true), cam:camG, moonState, moonAltAt, moonInfo, simNow, sunState, earthMatrix, ecefToScene, sunDirScene, llToEcef, setPlace, setMode, get current(){return current;} }; }
+function exposeDbg(){ window.__dbg = { camS:()=>camS.position.toArray(), stopAt:L=>{ stopStart=performance.now()-L*1000/STOP_SPEED; }, camAt:(r,u,f,lr=0,lu=0,lf=0)=>{ const T=santaWorld(new THREE.Vector3()), e=santaRig.matrixWorld.elements; const R=new THREE.Vector3(e[0],e[1],e[2]).normalize(), U=new THREE.Vector3(e[4],e[5],e[6]).normalize(), F=new THREE.Vector3(e[8],e[9],e[10]).normalize(); santaSwoop=null; const tgt=T.clone().addScaledVector(R,lr).addScaledVector(U,lu).addScaledVector(F,lf); camS.position.copy(tgt).addScaledVector(R,r).addScaledVector(U,u).addScaledVector(F,f); ctlS.target.copy(tgt); _prevT.copy(T); camS.lookAt(tgt); }, Chip:()=>Chip, pulseInfo:()=>({v:pulse.visible,size:pulse.material.size,op:pulse.material.opacity,flash:flashStop,status:santa.status,stop:santa.stop&&santa.stop[0]}), setOffset:v=>{simOffset=v;}, tick:()=>tick(true), cam:camG, moonState, moonAltAt, moonInfo, simNow, sunState, earthMatrix, ecefToScene, sunDirScene, llToEcef, setPlace, setMode, get current(){return current;} }; }
 if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) exposeDbg();
 </script>
 </body>
