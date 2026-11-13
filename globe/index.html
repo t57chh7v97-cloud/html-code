@@ -933,7 +933,8 @@ function frame(){
   updateSantaCard(now); trail.visible = trailPts.length>0 && (santa.on || (theme==='christmas' && santa.done)) && mode==='globe';
   if (santa.on && mode==='globe' && !santaCam){ const sp=new THREE.Vector3().copy(llToEcef(santa.lat,santa.lon)).multiplyScalar(1.012).applyMatrix4(M);
     placeLabel3D(santaLbl, sp, camG, -17, -17, sp.dot(camG.position)<1.02, true); } else santaLbl.style.display='none';
-  fx.step();
+  let fwc=null; if (theme==='newyear' && mode==='globe' && !santaCam){ if (tNow-(frame._fwt||0)>250){ frame._fwt=tNow; frame._fwc=celebratingCities(M); } fwc=frame._fwc; }
+  fx.step(fwc);
   tick(false);
 }
 
@@ -1154,10 +1155,10 @@ function applyTheme(k){
 // --- New Year: which time zones are in their first hour of the year / already past midnight
 const nyState={ at:0, celebrating:new Uint8Array(0), passed:0, total:0, year:0 };
 function updateNewYearZones(now, year){
-  if (Math.abs(now-nyState.at)<4000 && nyState.year===year) return; nyState.at=+now; nyState.year=year;
+  if (Math.abs(now-nyState.at)<2000 && nyState.year===year) return; nyState.at=+now; nyState.year=year;
   if (!P.ready) return; const n=P.tzList.length; if (nyState.celebrating.length!==n) nyState.celebrating=new Uint8Array(n);
   const offs=new Set(); let passed=0;
-  for (let i=0;i<n;i++){ const lp=partsIn(P.tzList[i],now); const inNew = lp.year>=year; nyState.celebrating[i] = (inNew && lp.month===0 && lp.day===1 && lp.hour===0) ? 1 : 0;
+  for (let i=0;i<n;i++){ const lp=partsIn(P.tzList[i],now); const inNew = lp.year>=year; nyState.celebrating[i] = (inNew && lp.month===0 && lp.day===1 && lp.hour===0 && lp.minute<2) ? 1 : 0;   // first 2 minutes of the year there
     const off=Math.round((Date.UTC(lp.year,lp.month,lp.day,lp.hour,lp.minute)-Math.floor(now/60000)*60000)/60000); if (!offs.has(off)){ offs.add(off); if (inNew) passed++; } }
   nyState.passed=passed; nyState.total=offs.size;
 }
@@ -1570,6 +1571,31 @@ function checkBedtime(now, v){
   const base=`${current.kind==='device'?'You · ':''}${shortName(current)}`, want=near?base+' · 🎅 nearby!':base; if (pinLbl.textContent!==want) pinLbl.textContent=want;
 }
 $('bedClose').onclick=()=>{ bedDismissed=$('bedtime').dataset.key||''; store.set('bedDismissed',bedDismissed); $('bedtime').classList.remove('show'); };
+// ---- New Year's midnight in New York: Sinatra's "Theme from New York, New York" via YouTube's player
+// Set this to the official video's link/ID (YouTube's own player is used; the song isn't copied into the site).
+const NY_SONG_URL = '';
+const NY_SONG_ID = (NY_SONG_URL.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/)||[])[1] || (/^[\w-]{11}$/.test(NY_SONG_URL)?NY_SONG_URL:'');
+let midnightFired='', nyArmed=false;
+function pinInNewYork(){ if (!current) return false;
+  if (current.approx && DEVICE_TZ==='America/New_York' && /New York/.test(current.name)) return true;
+  const np=nearestPlace(current.lat,current.lon); return !!np && np.km<80 && P.cc[np.i]==='US' && P.ad[np.i]==='NY'; }
+async function nyPlayer(cueOnly){
+  $('musicCard').style.display=''; $('musicCard').querySelector('.mhead span').textContent='⠿ 🗽 New York, New York';
+  await loadYT();
+  if (musicOn && musicSrc!=='yt'){ Chip.stop(); try{ audioEl.pause(); }catch(e){} musicStopped(); }
+  if (!ytPlayer){ await new Promise(res=>{ ytPlayer=new YT.Player('ytBox',{ width:200,height:200, videoId:NY_SONG_ID, playerVars:{ autoplay:cueOnly?0:1, playsinline:1, rel:0, controls:1 },
+      events:{ onReady:e=>{ try{ e.target.setVolume(Math.round(musicVol*100)); if (!cueOnly) e.target.playVideo(); }catch(_){} res(); },
+               onError:e=>{ toast(e.data===101||e.data===150 ? '🗽 That video’s owner doesn’t allow it to play on other sites.' : '🗽 The song couldn’t play.'); } } }); }); }
+  else { try{ cueOnly ? ytPlayer.cueVideoById(NY_SONG_ID) : ytPlayer.loadVideoById(NY_SONG_ID); }catch(e){} }
+}
+async function nySong(atMidnight){
+  if (!NY_SONG_ID){ if (isDev) toast('🗽 The New York midnight song isn’t set yet — send Claude the official YouTube link.'); return; }
+  try{ if (nyArmed && ytPlayer){ ytPlayer.playVideo(); } else await nyPlayer(false); }
+  catch(e){ toast('🗽 YouTube is blocked on this page — the song plays on the GitHub site.'); return; }
+  // phones may still block sound that starts by itself: offer a one-tap play
+  setTimeout(()=>{ try{ if (ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState()!==1) toast('🗽 Tap ▶ on the player for “New York, New York”!'); }catch(e){} },2500);
+}
+document.addEventListener('click',async e=>{ if (e.target && e.target.id==='nyArm'){ e.preventDefault(); try{ await nyPlayer(true); nyArmed=true; unlockAudioSession(); tick(true); }catch(err){ toast('🗽 YouTube is blocked on this page — the song plays on the GitHub site.'); } } });
 function fmtCountdown(ms){ ms=Math.max(0,ms); const h=Math.floor(ms/3600000), m=Math.floor(ms%3600000/60000), sc=Math.floor(ms%60000/1000); return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`; }
 function updateHoliday(now){
   const strip=$('holStrip');
@@ -1582,6 +1608,12 @@ function updateHoliday(now){
       const target=localToUTC(current,a.y,0,1), ms=target-now; updateNewYearZones(now,a.y);
       const zones = P.ready && nyState.passed<nyState.total ? `<small>Already ${a.y} in ${nyState.passed} of ${nyState.total} time zones</small>` : '';
       html = ms>0 ? `🎆 ${a.y} in <span class="cd">${fmtCountdown(ms)}</span> here${zones}` : `🎆 Happy New Year ${a.y}!${zones}`;
+      const fireKey=`${a.y}|${current.lat.toFixed(2)},${current.lon.toFixed(2)}`;
+      if (ms>0 && midnightFired===fireKey) midnightFired='';                       // time-travelled back before midnight
+      if (ms<=0 && ms>-60000 && midnightFired!==fireKey){ midnightFired=fireKey; fx.celebrate(30000); if (pinInNewYork()) nySong(true); }
+      const ny=pinInNewYork();
+      if (ny && ms>0 && ms<180000 && NY_SONG_ID && !nyArmed) html+=`<small><a href="#" id="nyArm">🗽 Tap to get ready for “New York, New York” at midnight</a></small>`;
+      if (ny && ms>0 && ms<180000 && nyArmed) html+=`<small>🗽 Ready — Sinatra plays at midnight</small>`;
     } else if (a.k==='christmas'){
       html = dd>1 ? `🎄 ${dd} days until Christmas` : dd===1 ? `🎄 Christmas Eve — Christmas is tomorrow!` : dd===0 ? `🎄 Merry Christmas!` : `🎄 Merry Christmas! Hope it was a good one`;
       const v=santaVisitFor(current, santa.y||lpYear(now));
@@ -1636,8 +1668,9 @@ const fx = (()=>{
     cx.beginPath(); cx.moveTo(0,-p.s); cx.quadraticCurveTo(p.s*.75,-p.s*.2,0,p.s); cx.quadraticCurveTo(-p.s*.75,-p.s*.2,0,-p.s); cx.fill();
     cx.strokeStyle='rgba(80,30,10,.55)'; cx.lineWidth=1; cx.beginPath(); cx.moveTo(0,-p.s*.8); cx.lineTo(0,p.s*1.25); cx.stroke(); cx.restore(); }
   function step(cities){
+    const cityParty = kind==='fireworks' && cities && cities.length;
     const t=performance.now(); const dt=Math.min(3,(t-t0)/16.7); t0=t;
-    if ((!kind || (kind==='fireworks' && party<t)) && !bursts.length){ if (step.dirty){ cx.clearRect(0,0,W,H); step.dirty=false; } return; }
+    if ((!kind || (kind==='fireworks' && party<t && !cityParty)) && !bursts.length){ if (step.dirty){ cx.clearRect(0,0,W,H); step.dirty=false; } return; }
     step.dirty=true;
     cx.clearRect(0,0,W,H);
     for (const p of parts){
@@ -1647,6 +1680,7 @@ const fx = (()=>{
       else if (kind==='bats'){ p.x+=p.vx*dt; p.y+=Math.sin(t*.002+p.ph)*.35*dt; if (p.x<-60||p.x>W+60){ Object.assign(p,spawn('bats',false)); p.dir=p.x<0?1:-1; p.vx=p.dir*rnd(.6,1.4);} drawBat(p,t); }
     }
     if (kind==='fireworks'){
+      if (cityParty && Math.random()<Math.min(.7,.08*cities.length)*dt){ const c=cities[Math.floor(Math.random()*cities.length)]; burst(c[0]+rnd(-6,6), c[1]-rnd(18,42), false); }
       if (party>t){ const left=(party-t)/1000; const rate = left<4 ? .5 : .16;    // finale in the last few seconds
         if (Math.random()<rate*dt) burst(rnd(W*.08,W*.92), rnd(H*.08,H*.55), Math.random()<.6); }
     }

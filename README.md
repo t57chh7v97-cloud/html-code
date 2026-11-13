@@ -117,7 +117,12 @@ night-side city lights placed at real city coordinates.
 
     Browsers only allow sound after a tap, so music starts from the menu.
   - 🎆 New Year (Dec 30 – Jan 15): a countdown to midnight at your pin, and a
-    30-second fireworks show each time you open the app
+    30-second fireworks show each time you open the app. At midnight, wherever
+    your pin is, another 30-second show plays. On the globe, fireworks burst
+    over each city during the first two minutes after its own time zone
+    reaches midnight. With a New York pin, Sinatra's "Theme from New York, New
+    York" plays at midnight in YouTube's player, once the official video link
+    is set in `NY_SONG_URL`.
 
   Developers can preview any of them from ⏱ Time travel. Anyone can turn
   them off with the 🎉 button.
