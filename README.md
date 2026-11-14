@@ -153,7 +153,7 @@ night-side city lights placed at real city coordinates.
     Lunar dates (Lunar New Year, Diwali, Hanukkah, Ramadan, the Eids) are
     built in for 2025–2030. Fireworks holidays (like the 4th of July and
     Bastille Day) play a 20-second show. Solemn days (Memorial Day, Remembrance
-    Day) use quiet poppies and no fireworks.
+    Day) are quiet, with gentle stars or poppies and no fireworks.
 
   Developers can preview any of them from ⏱ Time travel, which has a holiday
   picker. Anyone can turn them off with the 🎉 button.
