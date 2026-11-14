@@ -171,7 +171,13 @@ night-side city lights placed at real city coordinates.
   - 📅 An advent calendar (Dec 1–24): a door opens each day with a fact, a joke,
     a carol or a little surprise.
   - ✉️ A letter to Santa, kept only on the device. Santa reads it when he
-    reaches your area on Christmas Eve, and his reply appears.
+    reaches your area on Christmas Eve, and his reply appears. In the Claude
+    version, Claude writes Santa's reply from what the letter says (it asks
+    the viewer's permission the first time). On this site, Santa's reply picks
+    up what the letter mentions (the gift asked for, video games, pets,
+    family, questions and more) without any server or API key.
+  - After Santa lands, the North Pole village, his full path and the lit-up
+    stops stay on the globe until the New Year theme starts on Dec 30.
   - 🦌 In Santa cam, each reindeer has a name tag.
   - 🎆 New Year's Eve: a gold midnight line sweeps west across the globe, "Next
     to celebrate" counts down to the next big cities, and with a pin in New York
