@@ -120,9 +120,13 @@ night-side city lights placed at real city coordinates.
     30-second fireworks show each time you open the app. At midnight, wherever
     your pin is, another 30-second show plays. On the globe, fireworks burst
     over each city during the first two minutes after its own time zone
-    reaches midnight. With a New York pin, Sinatra's "Theme from New York, New
-    York" plays at midnight in YouTube's player, once the official video link
-    is set in `NY_SONG_URL`.
+    reaches midnight. With a pin anywhere in New York State, "Theme from New
+    York, New York" plays by itself at midnight. Each viewer picks their own copy
+    of the song with "🗽 Choose your 'New York, New York' song file" on the
+    time card. The file is kept only in that browser and is never uploaded. If
+    `NY_SONG_URL` is set, YouTube's player is the fallback. Browsers allow the
+    sound only after one tap on the page, and the page has to be open at
+    midnight.
 
   Developers can preview any of them from ⏱ Time travel. Anyone can turn
   them off with the 🎉 button.

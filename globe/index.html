@@ -325,7 +325,7 @@
 <div id="credit">Coastlines: Natural Earth · 193k places: GeoNames · Santa route: Google Santa Tracker<br>Sun &amp; Moon positions computed live from your clock</div>
 <div id="toast" class="glass"></div>
 <div id="overChip" class="glass" style="display:none"></div>
-<div id="musicMenu" class="glass" role="menu"></div><input id="mFile" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg" hidden>
+<div id="musicMenu" class="glass" role="menu"></div><input id="mFile" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg" hidden><input id="nyFile" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg" hidden>
 <div id="musicCard" class="glass" style="display:none"><div class="mhead" title="Drag to move"><span>⠿ 🎵 Christmas music</span><button id="musicOff" title="Turn music off" aria-label="Turn music off">✕</button></div><div id="ytBox"></div></div>
 <div id="devDlg" role="dialog" aria-modal="true" aria-labelledby="devTitle"><form id="devForm" class="glass">
   <div id="devTitle">🛠 Developer access</div><div class="dsub">Enter the passphrase to unlock time travel on this device.</div>
@@ -1575,8 +1575,13 @@ $('bedClose').onclick=()=>{ bedDismissed=$('bedtime').dataset.key||''; store.set
 // Set this to the official video's link/ID (YouTube's own player is used; the song isn't copied into the site).
 const NY_SONG_URL = '';
 const NY_SONG_ID = (NY_SONG_URL.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/)||[])[1] || (/^[\w-]{11}$/.test(NY_SONG_URL)?NY_SONG_URL:'');
-let midnightFired='', nyArmed=false;
-function pinInNewYork(){ if (!current) return false;
+let midnightFired='', nyArmed=false, nyHasFile=false;
+// a song file the viewer picks for New York's midnight — kept only in this browser (IndexedDB), never uploaded
+const nyAudio=new Audio(); nyAudio.setAttribute('playsinline',''); nyAudio.preload='auto';
+let nyURL=null;
+(async()=>{ try{ const b=await idb.get('nysong'); if (b){ nyURL=URL.createObjectURL(b); nyAudio.src=nyURL; nyHasFile=true; } }catch(e){} })();
+const nyPlaying=()=> (nyHasFile && !nyAudio.paused) || (!nyHasFile && ytPlayer && ytPlayer.getPlayerState && (()=>{ try{ return ytPlayer.getPlayerState()===1; }catch(e){ return false; } })());
+function pinInNewYork(){ if (!current) return false;           // anywhere in New York State (by the nearest town's state)
   if (current.approx && DEVICE_TZ==='America/New_York' && /New York/.test(current.name)) return true;
   const np=nearestPlace(current.lat,current.lon); return !!np && np.km<80 && P.cc[np.i]==='US' && P.ad[np.i]==='NY'; }
 async function nyPlayer(cueOnly){
@@ -1589,13 +1594,33 @@ async function nyPlayer(cueOnly){
   else { try{ cueOnly ? ytPlayer.cueVideoById(NY_SONG_ID) : ytPlayer.loadVideoById(NY_SONG_ID); }catch(e){} }
 }
 async function nySong(atMidnight){
+  if (nyHasFile){
+    if (musicOn){ Chip.stop(); try{ audioEl.pause(); }catch(e){} ytStop(); musicStopped(); }
+    nyAudio.currentTime=0; nyAudio.volume=musicVol;
+    try{ await nyAudio.play(); try{ navigator.mediaSession.metadata=new MediaMetadata({title:'Theme from New York, New York', artist:'Frank Sinatra'}); }catch(e){} }
+    catch(e){ toast('🗽 Tap “▶ Play New York, New York” on the time card!'); }
+    return; }
   if (!NY_SONG_ID){ if (isDev) toast('🗽 The New York midnight song isn’t set yet — send Claude the official YouTube link.'); return; }
   try{ if (nyArmed && ytPlayer){ ytPlayer.playVideo(); } else await nyPlayer(false); }
   catch(e){ toast('🗽 YouTube is blocked on this page — the song plays on the GitHub site.'); return; }
   // phones may still block sound that starts by itself: offer a one-tap play
   setTimeout(()=>{ try{ if (ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState()!==1) toast('🗽 Tap ▶ on the player for “New York, New York”!'); }catch(e){} },2500);
 }
-document.addEventListener('click',async e=>{ if (e.target && e.target.id==='nyArm'){ e.preventDefault(); try{ await nyPlayer(true); nyArmed=true; unlockAudioSession(); tick(true); }catch(err){ toast('🗽 YouTube is blocked on this page — the song plays on the GitHub site.'); } } });
+document.addEventListener('click',async e=>{ const id=e.target && e.target.id;
+  if (id==='nyArm'){ e.preventDefault();
+    if (nyHasFile){ try{ nyAudio.muted=true; await nyAudio.play(); nyAudio.pause(); nyAudio.currentTime=0; nyAudio.muted=false; }catch(err){} nyArmed=true; tick(true); return; }   // a tap now lets it start on its own at midnight
+    try{ await nyPlayer(true); nyArmed=true; unlockAudioSession(); tick(true); }catch(err){ toast('🗽 YouTube is blocked on this page — the song plays on the GitHub site.'); } }
+  else if (id==='nyPick'){ e.preventDefault(); $('nyFile').click(); }
+  else if (id==='nyPlay'){ e.preventDefault(); nySong(false); } });
+// browsers only let a page start sound on its own after the viewer has touched it: the first tap/drag anywhere
+// "unlocks" the New York song so it can start by itself at midnight (as long as the page is open on screen)
+let nyUnlocked=false;
+async function unlockNY(){ if (nyUnlocked || !nyHasFile) return; try{ nyAudio.muted=true; await nyAudio.play(); nyAudio.pause(); nyAudio.currentTime=0; nyAudio.muted=false; nyUnlocked=true; nyArmed=true; }catch(e){ nyAudio.muted=false; } }
+['pointerdown','keydown','touchend'].forEach(ev=>addEventListener(ev,()=>{ if (!nyUnlocked) unlockNY(); },{passive:true}));
+$('nyFile').addEventListener('change',async e=>{ const f=e.target.files[0]; e.target.value=''; if (!f) return;
+  if (!/^audio\//.test(f.type) && !/\.(mp3|m4a|aac|wav|ogg|flac)$/i.test(f.name)){ toast('🗽 That isn’t an audio file.'); return; }
+  try{ await idb.set('nysong',f); }catch(err){} if (nyURL) URL.revokeObjectURL(nyURL); nyURL=URL.createObjectURL(f); nyAudio.src=nyURL; nyHasFile=true; nyUnlocked=false; unlockNY();
+  toast('🗽 Saved on this device — it plays at midnight in New York.'); tick(true); });
 function fmtCountdown(ms){ ms=Math.max(0,ms); const h=Math.floor(ms/3600000), m=Math.floor(ms%3600000/60000), sc=Math.floor(ms%60000/1000); return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`; }
 function updateHoliday(now){
   const strip=$('holStrip');
@@ -1612,8 +1637,12 @@ function updateHoliday(now){
       if (ms>0 && midnightFired===fireKey) midnightFired='';                       // time-travelled back before midnight
       if (ms<=0 && ms>-60000 && midnightFired!==fireKey){ midnightFired=fireKey; fx.celebrate(30000); if (pinInNewYork()) nySong(true); }
       const ny=pinInNewYork();
-      if (ny && ms>0 && ms<180000 && NY_SONG_ID && !nyArmed) html+=`<small><a href="#" id="nyArm">🗽 Tap to get ready for “New York, New York” at midnight</a></small>`;
-      if (ny && ms>0 && ms<180000 && nyArmed) html+=`<small>🗽 Ready — Sinatra plays at midnight</small>`;
+      if (ny){ const has = nyHasFile || NY_SONG_ID;
+        if (ms>0 && !nyHasFile) html+=`<small><a href="#" id="nyPick">🗽 Choose your “New York, New York” song file</a> — it stays on this device and plays at midnight</small>`;
+        else if (ms>0 && ms>=180000) html+=`<small>🗽 “New York, New York” plays here at midnight · <a href="#" id="nyPick">change song</a></small>`;
+        if (has && ms>0 && ms<180000 && !nyArmed && !nyHasFile) html+=`<small><a href="#" id="nyArm">🗽 Tap to get ready for “New York, New York” at midnight</a></small>`;
+        if (has && ms>0 && ms<180000 && (nyArmed||nyHasFile)) html+=`<small>🗽 Ready — Sinatra plays at midnight${nyHasFile&&!nyUnlocked?' (tap the globe once so your phone allows the sound)':''}</small>`;
+        if (ms<=0 && ms>-300000 && has && !nyPlaying()) html+=`<small><a href="#" id="nyPlay">▶ Play “New York, New York”</a></small>`; }
     } else if (a.k==='christmas'){
       html = dd>1 ? `🎄 ${dd} days until Christmas` : dd===1 ? `🎄 Christmas Eve — Christmas is tomorrow!` : dd===0 ? `🎄 Merry Christmas!` : `🎄 Merry Christmas! Hope it was a good one`;
       const v=santaVisitFor(current, santa.y||lpYear(now));
@@ -2109,7 +2138,7 @@ else setPlace(deviceApprox(), { save:false, fly:false });
 { const d=globeDist(); camG.position.copy(pinWorld().normalize().multiplyScalar(d)); follow=true; }
 frame();
 try{ if (window.top===window && !store.get('last',null) && !home) setTimeout(()=>$('locBtn').click(), 600); }catch(e){}
-function exposeDbg(){ window.__dbg = { camS:()=>camS.position.toArray(), stopAt:L=>{ stopStart=performance.now()-L*1000/STOP_SPEED; }, camAt:(r,u,f,lr=0,lu=0,lf=0)=>{ const T=santaWorld(new THREE.Vector3()), e=santaRig.matrixWorld.elements; const R=new THREE.Vector3(e[0],e[1],e[2]).normalize(), U=new THREE.Vector3(e[4],e[5],e[6]).normalize(), F=new THREE.Vector3(e[8],e[9],e[10]).normalize(); santaSwoop=null; const tgt=T.clone().addScaledVector(R,lr).addScaledVector(U,lu).addScaledVector(F,lf); camS.position.copy(tgt).addScaledVector(R,r).addScaledVector(U,u).addScaledVector(F,f); ctlS.target.copy(tgt); _prevT.copy(T); camS.lookAt(tgt); }, Chip:()=>Chip, pulseInfo:()=>({v:pulse.visible,size:pulse.material.size,op:pulse.material.opacity,flash:flashStop,status:santa.status,stop:santa.stop&&santa.stop[0]}), setOffset:v=>{simOffset=v;}, tick:()=>tick(true), cam:camG, moonState, moonAltAt, moonInfo, simNow, sunState, earthMatrix, ecefToScene, sunDirScene, llToEcef, setPlace, setMode, get current(){return current;} }; }
+function exposeDbg(){ window.__dbg = { inNY:()=>pinInNewYork(), nyPlaying:()=>!nyAudio.paused && nyAudio.currentTime>0, camS:()=>camS.position.toArray(), stopAt:L=>{ stopStart=performance.now()-L*1000/STOP_SPEED; }, camAt:(r,u,f,lr=0,lu=0,lf=0)=>{ const T=santaWorld(new THREE.Vector3()), e=santaRig.matrixWorld.elements; const R=new THREE.Vector3(e[0],e[1],e[2]).normalize(), U=new THREE.Vector3(e[4],e[5],e[6]).normalize(), F=new THREE.Vector3(e[8],e[9],e[10]).normalize(); santaSwoop=null; const tgt=T.clone().addScaledVector(R,lr).addScaledVector(U,lu).addScaledVector(F,lf); camS.position.copy(tgt).addScaledVector(R,r).addScaledVector(U,u).addScaledVector(F,f); ctlS.target.copy(tgt); _prevT.copy(T); camS.lookAt(tgt); }, Chip:()=>Chip, pulseInfo:()=>({v:pulse.visible,size:pulse.material.size,op:pulse.material.opacity,flash:flashStop,status:santa.status,stop:santa.stop&&santa.stop[0]}), setOffset:v=>{simOffset=v;}, tick:()=>tick(true), cam:camG, moonState, moonAltAt, moonInfo, simNow, sunState, earthMatrix, ecefToScene, sunDirScene, llToEcef, setPlace, setMode, get current(){return current;} }; }
 if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) exposeDbg();
 </script>
 </body>
