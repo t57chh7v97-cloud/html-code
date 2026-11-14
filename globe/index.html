@@ -46,6 +46,7 @@
   #timeBar{display:none;padding:10px;flex-direction:column;gap:8px;font-size:13px}
   #timeBar.show{display:flex}
   .tbTop{display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--muted)} .tbTop b{color:var(--text);font-weight:600}
+  #holJump{flex:1 1 100%;padding:8px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--text);font:13px 'Space Grotesk',system-ui}
   .tbGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;align-items:center}
   .tbGrid .tbk{grid-column:1/-1;margin-top:2px}
   .tbGrid .btn{justify-content:center;padding:7px 4px;font-size:12.5px;white-space:nowrap}
@@ -97,6 +98,10 @@
   #bedtime .big{font-size:22px;font-weight:700;line-height:1.3}
   #bedtime .sub{margin-top:10px;font-size:14px;opacity:.9}
   #bedClose{position:absolute;right:8px;top:6px;border:0;background:none;color:#fff;font-size:18px;opacity:.7;cursor:pointer;padding:6px}
+  .npb{position:fixed;z-index:4;pointer-events:none;transform:translate(-50%,calc(-100% - 10px));background:#fffdf7;color:#1d1d1f;font:600 12.5px/1.25 system-ui,-apple-system,sans-serif;padding:6px 10px;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.4);white-space:nowrap;animation:npPop .35s ease-out}
+  .npb::after{content:'';position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#fffdf7}
+  .npb.mrs{background:#ffe8ec;font-size:13.5px} .npb.mrs::after{border-top-color:#ffe8ec}
+  @keyframes npPop{from{opacity:0;transform:translate(-50%,calc(-100% - 2px)) scale(.7)}to{opacity:1}}
   .lbl.santa{width:34px;height:34px;padding:0;border-radius:50%;display:grid;place-items:center;font-size:20px;line-height:1;background:radial-gradient(circle at 40% 35%,#ff4b4b,#c8102e 70%);border:2.5px solid #f2c14e;box-shadow:0 3px 10px rgba(0,0,0,.55),0 0 0 3px rgba(255,255,255,.85)}
   .btn.tog.on{border-color:rgba(255,200,97,.55);color:var(--accent)}
   .clbl{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;white-space:nowrap;font-size:11.5px;font-weight:500;color:#e6ecfa;text-shadow:0 0 3px #000,0 0 6px #000,0 1px 2px #000;display:flex;align-items:center;gap:5px;will-change:transform;padding:1px 2px}
@@ -256,7 +261,8 @@
     <form class="tbRow" id="goForm"><span class="tbk">Go to</span><input id="goWhen" type="datetime-local" step="60" aria-label="Date and time at the pin"><button class="btn mini primary" type="submit">Go</button><span class="tbk" id="goTz"></span></form>
     <div class="tbRow"><span class="tbk">Preview</span>
       <button class="btn mini" data-jump="halloween">🎃 Halloween</button><button class="btn mini" data-jump="thanksgiving">🦃 Thanksgiving</button>
-      <button class="btn mini" data-jump="christmas">🎅 Christmas Eve</button><button class="btn mini" data-jump="newyear">🎆 New Year</button></div>
+      <button class="btn mini" data-jump="christmas">🎅 Christmas Eve</button><button class="btn mini" data-jump="newyear">🎆 New Year</button>
+      <select id="holJump" aria-label="Jump to any holiday for this place"><option value="">More holidays for this place…</option></select></div>
     <div class="tbRow"><span class="tbk">Speed</span><div class="seg" id="speedSeg"><button data-v="1" class="on">Real</button><button data-v="3600">1 hr/sec</button><button data-v="86400">1 day/sec</button></div></div>
   </div>
   <form id="coordBox" class="glass">
@@ -760,7 +766,7 @@ function setPlace(p, opts={}){
   const up=new THREE.Vector3(0,1,0), n=llToEcef(current.lat,current.lon);
   for (const R of [G,O]){ R.pin.position.copy(n); R.pin.quaternion.setFromUnitVectors(up,n); }
   pinLbl.textContent = current.kind==='device' ? `You · ${shortName(current)}` : shortName(current);
-  updateStatic(); tick(true); if (typeof layout==='function') layout();
+  updateStatic(); tick(true); if (typeof layout==='function') layout(); if (typeof fillHolJump==='function') fillHolJump();
   if (opts.fly!==false) flyTo();
 }
 const shortName = p => (p.name||'').replace(/^Near /,'≈ ');
@@ -974,8 +980,11 @@ function updateOverChip(force){
   let lat,lon; if (santa.on){ lat=santa.lat; lon=santa.lon; } else { lat=ROUTE[0][2]; lon=ROUTE[0][3]; }
   const ctry=countryAt(lat,lon); const np=nearestPlace(lat,lon);
   let txt;
-  if (!santa.on && !santa.done) txt='🛷 Parked at the North Pole · getting ready';
-  else if (santa.done) txt='🛷 Home at the North Pole';
+  const nph=npPhase();
+  if (!santa.on && !santa.done) txt = nph==='bye' ? `👋 Mrs. Claus and the elves are saying goodbye · takeoff in ${mmss(santa.takeoffIn*1000)}` : '🛷 Parked at the North Pole · getting ready';
+  else if (santa.done) txt = nph==='welcome' ? '🏡 Welcome home! Mrs. Claus has hot cocoa ready ☕' : '🛷 Home at the North Pole';
+  else if (nph==='bye' && santa.idx===0 && santa.status==='fly') txt='👋 Liftoff! The elves are waving goodbye';
+  else if (nph==='cheer') txt='🛬 Coming in to land at the North Pole — the elves are cheering!';
   else if (santa.status==='at'){ const here=placeName(santa.stop); txt = stopPhase==='gifts' ? `🎁 Squeezing down a chimney in ${here}` : stopPhase==='inside' ? `🎄 Leaving presents under the tree in ${here}` : stopPhase==='snack' ? `🍪 Snack break in ${here} — milk & cookies` : `🏠 Landing on a roof in ${here}`; }
   else if (ctry){ const town = np && np.km<60 ? P.name[np.i]+(P.ad[np.i]&&P.cc[np.i]==='US'?', '+P.ad[np.i]:'')+', ' : (np && np.km<250 ? `near ${P.name[np.i]}, ` : ''); txt=`🛷 Flying over ${town}${ctry}`; }
   else txt = np ? `🛷 Flying over the ocean · ${Math.round(np.km).toLocaleString()} km from ${P.name[np.i]}` : '🛷 Flying over the ocean';
@@ -1097,7 +1106,7 @@ $('devLock').onclick=()=>{ isDev=false; store.set('devkey',''); applyDev(); toas
 { let taps=[]; $('clock').addEventListener('click',()=>{ const t=performance.now(); taps=taps.filter(x=>t-x<3000); taps.push(t); if (taps.length>=5){ taps=[]; openDevDlg(); } }); }
 function checkDevHash(){ if (location.hash==='#dev'){ try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){} openDevDlg(); } }
 addEventListener('hashchange',checkDevHash); setTimeout(checkDevHash,300);
-$('tBtn').onclick=()=>{ if (!isDev) return; const on=$('timeBar').classList.toggle('show'); if (on) fillGoTo(); layout(); };
+$('tBtn').onclick=()=>{ if (!isDev) return; const on=$('timeBar').classList.toggle('show'); if (on){ fillGoTo(); fillHolJump(); } layout(); };
 $('namesBtn').onclick=()=>{ showNames=!showNames; store.set('names',showNames); $('namesBtn').classList.toggle('on',showNames); };
 $('namesBtn').classList.toggle('on',showNames);
 setInterval(()=>{ if ($('timeBar').classList.contains('show')) $('simWhen').textContent = simNow().toLocaleString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',hour12:h12}); }, 250);
@@ -1105,16 +1114,102 @@ setInterval(()=>{ if ($('timeBar').classList.contains('show')) $('simWhen').text
 /* =========================================================
    HOLIDAYS — themes switch on by the local date at your pin
    ========================================================= */
+// Each theme: icon, greeting, globe glow (atmo), city-light colours, particle effect, accent colours,
+// fireworks palette (if it gets a show) and whether it's a solemn day (no "Happy …", calmer effects).
+const pal=(...cols)=>i=>cols[i%cols.length];
 const HOL = {
-  halloween:   { name:'Halloween',    icon:'🎃', greet:'Happy Halloween!',   atmo:[0.80,0.38,1.00], fx:'bats',
+  halloween:   { name:'Halloween',    icon:'🎃', greet:'Happy Halloween!',   atmo:[0.80,0.38,1.00], fx:'bats', acc:['#ff8a1f','#b46bff'],
                  lights:i=> i%3===0 ? ['170,80,255','220,170,255'] : ['255,130,25','255,190,90'] },
-  thanksgiving:{ name:'Thanksgiving', icon:'🦃', greet:'Happy Thanksgiving!', atmo:[1.00,0.62,0.30], fx:'leaves',
+  thanksgiving:{ name:'Thanksgiving', icon:'🦃', greet:'Happy Thanksgiving!', atmo:[1.00,0.62,0.30], fx:'leaves', acc:['#ffb14a','#e0703a'],
                  lights:i=> i%4===0 ? ['255,120,40','255,180,110'] : ['255,180,80','255,220,150'] },
-  christmas:   { name:'Christmas',    icon:'🎄', greet:'Merry Christmas!',    atmo:[0.62,0.86,1.00], fx:'snow',
+  christmas:   { name:'Christmas',    icon:'🎄', greet:'Merry Christmas!',    atmo:[0.62,0.86,1.00], fx:'snow', acc:['#ff6464','#4fd18b'],
                  lights:i=> [['255,70,80','255,160,160'],['70,230,120','170,255,190'],['255,240,210','255,250,240'],['255,200,70','255,230,160']][i%4] },
-  newyear:     { name:"New Year's",   icon:'🎆', greet:'Happy New Year!',     atmo:[1.00,0.84,0.45], fx:'fireworks',
+  newyear:     { name:"New Year's",   icon:'🎆', greet:'Happy New Year!',     atmo:[1.00,0.84,0.45], fx:'fireworks', acc:['#ffd166','#c77dff'], show:true,
                  lights:i=> i%5===0 ? ['190,130,255','235,210,255'] : ['255,205,100','255,240,190'] },
+  // ---- United States
+  mlk:         { name:'Martin Luther King Jr. Day', icon:'🕊️', greet:'Honoring Dr. Martin Luther King Jr.', solemn:true, atmo:[0.95,0.85,0.60], fx:'glow', acc:['#ffd98a','#9ec5ff'],
+                 lights:pal(['255,225,160','255,245,215']) },
+  valentines:  { name:"Valentine's Day", icon:'💘', greet:"Happy Valentine's Day!", atmo:[1.00,0.45,0.65], fx:'hearts', acc:['#ff5c8a','#ffa3c2'],
+                 lights:pal(['255,90,140','255,170,200'],['255,140,180','255,210,225']) },
+  presidents:  { name:"Presidents' Day", icon:'🇺🇸', greet:"Happy Presidents' Day!", atmo:[0.55,0.70,1.00], fx:'stars', fxc:['#ff4b5c','#ffffff','#4b7bff'], acc:['#ff5a6a','#6c95ff'],
+                 lights:pal(['255,90,100','255,180,185'],['255,255,255','255,255,255'],['100,140,255','180,200,255']) },
+  stpatricks:  { name:"St. Patrick's Day", icon:'☘️', greet:"Happy St. Patrick's Day!", atmo:[0.35,1.00,0.50], fx:'shamrocks', acc:['#3ddc84','#ffcf4d'],
+                 lights:pal(['60,220,110','160,255,180'],['255,200,60','255,230,150']) },
+  easter:      { name:'Easter', icon:'🐣', greet:'Happy Easter!', atmo:[0.95,0.80,1.00], fx:'eggs', acc:['#c9a2ff','#8fe3c4'],
+                 lights:pal(['255,180,220','255,220,240'],['180,230,255','220,245,255'],['255,240,150','255,250,210'],['190,255,200','225,255,230']) },
+  memorial:    { name:'Memorial Day', icon:'🇺🇸', greet:'Remembering those who gave their lives in service', solemn:true, atmo:[0.55,0.65,0.95], fx:'stars', fxc:['#ffffff','#9db6ff','#ff7d8a'], acc:['#9db6ff','#ff7d8a'],
+                 lights:pal(['230,235,255','255,255,255'],['255,120,130','255,200,205']) },
+  july4:       { name:'Independence Day', icon:'🇺🇸', greet:'Happy Fourth of July!', atmo:[0.55,0.70,1.00], fx:'stars', fxc:['#ff4b5c','#ffffff','#4b7bff'], show:true, burst:['#ff3b48','#ffffff','#4d7bff'],
+                 acc:['#ff5a6a','#6c95ff'], lights:pal(['255,80,95','255,170,175'],['255,255,255','255,255,255'],['90,130,255','170,195,255']) },
+  labor:       { name:'Labor Day', icon:'🛠️', greet:'Happy Labor Day!', atmo:[0.60,0.75,1.00], fx:'stars', fxc:['#ff4b5c','#ffffff','#4b7bff'], acc:['#ff5a6a','#6c95ff'],
+                 lights:pal(['255,90,100','255,180,185'],['255,255,255','255,255,255'],['100,140,255','180,200,255']) },
+  veterans:    { name:'Veterans Day', icon:'🎖️', greet:'Thank you to all who served', solemn:true, atmo:[0.55,0.65,0.95], fx:'stars', fxc:['#ffffff','#9db6ff','#ff7d8a'], acc:['#9db6ff','#ff7d8a'],
+                 lights:pal(['230,235,255','255,255,255'],['255,120,130','255,200,205']) },
+  // ---- Canada, UK, France, Mexico, Australia, Brazil, India, China
+  canadaday:   { name:'Canada Day', icon:'🇨🇦', greet:'Happy Canada Day!', atmo:[1.00,0.45,0.45], fx:'confetti', fxc:['#ff3040','#ffffff'], show:true, burst:['#ff2d3b','#ffffff'],
+                 acc:['#ff4050','#ffd6d9'], lights:pal(['255,60,70','255,160,165'],['255,255,255','255,255,255']) },
+  remembrance: { name:'Remembrance Day', icon:'🌺', greet:'Lest we forget', solemn:true, atmo:[0.85,0.35,0.35], fx:'poppies', acc:['#e8343f','#cfd6e6'],
+                 lights:pal(['255,90,90','255,170,160'],['240,240,255','255,255,255']) },
+  bastille:    { name:'Bastille Day', icon:'🇫🇷', greet:'Bonne fête nationale !', atmo:[0.55,0.70,1.00], fx:'confetti', fxc:['#2b5cff','#ffffff','#ff3b48'], show:true, burst:['#3d6bff','#ffffff','#ff3b48'],
+                 acc:['#5b80ff','#ff5a64'], lights:pal(['90,130,255','170,195,255'],['255,255,255','255,255,255'],['255,80,90','255,170,175']) },
+  guyfawkes:   { name:'Bonfire Night', icon:'🎇', greet:'Remember, remember the fifth of November!', atmo:[1.00,0.55,0.25], fx:'embers', show:true,
+                 acc:['#ff8a2b','#ffd36b'], lights:pal(['255,140,50','255,200,120']) },
+  mexindep:    { name:'Mexican Independence Day', icon:'🇲🇽', greet:'¡Viva México!', atmo:[0.45,1.00,0.55], fx:'confetti', fxc:['#13a74b','#ffffff','#e3242b'], show:true, burst:['#17c25a','#ffffff','#ff3b48'],
+                 acc:['#2fc36a','#ff4a4f'], lights:pal(['50,200,100','160,240,180'],['255,255,255','255,255,255'],['255,70,75','255,170,170']) },
+  muertos:     { name:'Día de los Muertos', icon:'💀', greet:'¡Feliz Día de los Muertos!', atmo:[1.00,0.55,0.20], fx:'marigolds', acc:['#ff9a1f','#d65cff'],
+                 lights:pal(['255,150,30','255,205,120'],['220,90,255','240,180,255']) },
+  australiaday:{ name:'Australia Day', icon:'🇦🇺', greet:'Happy Australia Day!', atmo:[0.45,0.65,1.00], fx:'confetti', fxc:['#1f3fbf','#ffffff','#e3242b','#ffd447'], show:true, burst:['#4d6bff','#ffffff','#ffd447'],
+                 acc:['#5b7bff','#ffd447'], lights:pal(['90,120,255','170,190,255'],['255,255,255','255,255,255'],['255,210,70','255,235,160']) },
+  carnival:    { name:'Carnaval', icon:'🎭', greet:'Feliz Carnaval!', atmo:[1.00,0.55,0.90], fx:'confetti', fxc:['#ffd400','#00d26a','#ff3db1','#2b9bff','#ff7a00'], show:true,
+                 acc:['#ffd400','#ff3db1'], lights:pal(['255,215,0','255,240,150'],['0,210,106','150,255,200'],['255,61,177','255,170,220']) },
+  indiaindep:  { name:'Independence Day (India)', icon:'🇮🇳', greet:'Happy Independence Day!', atmo:[1.00,0.65,0.35], fx:'confetti', fxc:['#ff9933','#ffffff','#138808'], show:true, burst:['#ff9933','#ffffff','#22c03a'],
+                 acc:['#ff9933','#2bbf3a'], lights:pal(['255,153,51','255,205,150'],['255,255,255','255,255,255'],['40,180,60','160,240,170']) },
+  chinanational:{name:'National Day (Golden Week)', icon:'🇨🇳', greet:'Happy National Day!', atmo:[1.00,0.40,0.30], fx:'lanterns', show:true, burst:['#ff3b30','#ffd24a'],
+                 acc:['#ff3b30','#ffd24a'], lights:pal(['255,70,50','255,160,140'],['255,210,70','255,235,170']) },
+  // ---- cultural & religious festivals
+  lunarny:     { name:'Lunar New Year', icon:'🧧', greet:'Happy Lunar New Year!', atmo:[1.00,0.40,0.30], fx:'lanterns', show:true, burst:['#ff3b30','#ffd24a'],
+                 acc:['#ff3b30','#ffd24a'], lights:pal(['255,70,50','255,160,140'],['255,210,70','255,235,170']) },
+  diwali:      { name:'Diwali', icon:'🪔', greet:'Happy Diwali!', atmo:[1.00,0.70,0.30], fx:'diyas', show:true, burst:['#ffb02e','#ff4fa3','#ffe066','#ff7a1a'],
+                 acc:['#ffb02e','#ff4fa3'], lights:pal(['255,180,60','255,225,150'],['255,90,170','255,180,215']) },
+  hanukkah:    { name:'Hanukkah', icon:'🕎', greet:'Happy Hanukkah!', atmo:[0.45,0.65,1.00], fx:'hanukkah', acc:['#5c8dff','#e8eeff'],
+                 lights:pal(['110,150,255','190,210,255'],['255,255,255','255,255,255']) },
+  ramadan:     { name:'Ramadan', icon:'🌙', greet:'Ramadan Mubarak!', atmo:[0.55,0.55,1.00], fx:'crescents', acc:['#ffd36b','#8f9bff'],
+                 lights:pal(['255,215,120','255,240,190'],['150,160,255','210,215,255']) },
+  eidfitr:     { name:'Eid al-Fitr', icon:'🌙', greet:'Eid Mubarak!', atmo:[0.95,0.80,0.45], fx:'crescents', show:true, burst:['#ffd36b','#3fd18b','#ffffff'],
+                 acc:['#ffd36b','#3fd18b'], lights:pal(['255,215,120','255,240,190'],['70,210,140','170,245,200']) },
+  eidadha:     { name:'Eid al-Adha', icon:'🌙', greet:'Eid Mubarak!', atmo:[0.95,0.80,0.45], fx:'crescents', show:true, burst:['#ffd36b','#3fd18b','#ffffff'],
+                 acc:['#ffd36b','#3fd18b'], lights:pal(['255,215,120','255,240,190'],['70,210,140','170,245,200']) },
 };
+// ---- who celebrates what (ISO country codes of the pin's country)
+const MUSLIM=['SA','AE','QA','KW','BH','OM','YE','IQ','IR','JO','SY','LB','PS','EG','LY','TN','DZ','MA','MR','SD','SO','DJ','KM','TR','AZ','KZ','UZ','TM','TJ','KG','AF','PK','BD','MV','MY','ID','BN','SN','GM','GN','ML','NE','SL','TD','BF','NG','XK','AL','BA'];
+const ORTHODOX=['GR','CY','RU','UA','BY','RO','BG','RS','ME','MK','GE','MD'];
+const WESTERN_XN=['US','CA','MX','GT','HN','SV','NI','CR','PA','CU','DO','PR','JM','HT','TT','BS','BB','BZ','CO','VE','EC','PE','BO','CL','AR','PY','UY','BR','GY','SR',
+  'GB','IE','FR','DE','IT','ES','PT','NL','BE','LU','CH','AT','PL','CZ','SK','HU','SI','HR','LT','LV','EE','FI','SE','NO','DK','IS','MT','AD','MC','SM','VA','LI',
+  'AU','NZ','PH','PG','FJ','ZA','NA','BW','ZW','ZM','MW','KE','UG','RW','BI','CD','CG','AO','GH','LR','CV','GQ','TL'];
+const REGION = {
+  halloween:['US','CA','GB','IE','AU','NZ'], thanksgiving:['US','CA'],
+  mlk:['US'], presidents:['US'], memorial:['US'], july4:['US'], labor:['US','CA'], veterans:['US'],
+  stpatricks:['IE','US','GB','CA','AU','NZ'], easter:[...WESTERN_XN,...ORTHODOX], valentines:'not:'+MUSLIM.join(','),
+  canadaday:['CA'], remembrance:['CA','GB','AU','NZ'], bastille:['FR'], guyfawkes:['GB'], mexindep:['MX'], muertos:['MX','GT'],
+  australiaday:['AU'], carnival:['BR','TT'], indiaindep:['IN'], chinanational:['CN'],
+  lunarny:['CN','TW','HK','MO','SG','MY','KR','VN','ID','BN'], diwali:['IN','NP','LK','MY','SG','FJ','MU','TT','GY','SR'], hanukkah:['IL'],
+  ramadan:MUSLIM, eidfitr:MUSLIM, eidadha:MUSLIM,
+};
+const celebrates=(k,cc)=>{ const r=REGION[k]; if (!r) return true; if (!cc) return false; if (typeof r==='string') return !r.slice(4).split(',').includes(cc); return r.includes(cc); };
+// ---- moon-based dates (month index, day). Ramadan / Eids follow the Umm al-Qura calendar and can shift a day with moon sighting.
+const MOON = {
+  lunarny: {2025:[0,29],2026:[1,17],2027:[1,6],2028:[0,26],2029:[1,13],2030:[1,3]},
+  diwali:  {2025:[9,20],2026:[10,8],2027:[9,29],2028:[9,17],2029:[10,5],2030:[9,26]},
+  hanukkah:{2025:[11,14],2026:[11,4],2027:[11,24],2028:[11,12],2029:[11,1],2030:[11,20]},     // first candle lit at sunset
+  ramadan: {2025:[2,1],2026:[1,18],2027:[1,8],2028:[0,28],2029:[0,16],2030:[0,6]},
+  eidfitr: {2025:[2,30],2026:[2,20],2027:[2,9],2028:[1,26],2029:[1,14],2030:[1,4]},
+  eidadha: {2025:[5,6],2026:[4,27],2027:[4,16],2028:[4,5],2029:[3,24],2030:[3,13]},
+};
+function easterOf(y){ const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451);
+  const mo=Math.floor((h+l-7*m+114)/31)-1, da=((h+l-7*m+114)%31)+1; return [mo,da]; }
+function orthodoxEasterOf(y){ const a=y%4,b=y%7,c=y%19,d=(19*c+15)%30,e=(2*a+4*b-d+34)%7; const mo=Math.floor((d+e+114)/31)-1, da=((d+e+114)%31)+1;
+  const t=new Date(Date.UTC(y,mo,da)+13*86400000); return [t.getUTCMonth(),t.getUTCDate()]; }   // Julian → Gregorian (+13 days, 1900–2099)
+const lastWeekday=(y,m,wd)=>{ const last=new Date(Date.UTC(y,m+1,0)); return last.getUTCDate()-((last.getUTCDay()-wd+7)%7); };
 let holOn = store.get('holidays', true), theme=null;
 const fmtCache=new Map();
 function partsIn(tz, date){ let f=fmtCache.get(tz); if(!f){ try{ f=new Intl.DateTimeFormat('en-US',{timeZone:tz,year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric',second:'numeric',hourCycle:'h23'}); }catch(e){ f=fmtCache.get('UTC')||new Intl.DateTimeFormat('en-US',{timeZone:'UTC',year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric',second:'numeric',hourCycle:'h23'}); } fmtCache.set(tz,f); }
@@ -1126,30 +1221,49 @@ const dayNum=(y,m,d)=>Date.UTC(y,m,d)/86400000;
 function nthWeekday(y,m,wd,n){ const first=new Date(Date.UTC(y,m,1)).getUTCDay(); return 1+((wd-first+7)%7)+7*(n-1); }
 function thanksgivingOf(y,cc){ return cc==='CA' ? {m:9,d:nthWeekday(y,9,1,2),ca:true} : {m:10,d:nthWeekday(y,10,4,4)}; }
 function holidayDates(y,cc){
-  // Liam's calendar: Halloween Oct 1–Nov 1 · Thanksgiving Nov 2–Thanksgiving Day · Christmas day after (US) Thanksgiving–Dec 29 · New Year Dec 30–Jan 15
-  const us=nthWeekday(y,10,4,4), t=thanksgivingOf(y,cc);
-  const tg = t.ca ? {k:'thanksgiving',y,m:t.m,d:t.d,from:dayNum(y,t.m,t.d)-3,to:dayNum(y,t.m,t.d),ca:true}
-                  : {k:'thanksgiving',y,m:10,d:us,from:dayNum(y,10,2),to:dayNum(y,10,us)};
-  const list=[ {k:'halloween',y,m:9,d:31,from:dayNum(y,9,1),to:dayNum(y,10,1)}, tg,
-           {k:'christmas',y,m:11,d:25,from:dayNum(y,10,us)+1,to:dayNum(y,11,29)},
-           {k:'newyear',y:y+1,m:0,d:1,from:dayNum(y,11,30),to:dayNum(y+1,0,15)} ];
-  if (t.ca) list.unshift(list.splice(1,1)[0]);   // Canadian Thanksgiving (in October) wins over Halloween on its days
-  return list;
+  // Liam's calendar for the big four: Halloween Oct 1–Nov 1 · Thanksgiving Nov 2–Thanksgiving Day · Christmas day after (US) Thanksgiving–Dec 29 · New Year Dec 30–Jan 15
+  const us=nthWeekday(y,10,4,4), t=thanksgivingOf(y,cc), out=[];
+  const add=(k,m,d,from,to,extra={})=>{ if (celebrates(k,cc)){ const base=dayNum(y,m,d); out.push({k,y,m,d,from:base+from,to:base+to,...extra}); } };
+  add('halloween',9,31,-30,1);
+  if (celebrates('thanksgiving',cc)){ if (t.ca) add('thanksgiving',t.m,t.d,-3,0,{ca:true}); else add('thanksgiving',10,us,dayNum(y,10,2)-dayNum(y,10,us),0); }
+  out.push({k:'christmas',y,m:11,d:25,from:dayNum(y,10,us)+1,to:dayNum(y,11,29)});
+  out.push({k:'newyear',y:y+1,m:0,d:1,from:dayNum(y,11,30),to:dayNum(y+1,0,15)});
+  add('mlk',0,nthWeekday(y,0,1,3),-2,0);           add('valentines',1,14,-7,0);
+  add('presidents',1,nthWeekday(y,1,1,3),-2,0);    add('stpatricks',2,17,-7,0);
+  { const [em,ed]= ORTHODOX.includes(cc) ? orthodoxEasterOf(y) : easterOf(y); add('easter',em,ed,-7,1,{orthodox:ORTHODOX.includes(cc)}); }
+  { const [em,ed]=easterOf(y); const c=new Date(Date.UTC(y,em,ed)-47*86400000); add('carnival',c.getUTCMonth(),c.getUTCDate(),-4,0); }   // Fat Tuesday
+  add('memorial',4,lastWeekday(y,4,1),-3,0);       add('july4',6,4,-6,1);
+  add('labor',8,nthWeekday(y,8,1,1),-3,0,{ca:cc==='CA'}); add('veterans',10,11,-2,0);
+  add('canadaday',6,1,-6,0);   add('remembrance',10,11,-7,0);   add('bastille',6,14,-4,0);   add('guyfawkes',10,5,-4,0);
+  add('mexindep',8,16,-6,0);   add('muertos',10,1,-4,1);       add('australiaday',0,26,-6,0);
+  add('indiaindep',7,15,-3,0); add('chinanational',9,1,0,6);
+  for (const k of ['lunarny','diwali','hanukkah','eidfitr','eidadha']){ const md=MOON[k][y]; if (!md) continue;
+    const w={lunarny:[-7,14],diwali:[-4,1],hanukkah:[0,8],eidfitr:[0,2],eidadha:[-1,3]}[k]; add(k,md[0],md[1],w[0],w[1]); }
+  { const st=MOON.ramadan[y], ef=MOON.eidfitr[y]; if (st && ef) add('ramadan',st[0],st[1],0,dayNum(y,ef[0],ef[1])-dayNum(y,st[0],st[1])-1); }
+  return out;
 }
 function holidayState(now){
   const lp=localParts(now,current), today=dayNum(lp.year,lp.month,lp.day);
   const list=[...holidayDates(lp.year-1,current.cc),...holidayDates(lp.year,current.cc),...holidayDates(lp.year+1,current.cc)];
-  const active=list.find(h=>today>=h.from && today<=h.to)||null;
-  const next=list.filter(h=>dayNum(h.y,h.m,h.d)>=today && (!active||h!==active)).sort((a,b)=>dayNum(a.y,a.m,a.d)-dayNum(b.y,b.m,b.d))[0];
+  // when several overlap, the most specific (shortest) one wins — e.g. Veterans Day inside the Thanksgiving stretch
+  const MINOR={valentines:1,stpatricks:1,halloween:1,thanksgiving:1,christmas:1};      // long lead-ins / smaller days
+  const rank=h=> (dayNum(h.y,h.m,h.d)===today ? 0 : 10) + (MINOR[h.k] && !(h.k==='christmas'&&today>=dayNum(h.y,11,24)) ? 5 : 0);
+  const act=list.filter(h=>today>=h.from && today<=h.to).sort((a,b)=>rank(a)-rank(b) || (a.to-a.from)-(b.to-b.from));
+  const active=act[0]||null;
+  const next=list.filter(h=>dayNum(h.y,h.m,h.d)>=today && (!active||h.k!==active.k)).sort((a,b)=>dayNum(a.y,a.m,a.d)-dayNum(b.y,b.m,b.d))[0];
   return { lp, today, active, next, daysTo:h=>dayNum(h.y,h.m,h.d)-today };
 }
 function applyTheme(k){
   if (k===theme) return; theme=k;
   if (k) document.body.dataset.theme=k; else delete document.body.dataset.theme;
-  const a=k?HOL[k].atmo:[0.32,0.58,1.0]; uniforms.atmoColor.value.set(a[0],a[1],a[2]);
-  lightPalette = k?HOL[k].lights:null; addCityLights();
-  fx.reset(k?HOL[k].fx:null);
-  if (k==='newyear') fx.celebrate(30000);
+  const H=k?HOL[k]:null, a=H?H.atmo:[0.32,0.58,1.0]; uniforms.atmoColor.value.set(a[0],a[1],a[2]);
+  const bs=document.body.style;
+  if (H){ bs.setProperty('--accent',H.acc[0]); bs.setProperty('--accent2',H.acc[1]); bs.setProperty('--line',H.acc[0]+'44');
+    $('holStrip').style.background=`linear-gradient(90deg,${H.acc[0]}38,${H.acc[1]}38)`; }
+  else { bs.removeProperty('--accent'); bs.removeProperty('--accent2'); bs.removeProperty('--line'); $('holStrip').style.background=''; }
+  lightPalette = H?H.lights:null; addCityLights();
+  fx.reset(H?H.fx:null, H);
+  if (H && H.show) fx.celebrate(k==='newyear'?30000:20000);
   if (typeof syncMusicButton==='function') syncMusicButton();          // a 30-second show each time the New Year theme opens
 }
 // --- New Year: which time zones are in their first hour of the year / already past midnight
@@ -1214,7 +1328,7 @@ const santaModel = new THREE.Group(); santaRig.add(santaModel);
 const SANTA_SCALE = 0.02;                       // model units → globe units (model ≈ 2.9 units long ≈ 370 km, so it shows from orbit too)
 santaModel.scale.setScalar(SANTA_SCALE);
 const reindeerLegs=[], bells=[];
-const STOP={ santaG:null, arms:[], seat:new THREE.Vector3(0,.36,-.1), house:null, gifts:[], cookie:null, cookieBits:[], milk:null, milkFill:null, plate:null, smoke:[], crumbs:[] };
+const STOP={ santaG:null, arms:[], seat:new THREE.Vector3(0,.36,-.1), house:null, gifts:[], cookie:null, cookieBits:[], milk:null, milkFill:null, plate:null, smoke:[], crumbs:[], reins:[], team:[] };
 {
   const M_ = (c,o={}) => new THREE.MeshStandardMaterial({ color:c, roughness:o.r??.6, metalness:o.m??0, emissive:o.e??0x000000, emissiveIntensity:o.ei??1 });
   const red=M_(0xc8102e,{r:.45}), darkRed=M_(0x8e0b20,{r:.5}), gold=M_(0xf2c14e,{r:.3,m:.8}), white=M_(0xf7f4ee,{r:.9}), black=M_(0x151515,{r:.5}),
@@ -1313,32 +1427,34 @@ const STOP={ santaG:null, arms:[], seat:new THREE.Vector3(0,.36,-.1), house:null
     return g;
   }
   const team=[];
-  for (let r=0;r<4;r++) for (const sx of [-1,1]) team.push(reindeer(sx*.13, 1.0+r*.36, false));
-  const rudolph=reindeer(0, 1.0+4*.36, true); team.push(rudolph);
+  for (let r=0;r<4;r++) for (const sx of [-1,1]){ const d=reindeer(sx*.13, 1.0+r*.36, false); d.userData={sx,r}; team.push(d); }
+  const rudolph=reindeer(0, 1.0+4*.36, true); rudolph.userData={sx:0,r:4}; team.push(rudolph); STOP.team=team;
   // reins from Santa's mittens to the team
   const reinMat=new THREE.LineBasicMaterial({color:0x8b5a2b});
   for (const sx of [-1,1]){ const pts=[new THREE.Vector3(sx*.18,.46+.36-.36,.15-.1+.25)]; for (let r=0;r<5;r++) pts.push(new THREE.Vector3(sx*(r<4?.13:0.03),.36,1.0+r*.36));
-    santaModel.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),reinMat)); }
+    STOP.reins.push(santaModel.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),reinMat)).children.at(-1)); }
   // ---- the house Santa visits at each stop: long peaked snowy roof (the whole team lands on it), wide open chimney
   { const H=new THREE.Group(); H.visible=false; santaModel.add(H); STOP.house=H;
     const wall=M_(0xd9b48c,{r:.85}), roofM=M_(0x9a2f22,{r:.8}), snow=M_(0xeef4ff,{r:.95}), brick=M_(0xa4442f,{r:.9}), soot=M_(0x0d0806,{r:1}), win=M_(0xffd77a,{e:0xffb84d,ei:1.4,r:.5}), wood=M_(0x5b3a22,{r:.8});
-    const Z0=-2.05, LEN=4.95, ZC=Z0+LEN/2, YB=-.39, RH=.34, HW=.64;          // house spans z −2.05…2.9; roof base −.39, ridge −.05
-    add(H,new THREE.BoxGeometry(1.12,.42,LEN-.1),wall,0,YB-.21,ZC);
+    const Z0=-1.9, LEN=3.9, ZC=Z0+LEN/2, YB=-.39, RH=.34, HW=.52;            // cosier house: z −1.9…2.0; roof base −.39, ridge −.05
+    add(H,new THREE.BoxGeometry(.92,.3,LEN-.1),wall,0,YB-.15,ZC);
     const roofShape=(hw,h,lift)=>{ const t=new THREE.Shape(); t.moveTo(-hw,lift); t.lineTo(hw,lift); t.lineTo(0,h+lift); t.lineTo(-hw,lift); return t; };
     const rg=new THREE.ExtrudeGeometry(roofShape(HW,RH,0),{depth:LEN,bevelEnabled:false}); rg.translate(0,YB,Z0); add(H,rg,roofM);
     const sg2=new THREE.ExtrudeGeometry(roofShape(HW-.05,RH-.01,.02),{depth:LEN-.12,bevelEnabled:false}); sg2.translate(0,YB,Z0+.06); add(H,sg2,snow);
-    for (const z of [-1.6,-.8,0,.8,1.6,2.4]) for (const sx of [-1,1]) add(H,new THREE.PlaneGeometry(.16,.13),win,sx*.561,YB-.19,z).rotation.y=sx*Math.PI/2;
-    const FZ=Z0+LEN-.05+.001; add(H,new THREE.PlaneGeometry(.17,.27),wood,0,YB-.28,FZ); add(H,new THREE.PlaneGeometry(.16,.13),win,-.3,YB-.17,FZ); add(H,new THREE.PlaneGeometry(.16,.13),win,.3,YB-.17,FZ);
+    for (const z of [-1.4,-.6,.2,1.0,1.7]) for (const sx of [-1,1]) add(H,new THREE.PlaneGeometry(.15,.11),win,sx*.461,YB-.14,z).rotation.y=sx*Math.PI/2;
+    const FZ=Z0+LEN-.05+.001; add(H,new THREE.PlaneGeometry(.15,.21),wood,0,YB-.195,FZ); add(H,new THREE.PlaneGeometry(.13,.1),win,-.26,YB-.12,FZ); add(H,new THREE.PlaneGeometry(.13,.1),win,.26,YB-.12,FZ);
+    // a wreath on the front door
+    add(H,new THREE.TorusGeometry(.045,.014,6,16),green,0,YB-.1,FZ+.01);
     // hollow chimney (four walls + rim) so Santa can squeeze down it
-    const CX=.32, CZ=-1.4, W=.5, T=.07, CH=.5, CY=-.06;                                              // outer width .5, opening .36
+    const CX=.26, CZ=-1.0, W=.44, T=.07, CH=.6, CY=-.11;                                             // outer width .44, opening .3 — a tight squeeze
     for (const [dx,dz,w,d] of [[-(W-T)/2,0,T,W],[(W-T)/2,0,T,W],[0,-(W-T)/2,W-2*T,T],[0,(W-T)/2,W-2*T,T]]) add(H,new THREE.BoxGeometry(w,CH,d),brick,CX+dx,CY,CZ+dz);
-    add(H,new THREE.BoxGeometry(W-2*T,.02,W-2*T),soot,CX,CY-.12,CZ);                                // dark inside
+    add(H,new THREE.BoxGeometry(W-2*T,.02,W-2*T),soot,CX,CY+CH/2-.37,CZ);                                // dark inside
     for (const [dx,dz,w,d] of [[-(W)/2+.02,0,.08,W+.06],[(W)/2-.02,0,.08,W+.06],[0,-(W)/2+.02,W+.06,.08],[0,(W)/2-.02,W+.06,.08]]) add(H,new THREE.BoxGeometry(w,.05,d),brick,CX+dx,CY+CH/2+.02,CZ+dz);
     for (const [dx,dz,w,d] of [[-(W)/2+.02,0,.09,W+.08],[(W)/2-.02,0,.09,W+.08],[0,-(W)/2+.02,W+.08,.09],[0,(W)/2-.02,W+.08,.09]]) add(H,new THREE.BoxGeometry(w,.02,d),snow,CX+dx,CY+CH/2+.055,CZ+dz);
     STOP.rimY=CY+CH/2+.065; STOP.chim=new THREE.Vector3(CX,STOP.rimY,CZ);
     for (let i=0;i<6;i++){ const sm=add(H,new THREE.SphereGeometry(.06,10,8),new THREE.MeshStandardMaterial({color:0xdddddd,transparent:true,opacity:.5,roughness:1,depthWrite:false}),CX,STOP.rimY,CZ); STOP.smoke.push(sm); }
     // plate of cookies + glass of milk on the ridge, behind the chimney
-    const plate=new THREE.Group(); plate.position.set(0,-.04,-1.86); H.add(plate); STOP.plate=plate;
+    const plate=new THREE.Group(); plate.position.set(0,-.04,-1.78); H.add(plate); STOP.plate=plate;
     add(plate,new THREE.CylinderGeometry(.08,.06,.012,20),M_(0xffffff,{r:.3}));
     const cookieMat=M_(0xc78a45,{r:.9}), chip=M_(0x3a2213,{r:.8});
     const mkCookie=()=>{ const c=new THREE.Group(); add(c,new THREE.CylinderGeometry(.04,.04,.012,16),cookieMat); for (let k=0;k<5;k++){ const a=k*1.3; add(c,new THREE.SphereGeometry(.007,6,5),chip,Math.cos(a)*.022,.007,Math.sin(a)*.022); } return c; };
@@ -1363,7 +1479,7 @@ const _sp=new THREE.Vector3(), _sf=new THREE.Vector3(), _sr=new THREE.Vector3(),
 // ---- stop animation (about 15 s, loops while he's there):
 //   hop onto the chimney rim → present up on one finger → wiggle, kick and squeeze down → poof of soot →
 //   pop back out → milk & cookies on the ridge → hop back into the sleigh
-const STOP_LOOP=15, STOP_SPEED=1.65, SNACKSPOT=new THREE.Vector3(0,-.06,-1.5), FACE_OUT=Math.PI/2, FACE_PLATE=Math.PI;
+const STOP_LOOP=15, STOP_SPEED=2.3, SNACKSPOT=new THREE.Vector3(0,-.06,-1.52), FACE_OUT=Math.PI/2, FACE_PLATE=Math.PI;
 let stopStart=0, stopWas=false, stopPhase='';
 const _a=new THREE.Vector3(), _b=new THREE.Vector3();
 const ease=x=>x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2;
@@ -1372,11 +1488,22 @@ function hop(from,to,f,h=.28){ _a.lerpVectors(from,to,ease(f)); _a.y+=Math.sin(M
 function setLegs(a,b){ STOP.legs[0].rotation.set(a,0,.12); STOP.legs[1].rotation.set(b,0,-.12); }
 function poseSeated(){ const sg=STOP.santaG; sg.position.copy(STOP.seat); sg.rotation.set(0,0,0); sg.scale.set(1,1,1); sg.visible=true;
   STOP.arms[0].rotation.set(-1.1,0,-.35); STOP.arms[1].rotation.set(-1.1,0,.35); STOP.arms[1].visible=true; STOP.armUp.visible=false; setLegs(-1.45,-1.45); }
+const easeBack=x=>{ const c=1.9; return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2); };
+let houseK=0, leaveT=-1e9; const _leaveFrom=new THREE.Vector3();
 function animateStop(t, atStop){
   const H=STOP.house, sg=STOP.santaG; if (!H) return;
-  if (atStop && !stopWas) stopStart=t; stopWas=atStop; H.visible=atStop;
-  if (!atStop){ poseSeated(); stopPhase=''; return; }
-  const L=((t-stopStart)/1000*STOP_SPEED)%STOP_LOOP, C=STOP.chim;          // ~9 s per loop
+  if (atStop && !stopWas){ stopStart=t+1000; houseK=0; }                  // touch down first, then the routine starts
+  if (!atStop && stopWas){ leaveT=t; _leaveFrom.copy(sg.position); }
+  stopWas=atStop;
+  // house pops up out of the snow on arrival and sinks away after liftoff
+  houseK = atStop ? Math.min(1,houseK+.035) : Math.max(0,houseK-.05);
+  H.visible=houseK>0.01; const hk = atStop ? easeBack(houseK) : houseK; H.scale.set(hk,hk,hk);
+  if (!atStop){ const f=(t-leaveT)/450;
+    if (f<1 && _leaveFrom.distanceTo(STOP.seat)>.05){ poseSeated(); sg.position.copy(hop(_leaveFrom, STOP.seat, f, .3)); }   // quick scramble back into the sleigh
+    else poseSeated();
+    stopPhase=''; return; }
+  if (t<stopStart){ poseSeated(); stopPhase='land'; return; }
+  const L=((t-stopStart)/1000*STOP_SPEED)%STOP_LOOP, C=STOP.chim;          // ~6.5 s per loop
   if (L<.05){ STOP.cookie.scale.set(1,1,1); STOP.cookie.visible=true; STOP.milkFill.scale.set(1,1,1); STOP.milkFill.position.y=.04; STOP.cookie.position.set(-.015,.015,0); STOP.cookie.rotation.set(0,0,0); STOP.milk.position.set(.1,0,-.02); STOP.milk.rotation.set(0,0,0); }
   sg.visible=true; sg.scale.set(1,1,1); sg.rotation.set(0,0,0); STOP.armUp.visible=false; STOP.arms[1].visible=true;
   STOP.arms[0].rotation.set(-1.1,0,-.35); STOP.arms[1].rotation.set(-1.1,0,.35);
@@ -1417,34 +1544,193 @@ function animateStop(t, atStop){
   for (const c of STOP.crumbs){ if (c.life<=0) continue; c.life-=.02; c.v.y-=.012; c.m.position.addScaledVector(c.v,.02); c.m.material.opacity=c.life; if (c.life<=0) c.m.visible=false; }
 }
 
+const santaAlt={st:'', from:null, cur:1.0014, t0:0, dur:900, prev:''};
 function updateSantaModel(t){
   const show = santaCardOn() && mode==='globe';
-  santaRig.visible = show; if (!show) return;
+  santaRig.visible = show; if (!show){ updateNorthPole(t,false); return; }
   // where: flying the route, hovering at a stop, or parked at the North Pole
   let lat, lon, toward;
   if (santa.on){ lat=santa.lat; lon=santa.lon; toward=santa.next||santa.stop; }
-  else { const vp=ROUTE[0]; lat=vp[2]; lon=vp[3]; toward=santa.done?null:ROUTE[1]; }
+  else { const vp=ROUTE[0]; lat=vp[2]; lon=vp[3]; toward=ROUTE[1]; }          // parked in its spot in the village, facing the first stop
   _su.copy(llToEcef(lat,lon));
   if (toward){ _sf.copy(llToEcef(toward[2],toward[3])).addScaledVector(_su,-_su.dot(llToEcef(toward[2],toward[3]))); }
   if (!toward || _sf.lengthSq()<1e-10) _sf.set(0,0,1).addScaledVector(_su,-_su.z);
   _sf.normalize(); _sr.crossVectors(_su,_sf).normalize();
   const flying = santa.on && santa.status==='fly';
   const atStop = santa.on && santa.status==='at';
-  const alt = atStop ? 1.0164 : 1.004 + (flying?0.006:0.002) + Math.sin(t/650)*0.0006;   // at a stop the sleigh sits on the house roof
+  const parked = !santa.on;
+  // smooth descents and climbs: whenever he switches between flying, a rooftop and the North Pole, ease the height over ~1 s
+  const st = atStop?'at':parked?'park':'fly';
+  if (st!==santaAlt.st){ santaAlt.prev=santaAlt.st; santaAlt.from=santaAlt.st?santaAlt.cur:null; santaAlt.t0=t; santaAlt.st=st; santaAlt.dur = st==='park'||santaAlt.prev==='park' ? 1800 : 900; }
+  const goal = atStop ? 1.014 : parked ? 1.0014 : 1.010 + Math.sin(t/650)*0.0006;    // rooftop · standing in the snow · cruising
+  const k = clamp01((t-santaAlt.t0)/santaAlt.dur), kk = st==='fly' ? ease(k) : 1-Math.pow(1-k,3);
+  const alt = santaAlt.cur = santaAlt.from==null ? goal : santaAlt.from+(goal-santaAlt.from)*kk;
+  const grounded = st==='fly' ? 1-kk : kk;                                           // 1 = feet down (roof or snow)
+  // a little bounce of the springs the moment the runners touch down
+  const since=t-santaAlt.t0-santaAlt.dur, bounce = st!=='fly' && since>0 && since<700 ? -Math.sin(since/700*Math.PI*2.5)*Math.exp(-since/260)*.06 : 0;
   animateStop(t, atStop);
   santaRig.matrix.makeBasis(_sr,_su,_sf).setPosition(_sp.copy(_su).multiplyScalar(alt)); santaRig.matrixAutoUpdate=false; santaRig.matrixWorldNeedsUpdate=true;
   // gallop + bob
-  const speed = flying ? 1 : atStop ? 0.12 : 0.25;
-  santaModel.rotation.x = flying ? -0.06+Math.sin(t/500)*0.02 : 0;
-  if (atStop) santaModel.position.y=0; 
-  for (const rd of reindeerLegs){ const a=t/110*speed+rd.ph; rd.g.position.y=(atStop?.17:.32)+Math.abs(Math.sin(a))*.03*speed;
+  const speed = flying ? 1-grounded*.7 : atStop ? 0.12 : 0.18;
+  santaModel.rotation.x = flying ? (-0.06+Math.sin(t/500)*0.02)*(1-grounded) - grounded*.12 : 0;   // nose up as he climbs away
+  santaModel.position.y = bounce;
+  const fromRoof = st==='fly' && santaAlt.prev==='at';
+  const roofK = atStop || fromRoof ? grounded : 0;
+  const standY = atStop || fromRoof ? .17 : .145;
+  for (const rd of reindeerLegs){ const a=t/110*speed+rd.ph, u=rd.g.userData;
+    rd.g.position.y=.32+(standY-.32)*grounded+Math.abs(Math.sin(a))*.03*speed;
+    if (u && u.r!=null){ rd.g.position.z=(1.0+u.r*.36)+((.9+u.r*.21)-(1.0+u.r*.36))*roofK; rd.g.position.x=u.sx*(.13-.03*roofK); }   // bunch up to fit on the roof
     rd.legs[0].rotation.x=Math.sin(a)*.8*speed; rd.legs[1].rotation.x=Math.sin(a+.6)*.8*speed; rd.legs[2].rotation.x=-Math.sin(a)*.8*speed; rd.legs[3].rotation.x=-Math.sin(a+.6)*.8*speed; }
+  for (const r of STOP.reins) r.visible = roofK<.3;
+  if (parked && npWave()) { const w=Math.sin(t/140); STOP.arms[1].rotation.set(-2.75,0,.35+w*.4); }   // Santa waves back
+  updateNorthPole(t, show);
   for (const b of bells) b.position.y=-.08+Math.sin(t/90)*.006;
   // sparkles drift off the back of the sleigh
   for (let i=0;i<dustN;i++){ dustLife[i]+= (flying?0.012:0.005)*(1+((i*7)%5)*.15);
     if (dustLife[i]>=1){ dustLife[i]=0; dustPos[i*3]=(Math.random()-.5)*.5; dustPos[i*3+1]=.1+Math.random()*.3; dustPos[i*3+2]=-.5; }
     else { dustPos[i*3+2]-= flying?.03:.01; dustPos[i*3+1]+= (Math.random()-.55)*.01; dustPos[i*3]+=(Math.random()-.5)*.01; } }
   dustGeo.attributes.position.needsUpdate=true; dust.material.opacity = flying?.9:.5;
+}
+
+/* ---- the North Pole: Santa's Village, where Mrs. Claus and the elves wave him off and welcome him home ---- */
+function npPhase(){
+  if (theme!=='christmas' || !ROUTE.length || santa.y==null) return 'idle';
+  const sec=(simNow()-routeT0(santa.y))/1000, up=ROUTE[0][4], down=ROUTE[ROUTE.length-1][4];
+  if (sec>=up-600 && sec<up+180) return 'bye';                 // 10 min before takeoff → 3 min after
+  if (sec>=down-180 && sec<down) return 'cheer';               // he's coming in to land
+  if (sec>=down && sec<down+1800) return 'welcome';            // first half hour home
+  return 'idle';
+}
+const npWave=()=>{ const p=npPhase(); return p==='bye'||p==='welcome'; };
+const NP={ g:null, elves:[], mrs:null, bubbles:[], lastPhase:'' };
+(function buildNorthPole(){
+  const M_=(c,o={})=>new THREE.MeshStandardMaterial({ color:c, roughness:o.r??.7, metalness:o.m??0, emissive:o.e??0x000000, emissiveIntensity:o.ei??1 });
+  const add=(parent,geo,mat,x=0,y=0,z=0)=>{ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z); parent.add(m); return m; };
+  const textTex=(lines,{w=512,h=128,bg='#7a1414',fg='#fff4d6',font='bold 54px Georgia, serif',stripe=false}={})=>{ const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d');
+    x.fillStyle=bg; x.fillRect(0,0,w,h); x.strokeStyle='#f2c14e'; x.lineWidth=10; x.strokeRect(5,5,w-10,h-10);
+    x.fillStyle=fg; x.font=font; x.textAlign='center'; x.textBaseline='middle'; lines.forEach((l,i)=>x.fillText(l,w/2,h/2+(i-(lines.length-1)/2)*h/lines.length*.8)); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; };
+  const g=new THREE.Group(); g.visible=false; G.frame.add(g); NP.g=g;
+  const root=new THREE.Group(); root.scale.setScalar(SANTA_SCALE); g.add(root);
+  // same footing as the parked sleigh: at Santa's Village, facing the first stop
+  const up=llToEcef(ROUTE[0][2],ROUTE[0][3]), to=llToEcef(ROUTE[1][2],ROUTE[1][3]); const fw=to.clone().addScaledVector(up,-up.dot(to)).normalize(), rt=new THREE.Vector3().crossVectors(up,fw).normalize();
+  g.matrix.makeBasis(rt,up,fw).setPosition(up.clone().multiplyScalar(1.0014)); g.matrixAutoUpdate=false;
+  const GY=-.07;                                                                 // snow level = where the runners rest
+  const snow=M_(0xf4f8ff,{r:.95}), white=M_(0xffffff,{r:.9}), red=M_(0xc8102e,{r:.5}), green=M_(0x1f8a4c,{r:.6}), dkGreen=M_(0x14532d,{r:.7}), skin=M_(0xf1c2a0,{r:.7}),
+        gold=M_(0xf2c14e,{r:.3,m:.8}), black=M_(0x151515,{r:.5}), wood=M_(0x5b3a22,{r:.8}), win=M_(0xffd77a,{e:0xffb84d,ei:1.5,r:.5}), pink=M_(0xf3a0a0,{r:.8});
+  add(root,new THREE.CylinderGeometry(4.6,4.8,.08,56),snow,0,GY-.04,0);
+  for (const [x,z,r] of [[-3.1,1.6,.5],[3.2,1.2,.6],[2.6,-2.6,.45],[-3.3,-2.2,.55],[.4,3.6,.4],[-1.4,3.3,.35]]){ const m=add(root,new THREE.SphereGeometry(r,16,10,0,Math.PI*2,0,Math.PI/2),snow,x,GY,z); m.scale.y=.45; }
+  // Santa's workshop, behind the sleigh
+  { const W=new THREE.Group(); W.position.set(0,GY,-3.0); root.add(W);
+    add(W,new THREE.BoxGeometry(2.4,.85,1.3),M_(0x8e2b1f,{r:.85}),0,.425,0);
+    const sh=new THREE.Shape(); sh.moveTo(-.75,0); sh.lineTo(.75,0); sh.lineTo(0,.6); sh.lineTo(-.75,0);
+    const rg=new THREE.ExtrudeGeometry(sh,{depth:2.6,bevelEnabled:false}); rg.rotateY(Math.PI/2); rg.translate(-1.3,.85,0); add(W,rg,snow);
+    add(W,new THREE.BoxGeometry(.3,.5,.3),M_(0xa4442f,{r:.9}),.7,1.35,-.2);
+    add(W,new THREE.PlaneGeometry(.38,.56),wood,0,.28,.651); add(W,new THREE.SphereGeometry(.025,8,6),gold,.12,.28,.67);
+    for (const x of [-.8,-.45,.45,.8]) add(W,new THREE.PlaneGeometry(.24,.22),win,x,.48,.652);
+    const sign=add(W,new THREE.PlaneGeometry(1.15,.29),new THREE.MeshBasicMaterial({map:textTex(["SANTA'S WORKSHOP"],{font:'bold 50px Georgia, serif'})}),0,.7,.66);
+    const wr=add(W,new THREE.TorusGeometry(.1,.03,8,20),dkGreen,0,.95,.5); wr.rotation.x=-.5;
+    const lamp=new THREE.PointLight(0xffc070,.6,.05,2); lamp.position.set(0,.5,1.1); W.add(lamp); }
+  // Christmas tree with lights
+  { const T=new THREE.Group(); T.position.set(-2.2,GY,-1.2); root.add(T);
+    add(T,new THREE.CylinderGeometry(.06,.08,.2,8),wood,0,.1,0);
+    [[.55,.6,.45],[.43,.5,.8],[.3,.42,1.1]].forEach(([r,h,y])=>add(T,new THREE.ConeGeometry(r,h,14),dkGreen,0,y,0));
+    add(T,new THREE.OctahedronGeometry(.08),M_(0xffe066,{e:0xffd000,ei:2}),0,1.36,0);
+    const bulbC=[0xff3040,0x30a0ff,0xffd040,0x40e070]; for (let i=0;i<22;i++){ const y=.3+Math.random()*.95, r=(1.3-y)*.42+.04, a=i*2.4;
+      add(T,new THREE.SphereGeometry(.025,6,5),M_(bulbC[i%4],{e:bulbC[i%4],ei:1.6}),Math.cos(a)*r,y,Math.sin(a)*r); } }
+  // candy-cane "NORTH POLE" sign
+  { const c=document.createElement('canvas'); c.width=64; c.height=256; const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,64,256); x.fillStyle='#d6142b';
+    for (let i=-4;i<12;i++){ x.beginPath(); x.moveTo(0,i*32); x.lineTo(64,i*32+32); x.lineTo(64,i*32+48); x.lineTo(0,i*32+16); x.fill(); }
+    const tx=new THREE.CanvasTexture(c); tx.wrapS=tx.wrapT=THREE.RepeatWrapping; tx.repeat.set(1,3);
+    const S=new THREE.Group(); S.position.set(1.75,GY,-.8); S.rotation.y=-.5; root.add(S);
+    add(S,new THREE.CylinderGeometry(.05,.05,1.3,12),new THREE.MeshStandardMaterial({map:tx,roughness:.5}),0,.65,0);
+    add(S,new THREE.SphereGeometry(.09,14,10),gold,0,1.33,0);
+    add(S,new THREE.BoxGeometry(.8,.24,.04),wood,.0,1.0,.06);
+    add(S,new THREE.PlaneGeometry(.76,.2),new THREE.MeshBasicMaterial({map:textTex(['NORTH POLE'],{bg:'#fdf6e3',fg:'#b3121f',font:'bold 64px Georgia, serif'})}),0,1.0,.081); }
+  // presents piled by the workshop door
+  for (const [x,z,c,s] of [[-.6,-2.05,0xc8102e,.18],[-.38,-2.1,0x1f8a4c,.14],[.55,-2.0,0x2a6fdb,.2],[.75,-2.15,0xf2c14e,.13],[-.5,-1.95,0x7b3fbf,.1]]){
+    add(root,new THREE.BoxGeometry(s,s,s),M_(c,{r:.6}),x,GY+s/2,z); add(root,new THREE.BoxGeometry(s*1.02,s*1.02,s*.18),gold,x,GY+s/2,z); }
+  // figures: built facing +Z with feet at y=0; an arm is a pivot at the shoulder hanging straight down
+  const arm=(body,sx,sy,len,sleeve,cuff,hand)=>{ const pv=new THREE.Group(); pv.position.set(sx,sy,0); body.add(pv);
+    add(pv,new THREE.CylinderGeometry(.022,.026,len,8),sleeve,0,-len/2,0); add(pv,new THREE.TorusGeometry(.024,.01,6,12),cuff,0,-len,0).rotation.x=Math.PI/2;
+    add(pv,new THREE.SphereGeometry(.026,8,6),hand,0,-len-.02,0); pv.rotation.z=Math.sign(sx)*.18; return pv; };
+  const face=(h,y,r)=>{ for (const sx of [-1,1]){ add(h,new THREE.SphereGeometry(r*.11,6,5),black,sx*r*.35,y+r*.12,r*.9); add(h,new THREE.SphereGeometry(r*.17,6,5),pink,sx*r*.55,y-r*.15,r*.75).scale.z=.4; } };
+  const lookAtSleigh=(o)=>{ o.rotation.y=Math.atan2(-o.position.x, .6-o.position.z); };
+  function elf(x,z,tunic,hatC){
+    const e=new THREE.Group(); e.position.set(x,GY,z); root.add(e); lookAtSleigh(e);
+    const body=new THREE.Group(); e.add(body);
+    for (const sx of [-1,1]){ add(body,new THREE.CylinderGeometry(.022,.022,.1,8),red,sx*.035,.06,0); const b=add(body,new THREE.SphereGeometry(.035,8,6),dkGreen,sx*.035,.015,.02); b.scale.set(1,.6,1.5); }
+    add(body,new THREE.CylinderGeometry(.065,.1,.18,12),tunic,0,.19,0);
+    add(body,new THREE.CylinderGeometry(.087,.09,.025,12),black,0,.13,0); add(body,new THREE.BoxGeometry(.04,.03,.01),gold,0,.13,.09);
+    add(body,new THREE.TorusGeometry(.066,.014,6,14),white,0,.28,0).rotation.x=Math.PI/2;
+    const h=new THREE.Group(); h.position.y=.35; body.add(h);
+    add(h,new THREE.SphereGeometry(.068,14,12),skin); face(h,0,.068);
+    for (const sx of [-1,1]){ const ear=add(h,new THREE.ConeGeometry(.02,.07,8),skin,sx*.075,.01,0); ear.rotation.z=-sx*1.25; }
+    const hat=new THREE.Group(); hat.position.y=.04; hat.rotation.z=.3; h.add(hat);
+    add(hat,new THREE.ConeGeometry(.068,.2,14),hatC,0,.1,0); add(hat,new THREE.TorusGeometry(.066,.016,6,16),white,0,.005,0).rotation.x=Math.PI/2;
+    add(hat,new THREE.SphereGeometry(.024,8,6),white,0,.2,0);
+    const armL=arm(body,-.085,.26,.11,tunic,white,skin), armR=arm(body,.085,.26,.11,tunic,white,skin);
+    const el={e,body,armL,armR,ph:Math.random()*6.28,x,z}; NP.elves.push(el); return el;
+  }
+  const spots=[[-.75,1.55],[-1.35,.75],[-1.5,-.55],[.8,1.3],[1.45,.35],[1.0,2.35],[-.55,-1.55]];
+  spots.forEach(([x,z],i)=>elf(x,z,i%2?red:green,i%2?green:red));
+  // Mrs. Claus, right beside the sleigh
+  { const m=new THREE.Group(); m.position.set(-.82,GY,.05); root.add(m); lookAtSleigh(m);
+    const body=new THREE.Group(); m.add(body);
+    add(body,new THREE.CylinderGeometry(.09,.2,.36,18),red,0,.18,0);
+    add(body,new THREE.TorusGeometry(.2,.025,8,22),white,0,.015,0).rotation.x=Math.PI/2;
+    const ap=add(body,new THREE.BoxGeometry(.15,.21,.015),white,0,.2,.148); ap.rotation.x=-.3;
+    add(body,new THREE.SphereGeometry(.1,16,12),red,0,.4,0).scale.set(1,1.05,.85);
+    add(body,new THREE.TorusGeometry(.06,.02,6,16),white,0,.48,0).rotation.x=Math.PI/2;
+    const h=new THREE.Group(); h.position.y=.57; body.add(h);
+    add(h,new THREE.SphereGeometry(.085,16,14),skin); face(h,0,.085);
+    const hair=add(h,new THREE.SphereGeometry(.092,16,12,0,Math.PI*2,0,Math.PI*.55),white,0,.005,-.012); hair.rotation.x=-.35;
+    add(h,new THREE.SphereGeometry(.045,12,10),white,0,.085,-.05);
+    for (const sx of [-1,1]) add(h,new THREE.TorusGeometry(.02,.004,6,14),gold,sx*.032,.012,.082);
+    add(h,new THREE.BoxGeometry(.02,.004,.004),gold,0,.012,.085);
+    const armL=arm(body,-.115,.45,.16,red,white,skin), armR=arm(body,.115,.45,.16,red,white,skin);
+    // mug of cocoa for the welcome home
+    const mug=new THREE.Group(); mug.visible=false; add(mug,new THREE.CylinderGeometry(.03,.026,.06,12),M_(0xffffff,{r:.4})); add(mug,new THREE.CylinderGeometry(.027,.027,.005,12),M_(0x5a3220),0,.028,0);
+    add(mug,new THREE.TorusGeometry(.016,.006,6,10),M_(0xffffff,{r:.4}),.034,0,0); mug.position.set(0,-.2,.02); armL.add(mug);
+    NP.mrs={m,body,armL,armR,mug}; }
+  // speech bubbles (HTML, so they stay crisp at any zoom)
+  for (let i=0;i<4;i++){ const b=document.createElement('div'); b.className='npb'; b.style.display='none'; document.body.appendChild(b); NP.bubbles.push(b); }
+})();
+const NP_LINES={
+  bye0:[['mrs','Fly safe, dear! Don’t eat too many cookies 🍪'],[0,'Bye Santa! 👋'],[3,'Merry Christmas!'],[4,'Go Rudolph! 🔴']],
+  bye1:[['mrs','Bye, dear! See you in the morning 💋'],[0,'Bye Santa!! 👋'],[3,'Good luck!'],[5,'Have fun! 🎁']],
+  cheer:[['mrs','There he is! ❤️'],[0,'Here he comes! 🎉'],[3,'Santa’s back!'],[5,'Woo-hoo!']],
+  welcome:[['mrs','Welcome home, dear! Hot cocoa’s ready ☕'],[0,'Welcome back, Santa! 🎉'],[3,'You did it!'],[4,'Yay!! 🥳']]
+};
+const _npv=new THREE.Vector3(), _npn=new THREE.Vector3();
+function updateNorthPole(t, show){
+  if (!NP.g) return;
+  NP.g.visible=show; if (!show){ NP.bubbles.forEach(b=>b.style.display='none'); return; }
+  const ph=npPhase(), wave=ph==='bye'||ph==='welcome', cheer=ph==='cheer'||ph==='welcome';
+  for (const el of NP.elves){ const a=t/1000*6+el.ph;
+    if (wave||cheer){ el.body.position.y = cheer ? Math.max(0,Math.sin(a*1.4))*.09 : Math.max(0,Math.sin(a))*.03;
+      el.armR.rotation.z = 2.6+Math.sin(a*1.8)*.45; el.armL.rotation.z = cheer ? -2.6-Math.sin(a*1.8+1)*.45 : -.18; }
+    else { el.body.position.y=Math.max(0,Math.sin(a*.35))*.008; el.armR.rotation.z=.18+Math.sin(a*.3)*.05; el.armL.rotation.z=-.18; }
+    el.body.rotation.z = (wave||cheer) ? Math.sin(a*.9)*.08 : 0; }
+  const M=NP.mrs; if (M){ const a=t/1000*5;
+    M.armR.rotation.z = wave||cheer ? 2.5+Math.sin(a*1.6)*.4 : .18;
+    M.mug.visible = ph==='welcome'; M.armL.rotation.set(ph==='welcome'?-1.2:0,0,ph==='welcome'?-.25:-.18);
+    M.body.rotation.z = wave||cheer ? Math.sin(a*.8)*.04 : 0; }
+  // bubbles: only when the camera is close enough to see the village
+  const cam = santaCam ? camS : camG; NP.g.updateMatrixWorld(true);
+  const secUp = santa.y!=null ? (simNow()-routeT0(santa.y))/1000-ROUTE[0][4] : 0;
+  const lines = ph==='bye' ? NP_LINES[secUp<0?'bye0':'bye1'] : NP_LINES[ph] || null;
+  NP.g.getWorldPosition(_npv); const dist=cam.position.distanceTo(_npv);
+  _npn.copy(_npv).normalize(); const facing=_npn.dot(cam.position.clone().sub(_npv))>0;
+  NP.bubbles.forEach((b,i)=>{
+    const L=lines&&lines[i]; if (!L || dist>.12 || !facing){ b.style.display='none'; return; }
+    const who = L[0]==='mrs' ? M.m : NP.elves[L[0]].e; const top = L[0]==='mrs' ? .82 : .66;
+    _npv.set(who.position.x, who.position.y+top, who.position.z); who.parent.localToWorld(_npv); _npv.project(cam);
+    if (_npv.z>1 || Math.abs(_npv.x)>1.1 || Math.abs(_npv.y)>1.1){ b.style.display='none'; return; }
+    // stagger the elves so they don't all talk at once
+    const on = L[0]==='mrs' || ((t/1000+i*1.7)%6)<4.2; if (!on){ b.style.display='none'; return; }
+    if (b.textContent!==L[1]) b.textContent=L[1]; b.classList.toggle('mrs',L[0]==='mrs');
+    b.style.display='block'; b.style.left=((_npv.x+1)/2*innerWidth)+'px'; b.style.top=((1-_npv.y)/2*innerHeight)+'px';
+  });
 }
 
 /* ---- a marker for every stop on Santa's route: gold once visited, faint until then ---- */
@@ -1621,6 +1907,11 @@ $('nyFile').addEventListener('change',async e=>{ const f=e.target.files[0]; e.ta
   if (!/^audio\//.test(f.type) && !/\.(mp3|m4a|aac|wav|ogg|flac)$/i.test(f.name)){ toast('🗽 That isn’t an audio file.'); return; }
   try{ await idb.set('nysong',f); }catch(err){} if (nyURL) URL.revokeObjectURL(nyURL); nyURL=URL.createObjectURL(f); nyAudio.src=nyURL; nyHasFile=true; nyUnlocked=false; unlockNY();
   toast('🗽 Saved on this device — it plays at midnight in New York.'); tick(true); });
+function holName(h){ const info=HOL[h.k];
+  if (h.k==='thanksgiving' && h.ca) return 'Thanksgiving (Canada)';
+  if (h.k==='labor' && h.ca) return 'Labour Day';
+  if (h.k==='easter' && h.orthodox) return 'Orthodox Easter';
+  return info.name; }
 function fmtCountdown(ms){ ms=Math.max(0,ms); const h=Math.floor(ms/3600000), m=Math.floor(ms%3600000/60000), sc=Math.floor(ms%60000/1000); return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`; }
 function updateHoliday(now){
   const strip=$('holStrip');
@@ -1635,7 +1926,7 @@ function updateHoliday(now){
       html = ms>0 ? `🎆 ${a.y} in <span class="cd">${fmtCountdown(ms)}</span> here${zones}` : `🎆 Happy New Year ${a.y}!${zones}`;
       const fireKey=`${a.y}|${current.lat.toFixed(2)},${current.lon.toFixed(2)}`;
       if (ms>0 && midnightFired===fireKey) midnightFired='';                       // time-travelled back before midnight
-      if (ms<=0 && ms>-60000 && midnightFired!==fireKey){ midnightFired=fireKey; fx.celebrate(30000); if (pinInNewYork()) nySong(true); }
+      if (ms<=0 && ms>-60000 && midnightFired!==fireKey){ midnightFired=fireKey; const nys=pinInNewYork(); fx.celebrate(nys?300000:30000); if (nys) nySong(true); }   // New York State: a 5-minute show
       const ny=pinInNewYork();
       if (ny){ const has = nyHasFile || NY_SONG_ID;
         if (ms>0 && !nyHasFile) html+=`<small><a href="#" id="nyPick">🗽 Choose your “New York, New York” song file</a> — it stays on this device and plays at midnight</small>`;
@@ -1650,11 +1941,19 @@ function updateHoliday(now){
       if (santaCardOn()) html += `<small>🎅 Santa's stop nearest you: ${esc(placeName(v.stop))}</small>`;
       else if (dd>=1) html += `<small>Santa's route comes from Google Santa Tracker — track him live on Christmas Eve</small>`;
     } else {
-      const label = a.k==='thanksgiving' && a.ca ? 'Thanksgiving (Canada)' : info.name;
-      html = dd>1 ? `${info.icon} ${label} in ${dd} days` : dd===1 ? `${info.icon} ${label} is tomorrow!` : dd===0 ? `${info.icon} ${info.greet}` : `${info.icon} Hope you had a great ${label}!`;
+      const label = holName(a), today=H.today, base=dayNum(a.y,a.m,a.d);
+      if (a.k==='hanukkah'){ const n=today-base+1; html = n<=8 ? `🕎 Hanukkah — night ${n} of 8${n===1?' (first candle tonight)':''}` : `🕎 Happy Hanukkah!`;
+        html+=`<small>${'🕯️'.repeat(Math.min(8,Math.max(1,n)))}</small>`; }
+      else if (a.k==='ramadan'){ const n=today-base+1, left=a.to-today+1; html=`🌙 Ramadan Mubarak — day ${n}`; html+=`<small>Eid al-Fitr in about ${left} day${left===1?'':'s'} · dates follow the moon and can shift a day</small>`; }
+      else if (a.k==='lunarny'){ const animal=['Rat','Ox','Tiger','Rabbit','Dragon','Snake','Horse','Goat','Monkey','Rooster','Dog','Pig'][((a.y-4)%12+12)%12];
+        html = dd>1 ? `🧧 Lunar New Year in ${dd} days — Year of the ${animal}` : dd===1 ? `🧧 Lunar New Year is tomorrow — Year of the ${animal}!` : dd===0 ? `🧧 Happy Lunar New Year! Year of the ${animal}` : `🏮 Year of the ${animal} — celebrations through the Lantern Festival`; }
+      else if (info.solemn){ html = dd>0 ? `${info.icon} ${label} in ${dd} day${dd===1?'':'s'}` : dd===0 ? `${info.icon} ${label}` : `${info.icon} ${label}`; html+=`<small>${info.greet}</small>`; }
+      else { const greet = a.k==='labor'&&a.ca ? 'Happy Labour Day!' : info.greet, still = a.to>today;
+        html = dd>1 ? `${info.icon} ${label} in ${dd} days` : dd===1 ? `${info.icon} ${label} is tomorrow!` : dd===0 ? `${info.icon} ${greet}` : still ? `${info.icon} ${label} — celebrations continue!` : `${info.icon} Hope you had a great ${label}!`; }
+      if (info.show && dd===0) html+=`<small>🎆 Fireworks tonight!</small>`;
     }
   } else if (H.next){ cls='show soon'; const n=H.next, info=HOL[n.k], dd=H.daysTo(n);
-    html = `${info.icon} ${n.k==='newyear'?`New Year ${n.y}`:(n.k==='thanksgiving'&&n.ca?'Thanksgiving (Canada)':info.name)} in ${dd} day${dd===1?'':'s'}`; }
+    html = `${info.icon} ${n.k==='newyear'?`New Year ${n.y}`:holName(n)} in ${dd} day${dd===1?'':'s'}`; }
   if (strip.innerHTML!==html) strip.innerHTML=html; strip.className=cls;
 }
 // jump buttons (time travel previews)
@@ -1667,12 +1966,21 @@ document.querySelectorAll('#timeBar [data-jump]').forEach(b=>b.onclick=()=>{
     if (!t || Math.abs(at-now)<Math.abs(t-now)) t=at; }
   if (!t) return; simOffset += t-now; setSpeed(1); if (mode==='globe') follow=true; tick(true);
 });
+// every holiday celebrated at the pin, soonest first — pick one to jump there
+function fillHolJump(){ const sel=$('holJump'); if (!sel || !current) return; const now=simNow(), lp=localParts(now,current), today=dayNum(lp.year,lp.month,lp.day);
+  const seen=new Map(); for (const y of [lp.year-1,lp.year,lp.year+1]) for (const h of holidayDates(y,current.cc)){ const d=dayNum(h.y,h.m,h.d); if (d<today-20) continue; if (!seen.has(h.k) || d<dayNum(seen.get(h.k).y,seen.get(h.k).m,seen.get(h.k).d)) seen.set(h.k,h); }
+  const list=[...seen.values()].sort((a,b)=>dayNum(a.y,a.m,a.d)-dayNum(b.y,b.m,b.d));
+  sel.innerHTML=`<option value="">More holidays for ${esc(shortName(current))}… (${list.length})</option>`+list.map(h=>`<option value="${h.k}|${h.y}|${h.m}|${h.d}">${HOL[h.k].icon} ${esc(holName(h))} — ${new Date(Date.UTC(h.y,h.m,h.d)).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})}</option>`).join(''); }
+$('holJump').addEventListener('change',e=>{ const v=e.target.value; if (!v||!current) return; const [k,y,m,d]=v.split('|'); const Y=+y,M=+m,D=+d;
+  if (!holOn){ holOn=true; store.set('holidays',true); $('holBtn').classList.add('on'); }
+  const at = k==='newyear' ? localToUTC(current,Y-1,11,31,23,59,45) : k==='christmas' ? localToUTC(current,Y,11,24,22,30) : k==='hanukkah' ? localToUTC(current,Y,M,D,18) : localToUTC(current,Y,M,D,19);
+  simOffset += at-simNow(); setSpeed(1); if (mode==='globe') follow=true; tick(true); e.target.value=''; });
 $('holBtn').classList.toggle('on',holOn);
 $('holBtn').onclick=()=>{ holOn=!holOn; store.set('holidays',holOn); $('holBtn').classList.toggle('on',holOn); tick(true); };
 
 /* ---------- particle effects layer ---------- */
 const fx = (()=>{
-  const cv=$('fx'), cx=cv.getContext('2d'); let W=0,H=0,dpr=1, kind=null, parts=[], bursts=[], t0=performance.now(), party=0;
+  const cv=$('fx'), cx=cv.getContext('2d'); let W=0,H=0,dpr=1, kind=null, theme_=null, parts=[], bursts=[], t0=performance.now(), party=0;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; const many=(n)=>Math.round(n*(reduce?.35:1)*(innerWidth<=720?.6:1));
   function size(){ dpr=Math.min(devicePixelRatio,2); W=innerWidth; H=innerHeight; cv.width=W*dpr; cv.height=H*dpr; cx.setTransform(dpr,0,0,dpr,0,0); }
   size(); addEventListener('resize',size);
@@ -1681,13 +1989,66 @@ const fx = (()=>{
     if (k==='snow') return { x:rnd(0,W), y:init?rnd(-H,H):-10, r:rnd(1,3.2), vy:rnd(.35,1.1), sw:rnd(0,6.3), a:rnd(.5,.95) };
     if (k==='leaves') return { x:rnd(0,W), y:init?rnd(-H,H):-20, s:rnd(7,13), vy:rnd(.5,1.2), sw:rnd(0,6.3), rot:rnd(0,6.3), vr:rnd(-.04,.04), c:['#d9531e','#f08c2a','#e7b23a','#b8401a','#c96a1f'][Math.floor(rnd(0,5))] };
     if (k==='bats')  return { x:init?rnd(0,W):(Math.random()<.5?-40:W+40), y:rnd(H*.08,H*.6), s:rnd(9,17), vx:0, ph:rnd(0,6.3), dir:0 };
-    return null;
+    // generic drifting sprites for the other holidays: up = rises from the bottom, else falls from the top
+    const G=GEN[k]; if (!G) return null; const up=G.up;
+    const cols=(theme_&&theme_.fxc)||G.cols;
+    return { g:k, x:rnd(0,W), y:init?rnd(-20,H+20):(up?H+30:-30), s:rnd(G.s[0],G.s[1]), vy:(up?-1:1)*rnd(G.v[0],G.v[1]), sw:rnd(0,6.3), swa:G.sway||.6,
+             rot:rnd(-.4,.4)+(G.spin?rnd(0,6.3):0), vr:G.spin?rnd(-.05,.05):0, c:cols[Math.floor(rnd(0,cols.length))], ph:rnd(0,6.3), a:rnd(.65,1) };
   }
-  function reset(k){ kind=k; parts=[]; bursts=[]; const n = k==='snow'?many(140):k==='leaves'?many(28):k==='bats'?many(9):0;
+  // particle styles: count, size range, speed range, colours, rises?, spins?
+  const GEN={
+    hearts:   {n:26,s:[7,14],v:[.35,.8],cols:['#ff4d7d','#ff86a8','#ffb3c8','#e8174f'],up:true,sway:.8},
+    shamrocks:{n:28,s:[8,14],v:[.5,1.1],cols:['#21b14c','#3ddc84','#169a3f'],spin:true},
+    eggs:     {n:24,s:[7,12],v:[.4,.9],cols:['#ffb3d9','#b8e1ff','#fff09a','#c6ffc9','#d9c2ff'],spin:true},
+    stars:    {n:30,s:[4,9],v:[.2,.55],cols:['#ffffff'],spin:true,sway:.3},
+    poppies:  {n:18,s:[8,13],v:[.25,.6],cols:['#d9202f','#e8343f','#c0111f'],spin:true,sway:.5},
+    lanterns: {n:14,s:[10,18],v:[.25,.55],cols:['#e8231f','#ff3b30','#ffb02e'],up:true,sway:.4},
+    diyas:    {n:18,s:[7,11],v:[.25,.5],cols:['#ffb02e','#ff7a1a'],up:true,sway:.3},
+    hanukkah: {n:26,s:[6,11],v:[.25,.6],cols:['#4f7dff','#ffffff','#9fb7ff'],spin:true,sway:.4},
+    crescents:{n:20,s:[6,12],v:[.15,.4],cols:['#ffd36b','#fff1c2'],sway:.3},
+    marigolds:{n:30,s:[5,10],v:[.5,1.1],cols:['#ff9a1f','#ffb52e','#ffcf3d','#ff7a00'],spin:true},
+    confetti: {n:60,s:[4,8],v:[.8,1.8],cols:['#ffffff'],spin:true,sway:1},
+    embers:   {n:40,s:[1.5,3.5],v:[.4,1.2],cols:['#ffb347','#ff7a1a','#ffd27a'],up:true,sway:.5},
+    glow:     {n:24,s:[10,22],v:[.12,.3],cols:['#fff1c9','#ffe39a','#dfeaff'],up:true,sway:.2},
+  };
+  function drawGen(p,t){
+    const s=p.s; cx.save(); cx.translate(p.x,p.y); cx.rotate(p.rot); cx.globalAlpha=p.a;
+    switch(p.g){
+      case 'hearts': cx.fillStyle=p.c; cx.beginPath(); cx.moveTo(0,s*.35); cx.bezierCurveTo(-s*1.1,-s*.35,-s*.45,-s*1.05,0,-s*.45); cx.bezierCurveTo(s*.45,-s*1.05,s*1.1,-s*.35,0,s*.35); cx.fill(); break;
+      case 'shamrocks': cx.fillStyle=p.c; for (let k=0;k<3;k++){ const a=k*2.094-1.57; cx.beginPath(); cx.arc(Math.cos(a)*s*.42,Math.sin(a)*s*.42,s*.36,0,7); cx.fill(); }
+        cx.strokeStyle=p.c; cx.lineWidth=Math.max(1,s*.12); cx.beginPath(); cx.moveTo(0,0); cx.quadraticCurveTo(s*.2,s*.6,s*.1,s); cx.stroke(); break;
+      case 'eggs': cx.fillStyle=p.c; cx.beginPath(); cx.ellipse(0,0,s*.62,s*.82,0,0,7); cx.fill(); cx.strokeStyle='rgba(255,255,255,.85)'; cx.lineWidth=Math.max(1,s*.14);
+        cx.beginPath(); cx.moveTo(-s*.58,-s*.1); cx.quadraticCurveTo(-s*.2,-s*.32,0,-s*.1); cx.quadraticCurveTo(s*.2,s*.12,s*.58,-s*.1); cx.stroke(); break;
+      case 'stars': case 'hanukkah': {
+        if (p.g==='hanukkah' && p.c!=='#ffffff'){ cx.strokeStyle=p.c; cx.lineWidth=Math.max(1,s*.16); for (const r of [0,Math.PI]){ cx.beginPath(); for (let k=0;k<3;k++){ const a=r+k*2.094-1.57; cx[k?'lineTo':'moveTo'](Math.cos(a)*s,Math.sin(a)*s); } cx.closePath(); cx.stroke(); } break; }
+        const tw=.6+.4*Math.sin(t/300+p.ph); cx.globalAlpha=p.a*tw; cx.fillStyle=p.c; cx.beginPath();
+        for (let k=0;k<10;k++){ const r=k%2?s*.42:s, a=k*Math.PI/5-Math.PI/2; cx[k?'lineTo':'moveTo'](Math.cos(a)*r,Math.sin(a)*r); } cx.closePath(); cx.fill(); break; }
+      case 'poppies': cx.fillStyle=p.c; for (let k=0;k<4;k++){ const a=k*1.571; cx.beginPath(); cx.ellipse(Math.cos(a)*s*.4,Math.sin(a)*s*.4,s*.5,s*.4,a,0,7); cx.fill(); }
+        cx.fillStyle='#151515'; cx.beginPath(); cx.arc(0,0,s*.24,0,7); cx.fill(); break;
+      case 'lanterns': { const gl=cx.createRadialGradient(0,0,0,0,0,s*1.8); gl.addColorStop(0,'rgba(255,190,90,.45)'); gl.addColorStop(1,'rgba(255,120,40,0)'); cx.fillStyle=gl; cx.fillRect(-s*2,-s*2,s*4,s*4);
+        cx.fillStyle=p.c; cx.beginPath(); cx.ellipse(0,0,s*.7,s*.85,0,0,7); cx.fill(); cx.fillStyle='#ffcf4d'; cx.fillRect(-s*.38,-s*.95,s*.76,s*.18); cx.fillRect(-s*.38,s*.77,s*.76,s*.18);
+        cx.strokeStyle='rgba(120,20,10,.5)'; cx.lineWidth=1; for (const x of [-.35,0,.35]){ cx.beginPath(); cx.moveTo(x*s,-s*.8); cx.lineTo(x*s,s*.8); cx.stroke(); }
+        cx.strokeStyle='#ffcf4d'; cx.beginPath(); cx.moveTo(0,s*.95); cx.lineTo(0,s*1.4); cx.stroke(); break; }
+      case 'diyas': { const fl=.8+.2*Math.sin(t/90+p.ph); const gl=cx.createRadialGradient(0,-s*.6,0,0,-s*.6,s*2); gl.addColorStop(0,'rgba(255,200,90,.55)'); gl.addColorStop(1,'rgba(255,140,40,0)'); cx.fillStyle=gl; cx.fillRect(-s*2.2,-s*2.6,s*4.4,s*4.4);
+        cx.fillStyle='#b5562a'; cx.beginPath(); cx.ellipse(0,0,s,s*.45,0,0,Math.PI); cx.fill(); cx.fillStyle='#e07a3a'; cx.fillRect(-s,-s*.08,s*2,s*.16);
+        cx.fillStyle='#ffd25a'; cx.beginPath(); cx.moveTo(0,-s*1.15*fl); cx.quadraticCurveTo(s*.32,-s*.45,0,-s*.12); cx.quadraticCurveTo(-s*.32,-s*.45,0,-s*1.15*fl); cx.fill(); break; }
+      case 'crescents': { if (p.ph>3.4){ cx.fillStyle=p.c; cx.beginPath(); for (let k=0;k<10;k++){ const r=k%2?s*.25:s*.6, a=k*Math.PI/5-Math.PI/2; cx[k?'lineTo':'moveTo'](Math.cos(a)*r,Math.sin(a)*r); } cx.closePath(); cx.fill(); break; }
+        cx.fillStyle=p.c; cx.beginPath(); cx.arc(0,0,s,0,7); cx.arc(s*.42,-s*.12,s*.86,0,7,true); cx.fill('evenodd'); break; }
+      case 'marigolds': cx.fillStyle=p.c; cx.beginPath(); cx.ellipse(0,0,s*.55,s*.3,0,0,7); cx.fill(); break;
+      case 'confetti': cx.fillStyle=p.c; cx.fillRect(-s*.5,-s*.25,s,s*.5*Math.abs(Math.sin(t/200+p.ph))+1); break;
+      case 'embers': { cx.globalAlpha=p.a*(.6+.4*Math.sin(t/120+p.ph)); cx.fillStyle=p.c; cx.beginPath(); cx.arc(0,0,s,0,7); cx.fill(); break; }
+      case 'glow': { const gl=cx.createRadialGradient(0,0,0,0,0,s); gl.addColorStop(0,p.c); gl.addColorStop(1,'rgba(255,240,200,0)'); cx.globalAlpha=p.a*.5*(.7+.3*Math.sin(t/700+p.ph)); cx.fillStyle=gl; cx.beginPath(); cx.arc(0,0,s,0,7); cx.fill(); break; }
+    }
+    cx.restore(); }
+  function reset(k, th){ kind=k; theme_=th||null; parts=[]; bursts=[]; party=0;
+    const n = k==='snow'?many(140):k==='leaves'?many(28):k==='bats'?many(9):GEN[k]?many(GEN[k].n*(th&&th.solemn?.6:1)):0;
     for (let i=0;i<n;i++){ const p=spawn(k,true); if (k==='bats'){ p.dir=Math.random()<.5?1:-1; p.vx=p.dir*rnd(.6,1.4); } parts.push(p); }
     if (!k) cx.clearRect(0,0,W,H); }
-  function burst(x,y,big){ const n=big?90:46, hue=rnd(0,360), sp=big?rnd(2.6,4.2):rnd(1.4,2.6);
-    for (let i=0;i<n;i++){ const a=i/n*6.283+rnd(-.05,.05), v=sp*rnd(.6,1); bursts.push({x,y,px:x,py:y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:1,dec:rnd(.010,.018),col:`hsl(${(hue+rnd(-25,25)+360)%360} 95% 65%)`}); } }
+  function burst(x,y,big){ const n=big?90:46, sp=big?rnd(2.6,4.2):rnd(1.4,2.6);
+    const hs=theme_&&theme_.burst; const one=hs? hs[Math.floor(rnd(0,hs.length))] : null, hue=rnd(0,360), two=hs&&Math.random()<.35 ? hs[Math.floor(rnd(0,hs.length))] : null;
+    for (let i=0;i<n;i++){ const a=i/n*6.283+rnd(-.05,.05), v=sp*rnd(.6,1);
+      const col = hs ? (two && i%2 ? two : one) : `hsl(${(hue+rnd(-25,25)+360)%360} 95% 65%)`;
+      bursts.push({x,y,px:x,py:y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:1,dec:rnd(.010,.018),col}); } }
   function celebrate(ms=30000){ party=performance.now()+ms; }
   function drawBat(p,t){ const f=Math.sin(t*.018+p.ph)*.9; cx.save(); cx.translate(p.x,p.y); cx.scale(p.dir,1); cx.fillStyle='rgba(18,10,26,.92)';
     cx.beginPath(); cx.ellipse(0,0,p.s*.22,p.s*.32,0,0,7); cx.fill();
@@ -1699,7 +2060,7 @@ const fx = (()=>{
   function step(cities){
     const cityParty = kind==='fireworks' && cities && cities.length;
     const t=performance.now(); const dt=Math.min(3,(t-t0)/16.7); t0=t;
-    if ((!kind || (kind==='fireworks' && party<t && !cityParty)) && !bursts.length){ if (step.dirty){ cx.clearRect(0,0,W,H); step.dirty=false; } return; }
+    if ((!kind || (kind==='fireworks' && party<t && !cityParty)) && !bursts.length && !(kind && party>t)){ if (step.dirty){ cx.clearRect(0,0,W,H); step.dirty=false; } return; }
     step.dirty=true;
     cx.clearRect(0,0,W,H);
     for (const p of parts){
@@ -1707,7 +2068,10 @@ const fx = (()=>{
         cx.fillStyle=`rgba(255,255,255,${p.a})`; cx.beginPath(); cx.arc(p.x,p.y,p.r,0,7); cx.fill(); }
       else if (kind==='leaves'){ p.sw+=.03*dt; p.y+=p.vy*dt; p.x+=Math.sin(p.sw)*1.1*dt; p.rot+=p.vr*dt; if (p.y>H+20) Object.assign(p,spawn('leaves',false)); drawLeaf(p); }
       else if (kind==='bats'){ p.x+=p.vx*dt; p.y+=Math.sin(t*.002+p.ph)*.35*dt; if (p.x<-60||p.x>W+60){ Object.assign(p,spawn('bats',false)); p.dir=p.x<0?1:-1; p.vx=p.dir*rnd(.6,1.4);} drawBat(p,t); }
+      else if (p.g){ p.sw+=.02*dt; p.y+=p.vy*dt; p.x+=Math.sin(p.sw)*p.swa*dt; p.rot+=p.vr*dt;
+        if (p.y>H+40 || p.y<-40) Object.assign(p,spawn(kind,false)); drawGen(p,t); }
     }
+    if (kind!=='fireworks' && party>t && Math.random()<(((party-t)/1000)<4?.45:.14)*dt) burst(rnd(W*.08,W*.92), rnd(H*.08,H*.5), Math.random()<.6);
     if (kind==='fireworks'){
       if (cityParty && Math.random()<Math.min(.7,.08*cities.length)*dt){ const c=cities[Math.floor(Math.random()*cities.length)]; burst(c[0]+rnd(-6,6), c[1]-rnd(18,42), false); }
       if (party>t){ const left=(party-t)/1000; const rate = left<4 ? .5 : .16;    // finale in the last few seconds

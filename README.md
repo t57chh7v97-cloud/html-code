@@ -92,11 +92,18 @@ night-side city lights placed at real city coordinates.
     animated 3D sleigh with Santa, his sack of presents and nine reindeer led by
     a glowing-nosed Rudolph, which you can orbit and pinch-zoom around. Up close,
     the ground is labelled with town and country names, and a banner says what
-    Santa is flying over. At each stop the whole team lands on a snowy house roof.
-    Santa hops onto the chimney with a present balanced on one finger, then
-    wiggles, kicks and squeezes down it. He disappears in a puff of soot, pops
-    back out, has milk and cookies, and hops back into the sleigh. Each loop
-    takes about 9 seconds and repeats until he takes off. A
+    Santa is flying over. At each stop the sleigh glides down and bounces onto
+    a small snowy house that pops up out of the snow. The reindeer bunch up on
+    the roof, and Santa hops onto the chimney with a present balanced on one
+    finger. Then he wiggles, kicks and squeezes down it, disappears in a puff of
+    soot, pops back out, has milk and cookies, and hops back into the sleigh.
+    Each loop takes about 6½ seconds and repeats until he lifts off again.
+    **At the North Pole**, the sleigh waits in Santa's Village beside the
+    workshop, a Christmas tree and a candy-cane NORTH POLE sign. From 10 minutes
+    before takeoff until 3 minutes after, Mrs. Claus and seven elves wave
+    goodbye in speech bubbles, and Santa waves back. When he comes in to land
+    on Christmas morning, they cheer and jump. For half an hour after he lands,
+    they welcome him home, and Mrs. Claus has a mug of hot cocoa. A
     "Santa's coming to your house soon — go to bed now!" alert appears when he
     gets close.
   - 🎵 During Christmas, a 🎵 menu plays themed music and turns it on and off,
@@ -118,7 +125,8 @@ night-side city lights placed at real city coordinates.
     Browsers only allow sound after a tap, so music starts from the menu.
   - 🎆 New Year (Dec 30 – Jan 15): a countdown to midnight at your pin, and a
     30-second fireworks show each time you open the app. At midnight, wherever
-    your pin is, another 30-second show plays. On the globe, fireworks burst
+    your pin is, another 30-second show plays (5 minutes long if the pin is in
+    New York State). On the globe, fireworks burst
     over each city during the first two minutes after its own time zone
     reaches midnight. With a pin anywhere in New York State, "Theme from New
     York, New York" plays by itself at midnight. Each viewer picks their own copy
@@ -128,8 +136,27 @@ night-side city lights placed at real city coordinates.
     sound only after one tap on the page, and the page has to be open at
     midnight.
 
-  Developers can preview any of them from ⏱ Time travel. Anyone can turn
-  them off with the 🎉 button.
+  - 🌍 **Regional and other important holidays** get full themes too, but
+    only in the countries that celebrate them (based on the country of your
+    pin). A holiday falling on its exact day wins over a longer season, and
+    small holidays like Valentine's Day give way to bigger local ones:
+    - Worldwide: Valentine's Day, St. Patrick's Day, Easter (Orthodox Easter in
+      Orthodox countries), Lunar New Year, Diwali, Hanukkah, Ramadan, Eid
+      al-Fitr and Eid al-Adha. Each appears only where it's widely observed.
+    - USA: MLK Day, Presidents' Day, Memorial Day, the 4th of July, Labor Day,
+      Veterans Day.
+    - Canada Day and Canadian Thanksgiving; Remembrance Day (UK, Canada,
+      Australia and others); Bastille Day; Guy Fawkes Night; Mexican
+      Independence Day and Día de Muertos; Australia Day; Carnival; Indian
+      Independence Day; China's National Day / Golden Week.
+
+    Lunar dates (Lunar New Year, Diwali, Hanukkah, Ramadan, the Eids) are
+    built in for 2025–2030. Fireworks holidays (like the 4th of July and
+    Bastille Day) play a 20-second show. Solemn days (Memorial Day, Remembrance
+    Day) use quiet poppies and no fireworks.
+
+  Developers can preview any of them from ⏱ Time travel, which has a holiday
+  picker. Anyone can turn them off with the 🎉 button.
 - **Time travel (developer mode):** jump ±1 min, 30 min, 1 h, 1 d, 1 wk,
   1 mo, 6 mo or 1 yr, or go to an exact date and time at your pin. You can also
   play time at 1 hr/sec or 1 day/sec.
