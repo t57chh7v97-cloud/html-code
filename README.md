@@ -92,8 +92,9 @@ night-side city lights placed at real city coordinates.
     animated 3D sleigh with Santa, his sack of presents and nine reindeer led by
     a glowing-nosed Rudolph, which you can orbit and pinch-zoom around. Up close,
     the ground is labelled with town and country names, and a banner says what
-    Santa is flying over. At each stop the sleigh glides down and bounces onto
-    a small snowy house that pops up out of the snow. The reindeer bunch up on
+    Santa is flying over. At each stop the sleigh glides in from behind, nose
+    down, while a small snowy cottage rises out of the snow to meet it; the
+    runners kick up a puff of snow and the sleigh bounces on its springs. The reindeer bunch up on
     the roof, and Santa hops onto the chimney with a present balanced on one
     finger. Then he wiggles, kicks and squeezes down it, disappears in a puff of
     soot, pops back out, has milk and cookies, and hops back into the sleigh.
@@ -182,6 +183,9 @@ night-side city lights placed at real city coordinates.
     (Halloween), Yankee Doodle (4th of July), Auld Lang Syne (New Year), Happy
     Birthday, and an original "Level Up!" for Video Game Day.
   - 📸 Postcard: saves or shares a picture of the globe with a holiday greeting.
+- **🔗 Share:** shows a QR code for the app (good for putting on a projector),
+  a Copy link button, and the phone's share sheet. The QR code is made in the
+  page with qrcode-generator by Kazuhiko Arase (MIT license).
 
   Developers can preview any of them from ⏱ Time travel, which has a holiday
   picker. Anyone can turn them off with the 🎉 button.
