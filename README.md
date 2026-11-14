@@ -155,6 +155,34 @@ night-side city lights placed at real city coordinates.
     Bastille Day) play a 20-second show. Solemn days (Memorial Day, Remembrance
     Day) are quiet, with gentle stars or poppies and no fireworks.
 
+  - 🌍 Earth Day (Apr 22), π Pi Day (Mar 14, with fireworks at 1:59:26 PM)
+    and 🎮 Video Game Day (Sep 12) for everyone. Setting `CLUB_FOUNDED` in
+    `globe/index.html` adds a yearly anniversary theme for the video game club.
+  - 🌌 **Sky events** are added on top of any theme, at the pin's own date:
+    - solstices and equinoxes, with their exact time and a gold ring
+      along the day/night line
+    - meteor-shower peaks (Quadrantids, Lyrids, Eta Aquariids, Perseids,
+      Orionids, Leonids, Geminids), with shooting stars across the screen
+    - solar eclipses: the Moon's real shadow darkens the globe live (2027–2030
+      eclipses are listed by name), and "show me" flies to it
+  - 🎈 On US Thanksgiving morning (9 AM–noon Eastern), giant balloons float over
+    New York City. "Watch the balloons" zooms in close.
+  - 📅 An advent calendar (Dec 1–24): a door opens each day with a fact, a joke,
+    a carol or a little surprise.
+  - ✉️ A letter to Santa, kept only on the device. Santa reads it when he
+    reaches your area on Christmas Eve, and his reply appears.
+  - 🦌 In Santa cam, each reindeer has a name tag.
+  - 🎆 New Year's Eve: a gold midnight line sweeps west across the globe, "Next
+    to celebrate" counts down to the next big cities, and with a pin in New York
+    State, a Times Square ball drops for the last 60 seconds.
+  - 🎂 Birthday mode (saved on the device): confetti, fireworks and "Happy
+    Birthday" in chiptune on your day.
+  - 🎵 The 🎵 music menu appears for more holidays, with public-domain chiptune:
+    Silent Night (added to the carols), In the Hall of the Mountain King
+    (Halloween), Yankee Doodle (4th of July), Auld Lang Syne (New Year), Happy
+    Birthday, and an original "Level Up!" for Video Game Day.
+  - 📸 Postcard: saves or shares a picture of the globe with a holiday greeting.
+
   Developers can preview any of them from ⏱ Time travel, which has a holiday
   picker. Anyone can turn them off with the 🎉 button.
 - **Time travel (developer mode):** jump ±1 min, 30 min, 1 h, 1 d, 1 wk,
