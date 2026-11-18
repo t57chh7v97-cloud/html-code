@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Where & When — Live Globe</title>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0b1020">
+<link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Where & When">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -61,6 +63,24 @@
   #holStrip.show{display:block}
   #holStrip small a{color:var(--accent);font-weight:700}
   #extras{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px} #extras:empty{display:none} #extras .btn.mini{font-size:12.5px;padding:5px 9px}
+  #layerMenu{position:fixed;z-index:8;display:none;width:min(320px,calc(100vw - 16px));padding:8px;border-radius:14px;font-size:13.5px}
+  #layerMenu.show{display:block} #layerMenu .mopt{display:flex;gap:9px;align-items:flex-start;padding:8px;border-radius:10px;cursor:pointer}
+  #layerMenu .mopt.on{background:rgba(255,255,255,.07)} #layerMenu .mopt input{margin-top:3px;accent-color:var(--accent)} #layerMenu .mopt small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+  #xModal .mopt{display:flex;gap:9px;align-items:flex-start;padding:8px;border-radius:10px;cursor:pointer} #xModal .mopt.on{background:rgba(255,255,255,.07)} #xModal .mopt input{width:auto;margin:3px 0 0;accent-color:var(--accent)} #xModal .mopt small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+  #game{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:9;width:min(460px,calc(100vw - 16px));padding:12px 14px;display:none;font-size:14.5px;line-height:1.45}
+  #game.show{display:block} .gHead{display:flex;align-items:center;gap:10px;margin-bottom:6px} .gHead span{margin-left:auto;color:var(--muted);font-size:13px}
+  .gClue{font-size:15px} .gHint{margin-top:6px;color:var(--accent);font-weight:600} .gRow{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-top:8px} .gRow .mut{color:var(--muted);font-size:12.5px}
+  body.gaming #card, body.gaming #santaCard, body.gaming #top{opacity:.0;pointer-events:none} body.gaming #overChip{display:none!important}
+  #gBoard{position:fixed;right:12px;bottom:12px;z-index:9;min-width:180px} #gBoard:empty{display:none}
+  #gBoard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px;font-size:13px;backdrop-filter:blur(12px)}
+  .gBoardT{font-weight:700;margin-bottom:4px} .gBoardR{display:flex;justify-content:space-between;gap:12px} .gBoardR.you{color:var(--accent);font-weight:700}
+  #clocks{margin:6px 0 0} #clocks:empty{display:none} .clkT{font-size:12px;color:var(--muted);margin:6px 0 4px;font-weight:600;letter-spacing:.03em}
+  .clk{display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-radius:8px;cursor:pointer;font-size:13.5px} .clk:hover{background:rgba(255,255,255,.06)}
+  .clk small{color:var(--muted)} .clk button{background:none;border:0;color:var(--muted);cursor:pointer;margin-left:6px;font-size:12px}
+  #clocks .btn.mini{margin-top:6px;font-size:12px;padding:4px 9px}
+  .moreGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px} .moreItem{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--text);text-align:left;cursor:pointer;font:inherit}
+  .moreItem .mi{font-size:22px} .moreItem small{color:var(--muted);font-size:11.5px} .moreItem:hover{background:rgba(255,255,255,.1)}
+  ol.steps{margin:0 0 10px;padding-left:20px;line-height:1.6}
   #xModal{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;background:rgba(3,6,14,.55);padding:14px}
   #xModal.show{display:flex}
   #xModal .xbox{position:relative;width:min(440px,100%);max-height:calc(100vh - 28px);overflow:auto;padding:18px 18px 16px;animation:npPop .3s ease-out}
@@ -68,7 +88,10 @@
   #xClose{position:absolute;right:10px;top:10px;background:none;border:0;color:var(--text);font-size:17px;cursor:pointer}
   #xModal input,#xModal textarea,#xModal select{width:100%;box-sizing:border-box;margin:0 0 10px;padding:10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);font:inherit;font-size:15px}
   #xModal textarea{resize:vertical;min-height:120px;font-family:Georgia,serif;line-height:1.45}
-  .advGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+  .advGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .adv[data-n="25"]{background:linear-gradient(135deg,#f2c14e,#c8102e)!important;color:#fff}
+  .advQ{margin-top:10px;font-size:14px;line-height:1.4} .advA{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .advA .right{background:#1f8a4c!important;color:#fff;border-color:#1f8a4c} .advA .wrong{background:#8e1b2b!important;color:#fff;opacity:.8}
   .adv{aspect-ratio:1;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:linear-gradient(135deg,#b3122a,#7a0d1f);color:#ffe9b0;font:700 17px Georgia,serif;cursor:pointer;transition:transform .2s}
   .adv:nth-child(3n){background:linear-gradient(135deg,#17804a,#0d5530)} .adv:nth-child(4n){background:linear-gradient(135deg,#c7902a,#8a5a12)}
   .adv.locked{opacity:.45;cursor:default} .adv.open{background:#fffaf0;color:#222;font-size:22px} .adv.pop{animation:advPop .45s}
@@ -237,7 +260,7 @@
     #legend,#credit{display:none}
     #row{gap:6px} #row .btn{padding:8px 11px;font-size:13px} .seg button{padding:6px 9px;font-size:13px}
     #modeSeg button[data-m=orbit] .long{display:none}
-    #coordToggle .long,#tBtn .long,#namesBtn .long,#holBtn .long,#shareBtn .long,#musicBtn .long,#locBtn .long{display:none} #locBtn .short{display:inline}
+    #coordToggle .long,#tBtn .long,#namesBtn .long,#holBtn .long,#shareBtn .long,#layerBtn .long,#musicBtn .long,#locBtn .long{display:none} #locBtn .short{display:inline}
     #clock{font-size:36px}
     #top{max-width:none}
     #card{padding:13px 15px 12px}
@@ -277,6 +300,7 @@
     <button class="btn primary" id="santaBack" style="display:none">🌍 Back to Earth</button>
     <button class="btn tog" id="musicBtn" title="Holiday music" style="display:none">🎵<span class="long"> Music</span></button>
     <button class="btn tog" id="holBtn" title="Holiday themes">🎉<span class="long"> Holidays</span></button>
+    <button class="btn" id="layerBtn" title="Live layers">🗺️<span class="long"> Layers</span></button>
     <button class="btn" id="shareBtn" title="Share this app">🔗<span class="long"> Share</span></button>
   </div>
   <div id="timeBar" class="glass">
@@ -334,6 +358,7 @@
   <div id="date"></div>
   <div id="tzLine"></div>
   <div id="extras"></div>
+  <div id="clocks"></div>
   <div id="sunBox">
     <div id="sunStatus"><div id="sunIcon"></div><span id="sunText"></span></div>
     <div><div class="k">Sunrise</div><div class="v" id="sunrise">—</div></div>
@@ -362,6 +387,8 @@
 <div id="legend" class="glass"><span>Drag to spin · scroll / pinch to zoom · tap globe to pick a spot</span></div>
 <div id="credit">Coastlines: Natural Earth · 193k places: GeoNames · Santa route: Google Santa Tracker<br>Sun &amp; Moon positions computed live from your clock</div>
 <div id="toast" class="glass"></div>
+<div id="layerMenu" class="glass" role="menu"></div>
+<div id="game" class="glass"></div><div id="gBoard"></div>
 <div id="xModal"><div class="xbox glass"><button id="xClose" aria-label="Close">✕</button><div id="xBody"></div></div></div>
 <div id="ballDrop" aria-hidden="true"><div class="bdPole"><div id="bdBall"></div></div><div id="bdNum"></div><div class="bdLbl">Times Square</div></div>
 <div id="overChip" class="glass" style="display:none"></div>
@@ -884,7 +911,7 @@ function tick(force){
   if (current.approx) tzHtml += `<span style="width:100%">Pin is approximate (from your time zone) — search your town for an exact spot.</span>`;
   $('tzLine').innerHTML = tzHtml;
 
-  updateHoliday(now); if (EXTRAS_READY) updateExtras(now);
+  updateHoliday(now); if (EXTRAS_READY){ updateExtras(now); extras2Tick(now); if (GAME.on && !GAME.guessed && GAME.round<=GAME.rounds && now.getSeconds()%10===0) renderGame(); }
   if (!$('bedtime').classList.contains('show') && /🎅 nearby!$/.test(pinLbl.textContent) && !(santa.on)) pinLbl.textContent = current.kind==='device' ? `You · ${shortName(current)}` : shortName(current);
   const s=sunState(now); const sa=sunAt(current.lat,current.lon,s,now);
   let status, col;
@@ -933,7 +960,7 @@ function frame(){
   uniforms.sunDir.value.copy(sd);
   G.frame.matrix.copy(M); G.frame.matrixWorldNeedsUpdate=true;
   { const m_=moonState(now,s); const mp=m_.dirScene().multiplyScalar(m_.dist/6371); uniforms.moonPos.value.copy(mp); uniforms.shadowOn.value = mp.clone().normalize().dot(sd)>0.9995 ? 1 : 0; }
-  termRing.quaternion.setFromUnitVectors(_zAxis, sd); updateMidnightLine(now, s); updateParade(tNow, now);
+  termRing.quaternion.setFromUnitVectors(_zAxis, sd); updateMidnightLine(now, s); updateParade(tNow, now); layersTick(now, M);
   G.pin.scale.setScalar(Math.max(.06,Math.min(1,(camG.position.length()-1)/.25)));      // keep the pin small when zoomed in extra close (parade view)
   sunGlowG.position.copy(sd).multiplyScalar(150);
   const ms=moonState(now,s), mdir=ms.dirScene();
@@ -963,7 +990,7 @@ function frame(){
     const mpos=mdir.clone().multiplyScalar(ms.dist/6371*0.25); placeMoon(moonG, mpos, mdir, 0.2727);   // true size, distance shown at 1/4
     renderer.render(globeScene,camG);
     placeLabel3D(moonLbl, mpos, camG, 12, -10, false, true);
-    updateCityLabels(M);
+    if (!(EXTRAS_READY && GAME.on)) updateCityLabels(M);
     if (current){ const pw=pinWorld(); const facing=pw.clone().normalize().dot(camG.position.clone().normalize()) > .15; placeLabel3D(pinLbl, pw.multiplyScalar(1.08), camG, 12, -16, !facing); }
     sunLbl.style.display='none'; earthLbl.style.display='none'; seasonMarks.forEach(m=>m.el.style.display='none');
   } else if (mode!=='globe') {
@@ -2049,7 +2076,7 @@ function updateHoliday(now){
     else if (H.daysTo(a)>0 && H.daysTo(a)<=3) html+=`<small>🎈 Balloon parade over New York City on Thanksgiving morning</small>`; }
   if (!(a && a.k==='newyear')) nyBall=null;
   if (EXTRAS_READY){ updateBallDrop(nyBall?nyBall[0]:1e9, !!nyBall && pinInNewYork(), nyBall?nyBall[1]:0);
-    const ex=extraLines(now); if (ex){ html+=ex; cls='show'; } }
+    const ex=extraLines(now)+layerLines(now); if (ex){ html+=ex; cls='show'; } }
   if (strip.innerHTML!==html) strip.innerHTML=html; strip.className=cls;
 }
 // jump buttons (time travel previews)
@@ -2231,7 +2258,9 @@ canvas.addEventListener('pointerup',e=>{
   const local=G.frame.worldToLocal(hit.point.clone()).normalize();
   const lat=Math.asin(local.z)*R2D, lon=Math.atan2(local.y,local.x)*R2D;
   closeResults();
+  if (EXTRAS_READY && GAME.on){ gameGuess(lat,lon); return; }
   if (santaCardOn() && santaStopToast(lat,lon,90)) return;          // tapped one of Santa's stops
+  if (EXTRAS_READY && quakeTap(lat,lon)) return;
   setPlace({ ...describePoint(lat,lon), lat, lon, kind:'point' });
 });
 function santaStopToast(lat,lon,km){ const r=nearestStop(lat,lon,km); if (!r) return false;
@@ -2390,6 +2419,10 @@ const Chip=(()=>{
            A4:2 A4:1 C5:1.5 B4:.5 A4:1 G4:1.5 A4:.5 G4:1 E4:3  A4:2 A4:1 C5:1.5 B4:.5 A4:1 G4:1.5 A4:.5 G4:1 E4:3
            D5:2 D5:1 F5:1.5 D5:.5 B4:1 C5:3 E5:3  C5:1 G4:1 E4:1 G4:1.5 F4:.5 D4:1 C4:3 R:3`,
       chords:'C C C C G G C C F F C C F F C C G G C C C G C C' },
+    { name:'Good King Wenceslas', bpm:132, bpb:4, for:['christmas'],
+      mel:`G4:1 G4:1 G4:1 A4:1 G4:1 G4:1 D4:2  E4:1 D4:1 E4:1 F#4:1 G4:2 G4:2  G4:1 G4:1 G4:1 A4:1 G4:1 G4:1 D4:2  E4:1 D4:1 E4:1 F#4:1 G4:2 G4:2
+           D5:1 C5:1 B4:1 A4:1 B4:1 A4:1 G4:2  E4:1 D4:1 E4:1 F#4:1 G4:2 G4:2  D4:1 D4:1 E4:1 F#4:1 G4:1 G4:1 A4:2  D5:1 C5:1 B4:1 A4:1 G4:2 C5:2 G4:4`,
+      chords:'G G C G G G C G G D C G D G G G' },
     { name:'In the Hall of the Mountain King', bpm:138, bpb:4, for:['halloween'],
       mel:`A4:.5 B4:.5 C5:.5 D5:.5 E5:.5 C5:.5 E5:1  D#5:.5 B4:.5 D#5:1 D5:.5 A#4:.5 D5:1  A4:.5 B4:.5 C5:.5 D5:.5 E5:.5 C5:.5 E5:.5 A5:.5  G5:.5 E5:.5 C5:.5 E5:.5 G5:2
            E5:.5 F#5:.5 G#5:.5 A5:.5 B5:.5 G#5:.5 B5:1  C6:.5 G#5:.5 C6:1 B5:.5 G#5:.5 B5:1  E5:.5 F#5:.5 G#5:.5 A5:.5 B5:.5 G#5:.5 B5:.5 E6:.5  D6:.5 B5:.5 G#5:.5 B5:.5 D6:2
@@ -2802,16 +2835,52 @@ var ADVENT=[
   ['🎵','Chiptune time — the whole carol playlist!','carol:'],
   ['🔴','Watch for Rudolph’s glowing red nose on Christmas Eve when you zoom in on Santa.'],
   ['🎅','Santa takes off tonight! Tap 🔍 Zoom in on Santa on the tracker card to ride along.','fireworks'],
+  ['🎁','MERRY CHRISTMAS! Santa made it home — visit Mrs. Claus and the elves at the North Pole.','np'],
+];
+// a bonus question behind every door: [question, answers, correct index]
+var TRIVIA=[
+  ['Which country started the tradition of the Christmas tree?',['Germany','Brazil','Japan'],0],
+  ['How many reindeer pull Santa’s sleigh, counting Rudolph?',['7','9','12'],1],
+  ['What do reindeer mostly eat in winter?',['Carrots','Lichen (“reindeer moss”)','Pine cones'],1],
+  ['Which planet is closest to the Sun?',['Mercury','Venus','Mars'],0],
+  ['At the North Pole in December, the Sun…',['Never rises','Never sets','Rises at 6 AM'],0],
+  ['What do elves make in Santa’s workshop?',['Toys','Pizza','Snowboards only'],0],
+  ['How many sides does a snowflake have?',['4','6','8'],1],
+  ['Which country gave the world the poinsettia?',['Mexico','Canada','Egypt'],0],
+  ['What’s the name of the line between day and night on the globe?',['The terminator','The equator','The meridian'],0],
+  ['What year did the first Nintendo Entertainment System (NES) come out in North America?',['1985','1995','2005'],0],
+  ['What is the biggest ocean on Earth?',['Atlantic','Indian','Pacific'],2],
+  ['Silent Night was first sung in which country?',['Austria','Australia','Argentina'],0],
+  ['A meteor shower happens when Earth passes through…',['Dust left by a comet','The Moon’s shadow','A cloud of snow'],0],
+  ['Which city sees the New Year first among these?',['Auckland','London','New York'],0],
+  ['How long does it take Earth to spin once?',['About 24 hours','About 1 week','About 1 year'],0],
+  ['How fast does the International Space Station go around Earth?',['About every 90 minutes','Once a day','Once a month'],0],
+  ['Candy canes are shaped like…',['A shepherd’s crook','A question mark','A snake'],0],
+  ['What is the shortest day of the year in the north called?',['Winter solstice','Equinox','Leap day'],0],
+  ['Which is NOT one of Santa’s classic reindeer?',['Comet','Blitzen','Sparky'],2],
+  ['Earth is tilted by about how much?',['5°','23.5°','45°'],1],
+  ['Which country has the most time zones (counting its territories)?',['France','China','Brazil'],0],
+  ['What gives Rudolph his famous glow?',['His red nose','His antlers','His bell'],0],
+  ['What lights up the sky near the poles?',['Aurora','Rainbows','Comets'],0],
+  ['Where does Santa live?',['The North Pole','The South Pole','The Moon'],0],
+  ['What day comes right after Christmas in the UK and Canada?',['Boxing Day','Snow Day','Gift Day'],0],
 ];
 function adventDay(now){ const lp=localParts(now,current); if (lp.month!==11) return lp.month===0?0:-1; return lp.day; }
+function triviaHtml(n){ const q=TRIVIA[n-1]; if (!q) return ''; const done=(store.get('trivia',{})[n]);
+  return `<div class="advQ"><b>🎓 Bonus question:</b> ${esc(q[0])}<div class="advA">${q[1].map((a,i)=>`<button class="btn mini${done!=null?(i===q[2]?' right':i===done?' wrong':''):''}" data-a="${i}" ${done!=null?'disabled':''}>${esc(a)}</button>`).join('')}</div></div>`; }
+function wireTrivia(n){ document.querySelectorAll('.advA [data-a]').forEach(b=>b.onclick=()=>{ const q=TRIVIA[n-1], pick=+b.dataset.a, T=store.get('trivia',{}); T[n]=pick; store.set('trivia',T);
+  document.querySelectorAll('.advA [data-a]').forEach(x=>{ x.disabled=true; const i=+x.dataset.a; if (i===q[2]) x.classList.add('right'); else if (i===pick) x.classList.add('wrong'); });
+  const right=Object.entries(T).filter(([k,v])=>TRIVIA[k-1]&&TRIVIA[k-1][2]===v).length;
+  if (pick===q[2]) fx.celebrate(3000); $('advScore').textContent=`🎓 ${right} right so far`; }); }
 function openAdvent(){ const now=simNow(), d=adventDay(now), opened=store.get('advent',{}), y=localParts(now,current).year;
   const o=opened[y]||[];
+  const T=store.get('trivia',{}), right=Object.entries(T).filter(([k,v])=>TRIVIA[k-1]&&TRIVIA[k-1][2]===v).length;
   const doors=ADVENT.map((a,i)=>{ const n=i+1, can=d>=n && d>0, isOpen=o.includes(n);
     return `<button class="adv${isOpen?' open':''}${can?'':' locked'}" data-n="${n}" ${can?'':'disabled'}>${isOpen?a[0]:n}</button>`; }).join('');
-  showModal(`<h3>📅 Advent calendar</h3><p class="mut">${d>24?'Every door is open — Merry Christmas!':d>0?`Today is door ${Math.min(d,24)}. Open one each day until Christmas Eve.`:'Doors start opening on December 1.'}</p><div class="advGrid">${doors}</div><div id="advOut"></div>`);
+  showModal(`<h3>📅 Advent calendar</h3><p class="mut">${d>25?'Every door is open — Merry Christmas!':d>0?`Today is door ${Math.min(d,25)}. Open one each day — door 25 is Christmas Day!`:'Doors start opening on December 1.'} <span id="advScore">${right?`🎓 ${right} right so far`:''}</span></p><div class="advGrid">${doors}</div><div id="advOut"></div>`);
   document.querySelectorAll('.adv').forEach(b=>b.onclick=()=>{ const n=+b.dataset.n, a=ADVENT[n-1];
     if (!o.includes(n)){ o.push(n); opened[y]=o; store.set('advent',opened); } b.classList.add('open','pop'); b.textContent=a[0];
-    $('advOut').innerHTML=`<div class="advMsg"><b>Door ${n}</b> ${a[0]} ${esc(a[1])}</div>`; adventAction(a[2]); }); }
+    $('advOut').innerHTML=`<div class="advMsg"><b>Door ${n}</b> ${a[0]} ${esc(a[1])}</div>${triviaHtml(n)}`; wireTrivia(n); adventAction(a[2]); }); }
 function adventAction(act){ if (!act) return;
   if (act==='fireworks') fx.celebrate(9000);
   else if (act==='moon'){ closeModal(); flyToMoon(); }
@@ -2971,7 +3040,320 @@ function updateBallDrop(ms, show, year){ const el=$('ballDrop');
   el.classList.add('show'); const k=Math.max(0,Math.min(1,1-ms/60000)); $('bdBall').style.top=(k*100)+'%';
   $('bdNum').textContent = ms>10000 ? fmtCountdown(ms).slice(3) : ms>0 ? Math.ceil(ms/1000) : year; el.classList.toggle('done',ms<=0); }
 
+/* =========================================================
+   LIVE LAYERS (space station, clouds, earthquakes, aurora), the Where & When challenge (+ club multiplayer),
+   world clocks, reminders and install-as-an-app
+   Live data comes straight from public services that allow browser requests (no keys, no server).
+   ========================================================= */
+var LAYERS=Object.assign({iss:true,clouds:false,quakes:false,aurora:false}, store.get('layers',{}));
+function setLayer(k,on){ LAYERS[k]=on; store.set('layers',LAYERS); layerKick(k); renderLayerMenu(); tick(true); }
+function layerKick(k){ if (k==='iss') issInit(); if (k==='clouds') cloudsLoad(); if (k==='quakes') quakesLoad(); if (k==='aurora') auroraLoad(); }
+var layerNote={};                                   // per-layer status text ("live", "couldn't load")
+async function getJSON(url){ const r=await fetch(url,{cache:'no-store'}); if (!r.ok) throw new Error(r.status); return r.json(); }
+async function getText(url){ const r=await fetch(url,{cache:'no-store'}); if (!r.ok) throw new Error(r.status); return r.text(); }
+function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('blocked')); document.head.appendChild(s); }); }
+
+// ---------- 🛰️ International Space Station (SGP4 from a fresh orbit, via satellite.js)
+var ISS={rec:null, loading:false, g:null, track:null, pass:null, passAt:0, lbl:null, epoch:null};
+async function issInit(){
+  if (ISS.rec || ISS.loading || !LAYERS.iss) return; ISS.loading=true;
+  try{
+    if (!window.satellite) await loadScript('https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js');
+    let l1, l2;
+    try{ const t=(await getText('https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE')).trim().split(/\r?\n/); l1=t.find(x=>x.startsWith('1 ')); l2=t.find(x=>x.startsWith('2 ')); }catch(e){}
+    if (!l1){ const j=await getJSON('https://api.wheretheiss.at/v1/satellites/25544/tles'); l1=j.line1; l2=j.line2; }
+    ISS.rec=satellite.twoline2satrec(l1.trim(),l2.trim()); ISS.epoch=l1.slice(18,32); layerNote.iss='live';
+    issBuild();
+  }catch(e){ layerNote.iss='couldn’t reach the live orbit data here — it works on the GitHub site'; }
+  ISS.loading=false; renderLayerMenu();
+}
+function issAt(t){ const d=new Date(t), pv=satellite.propagate(ISS.rec,d); if (!pv || !pv.position) return null;
+  const gmst=satellite.gstime(d), gd=satellite.eciToGeodetic(pv.position,gmst), ecf=satellite.eciToEcf(pv.position,gmst);
+  return {lat:satellite.degreesLat(gd.latitude), lon:satellite.degreesLong(gd.longitude), alt:gd.height, ecf, gmst}; }
+function issBuild(){
+  const g=new THREE.Group(); G.frame.add(g); ISS.g=g;
+  const M_=(c,o={})=>new THREE.MeshStandardMaterial({color:c,roughness:o.r??.5,metalness:o.m??.3,emissive:o.e??0,emissiveIntensity:o.ei??1});
+  const body=new THREE.Group(); g.add(body); body.scale.setScalar(.012);
+  const add=(geo,mat,x=0,y=0,z=0)=>{ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z); body.add(m); return m; };
+  add(new THREE.BoxGeometry(3.2,.12,.12),M_(0xd9d9d9));                                           // truss
+  for (const x of [-1.3,-.75,.75,1.3]) for (const z of [-1,1]) add(new THREE.BoxGeometry(.42,.02,1.6),M_(0x2c4a8a,{m:.6,e:0x0b1a3a,ei:.6}),x,0,z*.9);   // solar wings
+  add(new THREE.CylinderGeometry(.13,.13,1.4,12),M_(0xf2f2f2)).rotation.x=Math.PI/2;                 // modules
+  add(new THREE.CylinderGeometry(.1,.1,.6,12),M_(0xe8e8e8),0,0,.95).rotation.x=Math.PI/2;
+  add(new THREE.BoxGeometry(.5,.02,.3),M_(0xdddddd),.0,.12,-.3);
+  const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:stopDotTex,color:0xbfe3ff,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending})); glow.scale.setScalar(.035); g.add(glow);
+  g.add(new THREE.HemisphereLight(0xffffff,0x334466,.9));
+  const lm=new LineMaterial({color:0x8fd3ff,linewidth:2,transparent:true,opacity:.75,dashed:true,dashSize:.02,gapSize:.012,depthWrite:false}); lm.resolution.set(innerWidth,innerHeight);
+  addEventListener('resize',()=>lm.resolution.set(innerWidth,innerHeight));
+  ISS.track=new Line2(new LineGeometry(),lm); ISS.track.frustumCulled=false; G.frame.add(ISS.track); ISS.trackAt=0;
+  ISS.lbl=document.createElement('div'); ISS.lbl.className='lbl'; ISS.lbl.textContent='🛰️ ISS'; ISS.lbl.style.display='none'; labelsEl.appendChild(ISS.lbl);
+  ISS.lbl.style.pointerEvents='auto'; ISS.lbl.style.cursor='pointer'; ISS.lbl.onclick=()=>followISS();
+}
+var _iv=new THREE.Vector3(), _iu=new THREE.Vector3(), _ifw=new THREE.Vector3(), _ir=new THREE.Vector3();
+function issUpdate(now, M){
+  const on=LAYERS.iss && ISS.rec && mode==='globe';
+  if (ISS.g){ ISS.g.visible=on; ISS.track.visible=on; } if (!on){ if (ISS.lbl) ISS.lbl.style.display='none'; return; }
+  const p=issAt(+now); if (!p){ ISS.g.visible=false; return; }
+  const r=1+p.alt/6371; _iu.copy(llToEcef(p.lat,p.lon)); const q=issAt(+now+20000); _ifw.copy(llToEcef(q.lat,q.lon)).sub(_iu); _ifw.addScaledVector(_iu,-_ifw.dot(_iu)).normalize(); _ir.crossVectors(_iu,_ifw).normalize();
+  ISS.g.matrixAutoUpdate=false; ISS.g.matrix.makeBasis(_ir,_iu,_ifw).setPosition(_iv.copy(_iu).multiplyScalar(r)); ISS.pos=p;
+  if (Math.abs(+now-ISS.trackAt)>20000){ ISS.trackAt=+now; const pts=[]; for (let k=-10;k<=95;k++){ const s=issAt(+now+k*60000); if (!s) continue; const v=llToEcef(s.lat,s.lon).multiplyScalar(1+s.alt/6371); pts.push(v.x,v.y,v.z); }
+    const gg=new LineGeometry(); gg.setPositions(pts); ISS.track.geometry.dispose(); ISS.track.geometry=gg; ISS.track.computeLineDistances(); }
+  _iv.copy(_iu).multiplyScalar(r).applyMatrix4(M); const facing=_iv.clone().normalize().dot(camG.position.clone().normalize())>.1;
+  if (!santaCam) placeLabel3D(ISS.lbl, _iv, camG, 10, -10, !facing); else ISS.lbl.style.display='none';
+}
+function followISS(){ if (!ISS.pos) return; if (santaCam) exitSantaCam(); ctlG.minDistance=1.25;
+  const fn=()=>{ G.frame.updateMatrixWorld(); return G.frame.localToWorld(llToEcef(ISS.pos.lat,ISS.pos.lon)).normalize(); };
+  const from=camG.position.clone(); fly={ t0:performance.now(), dur:1600, from:from.clone().normalize(), fromD:from.length(), to:fn(), toD:1.9, toFn:fn }; follow={fn}; }
+// next time you can SEE it: you're in darkness, the station is in sunlight and at least 10° up
+function issNextPass(now){
+  if (!ISS.rec || !current) return null; if (ISS.pass && ISS.passFor===current.lat+','+current.lon && Math.abs(+now-ISS.passCalc)<600000 && (!ISS.pass.end || +now<ISS.pass.end)) return ISS.pass;
+  ISS.passFor=current.lat+','+current.lon; ISS.passCalc=+now; ISS.pass=null;
+  const obs={latitude:current.lat*D2R, longitude:current.lon*D2R, height:0.05}; let cur=null;
+  for (let t=+now; t<+now+36*3600000; t+=30000){ const p=issAt(t); if (!p) break; const la=satellite.ecfToLookAngles(obs,p.ecf), el=la.elevation*R2D;
+    let ok=false; if (el>10){ const s=sunState(new Date(t)), sa=sunAt(current.lat,current.lon,s,new Date(t)).alt;
+      if (sa<-6){ const sv=llToEcef(s.subLat,s.subLon), rv=new THREE.Vector3(p.ecf.x,p.ecf.y,p.ecf.z), along=rv.dot(sv); ok = along>0 || rv.clone().addScaledVector(sv,-along).length()>6371; } }
+    if (ok){ if (!cur) cur={start:t, max:el, azStart:la.azimuth*R2D, azMax:la.azimuth*R2D}; if (el>cur.max){ cur.max=el; cur.azMax=la.azimuth*R2D; } cur.end=t; cur.azEnd=la.azimuth*R2D; }
+    else if (cur) break; }
+  ISS.pass=cur; return cur; }
+const compass=a=>['N','NE','E','SE','S','SW','W','NW'][Math.round(((a%360)+360)%360/45)%8];
+
+// ---------- ☁️ clouds from yesterday's NASA satellite mosaic (GIBS)
+var CLOUDS={mesh:null, loading:false, day:''};
+async function cloudsLoad(){
+  if (!LAYERS.clouds || CLOUDS.loading) return; const d=new Date(Date.now()-86400000).toISOString().slice(0,10); if (CLOUDS.day===d && CLOUDS.mesh) return;
+  CLOUDS.loading=true;
+  try{ const url=`https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=VIIRS_SNPP_CorrectedReflectance_TrueColor&CRS=EPSG:4326&BBOX=-90,-180,90,180&WIDTH=2048&HEIGHT=1024&FORMAT=image/jpeg&TIME=${d}`;
+    const img=await new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>rej(new Error('blocked')); i.src=url; });
+    const c=document.createElement('canvas'); c.width=2048; c.height=1024; const x=c.getContext('2d'); x.drawImage(img,0,0,2048,1024);
+    const im=x.getImageData(0,0,2048,1024), a=im.data;
+    for (let i=0;i<a.length;i+=4){ const r=a[i],g=a[i+1],b=a[i+2], br=(r+g+b)/3, sat=Math.max(r,g,b)-Math.min(r,g,b);
+      const al=Math.max(0,Math.min(1,(br-135)/80))*Math.max(0,Math.min(1,1-(sat-22)/45)); a[i]=a[i+1]=a[i+2]=255; a[i+3]=al*235; }
+    x.putImageData(im,0,0); const tex=new THREE.CanvasTexture(c); tex.anisotropy=maxAniso;
+    if (!CLOUDS.mesh){ CLOUDS.mesh=new THREE.Mesh(EARTH_GEO,new THREE.ShaderMaterial({ uniforms:{map:{value:tex},sunDir:uniforms.sunDir}, transparent:true, depthWrite:false,
+        vertexShader:`varying vec2 vUv; varying vec3 vN; void main(){ vUv=uv; vN=normalize(mat3(modelMatrix)*normal); gl_Position=projectionMatrix*viewMatrix*modelMatrix*vec4(position,1.0); }`,
+        fragmentShader:`uniform sampler2D map; uniform vec3 sunDir; varying vec2 vUv; varying vec3 vN; void main(){ vec4 c=texture2D(map,vUv); float d=dot(normalize(vN),normalize(sunDir));
+          float lit=smoothstep(-0.15,0.2,d); gl_FragColor=vec4(vec3(0.75+0.25*lit)*mix(0.10,1.0,lit), c.a*mix(0.18,0.9,lit)); }` }));
+      CLOUDS.mesh.scale.setScalar(1.006); CLOUDS.mesh.renderOrder=1; G.frame.add(CLOUDS.mesh); }
+    else { CLOUDS.mesh.material.uniforms.map.value.dispose(); CLOUDS.mesh.material.uniforms.map.value=tex; }
+    CLOUDS.day=d; layerNote.clouds=`NASA satellite view from ${d}`;
+  }catch(e){ layerNote.clouds='couldn’t load the satellite image here — it works on the GitHub site'; }
+  CLOUDS.loading=false; renderLayerMenu(); }
+
+// ---------- 🌎 earthquakes, past day, magnitude 2.5+ (USGS)
+var QUAKES={list:[], pts:[], at:0};
+async function quakesLoad(){
+  if (!LAYERS.quakes || Date.now()-QUAKES.at<10*60000) return; QUAKES.at=Date.now();
+  try{ const j=await getJSON('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson');
+    QUAKES.list=j.features.map(f=>({mag:f.properties.mag, place:f.properties.place, time:f.properties.time, lon:f.geometry.coordinates[0], lat:f.geometry.coordinates[1], depth:f.geometry.coordinates[2]})).filter(q=>q.mag!=null);
+    for (const p of QUAKES.pts){ G.frame.remove(p); p.geometry.dispose(); } QUAKES.pts=[];
+    for (const [lo,hi,size,col] of [[0,4,7,0xffd166],[4,6,12,0xff8a3d],[6,11,20,0xff3b3b]]){
+      const L=QUAKES.list.filter(q=>q.mag>=lo&&q.mag<hi); if (!L.length) continue; const pos=new Float32Array(L.length*3);
+      L.forEach((q,i)=>{ const v=llToEcef(q.lat,q.lon).multiplyScalar(1.003); pos.set([v.x,v.y,v.z],i*3); });
+      const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+      const pts=new THREE.Points(g,new THREE.PointsMaterial({size,sizeAttenuation:false,map:pulseTex,color:col,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
+      pts.frustumCulled=false; pts.renderOrder=3; G.frame.add(pts); QUAKES.pts.push(pts); }
+    layerNote.quakes=`${QUAKES.list.length} in the past day · USGS`;
+  }catch(e){ layerNote.quakes='couldn’t load USGS data here — it works on the GitHub site'; }
+  renderLayerMenu(); }
+function quakeTap(lat,lon){ if (!LAYERS.quakes || !QUAKES.list.length) return false; let best=null, bd=250;
+  for (const q of QUAKES.list){ const d=gcDist(lat,lon,q.lat,q.lon); if (d<bd){ bd=d; best=q; } } if (!best) return false;
+  const ago=Math.round((Date.now()-best.time)/60000), when=ago<60?`${ago} min ago`:`${Math.round(ago/60)} h ago`;
+  toast(`🌎 Magnitude ${best.mag.toFixed(1)} earthquake — ${best.place} · ${when} · ${Math.round(best.depth)} km deep`); return true; }
+
+// ---------- 🌌 aurora forecast (NOAA SWPC OVATION, ~30-minute outlook)
+var AURORA={mesh:null, grid:null, at:0};
+async function auroraLoad(){
+  if (!LAYERS.aurora || Date.now()-AURORA.at<20*60000) return; AURORA.at=Date.now();
+  try{ const j=await getJSON('https://services.swpc.noaa.gov/json/ovation_aurora_latest.json');
+    const grid=new Float32Array(360*181); for (const [lo,la,v] of j.coordinates) grid[(la+90)*360+((lo%360)+360)%360]=v; AURORA.grid=grid;
+    const c=document.createElement('canvas'); c.width=360; c.height=181; const x=c.getContext('2d'), im=x.createImageData(360,181);
+    for (let la=-90;la<=90;la++) for (let lo=-180;lo<180;lo++){ const v=grid[(la+90)*360+((lo+360)%360)], i=((90-la)*360+(lo+180))*4, a=Math.min(1,v/35);
+      im.data[i]=60+120*a; im.data[i+1]=255; im.data[i+2]=150-60*a; im.data[i+3]=v<3?0:a*255; }
+    x.putImageData(im,0,0); const tex=new THREE.CanvasTexture(c); tex.minFilter=THREE.LinearFilter;
+    if (!AURORA.mesh){ AURORA.mesh=new THREE.Mesh(EARTH_GEO,new THREE.ShaderMaterial({ uniforms:{map:{value:tex},sunDir:uniforms.sunDir,t:{value:0}}, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+        vertexShader:`varying vec2 vUv; varying vec3 vN; void main(){ vUv=uv; vN=normalize(mat3(modelMatrix)*normal); gl_Position=projectionMatrix*viewMatrix*modelMatrix*vec4(position,1.0); }`,
+        fragmentShader:`uniform sampler2D map; uniform vec3 sunDir; uniform float t; varying vec2 vUv; varying vec3 vN; void main(){ vec4 c=texture2D(map,vUv); float d=dot(normalize(vN),normalize(sunDir));
+          float dark=1.0-smoothstep(-0.12,0.08,d); float shimmer=0.75+0.25*sin(t*1.7+vUv.x*60.0); gl_FragColor=vec4(c.rgb*c.a*dark*shimmer*0.9,1.0); }` }));
+      AURORA.mesh.scale.setScalar(1.012); AURORA.mesh.renderOrder=2; G.frame.add(AURORA.mesh); }
+    else { AURORA.mesh.material.uniforms.map.value.dispose(); AURORA.mesh.material.uniforms.map.value=tex; }
+    layerNote.aurora=`NOAA forecast for ${new Date(j['Forecast Time']).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}`;
+  }catch(e){ layerNote.aurora='couldn’t load NOAA data here — it works on the GitHub site'; }
+  renderLayerMenu(); }
+// is there a decent chance of seeing it from the pin (overhead, or low on the horizon toward the pole)?
+function auroraChance(){ if (!AURORA.grid || !current) return 0; const lo=((Math.round(current.lon)%360)+360)%360; let best=0;
+  for (let d=0; d<=8; d++){ const la=Math.round(current.lat)+(current.lat>=0?d:-d); if (la<-90||la>90) continue; best=Math.max(best, AURORA.grid[(la+90)*360+lo]*(d<=2?1:.6)); } return best; }
+function layersTick(now, M){
+  issUpdate(now, M);
+  if (CLOUDS.mesh) CLOUDS.mesh.visible=LAYERS.clouds && mode==='globe';
+  for (const p of QUAKES.pts) p.visible=LAYERS.quakes && mode==='globe';
+  if (AURORA.mesh){ AURORA.mesh.visible=LAYERS.aurora && mode==='globe'; AURORA.mesh.material.uniforms.t.value=performance.now()/1000; } }
+function layerLines(now){ const out=[];
+  if (LAYERS.iss && ISS.rec){ const p=issNextPass(now); if (p){ const mins=Math.max(1,Math.round((p.end-p.start)/60000)), soon=p.start-now;
+      out.push(soon<=0 ? `🛰️ The space station is overhead right now — look ${compass(p.azMax)}, up to ${Math.round(p.max)}° high!` :
+        `🛰️ See the space station ${soon<86400000&&localParts(new Date(p.start),current).day===localParts(now,current).day?'tonight':'tomorrow'} at ${fmtTime(new Date(p.start),current,false)} — from the ${compass(p.azStart)}, up to ${Math.round(p.max)}° high, for ${mins} min · <a href="#" id="issGo">where is it now?</a>`); } }
+  if (LAYERS.aurora && AURORA.grid){ const c=auroraChance(); const sa=sunAt(current.lat,current.lon,sunState(now),now).alt;
+    if (c>=8) out.push(`🌌 ${current.lat>=0?'Northern':'Southern'} lights ${c>=25?'likely':'possible'} ${sa<-6?'now':'tonight'} — look ${current.lat>=0?'north':'south'}, away from city lights`); }
+  return out.map(x=>`<small>${x}</small>`).join(''); }
+
+// ---------- 🗺️ layers menu
+function renderLayerMenu(){ const m=$('layerMenu'); if (!m || !m.classList.contains('show')) return;
+  const row=(k,icon,name,desc)=>`<label class="mopt${LAYERS[k]?' on':''}"><input type="checkbox" data-l="${k}" ${LAYERS[k]?'checked':''}><span>${icon} ${name}<small>${layerNote[k]&&LAYERS[k]?esc(layerNote[k]):desc}</small></span></label>`;
+  m.innerHTML=row('iss','🛰️','Space station','Where the ISS is now, its path, and when you can see it fly over')+row('clouds','☁️','Clouds','Real clouds from NASA satellites (past day)')
+    +row('quakes','🌎','Earthquakes','Past day, magnitude 2.5+ · tap one for details')+row('aurora','🌌','Northern & southern lights','Live aurora forecast from NOAA');
+  m.querySelectorAll('input').forEach(i=>i.onchange=()=>setLayer(i.dataset.l,i.checked)); }
+$('layerBtn').onclick=e=>{ e.stopPropagation(); const m=$('layerMenu'); const on=!m.classList.contains('show'); m.classList.toggle('show',on);
+  if (on){ renderLayerMenu(); const b=$('layerBtn').getBoundingClientRect(); m.style.left=Math.max(8,Math.min(b.left, innerWidth-m.offsetWidth-8))+'px'; m.style.top=(b.bottom+8)+'px'; } };
+document.addEventListener('pointerdown',e=>{ const m=$('layerMenu'); if (m.classList.contains('show') && !m.contains(e.target) && !$('layerBtn').contains(e.target)) m.classList.remove('show'); });
+setInterval(()=>{ for (const k of ['clouds','quakes','aurora']) if (LAYERS[k]) layerKick(k); }, 10*60000);
+for (const k in LAYERS) if (LAYERS[k]) setTimeout(()=>layerKick(k), 1500);
+
+// ---------- 🎯 the Where & When challenge: guess a city from its time and daylight
+var GAME={on:false, round:0, total:0, rounds:5, seed:0, city:-1, guessed:false, marks:[], hint:false, namesWas:true, club:null};
+function rng(seed){ return ()=>{ seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function gameCities(){ if (GAME.pool) return GAME.pool; const out=[]; for (let i=0;i<P.n && out.length<700;i++) if (P.pop[i]>=600000) out.push(i); return GAME.pool=out; }
+function startGame(seed, fromClub){ if (!P.ready){ toast('Loading places…'); return; }
+  closeModal(); if (santaCam) exitSantaCam(); GAME.on=true; GAME.round=0; GAME.total=0; GAME.seed=seed||((Math.random()*2**31)|0); GAME.fromClub=!!fromClub;
+  GAME.namesWas=showNames; showNames=false; hideCityLabels(); G.pin.visible=false; pinLbl.style.display='none'; document.body.classList.add('gaming'); nextRound(); }
+function nextRound(n){ clearMarks(); GAME.round = n!=null ? n : GAME.round+1; if (GAME.round>GAME.rounds){ endGame(); return; }
+  const pool=gameCities(), r=rng(GAME.seed+GAME.round*7919); GAME.city=pool[Math.floor(r()*pool.length)]; GAME.guessed=false; GAME.hint=false;
+  ctlG.minDistance=1.25; follow=false; camG.position.setLength(Math.max(camG.position.length(),2.6)); renderGame(); }
+function cityPlace(i){ return {name:P.name[i], lat:P.lat[i], lon:P.lon[i], cc:P.cc[i], tz:P.tzList[P.tz[i]], kind:'place', exactTz:true}; }
+function gameClue(){ const c=cityPlace(GAME.city), now=simNow(), lp=partsIn(c.tz,now), s=sunState(now), sa=sunAt(c.lat,c.lon,s,now);
+  const t=fmtParts(now,c.tz,{hour:'numeric',minute:'2-digit'}), wd=fmtParts(now,c.tz,{weekday:'long'});
+  let sun; if (sa.polar==='night') sun='It’s polar night — the sun doesn’t rise at all today.'; else if (sa.polar==='day') sun='The sun doesn’t set there today!';
+  else { const a=sa.alt; const toSet=(sa.set-now)/60000, sinceRise=(now-sa.rise)/60000;
+    sun = a>-0.833 ? (a>40?`The sun is high in the sky (${Math.round(a)}° up).`:toSet>0&&toSet<120?`The sun sets in about ${Math.round(toSet)} minutes.`:sinceRise>0&&sinceRise<120?`The sun came up about ${Math.round(sinceRise)} minutes ago.`:`The sun is ${Math.round(a)}° above the horizon.`)
+      : a>-12 ? 'It’s twilight there.' : 'It’s dark there.'; }
+  const dayLen=sa.dayHours!=null?` Daylight today: ${Math.floor(sa.dayHours)}h ${Math.round(sa.dayHours%1*60)}m.`:'';
+  return `It’s <b>${t}</b> on ${wd}. ${sun}${dayLen}`; }
+function renderGame(res){ const el=$('game'); el.classList.toggle('show',GAME.on); if (!GAME.on) return;
+  const head=`<div class="gHead"><b>🎯 Where & When</b><span>Round ${Math.min(GAME.round,GAME.rounds)}/${GAME.rounds} · ${GAME.total.toLocaleString()} pts</span><button class="btn mini" id="gQuit">✕</button></div>`;
+  if (GAME.round>GAME.rounds){ el.innerHTML=head+res; } else if (!GAME.guessed){
+    el.innerHTML=head+`<div class="gClue">${gameClue()}</div>${GAME.hint?`<div class="gHint">Hint: it’s in ${esc(GAME.city>=0?(P.cc[GAME.city]==='US'?'the USA':regionName(P.cc[GAME.city])):'')}</div>`:''}
+      <div class="gRow"><span class="mut">Tap the globe where you think this city is.</span>${GAME.hint?'':'<button class="btn mini" id="gHint">💡 Hint (half points)</button>'}</div>`;
+  } else el.innerHTML=head+res;
+  $('gQuit').onclick=quitGame; if ($('gHint')) $('gHint').onclick=()=>{ GAME.hint=true; renderGame(); };
+  if ($('gNext')) $('gNext').onclick=()=>{ if (GAME.club && GAME.club.host){ clubNext(); } else nextRound(); };
+  if ($('gAgain')) $('gAgain').onclick=()=>startGame(); clubRender(); }
+function gameGuess(lat,lon){ if (!GAME.on || GAME.guessed || GAME.round>GAME.rounds) return false;
+  const c=cityPlace(GAME.city), km=gcDist(lat,lon,c.lat,c.lon); let pts=Math.round(5000*Math.exp(-km/1800)); if (GAME.hint) pts=Math.round(pts/2);
+  GAME.guessed=true; GAME.total+=pts; GAME.last={km,pts};
+  addMark(lat,lon,0xff4d6d); addMark(c.lat,c.lon,0x3ddc97); addArc(lat,lon,c.lat,c.lon);
+  const name=`${c.name}, ${c.cc==='US'?(P.ad[GAME.city]||'USA'):regionName(c.cc)}`;
+  renderGame(`<div class="gClue">📍 <b>${esc(name)}</b><br>You were <b>${Math.round(km).toLocaleString()} km</b> away — <b>+${pts.toLocaleString()}</b> pts ${pts>4500?'🎯 Bullseye!':pts>3000?'🔥 Great!':pts>1000?'👍':''}</div>
+    <div class="gRow">${GAME.club&&!GAME.club.host?'<span class="mut">Waiting for the host’s next round…</span>':`<button class="btn mini primary" id="gNext">${GAME.round>=GAME.rounds?'See results':'Next round ▶'}</button>`}</div>`);
+  flyToLL(c.lat,c.lon,2.4); clubReport(); return true; }
+function endGame(){ const best=store.get('gameBest',0), nb=GAME.total>best; if (nb) store.set('gameBest',GAME.total);
+  renderGame(`<div class="gClue">🏁 <b>${GAME.total.toLocaleString()}</b> points out of 25,000 ${nb?'— 🏆 a new high score!':`· your best: ${Math.max(best,GAME.total).toLocaleString()}`}</div><div class="gRow"><button class="btn mini primary" id="gAgain">Play again</button></div>`); clubReport(); }
+function quitGame(){ GAME.on=false; clearMarks(); showNames=GAME.namesWas; if (current){ G.pin.visible=true; pinLbl.style.display=''; } document.body.classList.remove('gaming'); renderGame(); clubLeave(); }
+function addMark(lat,lon,col){ const m=new THREE.Mesh(new THREE.SphereGeometry(.012,16,12),new THREE.MeshBasicMaterial({color:col})); m.position.copy(llToEcef(lat,lon).multiplyScalar(1.004)); G.frame.add(m); GAME.marks.push(m); }
+function addArc(a1,o1,a2,o2){ const pts=[]; for (let i=0;i<=64;i++){ const [la,lo]=slerpLL([0,0,a1,o1],[0,0,a2,o2],i/64); const v=llToEcef(la,lo).multiplyScalar(1.004+Math.sin(Math.PI*i/64)*.02); pts.push(v.x,v.y,v.z); }
+  const g=new LineGeometry(); g.setPositions(pts); const m=new LineMaterial({color:0xffffff,linewidth:3,dashed:true,dashSize:.02,gapSize:.015}); m.resolution.set(innerWidth,innerHeight);
+  const l=new Line2(g,m); l.computeLineDistances(); G.frame.add(l); GAME.marks.push(l); }
+function clearMarks(){ for (const m of GAME.marks){ G.frame.remove(m); m.geometry.dispose(); } GAME.marks=[]; }
+
+// ---------- 👥 club mode (Claude version): everyone in the room plays the same rounds, scores show live
+async function clubOpen(){ let room=null; try{ if (window.claude && window.claude.use) room=await Promise.race([window.claude.use('room'),new Promise(r=>setTimeout(()=>r(null),5000))]); }catch(e){}
+  if (!room){ showModal(`<h3>👥 Club game</h3><p class="mut">Playing together works in the Claude version of the app, with the page shared with your club. Here you can still play solo and compare scores out loud!</p><button class="btn primary" id="gSolo">Play solo</button>`); $('gSolo').onclick=()=>startGame(); return; }
+  const nick=store.get('nick','');
+  showModal(`<h3>👥 Club game</h3><p class="mut">Everyone with this page open plays the same 5 cities. The host starts each round; scores update live.</p>
+    <input id="cNick" placeholder="Your nickname" maxlength="20" value="${esc(nick)}"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="cHost">🎮 Host a game</button><button class="btn" id="cJoin">🙋 Join</button></div>`);
+  const go=host=>{ const n=$('cNick').value.trim()||'Player'; store.set('nick',n); clubStart(room,n,host); };
+  $('cHost').onclick=()=>go(true); $('cJoin').onclick=()=>go(false); }
+function clubStart(room,nick,host){ closeModal(); GAME.club={room,nick,host,peers:[]};
+  room.onPeers(ps=>{ if (!GAME.club) return; GAME.club.peers=ps||[];
+    if (!host){ const h=(ps||[]).find(p=>p.state&&p.state.host&&p.state.game); if (h){ const g=h.state.game; if (!GAME.on || GAME.seed!==g.seed) startGame(g.seed,true); if (GAME.round!==g.n) nextRound(g.n); } }
+    clubRender(); });
+  room.on('round',d=>{ if (!GAME.club || host || !d) return; if (!GAME.on || GAME.seed!==d.seed) startGame(d.seed,true); if (GAME.round!==d.n) nextRound(d.n); });
+  if (host){ startGame(); clubBroadcast(); } else { room.presence({nick,total:0,round:0}); toast('👥 Waiting for the host to start…'); } }
+function clubBroadcast(){ const c=GAME.club; if (!c || !c.host) return; const g={seed:GAME.seed,n:GAME.round};
+  try{ c.room.emit('round',g); }catch(e){ toast('Only editors of this page can host — join instead.'); }
+  c.room.presence({nick:c.nick,host:true,game:g,total:GAME.total,round:GAME.round,done:GAME.guessed}); }
+function clubNext(){ nextRound(); clubBroadcast(); }
+function clubReport(){ const c=GAME.club; if (!c) return; c.room.presence({nick:c.nick,host:c.host,game:c.host?{seed:GAME.seed,n:GAME.round}:undefined,total:GAME.total,round:GAME.round,done:GAME.guessed}); }
+function clubRender(){ const el=$('gBoard'); if (!el) return; const c=GAME.club; if (!c || !GAME.on){ el.innerHTML=''; return; }
+  const rows=(c.peers||[]).map(p=>({nick:String((p.state&&p.state.nick)||'Player').slice(0,20), total:+((p.state&&p.state.total)||0), done:!!(p.state&&p.state.done&&p.state.round===GAME.round), you:!!p.self, host:!!(p.state&&p.state.host)}));
+  if (!rows.some(r=>r.you)) rows.push({nick:c.nick,total:GAME.total,done:GAME.guessed,you:true,host:c.host});
+  rows.sort((a,b)=>b.total-a.total);
+  el.innerHTML=`<div class="gBoardT">👥 Club scores</div>`+rows.map((r,i)=>`<div class="gBoardR${r.you?' you':''}"><span>${i+1}. ${esc(r.nick)}${r.host?' 🎮':''}${r.you?' (you)':''}</span><span>${r.done?'✅ ':''}${r.total.toLocaleString()}</span></div>`).join(''); }
+function clubLeave(){ if (GAME.club){ try{ GAME.club.room.presence({}); }catch(e){} GAME.club=null; } }
+
+// ---------- 🕒 world clocks
+function clocksRender(now){ const el=$('clocks'); if (!el || !current) return; const L=store.get('clocks',[]);
+  const here=L.some(c=>Math.abs(c.lat-current.lat)<.01 && Math.abs(c.lon-current.lon)<.01), s=sunState(now);
+  const html=(L.length?`<div class="clkT">🕒 World clocks</div>`:'')+L.map((c,i)=>{ const sa=sunAt(c.lat,c.lon,s,now).alt, t=fmtParts(now,c.tz,{hour:'numeric',minute:'2-digit'}), d=fmtParts(now,c.tz,{weekday:'short'});
+      return `<div class="clk" data-i="${i}"><span>${sa>-0.833?'☀️':sa>-6?'🌇':'🌙'} ${esc(c.name)}</span><span><b>${t}</b> <small>${d}</small><button data-del="${i}" title="Remove">✕</button></span></div>`; }).join('')
+    +(here?'':`<button class="btn mini" id="clkAdd">＋ Add ${esc(shortName(current))} to world clocks</button>`);
+  if (el.dataset.h===html) return; el.dataset.h=html; el.innerHTML=html;
+  el.querySelectorAll('.clk').forEach(r=>r.onclick=e=>{ if (e.target.dataset.del!=null){ const L=store.get('clocks',[]); L.splice(+e.target.dataset.del,1); store.set('clocks',L); clocksRender(simNow()); return; }
+    const c=store.get('clocks',[])[+r.dataset.i]; if (c) setPlace({name:c.name,sub:c.sub||'',lat:c.lat,lon:c.lon,cc:c.cc,tz:c.tz,kind:'place'}); });
+  if ($('clkAdd')) $('clkAdd').onclick=()=>{ const L=store.get('clocks',[]); if (L.length>=8){ toast('🕒 Up to 8 world clocks.'); return; }
+    L.push({name:shortName(current),sub:current.sub||'',lat:current.lat,lon:current.lon,cc:current.cc,tz:zoneFor(current).tz}); store.set('clocks',L); clocksRender(simNow()); }; }
+
+// ---------- 🔔 reminders (notifications while the app is open, or installed and running in the background)
+var REM=Object.assign({sunrise:false,sunset:false,iss:false,santa:false}, store.get('reminders',{})), remFired=store.get('remFired',{});
+function openReminders(){ const sup='Notification' in window;
+  const row=(k,t,d)=>`<label class="mopt${REM[k]?' on':''}"><input type="checkbox" data-r="${k}" ${REM[k]?'checked':''}><span>${t}<small>${d}</small></span></label>`;
+  showModal(`<h3>🔔 Reminders</h3><p class="mut">${sup?'Your phone or computer will show a notification. They work while the app is open — or installed on your home screen and still running.':'This browser can’t show notifications. Try installing the app on your home screen first.'}</p>
+    <div id="remList">${row('sunrise','🌅 Sunrise','10 minutes before sunrise at your pin')+row('sunset','🌇 Sunset','10 minutes before sunset')+row('iss','🛰️ Space station flyover','5 minutes before you can see the ISS (turns on the Space station layer)')+row('santa','🎅 Santa takes off','10 minutes before takeoff on Christmas Eve')}</div>`);
+  document.querySelectorAll('#remList input').forEach(i=>i.onchange=async()=>{ if (i.checked && sup && Notification.permission==='default'){ try{ await Notification.requestPermission(); }catch(e){} }
+    if (i.checked && sup && Notification.permission==='denied') toast('🔔 Notifications are blocked — allow them in your browser settings.');
+    REM[i.dataset.r]=i.checked; store.set('reminders',REM); if (i.dataset.r==='iss' && i.checked && !LAYERS.iss) setLayer('iss',true); i.closest('label').classList.toggle('on',i.checked); }); }
+function notify(key,title,body){ if (remFired[key]) return; remFired[key]=Date.now(); store.set('remFired',remFired); toast(`🔔 ${title} — ${body}`);
+  if (!('Notification' in window) || Notification.permission!=='granted') return;
+  const opts={body, icon:'icon-192.png', tag:key};
+  if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.ready.then(r=>r.showNotification(title,opts)).catch(()=>{ try{ new Notification(title,opts); }catch(e){} });
+  else try{ new Notification(title,opts); }catch(e){} }
+function remindersTick(now){ if (!current || traveling()) return; const t=+now, s=sunState(now), sa=sunAt(current.lat,current.lon,s,now), soon=(at,lead)=>at && t>=+at-lead && t<+at;
+  if (REM.sunrise && soon(sa.rise,600000)) notify('rise'+new Date(sa.rise).toDateString(),'🌅 Sunrise soon',`The sun rises at ${fmtTime(sa.rise,current,false)} in ${shortName(current)}.`);
+  if (REM.sunset && soon(sa.set,600000)) notify('set'+new Date(sa.set).toDateString(),'🌇 Sunset soon',`The sun sets at ${fmtTime(sa.set,current,false)} in ${shortName(current)}.`);
+  if (REM.iss && ISS.rec){ const p=issNextPass(now); if (p && soon(new Date(p.start),300000)) notify('iss'+p.start,'🛰️ Look up!',`The space station appears in the ${compass(p.azStart)} at ${fmtTime(new Date(p.start),current,false)}, up to ${Math.round(p.max)}° high.`); }
+  if (REM.santa && ROUTE.length){ const y=new Date(t).getUTCFullYear(), up=routeT0(y)+ROUTE[0][4]*1000; if (soon(new Date(up),600000)) notify('santa'+y,'🎅 Santa takes off soon!','Open the globe and zoom in on Santa to say goodbye at the North Pole.'); } }
+
+// ---------- 📲 install as an app (GitHub site): offline cache + home-screen icon
+var installEvt=null;
+addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); installEvt=e; });
+if ('serviceWorker' in navigator && /github\.io$|^localhost$|^127\.0\.0\.1$/.test(location.hostname)) addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+function openInstall(){ const standalone=matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const ios=/iPhone|iPad|iPod/.test(navigator.userAgent), onGH=/github\.io$/.test(location.hostname);
+  if (standalone){ showModal(`<h3>📲 Installed!</h3><p class="mut">You’re using Where & When as an app. It opens even without internet (live layers need a connection).</p>`); return; }
+  if (!onGH){ showModal(`<h3>📲 Install the app</h3><p class="mut">Installing works from the GitHub site. Open it on your phone, then come back to this button.</p><input readonly value="${APP_URL}" onfocus="this.select()"><button class="btn primary" id="inShare">🔗 Share the link</button>`); $('inShare').onclick=openShare; return; }
+  if (installEvt){ installEvt.prompt(); installEvt.userChoice.finally(()=>{ installEvt=null; }); return; }
+  showModal(`<h3>📲 Install Where & When</h3>${ios?`<p class="mut">On iPhone or iPad (Safari):</p><ol class="steps"><li>Tap the <b>Share</b> button <span style="font-size:1.2em">⎙</span> at the bottom.</li><li>Scroll and tap <b>Add to Home Screen</b>.</li><li>Tap <b>Add</b>. The globe icon appears on your home screen.</li></ol>`
+    :`<p class="mut">In Chrome or Edge: open the browser menu <b>⋮</b> and choose <b>Install app</b> or <b>Add to Home screen</b>.</p>`}<p class="mut">After the first visit it opens even without internet.</p>`); }
+
+// ---------- per-tick hooks
+function extras2Tick(now){ clocksRender(now); remindersTick(now); }
+// ---- the extras row: seasonal buttons, the challenge, and a ⋯ More menu for everything else
+var _ue=updateExtras;
+updateExtras=function(now){ _ue(now); const el=$('extras'); if (el.dataset.k2===el.dataset.k) return; el.dataset.k2=el.dataset.k;
+  el.querySelectorAll('[data-x=bday],[data-x=card]').forEach(b=>b.remove());
+  for (const [k,label,fn] of [['game','🎯 Challenge',()=>startGame()],['more','⋯ More',openMore]]){
+    const b=document.createElement('button'); b.className='btn mini'; b.dataset.x=k; b.textContent=label; b.onclick=fn; el.appendChild(b); } };
+function openMore(){ const items=[['👥','Club game','Play the challenge together',clubOpen],['🕒','World clocks','Add this place to your clocks',()=>{ closeModal(); $('clocks').scrollIntoView({behavior:'smooth',block:'center'}); }],
+    ['🔔','Reminders','Sunrise, sunset, ISS, Santa',openReminders],['🎂','My birthday','A party on your day',openBirthday],['📸','Postcard','Save or share a picture',()=>{ closeModal(); makePostcard(); }],
+    ['📲','Install','Put the globe on your home screen',openInstall],['🔗','Share','QR code and link',openShare],['💬','Feedback','Ideas and bugs',openFeedback],
+    ...(DONATE_URL?[['💖','Donate','Support the developer',()=>window.open(DONATE_URL,'_blank','noopener')]]:[])];
+  showModal(`<h3>⋯ More</h3><div class="moreGrid">${items.map((it,i)=>`<button class="moreItem" data-i="${i}"><span class="mi">${it[0]}</span><b>${it[1]}</b><small>${it[2]}</small></button>`).join('')}</div>`);
+  document.querySelectorAll('.moreItem').forEach(b=>b.onclick=()=>items[+b.dataset.i][3]()); }
+document.addEventListener('click',e=>{ const a=e.target.closest('a'); if (a && a.id==='issGo'){ e.preventDefault(); followISS(); } });
+
+// ---------- 💬 feedback & 💖 support the developer
+var DONATE_URL='';          // e.g. a Ko-fi / Buy Me a Coffee / GitHub Sponsors page — the 💖 button appears once this is set
+var FEEDBACK_URL='https://github.com/t57chh7v97-cloud/html-code/issues/new';
+function openFeedback(){
+  showModal(`<h3>💬 Send feedback</h3><p class="mut">Found a bug or have an idea? Tell the developer!</p>
+    <select id="fbKind"><option>💡 Idea</option><option>🐞 Bug</option><option>❤️ I love this</option><option>❓ Question</option></select>
+    <textarea id="fbText" rows="6" maxlength="3000" placeholder="What happened, or what would you like to see?"></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="fbSend">Send on GitHub</button><button class="btn" id="fbCopy">📋 Copy</button></div>
+    <p class="mut" style="margin-top:10px;font-size:12px">“Send on GitHub” opens a new issue on the app’s page with your message filled in (you’ll need a free GitHub account). No account? Copy it and give it to the developer.</p>
+    ${DONATE_URL?`<hr style="border:0;border-top:1px solid var(--line);margin:14px 0"><p class="mut">Enjoying the globe? You can support the developer:</p><a class="btn" href="${DONATE_URL}" target="_blank" rel="noopener">💖 Donate</a>`:''}`);
+  const msg=()=>{ const k=$('fbKind').value, t=$('fbText').value.trim(); return {k,t,title:`${k}: ${t.split('\n')[0].slice(0,70)||'Feedback'}`,
+    body:`${t}\n\n---\nPlace: ${current?shortName(current):'?'} · ${navigator.userAgent.slice(0,120)}`}; };
+  $('fbSend').onclick=()=>{ const m=msg(); if (!m.t){ $('fbText').focus(); return; } window.open(`${FEEDBACK_URL}?title=${encodeURIComponent(m.title)}&body=${encodeURIComponent(m.body)}&labels=feedback`,'_blank','noopener'); };
+  $('fbCopy').onclick=async()=>{ const m=msg(); if (!m.t){ $('fbText').focus(); return; } try{ await navigator.clipboard.writeText(m.title+'\n\n'+m.body); $('fbCopy').textContent='✅ Copied'; }catch(e){ $('fbText').select(); } }; }
+
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
+if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS};
 frame();
 try{ if (window.top===window && !store.get('last',null) && !home) setTimeout(()=>$('locBtn').click(), 600); }catch(e){}
 function exposeDbg(){ window.__dbg = { inNY:()=>pinInNewYork(), nyPlaying:()=>!nyAudio.paused && nyAudio.currentTime>0, camS:()=>camS.position.toArray(), stopAt:L=>{ stopStart=performance.now()-L*1000/STOP_SPEED; }, camAt:(r,u,f,lr=0,lu=0,lf=0)=>{ const T=santaWorld(new THREE.Vector3()), e=santaRig.matrixWorld.elements; const R=new THREE.Vector3(e[0],e[1],e[2]).normalize(), U=new THREE.Vector3(e[4],e[5],e[6]).normalize(), F=new THREE.Vector3(e[8],e[9],e[10]).normalize(); santaSwoop=null; const tgt=T.clone().addScaledVector(R,lr).addScaledVector(U,lu).addScaledVector(F,lf); camS.position.copy(tgt).addScaledVector(R,r).addScaledVector(U,u).addScaledVector(F,f); ctlS.target.copy(tgt); _prevT.copy(T); camS.lookAt(tgt); }, Chip:()=>Chip, pulseInfo:()=>({v:pulse.visible,size:pulse.material.size,op:pulse.material.opacity,flash:flashStop,status:santa.status,stop:santa.stop&&santa.stop[0]}), setOffset:v=>{simOffset=v;}, tick:()=>tick(true), cam:camG, moonState, moonAltAt, moonInfo, simNow, sunState, earthMatrix, ecefToScene, sunDirScene, llToEcef, setPlace, setMode, get current(){return current;} }; }

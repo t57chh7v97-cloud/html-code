@@ -189,6 +189,27 @@ night-side city lights placed at real city coordinates.
     (Halloween), Yankee Doodle (4th of July), Auld Lang Syne (New Year), Happy
     Birthday, and an original "Level Up!" for Video Game Day.
   - 📸 Postcard: saves or shares a picture of the globe with a holiday greeting.
+- **🗺️ Live layers** (from public services; nothing to sign up for):
+  - 🛰️ **Space station:** the ISS's live position and next orbit (SGP4 from a
+    fresh CelesTrak orbit via satellite.js), plus when you can see it fly over
+    your pin: you in darkness, the station in sunlight, at least 10° up.
+  - ☁️ **Clouds** from yesterday's NASA GIBS satellite mosaic.
+  - 🌎 **Earthquakes** from the past day (USGS, magnitude 2.5+). Tap one for
+    details.
+  - 🌌 **Aurora** from NOAA's 30-minute forecast, with a "lights possible
+    tonight" note when your pin has a chance.
+  These need the GitHub site; the Claude version can't reach outside data.
+- **🎯 Where & When challenge:** guess a city from its local time, day/night
+  and daylight hours. 5 rounds, up to 5,000 points each, with a high score.
+  **👥 Club game** (Claude version, page shared with the club): the host
+  starts each round, everyone plays the same cities, and scores show live.
+- **🕒 World clocks**, **🔔 reminders** (sunrise, sunset, ISS flyovers, Santa's
+  takeoff), and **📲 install as an app** (manifest + service worker, so it
+  opens offline after the first visit).
+- **💬 Feedback** opens a pre-filled GitHub issue (or copies the message).
+  Setting `DONATE_URL` in `globe/index.html` adds a 💖 Donate button.
+- The advent calendar has 25 doors (door 25 on Christmas Day), each with a
+  bonus quiz question, and "Good King Wenceslas" joins the chiptune carols.
 - **🔗 Share:** shows a QR code for the app (good for putting on a projector),
   a Copy link button, and the phone's share sheet. The QR code is made in the
   page with qrcode-generator by Kazuhiko Arase (MIT license).
