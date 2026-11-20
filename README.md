@@ -216,8 +216,18 @@ night-side city lights placed at real city coordinates.
   opens offline after the first visit).
 - **💬 Feedback** opens a pre-filled GitHub issue (or copies the message).
   Setting `DONATE_URL` in `globe/index.html` adds a 💖 Donate button.
-- The advent calendar has 25 doors (door 25 on Christmas Day), each with a
-  bonus quiz question, and "Good King Wenceslas" joins the chiptune carols.
+- The advent calendar has 25 doors, each with a bonus quiz question, and
+  "Good King Wenceslas" joins the chiptune carols. **Door 25 (Christmas Day)**
+  is a giant present to shake open, which unlocks three prizes for good:
+  - 🛷 **Fly Santa's sleigh:** steer with ◀ ▶ or the arrow keys, hold 🚀 to go
+    faster, and tap 🎁 (or Space) to drop presents on the real town below.
+    The delivery count is saved.
+  - 🌟 **The Golden Sleigh:** Santa's sleigh turns gold, on the tracker too
+    (it can be turned off in ⋯ More).
+  - 🎓 **An Official Elf certificate** with your name and stats, to save or
+    share.
+- **＋ / − / ◎ buttons** on the right zoom in and out (globe, Santa cam or orbit
+  view) and fly back to your location (using GPS if needed).
 - **⛶ Hide panels** clears everything off the screen so you can see the whole
   globe (or Santa); 👁 Show panels brings it back. On phones, the Santa
   tracker shrinks to one line (tap it to expand), and Santa cam only keeps

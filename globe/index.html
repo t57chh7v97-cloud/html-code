@@ -81,6 +81,27 @@
   .moreGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px} .moreItem{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--text);text-align:left;cursor:pointer;font:inherit}
   .moreItem .mi{font-size:22px} .moreItem small{color:var(--muted);font-size:11.5px} .moreItem:hover{background:rgba(255,255,255,.1)}
   ol.steps{margin:0 0 10px;padding-left:20px;line-height:1.6}
+  #mapCtl{position:fixed;right:12px;top:50%;transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;gap:6px}
+  #mapCtl button{width:42px;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--text);font:600 22px system-ui;cursor:pointer;backdrop-filter:blur(12px);box-shadow:0 4px 14px rgba(0,0,0,.35)}
+  #mapCtl button:active{transform:scale(.94)} #mapCtl #zMe{font-size:20px;color:var(--accent)}
+  body.santa-on:not(.santa-cam) #mapCtl{top:auto;bottom:230px;transform:none}
+  @media (min-width:721px){ body.santa-on:not(.santa-cam) #mapCtl{top:50%;bottom:auto;transform:translateY(-50%)} }
+  #flyPad{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9;display:none;grid-template-columns:repeat(4,64px);gap:8px;justify-content:center}
+  #flyPad.show{display:grid} #flyPad>button{height:64px;border-radius:18px;border:1px solid rgba(255,255,255,.25);background:rgba(10,16,32,.72);color:#fff;font-size:26px;backdrop-filter:blur(10px);touch-action:none;user-select:none;-webkit-user-select:none}
+  #flyPad>button:active{background:rgba(255,200,97,.35)} #flyPad .fpRow{grid-column:1/-1;display:flex;gap:8px;justify-content:center}
+  body.flying #santaCard, body.flying #card, body.flying #santaBack{display:none!important}
+  #finale{position:fixed;inset:0;z-index:25;display:none;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%,rgba(120,20,30,.85),rgba(5,8,18,.95));padding:16px}
+  #finale.show{display:flex} .fnBox{text-align:center;max-width:560px;width:100%}
+  .fnTitle{font:800 clamp(26px,6vw,40px) Georgia,serif;color:#ffe9b0;text-shadow:0 0 18px rgba(255,200,100,.6)} .fnSub{color:#fff;opacity:.85;margin:8px 0 26px;font-size:17px}
+  .fnHint{color:#fff;opacity:.7;margin-top:18px;font-size:14px}
+  .fnGift{position:relative;width:190px;height:190px;border:0;background:none;cursor:pointer;display:inline-block}
+  .fnBody{position:absolute;left:15px;right:15px;bottom:0;height:130px;border-radius:10px;background:linear-gradient(90deg,#c8102e 42%,#f2c14e 42% 58%,#c8102e 58%);box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  .fnLid{position:absolute;left:5px;right:5px;top:38px;height:36px;border-radius:8px;background:linear-gradient(90deg,#e0213c 42%,#ffd25e 42% 58%,#e0213c 58%);transition:transform .7s cubic-bezier(.3,1.6,.5,1);z-index:2}
+  .fnBow{position:absolute;left:50%;top:-6px;transform:translateX(-50%);font-size:58px;z-index:3;transition:transform .7s}
+  .fnGift.shake{animation:fnShake .5s} @keyframes fnShake{20%{transform:rotate(-8deg)}40%{transform:rotate(7deg)}60%{transform:rotate(-5deg)}80%{transform:rotate(3deg)}}
+  .fnGift.open .fnLid{transform:translateY(-140px) rotate(-25deg)} .fnGift.open .fnBow{transform:translate(-50%,-170px) rotate(30deg)}
+  .fnPrizes{display:grid;gap:10px;margin-top:20px} .fnPrize{display:flex;flex-direction:column;align-items:center;gap:3px;padding:16px;border-radius:16px;border:1px solid rgba(255,230,170,.4);background:rgba(255,255,255,.08);color:#fff;cursor:pointer;font:inherit;animation:npPop .5s both}
+  .fnPrize span{font-size:38px} .fnPrize b{font-size:18px} .fnPrize small{opacity:.8} .fnPrize:nth-child(2){animation-delay:.15s} .fnPrize:nth-child(3){animation-delay:.3s} .fnPrize:hover{background:rgba(255,255,255,.16)}
   #xModal{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;background:rgba(3,6,14,.55);padding:14px}
   #xModal.show{display:flex}
   #xModal .xbox{position:relative;width:min(440px,100%);max-height:calc(100vh - 28px);overflow:auto;padding:18px 18px 16px;animation:npPop .3s ease-out}
@@ -398,6 +419,10 @@
 <div id="credit">Coastlines: Natural Earth · 193k places: GeoNames · Santa route: Google Santa Tracker<br>Sun &amp; Moon positions computed live from your clock</div>
 <div id="toast" class="glass"></div>
 <div id="layerMenu" class="glass" role="menu"></div>
+<div id="mapCtl"><button id="zIn" title="Zoom in" aria-label="Zoom in">＋</button><button id="zOut" title="Zoom out" aria-label="Zoom out">−</button><button id="zMe" title="Back to my location" aria-label="Back to my location">◎</button></div>
+<div id="flyPad"><button id="fpL" aria-label="Turn left">◀</button><button id="fpBoost" aria-label="Go faster">🚀</button><button id="fpDrop" aria-label="Drop a present">🎁</button><button id="fpR" aria-label="Turn right">▶</button>
+  <div class="fpRow"><button id="fpCam" class="btn mini">🎥 Free cam</button><button id="fpLand" class="btn mini">🛬 Land</button></div></div>
+<div id="finale"></div>
 <div id="game" class="glass"></div><div id="gBoard"></div>
 <div id="xModal"><div class="xbox glass"><button id="xClose" aria-label="Close">✕</button><div id="xBody"></div></div></div>
 <div id="ballDrop" aria-hidden="true"><div class="bdPole"><div id="bdBall"></div></div><div id="bdNum"></div><div class="bdLbl">Times Square</div></div>
@@ -980,7 +1005,7 @@ function frame(){
 
   updateSanta(now); updateSantaModel(tNow); updateStopDots();
   if (mode==='globe' && santaCam){
-    if (!santaCardOn()) exitSantaCam();
+    if (!santaCardOn() && !FLY.on) exitSantaCam();
     else { stepSantaCam(); renderer.render(globeScene,camS);
       updateCityLabels(M, camS, true); updateOverChip(); updateDeerTags(); pinLbl.style.display='none'; moonLbl.style.display='none'; santaLbl.style.display='none';
       sunLbl.style.display='none'; earthLbl.style.display='none'; seasonMarks.forEach(m=>m.el.style.display='none'); }
@@ -1062,17 +1087,19 @@ let overAt=0;
 function updateOverChip(force){
   const el=$('overChip'); if (!santaCam){ el.style.display='none'; return; }
   const t=performance.now(); if (!force && t-overAt<1000) return; overAt=t;
-  let lat,lon; if (santa.on){ lat=santa.lat; lon=santa.lon; } else { lat=ROUTE[0][2]; lon=ROUTE[0][3]; }
+  let lat,lon; if (FLY.on){ lat=FLY.lat; lon=FLY.lon; } else if (santa.on){ lat=santa.lat; lon=santa.lon; } else { lat=ROUTE[0][2]; lon=ROUTE[0][3]; }
   const ctry=countryAt(lat,lon); const np=nearestPlace(lat,lon);
   let txt;
-  const nph=npPhase();
-  if (!santa.on && !santa.done) txt = nph==='bye' ? `👋 Mrs. Claus and the elves are saying goodbye · takeoff in ${mmss(santa.takeoffIn*1000)}` : '🛷 Parked at the North Pole · getting ready';
+  const nph=FLY.on?'':npPhase();
+  if (FLY.on) txt='';
+  else if (!santa.on && !santa.done) txt = nph==='bye' ? `👋 Mrs. Claus and the elves are saying goodbye · takeoff in ${mmss(santa.takeoffIn*1000)}` : '🛷 Parked at the North Pole · getting ready';
   else if (santa.done) txt = nph==='welcome' ? '🏡 Welcome home! Mrs. Claus has hot cocoa ready ☕' : '🛷 Home at the North Pole';
   else if (nph==='bye' && santa.idx===0 && santa.status==='fly') txt='👋 Liftoff! The elves are waving goodbye';
   else if (nph==='cheer') txt='🛬 Coming in to land at the North Pole — the elves are cheering!';
   else if (santa.status==='at'){ const here=placeName(santa.stop); txt = stopPhase==='gifts' ? `🎁 Squeezing down a chimney in ${here}` : stopPhase==='inside' ? `🎄 Leaving presents under the tree in ${here}` : stopPhase==='snack' ? `🍪 Snack break in ${here} — milk & cookies` : `🏠 Landing on a roof in ${here}`; }
   else if (ctry){ const town = np && np.km<60 ? P.name[np.i]+(P.ad[np.i]&&P.cc[np.i]==='US'?', '+P.ad[np.i]:'')+', ' : (np && np.km<250 ? `near ${P.name[np.i]}, ` : ''); txt=`🛷 Flying over ${town}${ctry}`; }
   else txt = np ? `🛷 Flying over the ocean · ${Math.round(np.km).toLocaleString()} km from ${P.name[np.i]}` : '🛷 Flying over the ocean';
+  if (FLY.on){ const town = np && np.km<60 ? P.name[np.i]+', ' : ''; txt = ctry ? `🛷 You’re flying over ${town}${ctry} · 🎁 ${FLY.delivered}` : `🛷 You’re flying over the ocean · 🎁 ${FLY.delivered}`; }
   el.textContent=txt; el.style.display='block';
   const top=$('top').getBoundingClientRect(); if (innerWidth<=720) el.style.top=(top.bottom+8)+'px'; else el.style.top='';
 }
@@ -1442,7 +1469,7 @@ const STOP={ santaG:null, arms:[], seat:new THREE.Vector3(0,.36,-.1), house:null
   const bodyGeo=new THREE.ExtrudeGeometry(sh,{depth:0.52,bevelEnabled:true,bevelThickness:.03,bevelSize:.025,bevelSegments:3,curveSegments:16});
   bodyGeo.translate(0,0,-0.26); bodyGeo.rotateY(-Math.PI/2);
   const sleigh=new THREE.Group(); santaModel.add(sleigh);
-  add(sleigh,bodyGeo,red);
+  STOP.sleighBody=add(sleigh,bodyGeo,red);
   // gold trim along both sides
   for (const sx of [-0.29,0.29]){ const pts=[]; for (let i=0;i<=24;i++){ const t=i/24; pts.push(new THREE.Vector3(sx,0.2+0.03*Math.sin(t*Math.PI),-0.5+t*0.95)); }
     add(sleigh,new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),24,.018,6),gold); }
@@ -1654,19 +1681,20 @@ function updatePuff(t){ const k=(t-puffT)/800; for (const q of puffs){ if (k<0||
   q.p.visible=true; const r=.05+k*.35; q.p.position.set(q.sx+Math.cos(q.a)*r*.6, -.05+Math.sin(Math.PI*k)*.12, q.z+Math.sin(q.a)*r);
   q.p.scale.setScalar(.6+k*1.8); q.p.material.opacity=.85*(1-k); } }
 function updateSantaModel(t){
-  const show = santaCardOn() && mode==='globe';
+  const show = (santaCardOn() || FLY.on) && mode==='globe';
   santaRig.visible = show; if (!show){ updateNorthPole(t,false); return; }
   // where: flying the route, hovering at a stop, or parked at the North Pole
   let lat, lon, toward;
-  if (santa.on){ lat=santa.lat; lon=santa.lon; toward=santa.next||santa.stop; }
+  if (FLY.on){ flyStep(t); lat=FLY.lat; lon=FLY.lon; toward=[0,0,FLY.aLat,FLY.aLon]; }
+  else if (santa.on){ lat=santa.lat; lon=santa.lon; toward=santa.next||santa.stop; }
   else { const vp=ROUTE[0]; lat=vp[2]; lon=vp[3]; toward=ROUTE[1]; }          // parked in its spot in the village, facing the first stop
   _su.copy(llToEcef(lat,lon));
   if (toward){ _sf.copy(llToEcef(toward[2],toward[3])).addScaledVector(_su,-_su.dot(llToEcef(toward[2],toward[3]))); }
   if (!toward || _sf.lengthSq()<1e-10) _sf.set(0,0,1).addScaledVector(_su,-_su.z);
   _sf.normalize(); _sr.crossVectors(_su,_sf).normalize();
-  const flying = santa.on && santa.status==='fly';
-  const atStop = santa.on && santa.status==='at';
-  const parked = !santa.on;
+  const flying = FLY.on || (santa.on && santa.status==='fly');
+  const atStop = !FLY.on && santa.on && santa.status==='at';
+  const parked = !FLY.on && !santa.on;
   // smooth descents and climbs: whenever he switches between flying, a rooftop and the North Pole, ease the height over ~1 s
   const st = atStop?'at':parked?'park':'fly';
   if (st!==santaAlt.st){ santaAlt.prev=santaAlt.st; santaAlt.from=santaAlt.st?santaAlt.cur:null; santaAlt.t0=t; santaAlt.st=st; santaAlt.dur = st==='park'||santaAlt.prev==='park' ? 1800 : st==='at' ? 1500 : 900; santaAlt.puffed=false; }
@@ -1919,6 +1947,8 @@ let santaSwoop=null;
 function exitSantaCam(){ if (!santaCam) return; santaCam=false; if (ctlS){ ctlS.dispose(); ctlS=null; } ctlG.enabled = mode==='globe';
   $('santaBack').style.display='none'; $('santaZoom').style.display=''; document.body.classList.remove('santa-cam'); $('overChip').style.display='none'; layout(); if (current) flyTo(); }
 function stepSantaCam(){
+  if (FLY.on && FLY.chase){ const T=santaWorld(_st), e=santaRig.matrixWorld.elements; const up=new THREE.Vector3(e[4],e[5],e[6]).normalize(), fw=new THREE.Vector3(e[8],e[9],e[10]).normalize();
+    const want=T.clone().addScaledVector(fw,-0.11).addScaledVector(up,0.045); santaSwoop=null; const now_=performance.now(), kk=1-Math.exp(-Math.min(.25,(now_-(FLY.camT||now_))/1000)*5); FLY.camT=now_; camS.position.lerp(want, FLY.camFirst?1:Math.max(kk,.02)); FLY.camFirst=false; camS.up.copy(up); ctlS.target.copy(T); _prevT.copy(T); camS.lookAt(T); return; }
   const T=santaWorld(_st);
   camS.position.add(T.clone().sub(_prevT)); ctlS.target.copy(T); _prevT.copy(T);       // ride along with the sleigh as Earth turns and Santa flies
   if (santaSwoop){ const k=Math.min(1,(performance.now()-santaSwoop.t0)/santaSwoop.dur), e=1-Math.pow(1-k,3);
@@ -2850,7 +2880,7 @@ var ADVENT=[
   ['🎵','Chiptune time — the whole carol playlist!','carol:'],
   ['🔴','Watch for Rudolph’s glowing red nose on Christmas Eve when you zoom in on Santa.'],
   ['🎅','Santa takes off tonight! Tap 🔍 Zoom in on Santa on the tracker card to ride along.','fireworks'],
-  ['🎁','MERRY CHRISTMAS! Santa made it home — visit Mrs. Claus and the elves at the North Pole.','np'],
+  ['🎁','MERRY CHRISTMAS! There’s a giant present waiting for you under the tree…','finale'],
 ];
 // a bonus question behind every door: [question, answers, correct index]
 var TRIVIA=[
@@ -2900,6 +2930,7 @@ function adventAction(act){ if (!act) return;
   if (act==='fireworks') fx.celebrate(9000);
   else if (act==='moon'){ closeModal(); flyToMoon(); }
   else if (act==='np'){ closeModal(); flyToLL(84.6,168,1.6); }
+  else if (act==='finale'){ setTimeout(openFinale,900); }
   else if (act==='letter'){ setTimeout(openLetter,1200); }
   else if (act.startsWith('carol:')){ const name=act.slice(6); musicSrc='chip'; store.set('musicSrc','chip'); if (musicOn) musicStop(); if (name) Chip.pick(name); musicStart(); } }
 
@@ -3371,7 +3402,8 @@ updateExtras=function(now){ _ue(now); const el=$('extras'); if (el.dataset.k2===
 function openMore(){ const items=[['👥','Club game','Play the challenge together',clubOpen],['🕒','World clocks','Add this place to your clocks',()=>{ closeModal(); $('clocks').scrollIntoView({behavior:'smooth',block:'center'}); }],
     ['🔔','Reminders','Sunrise, sunset, ISS, Santa',openReminders],['🎂','My birthday','A party on your day',openBirthday],['📸','Postcard','Save or share a picture',()=>{ closeModal(); makePostcard(); }],
     ['📲','Install','Put the globe on your home screen',openInstall],['🔗','Share','QR code and link',openShare],['💬','Feedback','Ideas and bugs',openFeedback],
-    ...(DONATE_URL?[['💖','Donate','Support the developer',()=>window.open(DONATE_URL,'_blank','noopener')]]:[])];
+    ...(DONATE_URL?[['💖','Donate','Support the developer',()=>window.open(DONATE_URL,'_blank','noopener')]]:[]),
+    ...(store.get('sleighUnlocked',false)?[['🛷','Fly the sleigh','Steer it and drop presents',startFlight],['🌟','Golden sleigh',store.get('goldSleigh',true)?'On — tap to turn off':'Off — tap to turn on',()=>{ store.set('goldSleigh',!store.get('goldSleigh',true)); applyGoldSleigh(); openMore(); }],['🎓','Elf certificate','Save or share it',makeCertificate]]:[])];
   showModal(`<h3>⋯ More</h3><div class="moreGrid">${items.map((it,i)=>`<button class="moreItem" data-i="${i}"><span class="mi">${it[0]}</span><b>${it[1]}</b><small>${it[2]}</small></button>`).join('')}</div>`);
   document.querySelectorAll('.moreItem').forEach(b=>b.onclick=()=>items[+b.dataset.i][3]()); }
 document.addEventListener('click',e=>{ const a=e.target.closest('a'); if (a && a.id==='issGo'){ e.preventDefault(); followISS(); } });
@@ -3390,6 +3422,111 @@ function openFeedback(){
     body:`${t}\n\n---\nPlace: ${current?shortName(current):'?'} · ${navigator.userAgent.slice(0,120)}`}; };
   $('fbSend').onclick=()=>{ const m=msg(); if (!m.t){ $('fbText').focus(); return; } window.open(`${FEEDBACK_URL}?title=${encodeURIComponent(m.title)}&body=${encodeURIComponent(m.body)}&labels=feedback`,'_blank','noopener'); };
   $('fbCopy').onclick=async()=>{ const m=msg(); if (!m.t){ $('fbText').focus(); return; } try{ await navigator.clipboard.writeText(m.title+'\n\n'+m.body); $('fbCopy').textContent='✅ Copied'; }catch(e){ $('fbText').select(); } }; }
+
+/* =========================================================
+   CHRISTMAS DAY REWARD (advent door 25): a big present to open, then three prizes —
+   🛷 fly Santa's sleigh yourself and drop presents on real towns, 🌟 a golden sleigh, 🎓 an Official Elf certificate
+   ========================================================= */
+var FLY={on:false, lat:40.7, lon:-74, hdg:180, speed:260, boost:false, turn:0, last:0, delivered:store.get('delivered',0), chase:true, aLat:0, aLon:0, drops:[]};
+function destPoint(lat,lon,brg,km){ const R=6371, d=km/R, b=brg*D2R, a1=lat*D2R, o1=lon*D2R;
+  const a2=Math.asin(Math.sin(a1)*Math.cos(d)+Math.cos(a1)*Math.sin(d)*Math.cos(b));
+  const o2=o1+Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(a1),Math.cos(d)-Math.sin(a1)*Math.sin(a2));
+  return [a2*R2D, ((o2*R2D+540)%360)-180]; }
+function bearingTo(a1,o1,a2,o2){ const f1=a1*D2R,f2=a2*D2R,dl=(o2-o1)*D2R; return (Math.atan2(Math.sin(dl)*Math.cos(f2),Math.cos(f1)*Math.sin(f2)-Math.sin(f1)*Math.cos(f2)*Math.cos(dl))*R2D+360)%360; }
+function flyStep(t){ const dt=Math.min(.1,(t-(FLY.last||t))/1000); FLY.last=t;
+  FLY.hdg=(FLY.hdg+FLY.turn*75*dt+360)%360;
+  const km=(FLY.boost?FLY.speed*3:FLY.speed)*dt; const [la,lo]=destPoint(FLY.lat,FLY.lon,FLY.hdg,km);
+  if (km>0.01) FLY.hdg=(bearingTo(la,lo,FLY.lat,FLY.lon)+180)%360;                            // keep the heading true along the great circle
+  FLY.lat=la; FLY.lon=lo; [FLY.aLat,FLY.aLon]=destPoint(la,lo,FLY.hdg,50);
+  santaModel.rotation.z = -FLY.turn*0.25;                                                        // bank into turns
+  updateDrops(t); }
+function startFlight(){
+  if (!store.get('sleighUnlocked',false)){ toast('🛷 Open advent door 25 on Christmas Day to unlock this!'); return; }
+  closeModal(); if (GAME.on) quitGame(); if (mode!=='globe') setMode('globe');
+  const from=current||{lat:40.7,lon:-74}; FLY.lat=from.lat; FLY.lon=from.lon; FLY.hdg=90; FLY.on=true; FLY.last=0; FLY.turn=0; FLY.boost=false;
+  FLY.camFirst=true; FLY.chase=true; applyGoldSleigh(); enterSantaCam(); document.body.classList.add('flying'); $('flyPad').classList.add('show'); updateOverChip(true);
+  toast('🛷 Steer with ◀ ▶ (or the arrow keys), hold 🚀 to go faster, and tap 🎁 to drop a present on the town below!'); }
+function endFlight(){ if (!FLY.on) return; FLY.on=false; santaModel.rotation.z=0; document.body.classList.remove('flying'); $('flyPad').classList.remove('show'); applyGoldSleigh(); if (santaCam) exitSantaCam(); }
+var _fx=new THREE.Vector3();
+function dropPresent(){ if (!FLY.on) return; const np=nearestPlace(FLY.lat,FLY.lon), ctry=countryAt(FLY.lat,FLY.lon);
+  const box=new THREE.Mesh(new THREE.BoxGeometry(.13,.13,.13),new THREE.MeshStandardMaterial({color:[0xc8102e,0x1f8a4c,0x2a6fdb,0xf2c14e][FLY.delivered%4],roughness:.5}));
+  box.position.set(0,.2,-.6); santaModel.add(box); santaModel.updateMatrixWorld(true); box.getWorldPosition(_fx); santaModel.remove(box);
+  G.frame.updateMatrixWorld(true); G.frame.worldToLocal(_fx); box.position.copy(_fx); box.scale.setScalar(SANTA_SCALE*1.6); G.frame.add(box);
+  const ground=llToEcef(FLY.lat,FLY.lon).multiplyScalar(1.0005); FLY.drops.push({m:box, from:_fx.clone(), to:ground, t0:performance.now()});
+  if (ctry && np && np.km<80){ FLY.delivered++; store.set('delivered',FLY.delivered); const town=P.name[np.i];
+    toast(`🎁 Present delivered to ${town}, ${P.cc[np.i]==='US'?(P.ad[np.i]||'USA'):regionName(P.cc[np.i])}! · ${FLY.delivered.toLocaleString()} delivered`); if (FLY.delivered%10===0) fx.celebrate(4000); }
+  else toast(ctry ? '🎁 It landed in the countryside — a lucky reindeer will find it!' : '🌊 Splash! That one landed in the ocean.');
+  updateOverChip(true); }
+function updateDrops(t){ for (let i=FLY.drops.length-1;i>=0;i--){ const d=FLY.drops[i], k=(t-d.t0)/1200;
+    if (k>=1.6){ G.frame.remove(d.m); d.m.geometry.dispose(); FLY.drops.splice(i,1); continue; }
+    d.m.position.lerpVectors(d.from,d.to,Math.min(1,k*k)); d.m.rotation.x+=.08; d.m.rotation.y+=.05; } }
+// on-screen controls (hold to turn) + keyboard
+(function(){ const pad=$('flyPad'); const hold=(id,on,off)=>{ const b=$(id); b.addEventListener('pointerdown',e=>{ e.preventDefault(); try{ b.setPointerCapture(e.pointerId); }catch(_){} on(); });
+    for (const ev of ['pointerup','pointercancel','lostpointercapture']) b.addEventListener(ev,off); };
+  hold('fpL',()=>FLY.turn=-1,()=>FLY.turn=0); hold('fpR',()=>FLY.turn=1,()=>FLY.turn=0); hold('fpBoost',()=>FLY.boost=true,()=>FLY.boost=false);
+  $('fpDrop').onclick=dropPresent; $('fpLand').onclick=endFlight; $('fpCam').onclick=()=>{ FLY.chase=!FLY.chase; $('fpCam').textContent=FLY.chase?'🎥 Free cam':'🎥 Chase cam'; };
+  addEventListener('keydown',e=>{ if (!FLY.on || /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+    if (e.key==='ArrowLeft'||e.key==='a') FLY.turn=-1; else if (e.key==='ArrowRight'||e.key==='d') FLY.turn=1; else if (e.key==='ArrowUp'||e.key==='w'||e.key==='Shift') FLY.boost=true;
+    else if (e.key===' '||e.key==='Enter'){ e.preventDefault(); dropPresent(); } else if (e.key==='Escape') endFlight(); });
+  addEventListener('keyup',e=>{ if (['ArrowLeft','ArrowRight','a','d'].includes(e.key)) FLY.turn=0; if (['ArrowUp','w','Shift'].includes(e.key)) FLY.boost=false; }); })();
+var _exitCam=exitSantaCam; exitSantaCam=function(){ if (FLY.on){ FLY.on=false; santaModel.rotation.z=0; document.body.classList.remove('flying'); $('flyPad').classList.remove('show'); } _exitCam(); };
+
+// ---- 🌟 the golden sleigh
+var goldMat=new THREE.MeshStandardMaterial({color:0xf5c542,metalness:.85,roughness:.22,emissive:0x3a2600,emissiveIntensity:.35}), sleighRed=null;
+function applyGoldSleigh(){ const b=STOP.sleighBody; if (!b) return; if (!sleighRed) sleighRed=b.material;
+  b.material = store.get('sleighUnlocked',false) && store.get('goldSleigh',true) ? goldMat : sleighRed; }
+setTimeout(applyGoldSleigh,0);
+
+// ---- 🎓 Official Elf certificate
+function makeCertificate(){ const L=store.get('letter',null), name=(L&&L.name)||store.get('nick','')||(store.get('birthday',null)||{}).name||'A Very Good Helper';
+  const y=current?localParts(simNow(),current).year:new Date().getFullYear(), doors=(store.get('advent',{})[y]||[]).length, T=store.get('trivia',{}), right=Object.entries(T).filter(([k,v])=>TRIVIA[k-1]&&TRIVIA[k-1][2]===v).length;
+  const W=1400,H=1000,c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,W,H); g.addColorStop(0,'#fff8e7'); g.addColorStop(1,'#fdeccd'); x.fillStyle=g; x.fillRect(0,0,W,H);
+  x.strokeStyle='#b3121f'; x.lineWidth=26; x.strokeRect(30,30,W-60,H-60); x.strokeStyle='#1f8a4c'; x.lineWidth=8; x.strokeRect(62,62,W-124,H-124);
+  for (let i=0;i<46;i++){ x.fillStyle=i%2?'#b3121f':'#1f8a4c'; const a=i/46*Math.PI*2; x.beginPath(); x.arc(W/2+Math.cos(a)*(W/2-46),H/2+Math.sin(a)*(H/2-46),6,0,7); }
+  x.textAlign='center'; x.fillStyle='#b3121f'; x.font='bold 74px Georgia,serif'; x.fillText('Certificate of Official Elfhood',W/2,200);
+  x.fillStyle='#3a2a1a'; x.font='italic 34px Georgia,serif'; x.fillText('This certifies that',W/2,290);
+  x.fillStyle='#1f5f38'; x.font='bold 88px Georgia,serif'; x.fillText(name.slice(0,26),W/2,400);
+  x.fillStyle='#3a2a1a'; x.font='32px Georgia,serif';
+  x.fillText(`has been named an Official Elf of Santa’s Workshop, Christmas ${y},`,W/2,480);
+  x.fillText(`for opening ${doors} advent door${doors===1?'':'s'}, answering ${right} quiz question${right===1?'':'s'} right,`,W/2,530);
+  x.fillText(`${FLY.delivered?`delivering ${FLY.delivered.toLocaleString()} present${FLY.delivered===1?'':'s'} from the sleigh, `:''}and generally being wonderful.`,W/2,580);
+  x.font='96px serif'; x.fillText('🎅 🦌 🎄',W/2,730);
+  x.font='italic 40px Georgia,serif'; x.fillStyle='#b3121f'; x.fillText('Santa Claus',W/2-330,860); x.fillText('Mrs. Claus',W/2+330,860);
+  x.strokeStyle='#3a2a1a'; x.lineWidth=2; for (const dx of [-330,330]){ x.beginPath(); x.moveTo(W/2+dx-170,880); x.lineTo(W/2+dx+170,880); x.stroke(); }
+  x.font='22px Georgia,serif'; x.fillStyle='#7a6a5a'; x.fillText('North Pole · Where & When — Live Globe',W/2,930);
+  c.toBlob(blob=>{ const url=URL.createObjectURL(blob), file=new File([blob],'official-elf-certificate.png',{type:'image/png'});
+    showModal(`<h3>🎓 Your Official Elf certificate</h3><img src="${url}" class="pcImg" alt="Certificate"><div style="display:flex;gap:8px;flex-wrap:wrap">${navigator.canShare&&navigator.canShare({files:[file]})?'<button class="btn primary" id="ceShare">Share…</button>':''}<a class="btn" href="${url}" download="official-elf-certificate.png">⬇ Save image</a></div>
+      <p class="mut" style="margin-top:8px">Tip: your name comes from your letter to Santa.</p>`);
+    if ($('ceShare')) $('ceShare').onclick=()=>navigator.share({files:[file],title:'Official Elf'}).catch(()=>{}); },'image/png'); }
+
+// ---- 🎁 the Christmas Day finale: a giant present to shake and open
+function openFinale(){ closeModal(); const el=$('finale'); const L=store.get('letter',null), nm=L&&L.name?', '+esc(L.name):'';
+  el.innerHTML=`<div class="fnBox"><div class="fnTitle">🎄 Merry Christmas${nm}! 🎄</div><div class="fnSub">Santa left something for you under the tree…</div>
+    <button class="fnGift" id="fnGift" aria-label="Open your present"><span class="fnLid"></span><span class="fnBody"></span><span class="fnBow">🎀</span></button><div class="fnHint">Tap the present to shake it — 3 shakes to open!</div></div>`;
+  el.classList.add('show'); let shakes=0;
+  $('fnGift').onclick=()=>{ shakes++; const g=$('fnGift'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake'); fx.burst(innerWidth/2+(Math.random()-.5)*200, innerHeight/2-120, false);
+    if (shakes>=3){ g.classList.add('open'); fx.celebrate(15000); store.set('sleighUnlocked',true); store.set('goldSleigh',true); applyGoldSleigh();
+      if (typeof Chip!=='undefined'){ musicSrc='chip'; if (musicOn) musicStop(); Chip.setTheme('christmas'); Chip.pick('We Wish You a Merry Christmas'); musicStart(); }
+      setTimeout(()=>{ el.querySelector('.fnBox').innerHTML=`<div class="fnTitle">🎁 You unlocked 3 prizes!</div>
+        <div class="fnPrizes"><button class="fnPrize" id="fpFly"><span>🛷</span><b>Fly Santa’s sleigh</b><small>Steer it yourself and drop presents on real towns</small></button>
+          <button class="fnPrize" id="fpGold"><span>🌟</span><b>The Golden Sleigh</b><small>Santa’s sleigh is now solid gold — on the tracker too</small></button>
+          <button class="fnPrize" id="fpCert"><span>🎓</span><b>Official Elf certificate</b><small>With your name, to save or share</small></button></div>
+        <button class="btn" id="fnClose" style="margin-top:14px">Close</button><p class="fnHint">Find them any time in ⋯ More.</p>`;
+        $('fpFly').onclick=()=>{ el.classList.remove('show'); startFlight(); }; $('fpGold').onclick=()=>{ el.classList.remove('show'); toast('🌟 Golden sleigh on! Zoom in on Santa to see it.'); if (theme==='christmas' && santaCardOn()) enterSantaCam(); };
+        $('fpCert').onclick=()=>{ el.classList.remove('show'); makeCertificate(); }; $('fnClose').onclick=()=>el.classList.remove('show'); }, 1300); } }; }
+
+// ---------- ＋ / − zoom and ◎ back to you
+function zoomBy(f){ const cam = mode!=='globe' ? camO : santaCam ? camS : camG, ctl = mode!=='globe' ? ctlO : santaCam ? ctlS : ctlG;
+  if (cam===camS && FLY.on && FLY.chase){ FLY.chase=false; $('fpCam').textContent='🎥 Chase cam'; }
+  const tgt=ctl.target.clone(), off=cam.position.clone().sub(tgt), from=off.length(), to=Math.max(ctl.minDistance*1.001,Math.min(ctl.maxDistance,from*f));
+  if (cam===camG){ fly=null; follow=false; }
+  const t0=performance.now(); (function step(){ const k=Math.min(1,(performance.now()-t0)/260), e=1-Math.pow(1-k,3);
+    const tg=ctl.target, dir=cam.position.clone().sub(tg).normalize(); cam.position.copy(tg).addScaledVector(dir, from+(to-from)*e); ctl.update(); if (k<1) requestAnimationFrame(step); })(); }
+function recenterMe(){ if (santaCam) exitSantaCam(); if (mode!=='globe') setMode('globe');
+  if (current && current.kind==='device'){ ctlG.minDistance=Math.min(ctlG.minDistance,1.25); flyTo(); toast('◎ Back to you'); }
+  else { $('locBtn').click(); } }
+$('zIn').onclick=()=>zoomBy(0.72); $('zOut').onclick=()=>zoomBy(1.38); $('zMe').onclick=recenterMe;
 
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS};
