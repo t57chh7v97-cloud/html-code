@@ -226,6 +226,17 @@ night-side city lights placed at real city coordinates.
     (it can be turned off in ⋯ More).
   - 🎓 **An Official Elf certificate** with your name and stats, to save or
     share.
+- **📅 Daily challenge:** the same 5 cities for everyone each day, one try,
+  with a streak counter and a shareable 🟩🟨🟧🟥 result. The challenge also
+  has 🔊 sound effects: dings for close guesses, a buzzer when time runs out,
+  ticking in the last 5 seconds of Hard mode, and a fanfare at the end.
+- **🎯 Sleigh missions** (once the sleigh is unlocked): Big Apple Run, Grand
+  Tour of Europe, East Asia Express, Around the World and Present Rush.
+  Glowing rings mark each city, the banner points to the next one with an
+  arrow and distance, and your best times are saved.
+- **❄️ Snow cover** layer from NASA MODIS (the last 3 days combined).
+- **⏳ Countdowns** to Christmas, New Year, your birthday and the next holiday.
+  The one you pick shows as a number on the app's icon once it's installed.
 - **＋ / − / ◎ buttons** on the right zoom in and out (globe, Santa cam or orbit
   view) and fly back to your location (using GPS if needed).
 - **⛶ Hide panels** clears everything off the screen so you can see the whole

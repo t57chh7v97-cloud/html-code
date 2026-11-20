@@ -3091,9 +3091,9 @@ function updateBallDrop(ms, show, year){ const el=$('ballDrop');
    world clocks, reminders and install-as-an-app
    Live data comes straight from public services that allow browser requests (no keys, no server).
    ========================================================= */
-var LAYERS=Object.assign({iss:true,clouds:false,quakes:false,aurora:false}, store.get('layers',{}));
+var LAYERS=Object.assign({iss:true,clouds:false,quakes:false,aurora:false,snow:false}, store.get('layers',{}));
 function setLayer(k,on){ LAYERS[k]=on; store.set('layers',LAYERS); layerKick(k); renderLayerMenu(); tick(true); }
-function layerKick(k){ if (k==='iss') issInit(); if (k==='clouds') cloudsLoad(); if (k==='quakes') quakesLoad(); if (k==='aurora') auroraLoad(); }
+function layerKick(k){ if (k==='iss') issInit(); if (k==='clouds') cloudsLoad(); if (k==='quakes') quakesLoad(); if (k==='aurora') auroraLoad(); if (k==='snow') snowLoad(); }
 var layerNote={};                                   // per-layer status text ("live", "couldn't load")
 async function getJSON(url){ const r=await fetch(url,{cache:'no-store'}); if (!r.ok) throw new Error(r.status); return r.json(); }
 async function getText(url){ const r=await fetch(url,{cache:'no-store'}); if (!r.ok) throw new Error(r.status); return r.text(); }
@@ -3233,7 +3233,7 @@ function auroraChance(){ if (!AURORA.grid || !current) return 0; const lo=((Math
   for (let d=0; d<=8; d++){ const la=Math.round(current.lat)+(current.lat>=0?d:-d); if (la<-90||la>90) continue; best=Math.max(best, AURORA.grid[(la+90)*360+lo]*(d<=2?1:.6)); } return best; }
 function layersTick(now, M){
   issUpdate(now, M);
-  if (CLOUDS.mesh) CLOUDS.mesh.visible=LAYERS.clouds && mode==='globe';
+  if (CLOUDS.mesh) CLOUDS.mesh.visible=LAYERS.clouds && mode==='globe'; if (SNOW.mesh) SNOW.mesh.visible=LAYERS.snow && mode==='globe';
   for (const p of QUAKES.pts) p.visible=LAYERS.quakes && mode==='globe';
   if (AURORA.mesh){ AURORA.mesh.visible=LAYERS.aurora && mode==='globe'; AURORA.mesh.material.uniforms.t.value=performance.now()/1000; } }
 function layerLines(now){ const out=[];
@@ -3248,12 +3248,12 @@ function layerLines(now){ const out=[];
 function renderLayerMenu(){ const m=$('layerMenu'); if (!m || !m.classList.contains('show')) return;
   const row=(k,icon,name,desc)=>`<label class="mopt${LAYERS[k]?' on':''}"><input type="checkbox" data-l="${k}" ${LAYERS[k]?'checked':''}><span>${icon} ${name}<small>${layerNote[k]&&LAYERS[k]?esc(layerNote[k]):desc}</small></span></label>`;
   m.innerHTML=row('iss','🛰️','Space station','Where the ISS is now, its path, and when you can see it fly over')+row('clouds','☁️','Clouds','Real clouds from NASA satellites (past day)')
-    +row('quakes','🌎','Earthquakes','Past day, magnitude 2.5+ · tap one for details')+row('aurora','🌌','Northern & southern lights','Live aurora forecast from NOAA');
+    +row('snow','❄️','Snow cover','Where the ground is snowy, from NASA satellites')+row('quakes','🌎','Earthquakes','Past day, magnitude 2.5+ · tap one for details')+row('aurora','🌌','Northern & southern lights','Live aurora forecast from NOAA');
   m.querySelectorAll('input').forEach(i=>i.onchange=()=>setLayer(i.dataset.l,i.checked)); }
 $('layerBtn').onclick=e=>{ e.stopPropagation(); const m=$('layerMenu'); const on=!m.classList.contains('show'); m.classList.toggle('show',on);
   if (on){ renderLayerMenu(); const b=$('layerBtn').getBoundingClientRect(); m.style.left=Math.max(8,Math.min(b.left, innerWidth-m.offsetWidth-8))+'px'; m.style.top=(b.bottom+8)+'px'; } };
 document.addEventListener('pointerdown',e=>{ const m=$('layerMenu'); if (m.classList.contains('show') && !m.contains(e.target) && !$('layerBtn').contains(e.target)) m.classList.remove('show'); });
-setInterval(()=>{ for (const k of ['clouds','quakes','aurora']) if (LAYERS[k]) layerKick(k); }, 10*60000);
+setInterval(()=>{ for (const k of ['clouds','quakes','aurora','snow']) if (LAYERS[k]) layerKick(k); }, 10*60000);
 for (const k in LAYERS) if (LAYERS[k]) setTimeout(()=>layerKick(k), 1500);
 
 // ---------- 🎯 the Where & When challenge: guess a city from its time and daylight
@@ -3527,6 +3527,143 @@ function recenterMe(){ if (santaCam) exitSantaCam(); if (mode!=='globe') setMode
   if (current && current.kind==='device'){ ctlG.minDistance=Math.min(ctlG.minDistance,1.25); flyTo(); toast('◎ Back to you'); }
   else { $('locBtn').click(); } }
 $('zIn').onclick=()=>zoomBy(0.72); $('zOut').onclick=()=>zoomBy(1.38); $('zMe').onclick=recenterMe;
+
+/* =========================================================
+   GAME SOUNDS, DAILY CHALLENGE, SLEIGH MISSIONS, SNOW COVER LAYER, COUNTDOWNS + APP-ICON BADGE
+   ========================================================= */
+// ---------- 🔊 little synthesized sound effects (no files)
+var SFX={on:store.get('sfx',true), ctx:null};
+function sfx(kind, v=1){ if (!SFX.on) return; try{
+  if (!SFX.ctx){ const AC=window.AudioContext||window.webkitAudioContext; SFX.ctx=new AC(); } const c=SFX.ctx; c.resume(); const t=c.currentTime;
+  const tone=(f,at,dur,type='square',vol=.12,slide=0)=>{ const o=c.createOscillator(), g=c.createGain(); o.type=type; o.frequency.setValueAtTime(f,t+at); if (slide) o.frequency.exponentialRampToValueAtTime(slide,t+at+dur);
+    g.gain.setValueAtTime(0,t+at); g.gain.linearRampToValueAtTime(vol,t+at+.01); g.gain.exponentialRampToValueAtTime(.0008,t+at+dur); o.connect(g); g.connect(c.destination); o.start(t+at); o.stop(t+at+dur+.02); };
+  if (kind==='ding'){ const n=Math.max(1,Math.round(v*4)); for (let i=0;i<n;i++) tone([523,659,784,1047][i],i*.08,.18,'square',.09); if (v>=.9) tone(1568,.34,.35,'triangle',.1); }
+  else if (kind==='meh') tone(330,0,.25,'triangle',.12,220);
+  else if (kind==='buzz'){ tone(110,0,.45,'sawtooth',.13); tone(116,0,.45,'sawtooth',.08); }
+  else if (kind==='tick') tone(1200,0,.04,'square',.05);
+  else if (kind==='fanfare'){ [523,659,784,1047,784,1047].forEach((f,i)=>tone(f,i*.12,i===5?.6:.16,'square',.1)); }
+  else if (kind==='drop') tone(900,0,.35,'triangle',.1,180);
+  else if (kind==='pop'){ tone(660,0,.08,'square',.1); tone(990,.07,.12,'square',.1); }
+  else if (kind==='start'){ tone(392,0,.1,'square',.08); tone(523,.1,.1,'square',.08); tone(784,.2,.22,'square',.09); }
+}catch(e){} }
+function sfxToggle(){ SFX.on=!SFX.on; store.set('sfx',SFX.on); if (SFX.on) sfx('pop'); renderGame(); }
+// hook the game: sounds on guesses, a ticking clock in Hard, a fanfare at the end
+var _gg=gameGuess; gameGuess=function(lat,lon){ const r=_gg(lat,lon); if (r!==false && GAME.last){ GAME.hist=GAME.hist||[]; GAME.hist[GAME.round-1]=GAME.last.pts;
+  if (lat==null) sfx('buzz'); else if (GAME.last.pts>=1000) sfx('ding',GAME.last.pts/5000); else sfx('meh'); } return r; };
+var _rg=renderGame; renderGame=function(res){ _rg(res); const h=document.querySelector('#game .gHead'); if (h && !h.querySelector('#gSnd')){ const b=document.createElement('button'); b.className='btn mini'; b.id='gSnd'; b.title='Sound'; b.textContent=SFX.on?'🔊':'🔇'; b.onclick=sfxToggle; h.insertBefore(b,$('gQuit')); }
+  if (GAME.on && GAME.deadline && !GAME.guessed){ const left=(GAME.deadline-performance.now())/1000; if (left<=5.5 && left>0) sfx('tick'); } };
+var _sg=startGame; startGame=function(seed,fromClub){ GAME.hist=[]; _sg(seed,fromClub); if (GAME.on) sfx('start'); };
+
+// ---------- 📅 daily challenge: the same 5 cities for everyone, once a day, with a streak
+MODES.daily={name:'Daily', icon:'📅', pop:600000, max:700, km:1500, clue:'full', country:false, hint:true, secs:0, desc:'Same 5 cities for everyone today'};
+const dayKey=(d=new Date())=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+function daySeed(k){ let h=2166136261; for (const ch of 'ww-daily-'+k){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619); } return h|0; }
+function dailyStreak(){ const D=store.get('daily',{}); let n=0, d=new Date(); if (!D[dayKey(d)]) d.setDate(d.getDate()-1); while (D[dayKey(d)]){ n++; d.setDate(d.getDate()-1); } return n; }
+const dailyEmoji=h=>(h||[]).map(p=>p>=4000?'🟩':p>=2000?'🟨':p>=500?'🟧':'🟥').join('');
+function startDaily(){ const k=dayKey(), D=store.get('daily',{});
+  if (D[k]){ showDailyResult(k,D[k]); return; } GAME.mode='daily'; startGame(daySeed(k)); }
+function showDailyResult(k,r){ const tomorrow=new Date(); tomorrow.setHours(24,0,0,0); const ms=tomorrow-Date.now(), share=`🌍 Where & When Daily ${k}\n${dailyEmoji(r.hist)} ${r.score.toLocaleString()} pts · 🔥${dailyStreak()}\n${APP_URL}`;
+  showModal(`<h3>📅 Daily challenge</h3><p class="mut">You played today’s challenge. Next one in ${Math.floor(ms/3600000)}h ${Math.floor(ms%3600000/60000)}m.</p>
+    <div class="advMsg" style="font-size:16px;text-align:center"><div style="font-size:28px;letter-spacing:4px">${dailyEmoji(r.hist)}</div><b>${r.score.toLocaleString()}</b> points · 🔥 ${dailyStreak()}-day streak</div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">${navigator.share?'<button class="btn primary" id="dShare">Share result</button>':''}<button class="btn" id="dCopy">📋 Copy result</button></div>`);
+  if ($('dShare')) $('dShare').onclick=()=>navigator.share({text:share}).catch(()=>{});
+  $('dCopy').onclick=async()=>{ try{ await navigator.clipboard.writeText(share); $('dCopy').textContent='✅ Copied'; }catch(e){} }; }
+var _eg=endGame; endGame=function(){ sfx('fanfare');
+  if (GAME.mode==='daily'){ const k=dayKey(), D=store.get('daily',{}); if (!D[k]){ D[k]={score:GAME.total,hist:GAME.hist||[]}; store.set('daily',D); }
+    renderGame(`<div class="gClue">📅 Daily done! <b>${GAME.total.toLocaleString()}</b> points ${dailyEmoji(GAME.hist)}<br>🔥 ${dailyStreak()}-day streak — come back tomorrow for 5 new cities.</div><div class="gRow"><button class="btn mini primary" id="gDShare">Share result</button><button class="btn mini" id="gModes2">Other modes</button></div>`);
+    $('gDShare').onclick=()=>{ quitGame(); showDailyResult(k,D[k]); }; $('gModes2').onclick=()=>{ quitGame(); openGameMenu(); }; fx.celebrate(6000); return; }
+  _eg(); };
+var _ogm=openGameMenu; openGameMenu=function(){ _ogm(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return; const k=dayKey(), done=store.get('daily',{})[k], st=dailyStreak();
+  const b=document.createElement('button'); b.className='moreItem'; b.style.gridColumn='1/-1'; b.style.borderColor='var(--accent)';
+  b.innerHTML=`<span class="mi">📅</span><b>Daily challenge${done?' ✅':''}</b><small>${done?`Today: ${done.score.toLocaleString()} pts ${dailyEmoji(done.hist)}`:'The same 5 cities for everyone today — one try!'}${st?` · 🔥 ${st}-day streak`:''}</small>`;
+  b.onclick=startDaily; grid.prepend(b); };
+
+// ---------- 🎯 sleigh missions
+var MISSIONS=[
+  {id:'apple', icon:'🍎', name:'Big Apple Run', desc:'4 East Coast cities', secs:40, start:[42.2,-71.5,200], targets:[['Boston',42.36,-71.06],['New York',40.71,-74.0],['Philadelphia',39.95,-75.17],['Washington, D.C.',38.9,-77.04]]},
+  {id:'europe', icon:'🏰', name:'Grand Tour of Europe', desc:'5 capitals', secs:60, start:[53.5,-4,120], targets:[['London',51.51,-0.13],['Paris',48.86,2.35],['Berlin',52.52,13.4],['Rome',41.9,12.5],['Madrid',40.42,-3.7]]},
+  {id:'asia', icon:'🏮', name:'East Asia Express', desc:'4 giant cities', secs:60, start:[30,125,20], targets:[['Shanghai',31.23,121.47],['Seoul',37.57,126.98],['Tokyo',35.68,139.69],['Beijing',39.9,116.4]]},
+  {id:'world', icon:'🌍', name:'Around the World', desc:'6 continents — use 🚀!', secs:150, start:[45,-60,60], targets:[['London',51.51,-0.13],['Cairo',30.04,31.24],['Mumbai',19.08,72.88],['Tokyo',35.68,139.69],['Sydney',-33.87,151.21],['Rio de Janeiro',-22.91,-43.2]]},
+  {id:'rush', icon:'⚡', name:'Present Rush', desc:'Deliver to 12 different towns', secs:60, start:null, any:12},
+];
+var MIS={on:false, m:null, done:[], t0:0, marks:[], towns:new Set()};
+function openMissions(){ const best=store.get('missionBest',{});
+  showModal(`<h3>🎯 Sleigh missions</h3><p class="mut">Fly to each city and drop a 🎁 within 120 km of it before time runs out.</p><div class="moreGrid">${MISSIONS.map((m,i)=>`<button class="moreItem" data-mi="${i}"><span class="mi">${m.icon}</span><b>${m.name}</b><small>${m.desc} · ⏱ ${m.secs}s</small><small>${best[m.id]?`🏆 Best: ${best[m.id].toFixed(1)}s`:'Not done yet'}</small></button>`).join('')}</div>`);
+  document.querySelectorAll('[data-mi]').forEach(b=>b.onclick=()=>startMission(MISSIONS[+b.dataset.mi])); }
+function startMission(m){ closeModal(); endMission(true); if (!FLY.on){ startFlight(); if (!FLY.on) return; }
+  if (m.start){ FLY.lat=m.start[0]; FLY.lon=m.start[1]; FLY.hdg=m.start[2]; FLY.camFirst=true; }
+  MIS={on:true, m, done:[], t0:performance.now(), marks:[], towns:new Set()};
+  if (m.targets) for (const [n,la,lo] of m.targets){ const s=new THREE.Sprite(new THREE.SpriteMaterial({map:pulseTex,color:0xffd166,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
+    s.position.copy(llToEcef(la,lo).multiplyScalar(1.003)); s.scale.setScalar(.016); G.frame.add(s); MIS.marks.push(s); }
+  sfx('start'); toast(`${m.icon} ${m.name}: ${m.targets?'fly to the glowing rings and drop a 🎁 on each city':`drop presents on ${m.any} different towns`} — go!`); updateOverChip(true); }
+function endMission(silent){ for (const s of MIS.marks){ G.frame.remove(s); s.material.dispose(); } MIS.marks=[]; if (MIS.on && !silent) toast('🎯 Mission ended.'); MIS.on=false; }
+function missionDrop(lat,lon,np){ if (!MIS.on) return; const m=MIS.m;
+  if (m.targets){ m.targets.forEach(([n,la,lo],i)=>{ if (MIS.done.includes(i)) return; if (gcDist(lat,lon,la,lo)<=120){ MIS.done.push(i); MIS.marks[i].material.color.setHex(0x3ddc97); sfx('ding',.9); toast(`✅ ${n} delivered! ${MIS.done.length}/${m.targets.length}`); } }); }
+  else if (np && np.km<80){ MIS.towns.add(np.i); if (MIS.towns.size>=1) sfx('pop'); }
+  const total=m.targets?m.targets.length:m.any, got=m.targets?MIS.done.length:MIS.towns.size;
+  if (got>=total){ const secs=(performance.now()-MIS.t0)/1000, best=store.get('missionBest',{}), nb=!best[m.id]||secs<best[m.id]; if (nb){ best[m.id]=secs; store.set('missionBest',best); }
+    sfx('fanfare'); fx.celebrate(10000); toast(`🏆 ${m.name} complete in ${secs.toFixed(1)}s!${nb?' New best!':''}`); endMission(true); }
+  updateOverChip(true); }
+function missionTick(){ if (!MIS.on) return; if (!FLY.on){ endMission(true); return; } const left=MIS.m.secs-(performance.now()-MIS.t0)/1000;
+  if (left<=0){ sfx('buzz'); toast(`⏰ Time’s up! ${MIS.m.name} — try again from 🎯 Missions.`); endMission(true); }
+  for (const s of MIS.marks) s.scale.setScalar(.016*(1+.3*Math.sin(performance.now()/250))); }
+const ARROWS=['⬆️','↗️','➡️','↘️','⬇️','↙️','⬅️','↖️'];
+var _uoc=updateOverChip; updateOverChip=function(force){ _uoc(force); if (!MIS.on || !FLY.on) return; const el=$('overChip'), m=MIS.m, left=Math.max(0,Math.ceil(m.secs-(performance.now()-MIS.t0)/1000));
+  if (m.targets){ let best=-1, bd=1e9; m.targets.forEach(([n,la,lo],i)=>{ if (MIS.done.includes(i)) return; const d=gcDist(FLY.lat,FLY.lon,la,lo); if (d<bd){ bd=d; best=i; } });
+    if (best<0) return; const [n,la,lo]=m.targets[best], rel=(bearingTo(FLY.lat,FLY.lon,la,lo)-FLY.hdg+360+22.5)%360;
+    el.textContent=`${m.icon} ${n} ${ARROWS[Math.floor(rel/45)]} ${Math.round(bd).toLocaleString()} km · ✅ ${MIS.done.length}/${m.targets.length} · ⏱ ${left}s`; }
+  else el.textContent=`${m.icon} ${MIS.towns.size}/${m.any} towns · ⏱ ${left}s`; };
+var _dp=dropPresent; dropPresent=function(){ if (!FLY.on) return; sfx('drop'); const lat=FLY.lat, lon=FLY.lon; _dp(); if (MIS.on){ const np=nearestPlace(lat,lon); missionDrop(lat,lon,np); } };
+setInterval(()=>{ missionTick(); if (MIS.on) updateOverChip(true); }, 500);
+var _ef=endFlight; endFlight=function(){ endMission(true); _ef(); };
+
+// ---------- ❄️ snow cover (NASA MODIS, last 3 days combined so clouds leave fewer gaps)
+var SNOW={mesh:null, loading:false, at:0};
+async function snowLoad(){ if (!LAYERS.snow || SNOW.loading || (SNOW.mesh && Date.now()-SNOW.at<6*3600000)) return; SNOW.loading=true;
+  try{ const c=document.createElement('canvas'); c.width=2048; c.height=1024; const x=c.getContext('2d'); let ok=0;
+    for (let back=3; back>=1; back--){ const d=new Date(Date.now()-back*86400000).toISOString().slice(0,10);
+      for (const layer of ['MODIS_Terra_L3_NDSI_Snow_Cover_Daily','MODIS_Terra_NDSI_Snow_Cover']){
+        try{ const img=await new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>rej(new Error('x'));
+            i.src=`https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${layer}&CRS=EPSG:4326&BBOX=-90,-180,90,180&WIDTH=2048&HEIGHT=1024&FORMAT=image/png&TRANSPARENT=true&TIME=${d}`; });
+          x.drawImage(img,0,0,2048,1024); ok++; break; }catch(e){} } }
+    if (!ok) throw new Error('none');
+    const im=x.getImageData(0,0,2048,1024), a=im.data; for (let i=0;i<a.length;i+=4){ const al=a[i+3]; a[i]=245; a[i+1]=250; a[i+2]=255; a[i+3]=al>20?225:0; } x.putImageData(im,0,0);
+    const tex=new THREE.CanvasTexture(c); tex.colorSpace=THREE.NoColorSpace;
+    if (!SNOW.mesh){ SNOW.mesh=new THREE.Mesh(EARTH_GEO,new THREE.ShaderMaterial({ uniforms:{map:{value:tex},sunDir:uniforms.sunDir}, transparent:true, depthWrite:false,
+        vertexShader:`varying vec2 vUv; varying vec3 vN; void main(){ vUv=uv; vN=normalize(mat3(modelMatrix)*normal); gl_Position=projectionMatrix*viewMatrix*modelMatrix*vec4(position,1.0); }`,
+        fragmentShader:`uniform sampler2D map; uniform vec3 sunDir; varying vec2 vUv; varying vec3 vN; void main(){ vec4 c=texture2D(map,vUv); float d=dot(normalize(vN),normalize(sunDir));
+          float lit=smoothstep(-0.12,0.2,d); gl_FragColor=vec4(c.rgb*mix(0.16,1.0,lit), c.a*mix(0.45,0.92,lit)); }` }));
+      SNOW.mesh.scale.setScalar(1.0015); SNOW.mesh.renderOrder=1; G.frame.add(SNOW.mesh); }
+    else { SNOW.mesh.material.uniforms.map.value.dispose(); SNOW.mesh.material.uniforms.map.value=tex; }
+    SNOW.at=Date.now(); layerNote.snow='NASA MODIS, past 3 days (cloudy spots can hide snow)';
+  }catch(e){ layerNote.snow='couldn’t load NASA snow data here — it works on the GitHub site'; }
+  SNOW.loading=false; renderLayerMenu(); }
+
+// ---------- ⏳ countdowns + the number on the app icon
+function countdownList(){ if (!current) return []; const now=simNow(), lp=localParts(now,current), out=[];
+  const at=(y,m,d)=>localToUTC(current,y,m,d); const next=(m,d)=>{ let t=at(lp.year,m,d); if (t<now-86400000) t=at(lp.year+1,m,d); return t; };
+  out.push({k:'christmas',icon:'🎄',name:'Christmas',t:next(11,25)}); out.push({k:'newyear',icon:'🎆',name:'New Year',t:next(0,1)});
+  const b=store.get('birthday',null); if (b) out.push({k:'bday',icon:'🎂',name:b.name?`${b.name}’s birthday`:'My birthday',t:next(b.m,b.d)});
+  try{ const H=holidayState(now); for (const n of [H.active,H.next]) if (n && !['christmas','newyear'].includes(n.k) && H.daysTo(n)>0 && !out.some(o=>o.name===holName(n))) out.push({k:'h_'+n.k,icon:HOL[n.k].icon,name:holName(n),t:at(n.y,n.m,n.d)}); }catch(e){}
+  return out.sort((a,b)=>a.t-b.t); }
+const daysUntil=t=>Math.max(0,Math.ceil((t-simNow())/86400000));
+function openCountdowns(){ const L=countdownList(), sel=store.get('badgeFor','christmas'), can='setAppBadge' in navigator;
+  showModal(`<h3>⏳ Countdowns</h3><div id="cdList">${L.map(c=>`<label class="mopt${sel===c.k?' on':''}"><input type="radio" name="bdg" value="${c.k}" ${sel===c.k?'checked':''}><span>${c.icon} <b>${esc(c.name)}</b><small>${daysUntil(c.t)===0?'Today! 🎉':`${daysUntil(c.t)} day${daysUntil(c.t)===1?'':'s'} · <span class="cdLive" data-t="${+c.t}"></span>`}</small></span></label>`).join('')}</div>
+    <p class="mut" style="margin-top:10px;font-size:12.5px">📲 ${can?'The one you pick shows as a number on the app icon once the globe is installed on your home screen. On iPhone, allow notifications too.':'Install the app on your home screen (⋯ More → Install) to see the days left right on its icon.'}</p>`);
+  document.querySelectorAll('#cdList input').forEach(i=>i.onchange=async()=>{ store.set('badgeFor',i.value); document.querySelectorAll('#cdList .mopt').forEach(l=>l.classList.toggle('on',l.contains(i)));
+    if ('Notification' in window && Notification.permission==='default' && /iPhone|iPad/.test(navigator.userAgent)){ try{ await Notification.requestPermission(); }catch(e){} } updateBadge(); });
+  const tickCd=()=>{ document.querySelectorAll('.cdLive').forEach(e=>{ const ms=Math.max(0,+e.dataset.t-simNow()); e.textContent=`${Math.floor(ms/864e5)}d ${fmtCountdown(ms%864e5)}`; }); if ($('cdList')) setTimeout(tickCd,1000); }; tickCd(); }
+function updateBadge(){ if (!('setAppBadge' in navigator) || !current) return; const k=store.get('badgeFor','christmas'), c=countdownList().find(x=>x.k===k); if (!c) return;
+  const n=daysUntil(c.t); (n>0?navigator.setAppBadge(n):navigator.clearAppBadge()).catch(()=>{}); }
+setInterval(updateBadge, 30*60000); setTimeout(updateBadge, 5000);
+
+// ---------- wire into menus
+var _om=openMore; openMore=function(){ _om(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
+  const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.appendChild(b); };
+  add('⏳','Countdowns','Days until Christmas, your birthday…',openCountdowns);
+  if (store.get('sleighUnlocked',false)) add('🎯','Sleigh missions','Race to deliver presents',()=>{ if (!FLY.on) startFlight(); openMissions(); }); };
+$('fpDrop').onclick=()=>dropPresent(); $('fpLand').onclick=()=>endFlight();
+{ const b=document.createElement('button'); b.className='btn mini'; b.id='fpMis'; b.textContent='🎯 Missions'; b.onclick=openMissions; document.querySelector('#flyPad .fpRow').prepend(b); }
 
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS};
