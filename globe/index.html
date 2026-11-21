@@ -3926,7 +3926,7 @@ updateParade=function(t, now){
   const on = theme==='thanksgiving' && mode==='globe' ? PARADES.map(p=>paradeOn(p,now)===2) : PARADES.map(()=>false);
   if (!on.some(Boolean)){ if (parade){ parade.root.visible=false; if (ctlG.minDistance<1.25) ctlG.minDistance=1.25; } return; }
   if (!parade) buildParade(); parade.root.visible=true;
-  if (!parade.extra){ parade.extra=PARADES.map((p,i)=> i===0 ? parade.balloons : [0,1,2].map(k=>{ const src=parade.balloons[(i+k)%parade.balloons.length]; const b=src.b.clone(true); parade.root.add(b); return {b, body:b.children[0], ph:k*1.7+i}; })); }
+  if (!parade.extra){ parade.extra=PARADES.map((p,i)=> i===0 ? parade.balloons : [0,1,2].map(k=>{ const pool=parade.balloons.filter(x=>!x.gold100 || /^100th/.test(p[9])), src=pool[(i+k)%pool.length]; const b=src.b.clone(true); parade.root.add(b); return {b, body:b.children[0], ph:k*1.7+i}; })); }
   const S=0.0034; PARADES.forEach((p,pi)=>{ const list=parade.extra[pi]; if (!on[pi]){ list.forEach(x=>x.b.visible=false); return; }
     const A = pi===0 ? [41.85,-73.6] : [p[1]+.95,p[2]+.4], B = pi===0 ? [39.95,-74.5] : [p[1]-.95,p[2]-.4], N=list.length;
     list.forEach((x,i)=>{ x.b.visible=true; const u=((t/1000)*0.006 + i/N)%1, la=A[0]+(B[0]-A[0])*u, lo=A[1]+(B[1]-A[1])*u;
@@ -4055,7 +4055,7 @@ var _bp=buildParade; buildParade=function(){ _bp(); if (!is100(simNow())) return
   for (const x of [0,1.05]){ const o=new THREE.Mesh(new THREE.TorusGeometry(.5,.18,14,30),gold); o.scale.y=1.45; o.position.x=x; body.add(o); }
   const lines=[]; for (const [x,z] of [[-1,0],[0,0],[1,0]]) lines.push(new THREE.Vector3(x,-.9,z),new THREE.Vector3(x*1.6,-6.5,z));
   g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lines),new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.6})));
-  parade.balloons.unshift({b:g, body, ph:.4}); };
+  parade.balloons.unshift({b:g, body, ph:.4, gold100:true}); };
 // sky map: a how-to, a time slider, and a compass mode that turns the map with your phone
 var _os2=openSky; openSky=function(){ _os2(); const cv=$('skyMap'); if (!cv) return;
   const at0=+(cv.dataset.t||0); let off=0;
