@@ -1039,7 +1039,7 @@ function frame(){
     renderer.render(globeScene,camG);
     placeLabel3D(moonLbl, mpos, camG, 12, -10, false, true);
     if (!(EXTRAS_READY && GAME.on)) updateCityLabels(M);
-    if (current){ const pw=pinWorld(); const facing=pw.clone().normalize().dot(camG.position.clone().normalize()) > .15; placeLabel3D(pinLbl, pw.multiplyScalar(1.08), camG, 12, -16, !facing); }
+    if (current){ const pw=pinWorld(); const facing=pw.clone().normalize().dot(camG.position.clone().normalize()) > .15; placeLabel3D(pinLbl, pw.multiplyScalar(1.08), camG, 12, -16, !facing || (typeof PIN_HIDE!=='undefined' && PIN_HIDE)); }
     sunLbl.style.display='none'; earthLbl.style.display='none'; seasonMarks.forEach(m=>m.el.style.display='none');
   } else if (mode!=='globe') {
     hideCityLabels();
@@ -1434,9 +1434,10 @@ function updateSanta(now){
   let i=Math.max(0,Math.min(santa.idx,ROUTE.length-1)); if (i<0||ROUTE[i][4]>sec) i=0;
   while (i+1<ROUTE.length && ROUTE[i+1][4]<=sec) i++;
   const cur=ROUTE[i], nxt=ROUTE[i+1];
-  if (sec<cur[5] || !nxt){ santa.lat=cur[2]; santa.lon=cur[3]; santa.status='at'; santa.stop=cur; santa.next=nxt; santa.presents=cur[6]; }
+  const gf = nxt ? Math.max(0,Math.min(1,(sec-cur[4])/Math.max(1,nxt[4]-cur[4]))) : 0, gifts = nxt ? Math.round(cur[6]+(nxt[6]-cur[6])*gf) : cur[6];   // smooth from one stop's arrival to the next
+  if (sec<cur[5] || !nxt){ santa.lat=cur[2]; santa.lon=cur[3]; santa.status='at'; santa.stop=cur; santa.next=nxt; santa.presents=gifts; }
   else { const f=(sec-cur[5])/Math.max(1,nxt[4]-cur[5]); [santa.lat,santa.lon]=slerpLL(cur,nxt,f); santa.status='fly'; santa.stop=cur; santa.next=nxt;
-         santa.presents=Math.round(cur[6]+(nxt[6]-cur[6])*f); santa.eta=T0+nxt[4]*1000; }
+         santa.presents=gifts; santa.eta=T0+nxt[4]*1000; }
   if (i!==santa.idx){ santa.idx=i; buildSantaTrail(i, santa.lat, santa.lon); } else updateTrailTip(santa.lat, santa.lon);
 }
 // stop on the route nearest the pin, and when Santa gets there (shown in the pin's time zone)
@@ -2311,6 +2312,7 @@ canvas.addEventListener('pointerup',e=>{
   closeResults();
   if (EXTRAS_READY && GAME.on){ gameGuess(lat,lon); return; }
   if (santaCardOn() && santaStopToast(lat,lon,90)) return;          // tapped one of Santa's stops
+  if (EXTRAS_READY){ const pi=paradeAt(lat,lon,simNow()); if (pi>=0){ openParadeWatch(pi); return; } }
   if (EXTRAS_READY && (totTap(lat,lon,simNow()) || flightTap(lat,lon) || quakeTap(lat,lon))) return;
   setPlace({ ...describePoint(lat,lon), lat, lon, kind:'point' });
 });
@@ -2820,7 +2822,7 @@ function flyToLL(lat,lon,d){ if (mode!=='globe') setMode('globe'); if (santaCam)
 // ---- 🎈 Thanksgiving Day parade over New York City (US Thanksgiving, 9 AM – noon Eastern)
 var parade=null;
 function paradeState(now){ const p=partsIn('America/New_York',now); if (p.month!==10 || p.day!==nthWeekday(p.year,10,4,4)) return {day:false};
-  const h=p.hour+p.minute/60; return {day:true, on:h>=9&&h<12, before:h<9, after:h>=12}; }
+  const h=p.hour+p.minute/60; return {day:true, on:h>=8.5&&h<12, before:h<8.5, after:h>=12}; }
 function buildParade(){
   const M_=(c,o={})=>new THREE.MeshStandardMaterial({color:c,roughness:o.r??.45,metalness:0,emissive:o.e??0,emissiveIntensity:o.ei??1});
   const add=(p,geo,mat,x=0,y=0,z=0)=>{ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z); p.add(m); return m; };
@@ -3816,7 +3818,7 @@ function openSky(){ if (!current){ return; } const now=simNow(), sa=sunAt(curren
     ${plan.length?plan.map(p=>`<div class="advMsg" style="margin-top:6px"><b style="color:${p.col}">● ${p.n}</b> — ${bright(p.mag)} · ${+p.first.t<=+now+60000?'up now':'from '+fmtTime(new Date(p.first.t),current,false)} in the ${compass(p.first.az)}, highest around ${fmtTime(new Date(p.best.t),current,false)} (${Math.round(p.best.alt)}° up, ${compass(p.best.az)})</div>`).join('')
       :'<div class="advMsg">No bright planets are up tonight — but the stars on the map are!</div>'}
     <p class="mut" style="margin-top:8px;font-size:12px">Planet positions use NASA JPL’s approximate orbits — close enough to find them by eye.</p>`);
-  drawSkyMap($('skyMap'), at); }
+  $('skyMap')._at=at; drawSkyMap($('skyMap'), at); }
 function drawSkyMap(cv, t){ const x=cv.getContext('2d'), W=cv.width, R=W/2-34, cx=W/2, cy=W/2, lat=current.lat, lon=current.lon;
   const P=(alt,az)=>{ const r=R*(90-alt)/90, a=az*D2R; return [cx-Math.sin(a)*r, cy-Math.cos(a)*r]; };   // looking straight up with north at the top: east is on the left
   const g=x.createRadialGradient(cx,cy,0,cx,cy,R); g.addColorStop(0,'#0b1640'); g.addColorStop(1,'#050916'); x.fillStyle=g; x.beginPath(); x.arc(cx,cy,R,0,7); x.fill();
@@ -3885,7 +3887,7 @@ var _sdr=showDailyResult; showDailyResult=function(k,r){ _sdr(k,r); submitDaily(
 
 // ---------- 🎈 Thanksgiving parades across the US (Thanksgiving morning; times approximate, local)
 var PARADES=[ // name, centre lat/lon, time zone, start hour, end hour, note
-  ['New York City',40.77,-73.98,'America/New_York',9,12,'the giant balloons on Central Park West'],
+  ['New York City',40.77,-73.98,'America/New_York',8.5,12,'the 100th Macy’s Thanksgiving Day Parade: 2.5 miles from the Upper West Side to Herald Square'],
   ['Philadelphia',39.955,-75.17,'America/New_York',8.5,12,'the oldest Thanksgiving parade in the US (since 1920)'],
   ['Detroit',42.35,-83.06,'America/Detroit',8.75,11.5,'down Woodward Avenue'],
   ['Chicago',41.88,-87.63,'America/Chicago',8,11,'down State Street'],
@@ -3922,8 +3924,10 @@ function santaStats(now){ if (!ROUTE.length) return null; if (!SANTA_CUM){ SANTA
   return {km,kmh,stops:i}; }
 var _usc=updateSantaCard; updateSantaCard=function(now){ _usc(now); if (!$('santaCard').classList.contains('show')) return; const S=santaStats(now); if (!S) return;
   const us=current&&current.cc==='US', dist=us?`${Math.round(S.km*0.6214).toLocaleString()} mi`:`${Math.round(S.km).toLocaleString()} km`, sp=us?`${Math.round(S.kmh*0.6214).toLocaleString()} mph`:`${Math.round(S.kmh).toLocaleString()} km/h`;
-  const ck=Math.round(S.stops*2.4), cr=Math.round(S.stops*1.1), y=santa.y, C=store.get('cookies',null), mine=C&&C.y===y;
-  const html=`<span>📏 ${dist}</span>${S.kmh?`<span>🚀 ${sp}</span>`:''}<span>🍪 ${ck.toLocaleString()} cookies</span><span>🥕 ${cr.toLocaleString()} carrots</span>`
+  const y=santa.y, C=store.get('cookies',null), mine=C&&C.y===y, big=n=>new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:1}).format(n);
+  const homes=(santa.presents||0)/2.5, ck=homes*.62, cr=homes*.18;               // ~2.5 gifts per home; most homes leave a cookie, some leave a carrot
+  let away=''; if (santa.on && current){ const km=gcDist(current.lat,current.lon,santa.lat,santa.lon); away=`<span>📍 ${us?Math.round(km*0.6214).toLocaleString()+' mi':Math.round(km).toLocaleString()+' km'} from you</span>`; }
+  const html=`${away}<span title="Along his whole zig-zag route so far">📏 ${dist} flown</span>${S.kmh?`<span>🚀 ${sp}</span>`:''}<span title="About one plate per home">🍪 ${big(ck)} cookies</span><span title="Some homes leave one for the reindeer">🥕 ${big(cr)} carrots</span>`
     +(!santa.done && !mine ? `<button class="btn mini" id="scCookies">🍪 Leave cookies out</button>` : mine && !C.eaten ? `<span>🍪 Your cookies are out!</span>` : mine && C.eaten ? `<span>😋 Santa ate your cookies!</span>` : '');
   const el=$('scStats'); if (el.dataset.h!==html){ el.dataset.h=html; el.innerHTML=html; if ($('scCookies')) $('scCookies').onclick=e=>{ e.stopPropagation(); store.set('cookies',{y,eaten:false}); toast('🍪🥛 Milk and cookies are out for Santa — and a carrot for Rudolph! 🥕'); updateSantaCard(simNow()); }; }
   if (mine && !C.eaten && current){ const v=santaVisitFor(current,y); if (v.at && +now>=+v.at){ store.set('cookies',{y,eaten:true}); achieve('cookies'); fx.celebrate(5000);
@@ -3976,6 +3980,72 @@ var _om2=openMore; openMore=function(){ _om2(); const grid=document.querySelecto
   const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.prepend(b); };
   add('🏅','Achievements',`${Object.keys(achGot).length}/${ACH.length} unlocked`,openAchievements); add('🔭','Tonight’s sky','Planets and stars to look for',openSky);
   if (theme==='thanksgiving') add('🎈','Parade guide','Thanksgiving parades across the US',openParadeGuide); };
+
+
+// ---------- 🎈 parade extras: the pin steps aside, tap a balloon to watch the real thing, and the 100th parade in New York
+var PIN_HIDE=false;
+var _up2=updateParade; updateParade=function(t,now){ _up2(t,now);
+  let near=false; if (current && theme==='thanksgiving' && !GAME.on) for (const p of PARADES) if (paradeOn(p,now)===2 && gcDist(current.lat,current.lon,p[1],p[2])<260) near=true;
+  if (near!==PIN_HIDE){ PIN_HIDE=near; G.pin.visible=!near && !!current; } if (near && G.pin.visible) G.pin.visible=false; };
+const BALLOON_YT=['Tom Turkey balloon','star balloon','gift balloon','snowman balloon','pumpkin balloon'];
+function paradeAt(lat,lon,now){ if (theme!=='thanksgiving') return -1; let best=-1, bd=200; PARADES.forEach((p,i)=>{ if (paradeOn(p,now)!==2) return; const d=gcDist(lat,lon,p[1],p[2]); if (d<bd){ bd=d; best=i; } }); return best; }
+function openParadeWatch(i){ const p=PARADES[i], nyc=i===0, y=partsIn(p[3],simNow()).year;
+  const q=encodeURIComponent(nyc?`Macy's Thanksgiving Day Parade ${y} live`:`${p[0]} Thanksgiving Day Parade ${y}`);
+  showModal(`<h3>🎈 ${nyc&&y===2026?'The 100th Macy’s Thanksgiving Day Parade':p[0]+' Thanksgiving Parade'}</h3>
+    <p class="mut">${esc(p[6])}. The balloons on this globe are just for fun — here’s the real thing:</p>
+    <div style="display:grid;gap:8px"><a class="btn primary" href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener">▶️ Watch on YouTube</a>
+    ${nyc?BALLOON_YT.slice(0,2).map(b=>`<a class="btn" href="https://www.youtube.com/results?search_query=${encodeURIComponent("Macy's parade "+b+" "+y)}" target="_blank" rel="noopener">🎈 Find the ${b} on YouTube</a>`).join(''):''}</div>
+    ${nyc?'<p class="mut" style="margin-top:10px;font-size:12.5px">The full live show is on NBC and Peacock, 8:30 AM to noon in every US time zone. YouTube has clips and the official channels’ coverage.</p>':''}`); }
+// the centennial: a gold “100” balloon leads New York’s parade, a countdown, fun facts and confetti at 8:30 AM ET
+var centFired=false;
+function is100(now){ const t=partsIn('America/New_York',now); return t.year===2026; }
+function centennialLine(now){ if (!current || current.cc!=='US' || !is100(now)) return ''; const t=partsIn('America/New_York',now), d=nthWeekday(2026,10,4,4);
+  if (t.month!==10 || t.day>d || t.day<d-7) return ''; const start=Date.UTC(2026,10,d,13,30), ms=start-now;
+  if (ms>0) return `<small>🎉 The 100th Macy’s Thanksgiving Day Parade starts in <span class="cd">${ms>86400000?Math.floor(ms/86400000)+'d ':''}${fmtCountdown(ms%86400000)}</span> · <a href="#" id="cent100">100 years of balloons</a></small>`;
+  if (ms>-3.5*3600000){ if (!centFired && ms>-120000){ centFired=true; fx.celebrate(20000); toast('🎉 The 100th Macy’s Thanksgiving Day Parade is starting in New York City!'); } return `<small>🎉 The 100th parade is marching now! <a href="#" id="cent100">Fun facts</a></small>`; }
+  return ''; }
+function open100(){ showModal(`<h3>🎉 100 parades (1924–2026)</h3>
+  <div class="advMsg">🗓️ The 100th Macy’s Thanksgiving Day Parade is on <b>Thursday, November 26, 2026</b>, from 8:30 AM to about noon (Eastern).</div>
+  <div class="advMsg" style="margin-top:6px">🗽 It marches about <b>2.5 miles</b>, from the Upper West Side down to Herald Square at 34th Street.</div>
+  <div class="advMsg" style="margin-top:6px">🎈 This year: <b>26 character balloons</b>, <b>28 floats</b> and nearly two dozen performances — including new balloons and a refreshed Tom Turkey.</div>
+  <div class="advMsg" style="margin-top:6px">🕰️ The first one was in <b>1924</b>. The giant balloons arrived a few years later, inspired by puppeteer Tony Sarg.</div>
+  <div class="advMsg" style="margin-top:6px">📺 Watch live on NBC and Peacock, or find clips on YouTube.</div>
+  <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn primary" id="c100w">▶️ Watch on YouTube</button><button class="btn" id="c100g">🎈 See the balloons on the globe</button></div>`);
+  $('c100w').onclick=()=>window.open('https://www.youtube.com/results?search_query='+encodeURIComponent("100th Macy's Thanksgiving Day Parade 2026"),'_blank','noopener');
+  $('c100g').onclick=()=>{ closeModal(); if (paradeOn(PARADES[0],simNow())===2) watchParade(0); else toast('🎈 The balloons appear over New York from 8:30 AM ET on Thanksgiving morning.'); }; }
+document.addEventListener('click',e=>{ const a=e.target.closest('a'); if (a && a.id==='cent100'){ e.preventDefault(); open100(); } });
+var _ll2=layerLines; layerLines=function(now){ return centennialLine(now)+_ll2(now); };
+// gold “100” balloon at the front of the New York parade (2026)
+var _bp=buildParade; buildParade=function(){ _bp(); if (!is100(simNow())) return; const g=new THREE.Group(), body=new THREE.Group(); g.add(body); parade.root.add(g);
+  const gold=new THREE.MeshStandardMaterial({color:0xffcc33,metalness:.7,roughness:.25,emissive:0x553300,emissiveIntensity:.5});
+  const one=new THREE.Mesh(new THREE.BoxGeometry(.32,1.6,.4),gold); one.position.x=-1.05; body.add(one);
+  for (const x of [0,1.05]){ const o=new THREE.Mesh(new THREE.TorusGeometry(.5,.18,14,30),gold); o.scale.y=1.45; o.position.x=x; body.add(o); }
+  const lines=[]; for (const [x,z] of [[-1,0],[0,0],[1,0]]) lines.push(new THREE.Vector3(x,-.9,z),new THREE.Vector3(x*1.6,-6.5,z));
+  g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lines),new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.6})));
+  parade.balloons.unshift({b:g, body, ph:.4}); };
+// sky map: a how-to, a time slider, and a compass mode that turns the map with your phone
+var _os2=openSky; openSky=function(){ _os2(); const cv=$('skyMap'); if (!cv) return;
+  const at0=+(cv.dataset.t||0); let off=0;
+  cv.insertAdjacentHTML('afterend',`<div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:8px"><button class="btn mini" id="skM">◀ 1 h</button><span id="skT" class="mut" style="align-self:center;font-size:13px"></span><button class="btn mini" id="skP">1 h ▶</button>
+    <button class="btn mini" id="skC">🧭 Turn with my phone</button><button class="btn mini" id="skH">❓ How to use this map</button></div>
+    <ol class="steps" id="skHow" style="display:none;font-size:14px">
+      <li><b>Go outside after dark</b>, away from street lights. Give your eyes 10 minutes to adjust.</li>
+      <li><b>Find north.</b> Use your phone’s Compass app, or tap 🧭 above and the map turns by itself.</li>
+      <li><b>Hold your phone up over your head</b>, screen facing down at you, with the top of the phone pointing north. Now the map matches the sky: <b>east is on your left</b>, west on your right.</li>
+      <li><b>The middle of the circle is straight overhead</b>; the edge is the horizon. The rings are 30° and 60° up.</li>
+      <li><b>Spot the planets:</b> they’re the bright dots that don’t twinkle. The list under the map says where and when.</li>
+      <li><b>Use the ◀ ▶ buttons</b> to see how the sky looks later tonight.</li></ol>`);
+  const base=$('skyMap')._t || null;
+  const redraw=()=>{ const t=(cv._t0||(cv._t0=Date.now()))+off; drawSkyMap(cv, (cv._at||t)+off); $('skT').textContent=fmtTime(new Date((cv._at||t)+off),current,false); };
+  cv._at=cv._at||null; $('skH').onclick=()=>{ const h=$('skHow'); h.style.display=h.style.display==='none'?'':'none'; };
+  $('skM').onclick=()=>{ off-=3600000; redraw(); }; $('skP').onclick=()=>{ off+=3600000; redraw(); };
+  let comp=false, handler=null;
+  $('skC').onclick=async()=>{ comp=!comp; $('skC').textContent=comp?'🧭 Compass on':'🧭 Turn with my phone';
+    if (comp){ try{ if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission(); }catch(e){}
+      handler=e=>{ const h = e.webkitCompassHeading!=null ? e.webkitCompassHeading : (e.absolute||e.type==='deviceorientationabsolute') && e.alpha!=null ? 360-e.alpha : null; if (h==null) return; cv.style.transform=`rotate(${h}deg)`; cv.style.transition='transform .15s linear'; };
+      addEventListener('deviceorientationabsolute',handler); addEventListener('deviceorientation',handler); setTimeout(()=>{ if (comp && !cv.style.transform) toast('🧭 This device didn’t share a compass heading — point the top of your phone north by hand.'); },2500); }
+    else { removeEventListener('deviceorientationabsolute',handler); removeEventListener('deviceorientation',handler); cv.style.transform=''; } };
+  redraw(); };
 
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS};

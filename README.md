@@ -253,8 +253,16 @@ night-side city lights placed at real city coordinates.
 - **🎈 Thanksgiving parades across the US:** balloons float over New York City,
   Philadelphia, Detroit, Chicago and Houston during their parades (times are
   approximate), with a parade guide.
-- **🎅 Santa stats:** distance flown, speed, cookies eaten and carrots for the
-  reindeer, plus **🍪 Leave cookies out**: Santa leaves a thank-you note when
+- **🎉 The 100th Macy's Thanksgiving Day Parade (Nov 26, 2026):** a countdown,
+  a gold "100" balloon leading New York's balloons, fun facts, confetti when
+  it starts at 8:30 AM ET, and links to watch it on YouTube. During any
+  parade, tapping its city opens "Watch on YouTube", and your pin steps
+  aside while a parade is marching over it.
+- **🔭 Sky map how-to:** step-by-step instructions, ◀ ▶ to see the sky later
+  tonight, and 🧭 to turn the map with your phone's compass.
+- **🎅 Santa stats:** how far he is from you, distance flown along his whole
+  zig-zag route, speed, and cookies and carrots (about one plate per home),
+  with the gift counter now ticking up smoothly the whole night, plus **🍪 Leave cookies out**: Santa leaves a thank-you note when
   he reaches your area.
 - **🎃 Trick-or-treating around the world** on Halloween night: pumpkins
   light up in towns where it's 5–9 PM. Tap them for candy (or a trick!).
