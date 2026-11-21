@@ -3826,8 +3826,27 @@ function openSky(){ if (!current){ return; } const now=simNow(), sa=sunAt(curren
       :'<div class="advMsg">No bright planets are up tonight — but the stars on the map are!</div>'}
     <p class="mut" style="margin-top:8px;font-size:12px">Planet positions use NASA JPL’s approximate orbits — close enough to find them by eye.</p>`);
   $('skyMap')._at=at; drawSkyMap($('skyMap'), at); }
-function drawSkyMap(cv, t){ const x=cv.getContext('2d'), W=cv.width, R=W/2-34, cx=W/2, cy=W/2, lat=current.lat, lon=current.lon;
-  const P=(alt,az)=>{ const r=R*(90-alt)/90, a=az*D2R; return [cx-Math.sin(a)*r, cy-Math.cos(a)*r]; };   // looking straight up with north at the top: east is on the left
+var SKYVIEW={mode:store.get('skyView','face'), hdg:180};
+function skyObjects(t){ const lat=current.lat, lon=current.lon, out=[];
+  for (const [n,ra,dec,m] of STARS){ const h=altAz(ra*15*D2R,dec*D2R,lat,lon,t); out.push({kind:'star',n,m,...h}); }
+  for (const n of ['Mercury','Venus','Mars','Jupiter','Saturn']){ const pr=planetRaDec(n,t), h=altAz(pr.ra,pr.dec,lat,lon,t); out.push({kind:'planet',n,col:PLANETS[n][2],...h}); }
+  { const s=sunState(new Date(t)), m=moonState(new Date(t),s), h=altAz(m.ra,m.dec,lat,lon,t); out.push({kind:'moon',n:'Moon',...h}); } return out; }
+function drawFacing(cv,t){ cv.width=720; cv.height=420; cv.style.maxWidth='100%'; const x=cv.getContext('2d'), W=cv.width, H=cv.height, G0=H-48, hd=SKYVIEW.hdg;
+  const X=az=>{ const d=((az-hd+540)%360)-180; return Math.abs(d)>95?null:W/2+d/90*(W/2-10); }, Y=alt=>G0-alt/90*(G0-14);
+  const g=x.createLinearGradient(0,0,0,G0); g.addColorStop(0,'#050916'); g.addColorStop(1,'#1a2a5c'); x.fillStyle=g; x.fillRect(0,0,W,G0);
+  x.fillStyle='#0b0f0a'; x.fillRect(0,G0,W,H-G0); x.strokeStyle='rgba(255,255,255,.12)'; [30,60].forEach(a=>{ x.beginPath(); x.moveTo(0,Y(a)); x.lineTo(W,Y(a)); x.stroke(); });
+  x.fillStyle='rgba(255,255,255,.4)'; x.font='15px system-ui'; x.textAlign='left'; x.fillText('30° up',6,Y(30)-5); x.fillText('60° up',6,Y(60)-5); x.fillText('straight up ↑',6,22);
+  const dirs=[['N',0],['NE',45],['E',90],['SE',135],['S',180],['SW',225],['W',270],['NW',315]]; x.textAlign='center'; x.textBaseline='middle';
+  for (const [l,az] of dirs){ const px=X(az); if (px==null) continue; x.fillStyle=l.length===1?'#ffd166':'rgba(255,209,102,.6)'; x.font=l.length===1?'bold 26px system-ui':'17px system-ui'; x.fillText(l,px,G0+24); x.fillRect(px-1,G0,2,8); }
+  const O=skyObjects(t), pos={}; for (const o of O){ if (o.alt<-1) continue; const px=X(o.az); if (px==null) continue; pos[o.n]=[px,Y(Math.max(0,o.alt))]; }
+  x.strokeStyle='rgba(140,180,255,.45)'; x.lineWidth=2; for (const [a,b] of LINES) if (pos[a]&&pos[b] && Math.abs(pos[a][0]-pos[b][0])<W/2){ x.beginPath(); x.moveTo(...pos[a]); x.lineTo(...pos[b]); x.stroke(); }
+  for (const o of O){ const p=pos[o.n]; if (!p) continue;
+    if (o.kind==='star'){ const r=Math.max(2,6-o.m*1.4); x.fillStyle='#fff'; x.beginPath(); x.arc(p[0],p[1],r,0,7); x.fill(); if (o.m<1.3||o.n==='Polaris'){ x.fillStyle='rgba(255,255,255,.75)'; x.font='16px system-ui'; x.fillText(o.n,p[0],p[1]-r-10); } }
+    else if (o.kind==='planet'){ x.fillStyle=o.col; x.shadowColor=o.col; x.shadowBlur=14; x.beginPath(); x.arc(p[0],p[1],8,0,7); x.fill(); x.shadowBlur=0; x.font='bold 19px system-ui'; x.fillText(o.n,p[0],p[1]+22); }
+    else { x.font='30px serif'; x.fillText('🌕',p[0],p[1]); x.fillStyle='#ddd'; x.font='16px system-ui'; x.fillText('Moon',p[0],p[1]+24); } }
+  x.fillStyle='rgba(255,255,255,.85)'; x.font='bold 17px system-ui'; x.fillText(`You’re facing ${compass(hd)} (${Math.round(hd)}°)`,W/2,G0-14); }
+function drawSkyMap(cv, t){ if (SKYVIEW.mode==='face'){ drawFacing(cv,t); return; } cv.width=cv.height=640; cv.style.maxWidth='340px'; const x=cv.getContext('2d'), W=cv.width, R=W/2-34, cx=W/2, cy=W/2, lat=current.lat, lon=current.lon;
+  const P=(alt,az)=>{ const r=R*(90-alt)/90, a=az*D2R; return [cx-Math.sin(a)*r, cy-Math.cos(a)*r]; };   // the sky from below: east on the left (like every printed star chart)   // looking straight up with north at the top: east is on the left
   const g=x.createRadialGradient(cx,cy,0,cx,cy,R); g.addColorStop(0,'#0b1640'); g.addColorStop(1,'#050916'); x.fillStyle=g; x.beginPath(); x.arc(cx,cy,R,0,7); x.fill();
   x.strokeStyle='rgba(255,255,255,.15)'; for (const a of [30,60]){ x.beginPath(); x.arc(cx,cy,R*(90-a)/90,0,7); x.stroke(); }
   x.fillStyle='#ffd166'; x.font='bold 24px system-ui'; x.textAlign='center'; x.textBaseline='middle'; [['N',0],['E',90],['S',180],['W',270]].forEach(([l,az])=>{ const [px,py]=P(-9,az); x.fillText(l,px,py); });
@@ -4035,24 +4054,40 @@ var _os2=openSky; openSky=function(){ _os2(); const cv=$('skyMap'); if (!cv) ret
   const at0=+(cv.dataset.t||0); let off=0;
   cv.insertAdjacentHTML('afterend',`<div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:8px"><button class="btn mini" id="skM">◀ 1 h</button><span id="skT" class="mut" style="align-self:center;font-size:13px"></span><button class="btn mini" id="skP">1 h ▶</button>
     <button class="btn mini" id="skC">🧭 Turn with my phone</button><button class="btn mini" id="skH">❓ How to use this map</button></div>
-    <ol class="steps" id="skHow" style="display:none;font-size:14px">
-      <li><b>Go outside after dark</b>, away from street lights. Give your eyes 10 minutes to adjust.</li>
-      <li><b>Find north.</b> Use your phone’s Compass app, or tap 🧭 above and the map turns by itself.</li>
-      <li><b>Hold your phone up over your head</b>, screen facing down at you, with the top of the phone pointing north. Now the map matches the sky: <b>east is on your left</b>, west on your right.</li>
-      <li><b>The middle of the circle is straight overhead</b>; the edge is the horizon. The rings are 30° and 60° up.</li>
-      <li><b>Spot the planets:</b> they’re the bright dots that don’t twinkle. The list under the map says where and when.</li>
-      <li><b>Use the ◀ ▶ buttons</b> to see how the sky looks later tonight.</li></ol>`);
+    <div id="skFace" style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:8px"><span class="mut" style="align-self:center;font-size:13px">Face:</span>${['N','E','S','W'].map((d,i)=>`<button class="btn mini" data-face="${i*90}">${d}</button>`).join('')}</div>
+    <div style="display:flex;justify-content:center;margin-bottom:8px"><div class="seg" id="skView"><button data-v="face">🧍 Facing one way</button><button data-v="dome">🔭 Whole sky</button></div></div>
+    <ol class="steps" id="skHow" style="display:none;font-size:14px"></ol>`);
+  const HOW={face:`<li><b>Go outside after dark</b>, away from street lights. Give your eyes 10 minutes to adjust.</li>
+      <li><b>Pick a direction to face</b> with the N E S W buttons, or tap 🧭 and just hold your phone up in front of you — the view turns as you turn.</li>
+      <li><b>It works like looking through a window:</b> the bottom edge is the horizon, the top is straight up, and left and right are your left and right. (Facing north, east is on your right; facing south, east is on your left — just like real life.)</li>
+      <li><b>Planets</b> are the bright dots that don’t twinkle. The list below says when and where.</li>
+      <li><b>◀ ▶</b> shows how the sky looks later tonight.</li>`,
+    dome:`<li><b>This map shows the whole sky at once</b>: the middle is straight overhead, the edge is the horizon all the way around.</li>
+      <li><b>Why east is on the left:</b> a normal map shows the ground from above. This shows the sky from below. Hold the phone above your head with the screen facing down and its top pointing north — now east really is on your left, because you’re looking up, not down.</li>
+      <li><b>Easier way:</b> switch to 🧍 Facing one way.</li>`};
+  const setView=v=>{ SKYVIEW.mode=v; store.set('skyView',v); document.querySelectorAll('#skView button').forEach(b=>b.classList.toggle('on',b.dataset.v===v)); $('skFace').style.display=v==='face'?'flex':'none'; $('skHow').innerHTML=HOW[v]; cv.style.transform=''; redraw(); };
+  document.querySelectorAll('#skView button').forEach(b=>b.onclick=()=>setView(b.dataset.v));
+  document.querySelectorAll('[data-face]').forEach(b=>b.onclick=()=>{ SKYVIEW.hdg=+b.dataset.face; redraw(); });
+  { let dx=null; cv.addEventListener('pointerdown',e=>{ if (SKYVIEW.mode==='face'){ dx=e.clientX; cv.setPointerCapture(e.pointerId); } });
+    cv.addEventListener('pointermove',e=>{ if (dx==null) return; const k=180/cv.getBoundingClientRect().width; SKYVIEW.hdg=(SKYVIEW.hdg-(e.clientX-dx)*k+360)%360; dx=e.clientX; redraw(); });
+    cv.addEventListener('pointerup',()=>{ dx=null; }); }
   const base=$('skyMap')._t || null;
   const redraw=()=>{ const t=(cv._t0||(cv._t0=Date.now()))+off; drawSkyMap(cv, (cv._at||t)+off); $('skT').textContent=fmtTime(new Date((cv._at||t)+off),current,false); };
   cv._at=cv._at||null; $('skH').onclick=()=>{ const h=$('skHow'); h.style.display=h.style.display==='none'?'':'none'; };
   $('skM').onclick=()=>{ off-=3600000; redraw(); }; $('skP').onclick=()=>{ off+=3600000; redraw(); };
-  let comp=false, handler=null;
+  let comp=false, handler=null, gotHeading=false;
   $('skC').onclick=async()=>{ comp=!comp; $('skC').textContent=comp?'🧭 Compass on':'🧭 Turn with my phone';
     if (comp){ try{ if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission(); }catch(e){}
-      handler=e=>{ const h = e.webkitCompassHeading!=null ? e.webkitCompassHeading : (e.absolute||e.type==='deviceorientationabsolute') && e.alpha!=null ? 360-e.alpha : null; if (h==null) return; cv.style.transform=`rotate(${h}deg)`; cv.style.transition='transform .15s linear'; };
-      addEventListener('deviceorientationabsolute',handler); addEventListener('deviceorientation',handler); setTimeout(()=>{ if (comp && !cv.style.transform) toast('🧭 This device didn’t share a compass heading — point the top of your phone north by hand.'); },2500); }
+      handler=e=>{ const h = e.webkitCompassHeading!=null ? e.webkitCompassHeading : (e.absolute||e.type==='deviceorientationabsolute') && e.alpha!=null ? 360-e.alpha : null; if (h==null) return; gotHeading=true;
+        if (SKYVIEW.mode==='face'){ SKYVIEW.hdg=h; const n=performance.now(); if (n-(cv._lastDraw||0)>120){ cv._lastDraw=n; redraw(); } } else { cv.style.transform=`rotate(${h}deg)`; cv.style.transition='transform .15s linear'; } };
+      addEventListener('deviceorientationabsolute',handler); addEventListener('deviceorientation',handler); setTimeout(()=>{ if (comp && !gotHeading) showCompassHelp(); },2500); }
     else { removeEventListener('deviceorientationabsolute',handler); removeEventListener('deviceorientation',handler); cv.style.transform=''; } };
-  redraw(); };
+  // face the brightest planet that's up at first
+  { const t=(cv._at||Date.now()), up=['Jupiter','Venus','Saturn','Mars'].map(n=>{ const pr=planetRaDec(n,t); return {n,...altAz(pr.ra,pr.dec,current.lat,current.lon,t)}; }).find(o=>o.alt>8); SKYVIEW.hdg = up ? Math.round(up.az/45)*45%360 : 180; }
+  setView(SKYVIEW.mode); };
+function showCompassHelp(){ toast(/github\.io/.test(location.hostname)
+  ? '🧭 Your phone didn’t share a compass heading. On iPhone, allow “Motion & Orientation Access” when asked (Settings → Safari). Meanwhile, use the N E S W buttons or drag the view.'
+  : '🧭 The compass can’t reach the app inside Claude. Open the GitHub site in Safari for the compass — or use the N E S W buttons / drag the view.'); }
 
 
 // ---------- 🎁 a different present from Santa every year (advent door 25), only around during the Christmas season

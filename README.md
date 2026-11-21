@@ -258,8 +258,12 @@ night-side city lights placed at real city coordinates.
   it starts at 8:30 AM ET, and links to watch it on YouTube. During any
   parade, tapping its city opens "Watch on YouTube", and your pin steps
   aside while a parade is marching over it.
-- **🔭 Sky map how-to:** step-by-step instructions, ◀ ▶ to see the sky later
-  tonight, and 🧭 to turn the map with your phone's compass.
+- **🔭 Sky map:** a 🧍 "Facing one way" view (like looking through a window:
+  horizon at the bottom, your left is left) with N E S W buttons, dragging,
+  and 🧭 compass mode that follows your phone as you turn (GitHub site in
+  Safari/Chrome; the compass can't reach the app inside Claude). There's also
+  a 🔭 "Whole sky" view, step-by-step how-tos for both, and ◀ ▶ to see the sky
+  later tonight.
 - **🎅 Santa stats:** how far he is from your pin, his speed, and the snacks
   he's been left (2–4 cookies, 1 glass of milk and 3–4 carrots per house),
   with the gift counter ticking up smoothly the whole night, plus **🍪 Leave cookies out**: Santa leaves a thank-you note when
