@@ -239,6 +239,27 @@ night-side city lights placed at real city coordinates.
   and how it feels, conditions, wind and humidity, a 6-day forecast, °F/°C,
   snow alerts ("snow day? 🛷"), rain warnings and a White Christmas check once
   Dec 25 is in the forecast. GitHub site only.
+- More **🗺️ layers**: 🌡️ a live temperature map (Open-Meteo), 🌧️ rain & snow
+  (NASA IMERG, a few hours behind) and ✈️ live flights (OpenSky Network; tap a
+  plane for its callsign, height and speed).
+- **🔭 Tonight's sky:** which planets you can see from your pin tonight
+  (NASA JPL approximate orbits), when and where to look, and a sky map with
+  the brightest stars, the Big Dipper, Orion, Cassiopeia and the Southern
+  Cross.
+- **🏅 Achievements:** 26 badges for exploring, the challenge, Christmas,
+  Halloween, the sleigh and more.
+- **🏆 Club leaderboard** for the daily challenge (Claude version, using its
+  shared data store; members need Contributor access).
+- **🎈 Thanksgiving parades across the US:** balloons float over New York City,
+  Philadelphia, Detroit, Chicago and Houston during their parades (times are
+  approximate), with a parade guide.
+- **🎅 Santa stats:** distance flown, speed, cookies eaten and carrots for the
+  reindeer, plus **🍪 Leave cookies out**: Santa leaves a thank-you note when
+  he reaches your area.
+- **🎃 Trick-or-treating around the world** on Halloween night: pumpkins
+  light up in towns where it's 5–9 PM. Tap them for candy (or a trick!).
+- On phones the time card scrolls inside itself, so its ▾/▴ button always
+  stays reachable.
 - **⏳ Countdowns** to Christmas, New Year, your birthday and the next holiday.
   The one you pick shows as a number on the app's icon once it's installed.
 - **＋ / − / ◎ buttons** on the right zoom in and out (globe, Santa cam or orbit

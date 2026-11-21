@@ -84,8 +84,6 @@
   #mapCtl{position:fixed;right:12px;top:50%;transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;gap:6px}
   #mapCtl button{width:42px;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--text);font:600 22px system-ui;cursor:pointer;backdrop-filter:blur(12px);box-shadow:0 4px 14px rgba(0,0,0,.35)}
   #mapCtl button:active{transform:scale(.94)} #mapCtl #zMe{font-size:20px;color:var(--accent)}
-  body.santa-on:not(.santa-cam) #mapCtl{top:auto;bottom:230px;transform:none}
-  @media (min-width:721px){ body.santa-on:not(.santa-cam) #mapCtl{top:50%;bottom:auto;transform:translateY(-50%)} }
   #flyPad{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9;display:none;grid-template-columns:repeat(4,64px);gap:8px;justify-content:center}
   #flyPad.show{display:grid} #flyPad>button{height:64px;border-radius:18px;border:1px solid rgba(255,255,255,.25);background:rgba(10,16,32,.72);color:#fff;font-size:26px;backdrop-filter:blur(10px);touch-action:none;user-select:none;-webkit-user-select:none}
   #flyPad>button:active{background:rgba(255,200,97,.35)} #flyPad .fpRow{grid-column:1/-1;display:flex;gap:8px;justify-content:center}
@@ -102,6 +100,12 @@
   .fnGift.open .fnLid{transform:translateY(-140px) rotate(-25deg)} .fnGift.open .fnBow{transform:translate(-50%,-170px) rotate(30deg)}
   .fnPrizes{display:grid;gap:10px;margin-top:20px} .fnPrize{display:flex;flex-direction:column;align-items:center;gap:3px;padding:16px;border-radius:16px;border:1px solid rgba(255,230,170,.4);background:rgba(255,255,255,.08);color:#fff;cursor:pointer;font:inherit;animation:npPop .5s both}
   .fnPrize span{font-size:38px} .fnPrize b{font-size:18px} .fnPrize small{opacity:.8} .fnPrize:nth-child(2){animation-delay:.15s} .fnPrize:nth-child(3){animation-delay:.3s} .fnPrize:hover{background:rgba(255,255,255,.16)}
+  .sc-stats{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;font-size:12.5px;font-weight:600;align-items:center} .sc-stats:empty{display:none}
+  .sc-stats .btn.mini{background:#fff8e1;color:#7a3b10;border:0;font-weight:700}
+  .achPop{position:fixed;left:50%;top:84px;transform:translateX(-50%);z-index:30;display:flex;gap:10px;align-items:center;padding:10px 16px;border-radius:14px;animation:npPop .4s ease-out;transition:opacity .5s,transform .5s}
+  .achPop span{font-size:30px} .achPop small{display:block;color:var(--accent);font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase} .achPop b{font-size:16px} .achPop.out{opacity:0;transform:translate(-50%,-14px)}
+  .achGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px} .achItem{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;padding:10px 6px;border-radius:12px;background:rgba(255,255,255,.04);opacity:.55}
+  .achItem.got{opacity:1;background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.35)} .achItem span{font-size:26px} .achItem b{font-size:12.5px} .achItem small{font-size:10.5px;color:var(--muted)}
   #xModal{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;background:rgba(3,6,14,.55);padding:14px}
   #xModal.show{display:flex}
   #xModal .xbox{position:relative;width:min(440px,100%);max-height:calc(100vh - 28px);overflow:auto;padding:18px 18px 16px;animation:npPop .3s ease-out}
@@ -233,7 +237,8 @@
   #coordBox span{color:var(--muted);font-size:12px;width:100%}
 
   /* time card */
-  #card{position:fixed;left:12px;bottom:12px;z-index:4;width:min(400px,calc(100vw - 24px));padding:16px 18px 14px}
+  #card{position:fixed;left:12px;bottom:12px;z-index:4;width:min(400px,calc(100vw - 24px));padding:16px 18px 14px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  #card #collapse{position:relative;z-index:2;min-width:36px;min-height:36px}
   #cardHead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
   #placeName{font-size:18px;font-weight:600;line-height:1.2}
   #placeSub{color:var(--muted);font-size:13px;margin-top:3px}
@@ -371,6 +376,7 @@
     <div class="sc-arr" id="scArr">—</div>
     <div class="sc-k" style="margin-top:10px" id="scGiftK">GIFTS DELIVERED</div>
     <div class="sc-gifts" id="scGifts">0</div>
+    <div class="sc-stats" id="scStats"></div>
   </div>
   <button id="santaZoom">🔍<span class="zl"> Zoom in on Santa</span></button>
   <div class="sc-bot">
@@ -2119,10 +2125,6 @@ function updateHoliday(now){
     }
   } else if (H.next){ cls='show soon'; const n=H.next, info=HOL[n.k], dd=H.daysTo(n);
     html = `${info.icon} ${n.k==='newyear'?`New Year ${n.y}`:holName(n)} in ${dd} day${dd===1?'':'s'}`; }
-  if (EXTRAS_READY && a && a.k==='thanksgiving' && !a.ca){ const ps=paradeState(now);
-    if (ps.on) html+=`<small>🎈 The Thanksgiving Day Parade is on in New York City! <a href="#" id="paradeGo">Watch the balloons</a></small>`;
-    else if (ps.before) html+=`<small>🎈 Giant balloons float over New York City from 9 AM to noon Eastern</small>`;
-    else if (H.daysTo(a)>0 && H.daysTo(a)<=3) html+=`<small>🎈 Balloon parade over New York City on Thanksgiving morning</small>`; }
   if (!(a && a.k==='newyear')) nyBall=null;
   if (EXTRAS_READY){ updateBallDrop(nyBall?nyBall[0]:1e9, !!nyBall && pinInNewYork(), nyBall?nyBall[1]:0);
     const ex=extraLines(now)+layerLines(now); if (ex){ html+=ex; cls='show'; } }
@@ -2309,7 +2311,7 @@ canvas.addEventListener('pointerup',e=>{
   closeResults();
   if (EXTRAS_READY && GAME.on){ gameGuess(lat,lon); return; }
   if (santaCardOn() && santaStopToast(lat,lon,90)) return;          // tapped one of Santa's stops
-  if (EXTRAS_READY && quakeTap(lat,lon)) return;
+  if (EXTRAS_READY && (totTap(lat,lon,simNow()) || flightTap(lat,lon) || quakeTap(lat,lon))) return;
   setPlace({ ...describePoint(lat,lon), lat, lon, kind:'point' });
 });
 function santaStopToast(lat,lon,km){ const r=nearestStop(lat,lon,km); if (!r) return false;
@@ -2692,7 +2694,7 @@ $('santaBack').onclick=()=>exitSantaCam();
 $('santaCard').addEventListener('click',e=>{ if (e.target.closest('#santaZoom')) return; const c=$('santaCard').classList.toggle('compact'); store.set('scCompact',c); layout(); });
 $('focusBtn').onclick=()=>{ const on=document.body.classList.toggle('focus'); $('focusBtn').classList.toggle('on',on); $('focusBtn').innerHTML = on ? '👁<span class="long"> Show panels</span>' : '⛶<span class="long"> Hide panels</span>';
   if (on){ $('layerMenu').classList.remove('show'); $('musicMenu').classList.remove('show'); } layout(); };
-$('collapse').onclick=()=>{ const c=$('card').classList.toggle('collapsed'); $('collapse').textContent=c?'▴':'▾'; layout(); };
+$('collapse').onclick=()=>{ const c=$('card').classList.toggle('collapsed'); $('collapse').textContent=c?'▴':'▾'; $('card').scrollTop=0; layout(); };
 
 let toastT; function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),6500); }
 
@@ -2715,7 +2717,13 @@ function layout(){
   else if (W>=900){ ox = -Math.round(Math.min(card.width+20, W*.32)/2); } // nudge right of the side card
   for (const c of [camG,camO,camS]){ c.aspect=W/H; c.setViewOffset(W,H,ox,oy,W,H); c.updateProjectionMatrix(); }
   if (typeof trailMat!=='undefined') trailMat.resolution.set(W,H);
+  // never let the card grow under the top bar: it scrolls inside instead, so its ▾/▴ button is always reachable
+  $('card').style.maxHeight=Math.max(160, H-top.bottom-(W<=720?18:30))+'px';
+  const mc=$('mapCtl'); if (mc){ if (W<=720){ const cr=$('card').getBoundingClientRect(), sr=sc&&sc.classList.contains('show')&&!camMode?sc.getBoundingClientRect():null, lowest=Math.min(cr.top, sr?sr.top:1e9);
+      const room=lowest-top.bottom; mc.style.display = (camMode || room>=160) ? '' : 'none'; mc.style.transform='none'; mc.style.top = camMode ? (top.bottom+12)+'px' : Math.max(top.bottom+10, lowest-148)+'px'; }
+    else { mc.style.top=''; mc.style.transform=''; mc.style.display=''; } }
 }
+if (window.ResizeObserver){ const ro=new ResizeObserver(()=>{ if (typeof layout==='function') layout(); }); addEventListener('load',()=>{ ro.observe($('card')); ro.observe($('santaCard')); }); }
 addEventListener('resize',()=>{ layout(); });
 if (innerWidth<=720){ $('card').classList.add('collapsed'); $('collapse').textContent='▴'; }
 layout(); orbitHome(); applyDev();
@@ -3702,6 +3710,272 @@ function wxRender(){ const el=$('wxBox'); if (!el) return; const D=WX.data;
     <div class="wxSrc">Live now${traveling()?' (not time-travelled)':''} · Open-Meteo</div>`;
   $('wxU').onclick=()=>{ WX.unit=wxF()?'C':'F'; store.set('wxUnit',WX.unit); wxRender(); }; }
 var _wxLast=''; function wxTick(){ if (!current) return; const key=current.lat.toFixed(2)+','+current.lon.toFixed(2); if (key!==_wxLast){ _wxLast=key; $('wxBox').innerHTML='<div class="wxErr">⛅ Loading weather…</div>'; } wxLoad(); }
+
+/* =========================================================
+   WEATHER MAPS, LIVE FLIGHTS, TONIGHT'S SKY, ACHIEVEMENTS, CLUB LEADERBOARD,
+   THANKSGIVING PARADES ACROSS THE US, SANTA STATS + COOKIES, HALLOWEEN TRICK-OR-TREATING
+   ========================================================= */
+// ---------- 🌡️ temperature map (Open-Meteo, a 10° grid smoothed into a colour layer) and 🌧️ rain & snow (NASA IMERG)
+function makeOverlayMesh(tex, scale, nightDim){ const m=new THREE.Mesh(EARTH_GEO,new THREE.ShaderMaterial({ uniforms:{map:{value:tex},sunDir:uniforms.sunDir}, transparent:true, depthWrite:false,
+  vertexShader:`varying vec2 vUv; varying vec3 vN; void main(){ vUv=uv; vN=normalize(mat3(modelMatrix)*normal); gl_Position=projectionMatrix*viewMatrix*modelMatrix*vec4(position,1.0); }`,
+  fragmentShader:`uniform sampler2D map; uniform vec3 sunDir; varying vec2 vUv; varying vec3 vN; void main(){ vec4 c=texture2D(map,vUv); float d=dot(normalize(vN),normalize(sunDir));
+    float lit=smoothstep(-0.15,0.2,d); gl_FragColor=vec4(c.rgb*mix(${nightDim.toFixed(2)},1.0,lit), c.a); }` }));
+  m.scale.setScalar(scale); m.renderOrder=1; G.frame.add(m); return m; }
+const TEMP_STOPS=[[-30,[120,70,200]],[-15,[60,110,230]],[0,[120,200,255]],[10,[120,220,140]],[20,[250,220,80]],[30,[250,130,40]],[40,[200,30,40]]];
+function tempColor(c){ for (let i=1;i<TEMP_STOPS.length;i++){ const [t1,c1]=TEMP_STOPS[i-1],[t2,c2]=TEMP_STOPS[i]; if (c<=t2||i===TEMP_STOPS.length-1){ const k=Math.max(0,Math.min(1,(c-t1)/(t2-t1))); return c1.map((v,j)=>Math.round(v+(c2[j]-v)*k)); } } return TEMP_STOPS[0][1]; }
+var TEMP={mesh:null,at:0,loading:false}, RAIN={mesh:null,at:0,loading:false};
+async function tempLoad(){ if (!LAYERS.temp || TEMP.loading || (TEMP.mesh && Date.now()-TEMP.at<30*60000)) return; TEMP.loading=true;
+  try{ const lats=[], lons=[]; for (let la=-80;la<=80;la+=10) for (let lo=-180;lo<180;lo+=10){ lats.push(la); lons.push(lo); }
+    const vals=new Array(lats.length); const chunk=160;
+    for (let i=0;i<lats.length;i+=chunk){ const L=lats.slice(i,i+chunk), O=lons.slice(i,i+chunk);
+      const j=await getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${L.join(',')}&longitude=${O.join(',')}&current=temperature_2m`); const arr=Array.isArray(j)?j:[j];
+      arr.forEach((r,k)=>vals[i+k]=r.current.temperature_2m); }
+    const NLO=36, NLA=17, at=(a,o)=>vals[a*NLO+((o%NLO)+NLO)%NLO];
+    const c=document.createElement('canvas'); c.width=360; c.height=180; const x=c.getContext('2d'), im=x.createImageData(360,180);
+    for (let py=0;py<180;py++){ const la=89.5-py, fa=Math.max(0,Math.min(NLA-1.0001,(la+80)/10)), a0=Math.floor(fa), ka=fa-a0;
+      for (let px=0;px<360;px++){ const lo=-179.5+px, fo=(lo+180)/10, o0=Math.floor(fo), ko=fo-o0;
+        const v=(at(a0,o0)*(1-ko)+at(a0,o0+1)*ko)*(1-ka)+(at(a0+1,o0)*(1-ko)+at(a0+1,o0+1)*ko)*ka; const [r,g,b]=tempColor(v), i=(py*360+px)*4;
+        im.data[i]=r; im.data[i+1]=g; im.data[i+2]=b; im.data[i+3]=Math.abs(la)>82?0:120; } }
+    x.putImageData(im,0,0); const tex=new THREE.CanvasTexture(c); tex.colorSpace=THREE.NoColorSpace; tex.minFilter=THREE.LinearFilter;
+    if (!TEMP.mesh) TEMP.mesh=makeOverlayMesh(tex,1.0018,.45); else { TEMP.mesh.material.uniforms.map.value.dispose(); TEMP.mesh.material.uniforms.map.value=tex; }
+    TEMP.at=Date.now(); layerNote.temp='Now · 🟣 −30° 🔵 −15° 🩵 0° 🟢 10° 🟡 20° 🟠 30° 🔴 40°C';
+  }catch(e){ layerNote.temp='couldn’t load weather data here — it works on the GitHub site'; }
+  TEMP.loading=false; renderLayerMenu(); }
+async function rainLoad(){ if (!LAYERS.rain || RAIN.loading || (RAIN.mesh && Date.now()-RAIN.at<30*60000)) return; RAIN.loading=true;
+  try{ const c=document.createElement('canvas'); c.width=2048; c.height=1024; const x=c.getContext('2d'); let ok=false, when='';
+    for (const back of [6,9,12,24]){ const t=new Date(Math.floor((Date.now()-back*3600000)/1800000)*1800000), iso=t.toISOString().slice(0,19)+'Z';
+      try{ const img=await new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>rej(); i.src=`https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=IMERG_Precipitation_Rate&CRS=EPSG:4326&BBOX=-90,-180,90,180&WIDTH=2048&HEIGHT=1024&FORMAT=image/png&TRANSPARENT=true&TIME=${iso}`; });
+        x.drawImage(img,0,0,2048,1024); ok=true; when=t.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); break; }catch(e){} }
+    if (!ok) throw 0; const tex=new THREE.CanvasTexture(c); tex.colorSpace=THREE.NoColorSpace;
+    if (!RAIN.mesh) RAIN.mesh=makeOverlayMesh(tex,1.0022,.6); else { RAIN.mesh.material.uniforms.map.value.dispose(); RAIN.mesh.material.uniforms.map.value=tex; }
+    RAIN.at=Date.now(); layerNote.rain=`NASA IMERG satellite rain & snow, ${when} (a few hours behind)`;
+  }catch(e){ layerNote.rain='couldn’t load NASA rain data here — it works on the GitHub site'; }
+  RAIN.loading=false; renderLayerMenu(); }
+
+// ---------- ✈️ live flights (OpenSky Network, refreshed every 90 s)
+var FLT={list:[], mesh:null, at:0, loading:false};
+async function flightsLoad(){ if (!LAYERS.flights || FLT.loading || Date.now()-FLT.at<90000) return; FLT.loading=true; FLT.at=Date.now();
+  try{ const j=await getJSON('https://opensky-network.org/api/states/all');
+    FLT.list=(j.states||[]).filter(s=>s[5]!=null && s[6]!=null && !s[8]).map(s=>({cs:(s[1]||'').trim()||s[0], from:s[2], lon:s[5], lat:s[6], alt:s[7]||s[13]||0, v:s[9]||0, hdg:s[10]||0}));
+    flightsBuild(); layerNote.flights=`${FLT.list.length.toLocaleString()} planes in the air now · OpenSky Network · tap one`;
+  }catch(e){ layerNote.flights='couldn’t reach OpenSky here (it also limits how often it can be asked) — try the GitHub site in a minute'; }
+  FLT.loading=false; renderLayerMenu(); }
+function flightsBuild(){ const n=FLT.list.length; if (FLT.mesh){ G.frame.remove(FLT.mesh); FLT.mesh.geometry.dispose(); }
+  const sh=new THREE.Shape(); sh.moveTo(0,1); sh.lineTo(.18,.2); sh.lineTo(.9,-.15); sh.lineTo(.9,-.32); sh.lineTo(.16,-.18); sh.lineTo(.12,-.7); sh.lineTo(.35,-.9); sh.lineTo(.35,-1); sh.lineTo(0,-.88);
+  sh.lineTo(-.35,-1); sh.lineTo(-.35,-.9); sh.lineTo(-.12,-.7); sh.lineTo(-.16,-.18); sh.lineTo(-.9,-.32); sh.lineTo(-.9,-.15); sh.lineTo(-.18,.2); sh.lineTo(0,1);
+  const geo=new THREE.ShapeGeometry(sh); geo.rotateX(-Math.PI/2);            // lies flat, nose toward +Z
+  const m=new THREE.InstancedMesh(geo,new THREE.MeshBasicMaterial({color:0xffe08a,side:THREE.DoubleSide,transparent:true,opacity:.95,depthWrite:false}),Math.max(1,n));
+  m.frustumCulled=false; m.renderOrder=4; G.frame.add(m); FLT.mesh=m; FLT.scaleFor=-1; flightsPlace(1); }
+function flightsPlace(s){ const m=FLT.mesh; if (!m) return; const M=new THREE.Matrix4(), up=new THREE.Vector3(), fw=new THREE.Vector3(), rt=new THREE.Vector3(), p=new THREE.Vector3(), sc=new THREE.Vector3(s,s,s);
+  FLT.list.forEach((f,i)=>{ up.copy(llToEcef(f.lat,f.lon)); const [la,lo]=destPoint(f.lat,f.lon,f.hdg,50); fw.copy(llToEcef(la,lo)).sub(up); fw.addScaledVector(up,-fw.dot(up)).normalize(); rt.crossVectors(up,fw).normalize();
+    M.makeBasis(rt,up,fw).scale(sc).setPosition(p.copy(up).multiplyScalar(1.002+f.alt/6371000)); m.setMatrixAt(i,M); });
+  m.count=FLT.list.length; m.instanceMatrix.needsUpdate=true; }
+function flightTap(lat,lon){ if (!LAYERS.flights || !FLT.list.length) return false; let best=null, bd=Math.max(40,(camG.position.length()-1)*250);
+  for (const f of FLT.list){ const d=gcDist(lat,lon,f.lat,f.lon); if (d<bd){ bd=d; best=f; } } if (!best) return false;
+  const ft=Math.round(best.alt*3.281), mph=Math.round(best.v*2.237);
+  toast(`✈️ ${best.cs} · from ${best.from} · ${ft.toLocaleString()} ft · ${mph} mph · heading ${compass(best.hdg)}`); return true; }
+
+// ---------- 🔭 tonight's sky: planets (JPL approximate orbits), bright stars and a sky map for the pin
+const PLANETS={ // a, e, I, L, long.peri, long.node — and their rates per century (JPL “Approximate Positions of the Planets”)
+  Mercury:[[0.38709927,0.20563593,7.00497902,252.25032350,77.45779628,48.33076593],[0.00000037,0.00001906,-0.00594749,149472.67411175,0.16047689,-0.12534081],'#c9b8a3',0],
+  Venus:[[0.72333566,0.00677672,3.39467605,181.97909950,131.60246718,76.67984255],[0.00000390,-0.00004107,-0.00078890,58517.81538729,0.00268329,-0.27769418],'#fff3c4',-4.2],
+  Earth:[[1.00000261,0.01671123,-0.00001531,100.46457166,102.93768193,0],[0.00000562,-0.00004392,-0.01294668,35999.37244981,0.32327364,0]],
+  Mars:[[1.52371034,0.09339410,1.84969142,-4.55343205,-23.94362959,49.55953891],[0.00001847,0.00007882,-0.00813131,19140.30268499,0.44441088,-0.29257343],'#ff7a4d',0.5],
+  Jupiter:[[5.20288700,0.04838624,1.30439695,34.39644051,14.72847983,100.47390909],[-0.00011607,-0.00013253,-0.00183714,3034.74612775,0.21252668,0.20469106],'#ffe2b0',-2.3],
+  Saturn:[[9.53667594,0.05386179,2.48599187,49.95424423,92.59887831,113.66242448],[-0.00125060,-0.00050991,0.00193609,1222.49362201,-0.41897216,-0.28867794],'#f3d58a',0.6]};
+function helio(name,T){ const [e0,r]=PLANETS[name], el=e0.map((v,i)=>v+r[i]*T), [a,e,I,L,wp,Om]=el, w=wp-Om; let M=((L-wp)%360+540)%360-180; M*=D2R;
+  let E=M+e*Math.sin(M); for (let k=0;k<6;k++) E-= (E-e*Math.sin(E)-M)/(1-e*Math.cos(E));
+  const xp=a*(Math.cos(E)-e), yp=a*Math.sqrt(1-e*e)*Math.sin(E), cw=Math.cos(w*D2R), sw=Math.sin(w*D2R), cO=Math.cos(Om*D2R), sO=Math.sin(Om*D2R), cI=Math.cos(I*D2R), sI=Math.sin(I*D2R);
+  return [(cw*cO-sw*sO*cI)*xp+(-sw*cO-cw*sO*cI)*yp, (cw*sO+sw*cO*cI)*xp+(-sw*sO+cw*cO*cI)*yp, (sw*sI)*xp+(cw*sI)*yp]; }
+function planetRaDec(name,t){ const T=(t/86400000+2440587.5-2451545)/36525, p=helio(name,T), E=helio('Earth',T), x=p[0]-E[0], y=p[1]-E[1], z=p[2]-E[2], eps=23.43928*D2R;
+  const ye=y*Math.cos(eps)-z*Math.sin(eps), ze=y*Math.sin(eps)+z*Math.cos(eps); return {ra:Math.atan2(ye,x), dec:Math.atan2(ze,Math.hypot(x,ye)), dist:Math.hypot(x,y,z)}; }
+function altAz(ra,dec,lat,lon,t){ const s=sunState(new Date(t)), ha=s.gmst+lon*D2R-ra, f=lat*D2R;
+  const alt=Math.asin(Math.sin(f)*Math.sin(dec)+Math.cos(f)*Math.cos(dec)*Math.cos(ha)); const az=Math.atan2(-Math.cos(dec)*Math.sin(ha), Math.sin(dec)*Math.cos(f)-Math.cos(dec)*Math.sin(f)*Math.cos(ha));
+  return {alt:alt*R2D, az:((az*R2D)+360)%360}; }
+const STARS=[['Sirius',6.752,-16.716,-1.46],['Canopus',6.399,-52.696,-.74],['Arcturus',14.261,19.182,-.05],['Vega',18.616,38.784,.03],['Capella',5.278,45.998,.08],['Rigel',5.242,-8.202,.13],['Procyon',7.655,5.225,.34],
+  ['Betelgeuse',5.919,7.407,.5],['Altair',19.846,8.868,.77],['Aldebaran',4.599,16.509,.85],['Antares',16.490,-26.432,1.0],['Spica',13.420,-11.161,.97],['Pollux',7.755,28.026,1.14],['Fomalhaut',22.961,-29.622,1.16],
+  ['Deneb',20.690,45.280,1.25],['Regulus',10.139,11.967,1.35],['Castor',7.577,31.888,1.58],['Bellatrix',5.419,6.350,1.64],['Polaris',2.530,89.264,1.98],['Alnitak',5.679,-1.943,1.77],['Alnilam',5.603,-1.202,1.69],
+  ['Mintaka',5.533,-.299,2.23],['Saiph',5.796,-9.670,2.07],['Dubhe',11.062,61.751,1.79],['Merak',11.031,56.382,2.37],['Phecda',11.897,53.695,2.44],['Megrez',12.257,57.033,3.31],['Alioth',12.900,55.960,1.77],
+  ['Mizar',13.399,54.925,2.27],['Alkaid',13.792,49.313,1.86],['Acrux',12.443,-63.099,.77],['Mimosa',12.795,-59.689,1.25],['Gacrux',12.519,-57.113,1.63],['Imai',12.252,-58.749,2.8],['Rigil Kent',14.660,-60.834,-.27],
+  ['Hadar',14.064,-60.373,.61],['Achernar',1.629,-57.237,.46],['Schedar',.675,56.537,2.24],['Caph',.153,59.150,2.28],['Navi',.945,60.717,2.47],['Ruchbah',1.430,60.235,2.68],['Segin',1.907,63.670,3.37]];
+const LINES=[['Betelgeuse','Bellatrix'],['Bellatrix','Mintaka'],['Mintaka','Alnilam'],['Alnilam','Alnitak'],['Alnitak','Saiph'],['Saiph','Rigel'],['Rigel','Mintaka'],['Betelgeuse','Alnitak'],
+  ['Dubhe','Merak'],['Merak','Phecda'],['Phecda','Megrez'],['Megrez','Dubhe'],['Megrez','Alioth'],['Alioth','Mizar'],['Mizar','Alkaid'],
+  ['Caph','Schedar'],['Schedar','Navi'],['Navi','Ruchbah'],['Ruchbah','Segin'],['Acrux','Gacrux'],['Mimosa','Imai'],['Castor','Pollux']];
+function tonightPlan(now){ const out=[], lat=current.lat, lon=current.lon;
+  for (const n of ['Mercury','Venus','Mars','Jupiter','Saturn']){ let first=null, best=null;
+    for (let k=0;k<=72;k++){ const t=+now+k*15*60000, sa=sunAt(lat,lon,sunState(new Date(t)),new Date(t)).alt; if (sa>-8){ if (first) break; else continue; }
+      const p=planetRaDec(n,t), h=altAz(p.ra,p.dec,lat,lon,t); if (h.alt>8){ if (!first) first={t,az:h.az}; if (!best||h.alt>best.alt) best={t,alt:h.alt,az:h.az}; } }
+    if (first) out.push({n, first, best, col:PLANETS[n][2], mag:PLANETS[n][3]}); }
+  return out; }
+function openSky(){ if (!current){ return; } const now=simNow(), sa=sunAt(current.lat,current.lon,sunState(now),now).alt;
+  let at=+now; if (sa>-8){ for (let k=1;k<=96;k++){ const t=+now+k*15*60000; if (sunAt(current.lat,current.lon,sunState(new Date(t)),new Date(t)).alt<-12){ at=t; break; } } }
+  const plan=tonightPlan(new Date(Math.min(+now, at-60000)>0?+now:at)), when=fmtTime(new Date(at),current,false);
+  const bright=m=>m<-3?'dazzling':m<-1.5?'very bright':m<1?'bright':'faint';
+  showModal(`<h3>🔭 Tonight’s sky over ${esc(shortName(current))}</h3><p class="mut">${sa>-8?`The map shows the sky at ${when}, once it’s dark.`:'The sky right now.'} Hold your phone up and match the directions.</p>
+    <canvas id="skyMap" width="640" height="640" style="width:100%;max-width:340px;display:block;margin:0 auto 10px"></canvas>
+    ${plan.length?plan.map(p=>`<div class="advMsg" style="margin-top:6px"><b style="color:${p.col}">● ${p.n}</b> — ${bright(p.mag)} · ${+p.first.t<=+now+60000?'up now':'from '+fmtTime(new Date(p.first.t),current,false)} in the ${compass(p.first.az)}, highest around ${fmtTime(new Date(p.best.t),current,false)} (${Math.round(p.best.alt)}° up, ${compass(p.best.az)})</div>`).join('')
+      :'<div class="advMsg">No bright planets are up tonight — but the stars on the map are!</div>'}
+    <p class="mut" style="margin-top:8px;font-size:12px">Planet positions use NASA JPL’s approximate orbits — close enough to find them by eye.</p>`);
+  drawSkyMap($('skyMap'), at); }
+function drawSkyMap(cv, t){ const x=cv.getContext('2d'), W=cv.width, R=W/2-34, cx=W/2, cy=W/2, lat=current.lat, lon=current.lon;
+  const P=(alt,az)=>{ const r=R*(90-alt)/90, a=az*D2R; return [cx-Math.sin(a)*r, cy-Math.cos(a)*r]; };   // looking straight up with north at the top: east is on the left
+  const g=x.createRadialGradient(cx,cy,0,cx,cy,R); g.addColorStop(0,'#0b1640'); g.addColorStop(1,'#050916'); x.fillStyle=g; x.beginPath(); x.arc(cx,cy,R,0,7); x.fill();
+  x.strokeStyle='rgba(255,255,255,.15)'; for (const a of [30,60]){ x.beginPath(); x.arc(cx,cy,R*(90-a)/90,0,7); x.stroke(); }
+  x.fillStyle='#ffd166'; x.font='bold 24px system-ui'; x.textAlign='center'; x.textBaseline='middle'; [['N',0],['E',90],['S',180],['W',270]].forEach(([l,az])=>{ const [px,py]=P(-9,az); x.fillText(l,px,py); });
+  const pos={}; for (const [n,ra,dec,m] of STARS){ const h=altAz(ra*15*D2R,dec*D2R,lat,lon,t); if (h.alt<0) continue; pos[n]=P(h.alt,h.az); }
+  x.strokeStyle='rgba(140,180,255,.45)'; x.lineWidth=2; for (const [a,b] of LINES) if (pos[a]&&pos[b]){ x.beginPath(); x.moveTo(...pos[a]); x.lineTo(...pos[b]); x.stroke(); }
+  for (const [n,ra,dec,m] of STARS){ const p=pos[n]; if (!p) continue; const r=Math.max(2,6-m*1.4); x.fillStyle='#fff'; x.beginPath(); x.arc(p[0],p[1],r,0,7); x.fill();
+    if (m<1.3 || n==='Polaris'){ x.fillStyle='rgba(255,255,255,.75)'; x.font='17px system-ui'; x.fillText(n,p[0],p[1]-r-11); } }
+  for (const n of ['Mercury','Venus','Mars','Jupiter','Saturn']){ const pr=planetRaDec(n,t), h=altAz(pr.ra,pr.dec,lat,lon,t); if (h.alt<0) continue; const p=P(h.alt,h.az);
+    x.fillStyle=PLANETS[n][2]; x.shadowColor=PLANETS[n][2]; x.shadowBlur=14; x.beginPath(); x.arc(p[0],p[1],8,0,7); x.fill(); x.shadowBlur=0; x.font='bold 20px system-ui'; x.fillText(n,p[0],p[1]+22); }
+  { const s=sunState(new Date(t)), m=moonState(new Date(t),s), h=altAz(m.ra,m.dec,lat,lon,t); if (h.alt>0){ const p=P(h.alt,h.az); x.font='30px serif'; x.fillText('🌕',p[0],p[1]); x.fillStyle='#ddd'; x.font='17px system-ui'; x.fillText('Moon',p[0],p[1]+24); } } }
+
+// ---------- 🏅 achievements
+var ACH=[
+  ['first-pin','📍','Explorer','Pick a place on the globe'],['trotter','🌍','Globe-trotter','Pin places on 5 continents'],['bday','🎂','It’s my party','Set your birthday'],['card','📸','Postcard writer','Make a postcard'],
+  ['bull','🎯','Bullseye','Score 4,500+ on one guess'],['score20','🏆','Geography whiz','Score 20,000+ in one challenge'],['hard15','🔥','Hard as nails','Score 15,000+ in Hard mode'],
+  ['daily3','📅','Habit','3-day daily streak'],['daily7','🗓️','Unstoppable','7-day daily streak'],
+  ['letter','✉️','Dear Santa','Send a letter to Santa'],['advent','📅','Door to door','Open all 25 advent doors'],['santacam','🎅','Santa spotter','Zoom in on Santa while he’s flying'],
+  ['cookies','🍪','Cookie host','Leave cookies out for Santa — and he eats them'],['gift1','🎁','First delivery','Drop a present from the sleigh'],['gift100','🛷','Elf on duty','Deliver 100 presents'],['gift1000','🌟','Santa’s helper','Deliver 1,000 presents'],
+  ['mission','🏁','Mission complete','Finish a sleigh mission'],['missions','🥇','Ace pilot','Finish every sleigh mission'],
+  ['candy','🍬','Sweet tooth','Collect 50 Halloween candies'],['candy200','🎃','Candy king','Collect 200 Halloween candies'],['parade','🎈','Parade fan','Watch a Thanksgiving parade'],
+  ['iss','🛰️','Space fan','Follow the space station'],['eclipse','🌑','Shadow chaser','Watch the Moon’s shadow during an eclipse'],['sky','🔭','Stargazer','Open tonight’s sky map'],['flight','✈️','Plane spotter','Tap a live flight'],['club','👥','Team player','Play a club game']];
+var achGot=store.get('ach',{});
+function achieve(id){ if (achGot[id]) return; const a=ACH.find(x=>x[0]===id); if (!a) return; achGot[id]=Date.now(); store.set('ach',achGot);
+  const el=document.createElement('div'); el.className='achPop glass'; el.innerHTML=`<span>${a[1]}</span><div><small>Achievement unlocked!</small><b>${a[2]}</b></div>`; document.body.appendChild(el);
+  setTimeout(()=>el.classList.add('out'),3800); setTimeout(()=>el.remove(),4500); try{ sfx('fanfare'); }catch(e){} }
+function openAchievements(){ const n=Object.keys(achGot).length;
+  showModal(`<h3>🏅 Achievements · ${n}/${ACH.length}</h3><div class="achGrid">${ACH.map(([id,ic,name,desc])=>`<div class="achItem${achGot[id]?' got':''}"><span>${achGot[id]?ic:'🔒'}</span><b>${name}</b><small>${desc}</small></div>`).join('')}</div>`); }
+// checks that read saved progress (cheap; every few seconds)
+var achConts=new Set(store.get('conts',[]));
+setInterval(()=>{ try{
+  if (current){ achieve('first-pin'); const z=(zoneFor(current).tz||'').split('/')[0]; const c={America:current.lat>=12?'North America':'South America',Europe:'Europe',Africa:'Africa',Asia:'Asia',Australia:'Oceania',Pacific:'Oceania',Antarctica:'Antarctica'}[z];
+    if (c && !achConts.has(c)){ achConts.add(c); store.set('conts',[...achConts]); } if (achConts.size>=5) achieve('trotter'); }
+  if (store.get('birthday',null)) achieve('bday'); const L=store.get('letter',null); if (L&&L.sent) achieve('letter');
+  const st=dailyStreak(); if (st>=3) achieve('daily3'); if (st>=7) achieve('daily7');
+  const dv=store.get('delivered',0); if (dv>=1) achieve('gift1'); if (dv>=100) achieve('gift100'); if (dv>=1000) achieve('gift1000');
+  const mb=store.get('missionBest',{}); if (Object.keys(mb).length) achieve('mission'); if (MISSIONS.every(m=>mb[m.id])) achieve('missions');
+  const ad=store.get('advent',{}); if (Object.values(ad).some(a=>a.length>=25)) achieve('advent');
+  if (santaCam && santa.on && !FLY.on) achieve('santacam'); if (GAME.club) achieve('club');
+  if (candyTotal()>=50) achieve('candy'); if (candyTotal()>=200) achieve('candy200');
+}catch(e){} }, 3000);
+var _gg2=gameGuess; gameGuess=function(a,b){ const r=_gg2(a,b); if (GAME.last && GAME.last.pts>=4500) achieve('bull'); return r; };
+var _eg2=endGame; endGame=function(){ if (GAME.total>=20000) achieve('score20'); if (GAME.mode==='hard' && GAME.total>=15000) achieve('hard15'); _eg2(); };
+var _mp=makePostcard; makePostcard=function(){ achieve('card'); _mp(); };
+var _wp=watchParade; watchParade=function(i){ achieve('parade'); _wp(i); };
+var _fi=followISS; followISS=function(){ achieve('iss'); _fi(); };
+var _os=openSky; openSky=function(){ achieve('sky'); _os(); };
+var _ft=flightTap; flightTap=function(a,b){ const r=_ft(a,b); if (r) achieve('flight'); return r; };
+document.addEventListener('click',e=>{ const a=e.target.closest('a'); if (a && a.id==='shadowGo') achieve('eclipse'); });
+
+// ---------- 👥 club leaderboard for the daily challenge (Claude version: a shared list for everyone the page is shared with)
+async function boardDb(){ try{ if (!(window.claude && window.claude.use)) return null; const [db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')]); if (!db||!user) return null; const id=await user.id(); return id?{db,id}:null; }catch(e){ return null; } }
+async function submitDaily(k,r){ const b=await boardDb(); if (!b) return false; let nick=store.get('nick','');
+  if (!nick){ nick=(prompt('Nickname for the club leaderboard:','')||'').trim().slice(0,20); if (!nick) return false; store.set('nick',nick); }
+  try{ await b.db.collection('leaderboard').doc(b.id).set({nick, date:k, score:r.score, hist:dailyEmoji(r.hist), streak:dailyStreak(), at:Date.now()}); return true; }catch(e){ return false; } }
+async function openBoard(){ const k=dayKey(); showModal(`<h3>🏆 Club leaderboard · today</h3><div id="lbList" class="mut">Loading…</div>`);
+  const b=await boardDb(); if (!b){ $('lbList').innerHTML='The club leaderboard works in the Claude version of the app, shared with your club (members need to be able to use the page, not just view it). On this site your scores stay on your device.'; return; }
+  const D=store.get('daily',{})[k]; if (D) await submitDaily(k,D);
+  let t=setTimeout(()=>{ if ($('lbList')) $('lbList').textContent='Couldn’t reach the leaderboard yet.'; },10000);
+  try{ const snap=await b.db.collection('leaderboard').where('date','==',k).orderBy('score','desc').limit(50).get(); clearTimeout(t);
+    const rows=snap.docs.map(d=>d.data()); $('lbList').innerHTML = rows.length ? rows.map((r,i)=>`<div class="gBoardR${r.nick===store.get('nick','')?' you':''}" style="padding:4px 0"><span>${['🥇','🥈','🥉'][i]||(i+1)+'.'} ${esc(String(r.nick||'Player').slice(0,20))} ${esc(String(r.hist||''))}</span><span><b>${(+r.score||0).toLocaleString()}</b>${r.streak>1?` · 🔥${+r.streak}`:''}</span></div>`).join('')
+      : 'Nobody has played today’s challenge yet — be the first!'; }
+  catch(e){ clearTimeout(t); $('lbList').textContent='Couldn’t load the leaderboard.'; } }
+var _sdr=showDailyResult; showDailyResult=function(k,r){ _sdr(k,r); submitDaily(k,r); const b=document.createElement('button'); b.className='btn'; b.textContent='🏆 Club leaderboard'; b.onclick=openBoard; const row=$('dCopy').parentElement; row.appendChild(b); };
+
+// ---------- 🎈 Thanksgiving parades across the US (Thanksgiving morning; times approximate, local)
+var PARADES=[ // name, centre lat/lon, time zone, start hour, end hour, note
+  ['New York City',40.77,-73.98,'America/New_York',9,12,'the giant balloons on Central Park West'],
+  ['Philadelphia',39.955,-75.17,'America/New_York',8.5,12,'the oldest Thanksgiving parade in the US (since 1920)'],
+  ['Detroit',42.35,-83.06,'America/Detroit',8.75,11.5,'down Woodward Avenue'],
+  ['Chicago',41.88,-87.63,'America/Chicago',8,11,'down State Street'],
+  ['Houston',29.76,-95.37,'America/Chicago',9,12,'through downtown']];
+function paradeOn(p,now){ const t=partsIn(p[3],now); if (t.month!==10 || t.day!==nthWeekday(t.year,10,4,4)) return 0; const h=t.hour+t.minute/60; return h>=p[4]&&h<p[5] ? 2 : h<p[4] ? 1 : 3; }
+updateParade=function(t, now){
+  const on = theme==='thanksgiving' && mode==='globe' ? PARADES.map(p=>paradeOn(p,now)===2) : PARADES.map(()=>false);
+  if (!on.some(Boolean)){ if (parade){ parade.root.visible=false; if (ctlG.minDistance<1.25) ctlG.minDistance=1.25; } return; }
+  if (!parade) buildParade(); parade.root.visible=true;
+  if (!parade.extra){ parade.extra=PARADES.map((p,i)=> i===0 ? parade.balloons : [0,1,2].map(k=>{ const src=parade.balloons[(i+k)%parade.balloons.length]; const b=src.b.clone(true); parade.root.add(b); return {b, body:b.children[0], ph:k*1.7+i}; })); }
+  const S=0.0034; PARADES.forEach((p,pi)=>{ const list=parade.extra[pi]; if (!on[pi]){ list.forEach(x=>x.b.visible=false); return; }
+    const A = pi===0 ? [41.85,-73.6] : [p[1]+.95,p[2]+.4], B = pi===0 ? [39.95,-74.5] : [p[1]-.95,p[2]-.4], N=list.length;
+    list.forEach((x,i)=>{ x.b.visible=true; const u=((t/1000)*0.006 + i/N)%1, la=A[0]+(B[0]-A[0])*u, lo=A[1]+(B[1]-A[1])*u;
+      _pu.copy(llToEcef(la,lo)); _pf.copy(llToEcef(B[0],B[1])).sub(llToEcef(A[0],A[1])); _pf.addScaledVector(_pu,-_pf.dot(_pu)).normalize(); _pr.crossVectors(_pu,_pf).normalize();
+      const pop=Math.min(1,Math.min(u,1-u)*12); x.b.matrixAutoUpdate=false; x.b.matrix.makeBasis(_pr,_pu,_pf).scale(_pa.setScalar(S*pop)).setPosition(_pb.copy(_pu).multiplyScalar(1.0+S*7));
+      x.body.rotation.set(-Math.PI/2+Math.sin(t/1100+x.ph)*.12, 0, Math.sin(t/900+x.ph)*.08); x.body.position.y=Math.sin(t/1300+x.ph)*.25; }); }); };
+watchParade=function(i){ i=i||0; const p=PARADES[i]; achieve('parade'); ctlG.minDistance=1.03; flyToLL(p[1]+.2,p[2]-.05,1.12); };
+function paradeLines(now){ if (theme!=='thanksgiving' || !current || current.cc!=='US') return ''; const st=PARADES.map(p=>paradeOn(p,now)); if (!st.some(s=>s)) return '';
+  const live=PARADES.map((p,i)=>st[i]===2?`<a href="#" data-parade="${i}">${p[0]}</a>`:null).filter(Boolean);
+  if (live.length) return `<small>🎈 Parades on now: ${live.join(' · ')} — tap one to watch the balloons</small>`;
+  if (st.some(s=>s===1)) return `<small>🎈 Thanksgiving parades this morning in New York, Philadelphia, Detroit, Chicago and Houston · <a href="#" id="paradeGuide">times</a></small>`; return ''; }
+function openParadeGuide(){ const now=simNow(); showModal(`<h3>🎈 Thanksgiving parades</h3><p class="mut">Thanksgiving morning, local times (approximate). Balloons float over each city on the globe while its parade is on.</p>
+  ${PARADES.map((p,i)=>{ const s=paradeOn(p,now), y=partsIn(p[3],now).year, d=nthWeekday(y,10,4,4), start=localToUTC({...current,tz:p[3],exactTz:true},y,10,d,Math.floor(p[4]),Math.round(p[4]%1*60));
+    return `<div class="advMsg" style="margin-top:6px"><b>${p[0]}</b> — ${esc(p[6])}<br><small class="mut">${fmtTime(start,current,false)} your time${s===2?' · 🔴 on now':s===3?' · done for this year':''}</small> ${s===2?`<button class="btn mini" data-pw="${i}">Watch</button>`:''}</div>`; }).join('')}`);
+  document.querySelectorAll('[data-pw]').forEach(b=>b.onclick=()=>{ closeModal(); watchParade(+b.dataset.pw); }); }
+document.addEventListener('click',e=>{ const a=e.target.closest('a'); if (!a) return; if (a.dataset.parade!=null){ e.preventDefault(); watchParade(+a.dataset.parade); } else if (a.id==='paradeGuide'){ e.preventDefault(); openParadeGuide(); } });
+
+// ---------- 🎅 Santa tracker extras: live stats, and leaving cookies out for him
+var SANTA_CUM=null;
+function santaStats(now){ if (!ROUTE.length) return null; if (!SANTA_CUM){ SANTA_CUM=[0]; for (let i=1;i<ROUTE.length;i++) SANTA_CUM.push(SANTA_CUM[i-1]+gcDist(ROUTE[i-1][2],ROUTE[i-1][3],ROUTE[i][2],ROUTE[i][3])); }
+  if (!santa.on && !santa.done) return {km:0,kmh:0,stops:0}; if (santa.done) return {km:SANTA_CUM.at(-1),kmh:0,stops:ROUTE.length-2};
+  const i=Math.max(0,santa.idx), cur=ROUTE[i], nxt=ROUTE[i+1]; let km=SANTA_CUM[i], kmh=0;
+  if (santa.status==='fly' && nxt){ const leg=gcDist(cur[2],cur[3],nxt[2],nxt[3]); km+=gcDist(cur[2],cur[3],santa.lat,santa.lon); kmh=leg/Math.max(1,nxt[4]-cur[5])*3600; }
+  return {km,kmh,stops:i}; }
+var _usc=updateSantaCard; updateSantaCard=function(now){ _usc(now); if (!$('santaCard').classList.contains('show')) return; const S=santaStats(now); if (!S) return;
+  const us=current&&current.cc==='US', dist=us?`${Math.round(S.km*0.6214).toLocaleString()} mi`:`${Math.round(S.km).toLocaleString()} km`, sp=us?`${Math.round(S.kmh*0.6214).toLocaleString()} mph`:`${Math.round(S.kmh).toLocaleString()} km/h`;
+  const ck=Math.round(S.stops*2.4), cr=Math.round(S.stops*1.1), y=santa.y, C=store.get('cookies',null), mine=C&&C.y===y;
+  const html=`<span>📏 ${dist}</span>${S.kmh?`<span>🚀 ${sp}</span>`:''}<span>🍪 ${ck.toLocaleString()} cookies</span><span>🥕 ${cr.toLocaleString()} carrots</span>`
+    +(!santa.done && !mine ? `<button class="btn mini" id="scCookies">🍪 Leave cookies out</button>` : mine && !C.eaten ? `<span>🍪 Your cookies are out!</span>` : mine && C.eaten ? `<span>😋 Santa ate your cookies!</span>` : '');
+  const el=$('scStats'); if (el.dataset.h!==html){ el.dataset.h=html; el.innerHTML=html; if ($('scCookies')) $('scCookies').onclick=e=>{ e.stopPropagation(); store.set('cookies',{y,eaten:false}); toast('🍪🥛 Milk and cookies are out for Santa — and a carrot for Rudolph! 🥕'); updateSantaCard(simNow()); }; }
+  if (mine && !C.eaten && current){ const v=santaVisitFor(current,y); if (v.at && +now>=+v.at){ store.set('cookies',{y,eaten:true}); achieve('cookies'); fx.celebrate(5000);
+      showModal(`<h3>🍪 Santa ate your cookies!</h3><div class="letter reply">Mmm — thank you for the cookies and the milk! Rudolph loved his carrot too. 🥕<br><br>Merry Christmas!<br>— Santa 🎅</div>`); } } };
+
+// ---------- 🎃 Halloween: trick-or-treating sweeps around the world as evening arrives (5–9 PM local, Oct 31)
+var TOT={towns:null, pts:null, active:[], at:0, tex:null};
+function candyTotal(){ const C=store.get('candy',{}); return Object.values(C).reduce((a,b)=>a+(b.n||0),0); }
+function totTowns(){ if (TOT.towns || !P.ready) return TOT.towns; const out=[]; for (let i=0;i<P.n && out.length<700;i++) if (P.pop[i]>=90000 && celebrates('halloween',P.cc[i])) out.push(i); return TOT.towns=out; }
+function totActive(now){ const towns=totTowns(); if (!towns) return []; const byTz={}, act=[];
+  for (const i of towns){ const z=P.tz[i]; if (byTz[z]==null){ const p=partsIn(P.tzList[z],now); byTz[z] = p.month===9 && p.day===31 && p.hour>=17 && p.hour<21; } if (byTz[z]) act.push(i); } return act; }
+function totUpdate(now){ const on = theme==='halloween' && mode==='globe'; if (!on){ if (TOT.pts) TOT.pts.visible=false; return; }
+  if (Math.abs(+now-TOT.at)>20000){ TOT.at=+now; TOT.active=totActive(now); const y=new Date(+now).getUTCFullYear(), got=new Set((store.get('candy',{})[y]||{}).towns||[]);
+    const list=TOT.active.filter(i=>!got.has(i));
+    if (!TOT.tex){ const c=document.createElement('canvas'); c.width=c.height=64; const x=c.getContext('2d'); x.font='52px serif'; x.textAlign='center'; x.textBaseline='middle'; x.shadowColor='#ff8a1f'; x.shadowBlur=18; x.fillText('🎃',32,36); TOT.tex=new THREE.CanvasTexture(c); }
+    if (TOT.pts){ G.frame.remove(TOT.pts); TOT.pts.geometry.dispose(); }
+    const pos=new Float32Array(Math.max(1,list.length)*3); list.forEach((i,k)=>{ const v=llToEcef(P.lat[i],P.lon[i]).multiplyScalar(1.003); pos.set([v.x,v.y,v.z],k*3); });
+    const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setDrawRange(0,list.length);
+    TOT.pts=new THREE.Points(g,new THREE.PointsMaterial({size:22,sizeAttenuation:false,map:TOT.tex,transparent:true,depthWrite:false})); TOT.pts.frustumCulled=false; TOT.pts.renderOrder=5; G.frame.add(TOT.pts); TOT.list=list; }
+  TOT.pts.visible=true; const zs=Math.max(.6,Math.min(1.6,2.2/camG.position.length())); TOT.pts.material.size=(13+3*Math.sin(performance.now()/300))*zs; }
+function totTap(lat,lon,now){ if (theme!=='halloween' || !TOT.list || !TOT.list.length) return false; let best=-1, bd=Math.max(60,(camG.position.length()-1)*120);
+  for (const i of TOT.list){ const d=gcDist(lat,lon,P.lat[i],P.lon[i]); if (d<bd){ bd=d; best=i; } } if (best<0) return false;
+  const y=new Date(+now).getUTCFullYear(), C=store.get('candy',{}), Y=C[y]||{n:0,towns:[]}; if (Y.towns.includes(best)) return true;
+  Y.towns.push(best); TOT.list=TOT.list.filter(i=>i!==best); TOT.at=0;
+  if (Math.random()<.15){ toast(`👻 TRICK! A ghost in ${P.name[best]} said BOO! No candy this time.`); try{ sfx('buzz'); }catch(e){} for (let k=0;k<3;k++) fx.burst(innerWidth*(.3+.2*k), innerHeight*.35, false); }
+  else { const n=1+Math.floor(Math.random()*5), kind=['🍬','🍫','🍭','🍪','🧁'][Math.floor(Math.random()*5)]; Y.n+=n;
+    toast(`${kind} Treat from ${P.name[best]}, ${P.cc[best]==='US'?(P.ad[best]||'USA'):regionName(P.cc[best])}! +${n} · 🍬 ${Y.n} this Halloween`); try{ sfx('ding',.6); }catch(e){} }
+  C[y]=Y; store.set('candy',C); return true; }
+function totLine(now){ if (theme!=='halloween' || !current) return ''; const lp=localParts(now,current); if (lp.month!==9 || (lp.day!==31 && lp.day!==30)) return '';
+  const y=new Date(+now).getUTCFullYear(), mine=(store.get('candy',{})[y]||{}).n||0, n=(TOT.active||[]).length;
+  if (n) return `<small>🎃 Trick-or-treating is on in ${n.toLocaleString()} towns right now — tap the glowing pumpkins for candy! 🍬 ${mine} collected</small>`;
+  if (lp.day===31 && lp.hour<17) return `<small>🎃 Trick-or-treating starts around 5 PM — then pumpkins light up across the globe as evening sweeps west${mine?` · 🍬 ${mine}`:''}</small>`;
+  if (lp.day===30) return `<small>🎃 Tomorrow night: trick-or-treat around the world on the globe!</small>`; return mine?`<small>🍬 You collected ${mine} candies this Halloween!</small>`:''; }
+
+// ---------- wiring: layer menu rows, taps, ticks, menus
+LAYERS=Object.assign({temp:false,rain:false,flights:false}, LAYERS);
+var _lk=layerKick; layerKick=function(k){ _lk(k); if (k==='temp') tempLoad(); if (k==='rain') rainLoad(); if (k==='flights') flightsLoad(); };
+var _rlm=renderLayerMenu; renderLayerMenu=function(){ _rlm(); const m=$('layerMenu'); if (!m || !m.classList.contains('show')) return;
+  const row=(k,icon,name,desc)=>`<label class="mopt${LAYERS[k]?' on':''}"><input type="checkbox" data-l="${k}" ${LAYERS[k]?'checked':''}><span>${icon} ${name}<small>${layerNote[k]&&LAYERS[k]?esc(layerNote[k]):desc}</small></span></label>`;
+  m.insertAdjacentHTML('beforeend', row('temp','🌡️','Temperature map','Live temperatures around the world')+row('rain','🌧️','Rain & snow','Where it’s raining or snowing (NASA satellites)')+row('flights','✈️','Live flights','Planes in the air right now · tap one'));
+  m.querySelectorAll('input').forEach(i=>i.onchange=()=>setLayer(i.dataset.l,i.checked)); };
+var _lt=layersTick; layersTick=function(now,M){ _lt(now,M); const g=mode==='globe';
+  if (TEMP.mesh) TEMP.mesh.visible=LAYERS.temp&&g; if (RAIN.mesh) RAIN.mesh.visible=LAYERS.rain&&g;
+  if (FLT.mesh){ FLT.mesh.visible=LAYERS.flights&&g; const s=Math.max(.0016,Math.min(.012,(camG.position.length()-1)*.0045)); if (Math.abs(s-FLT.scaleFor)>FLT.scaleFor*.08){ FLT.scaleFor=s; flightsPlace(s); } }
+  totUpdate(now); };
+setInterval(()=>{ for (const k of ['temp','rain','flights']) if (LAYERS[k]) layerKick(k); }, 60000);
+for (const k of ['temp','rain','flights']) if (LAYERS[k]) setTimeout(()=>layerKick(k),2000);
+var _ll=layerLines; layerLines=function(now){ return paradeLines(now)+totLine(now)+_ll(now); };
+var _om2=openMore; openMore=function(){ _om2(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
+  const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.prepend(b); };
+  add('🏅','Achievements',`${Object.keys(achGot).length}/${ACH.length} unlocked`,openAchievements); add('🔭','Tonight’s sky','Planets and stars to look for',openSky);
+  if (theme==='thanksgiving') add('🎈','Parade guide','Thanksgiving parades across the US',openParadeGuide); };
 
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS};
