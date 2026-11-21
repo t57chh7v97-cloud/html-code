@@ -259,6 +259,9 @@ night-side city lights placed at real city coordinates.
     oldest) · Detroit: America's Thanksgiving Parade (100th) · Chicago (92nd) ·
     Houston: H-E-B (77th), all on Thanksgiving morning
   The day before, the card mentions New York's balloon inflation (1–6 PM ET).
+  From an hour before each parade until 30 minutes after it ends, the card
+  shows a red ▶️ Watch on YouTube button for it, with a pulsing 🔴 LIVE NOW
+  while it's marching.
 - **🎉 The 100th Macy's Thanksgiving Day Parade (Nov 26, 2026):** a countdown,
   a gold "100" balloon leading New York's balloons, fun facts, confetti when
   it starts at 8:30 AM ET, and links to watch it on YouTube. During any

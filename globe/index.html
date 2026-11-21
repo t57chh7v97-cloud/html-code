@@ -100,6 +100,9 @@
   .fnGift.open .fnLid{transform:translateY(-140px) rotate(-25deg)} .fnGift.open .fnBow{transform:translate(-50%,-170px) rotate(30deg)}
   .fnPrizes{display:grid;gap:10px;margin-top:20px} .fnPrize{display:flex;flex-direction:column;align-items:center;gap:3px;padding:16px;border-radius:16px;border:1px solid rgba(255,230,170,.4);background:rgba(255,255,255,.08);color:#fff;cursor:pointer;font:inherit;animation:npPop .5s both}
   .fnPrize span{font-size:38px} .fnPrize b{font-size:18px} .fnPrize small{opacity:.8} .fnPrize:nth-child(2){animation-delay:.15s} .fnPrize:nth-child(3){animation-delay:.3s} .fnPrize:hover{background:rgba(255,255,255,.16)}
+  .ytBtn{display:inline-block;margin:3px 0 0 4px;padding:3px 9px;border-radius:999px;background:#ff0033;color:#fff!important;text-decoration:none;font-weight:700;font-size:12px}
+  .pLive{display:flex;flex-wrap:wrap;align-items:center;gap:4px} .liveDot{width:8px;height:8px;border-radius:50%;background:#ff3b3b;box-shadow:0 0 0 0 rgba(255,59,59,.7);animation:livePulse 1.4s infinite}
+  @keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(255,59,59,.7)}70%{box-shadow:0 0 0 8px rgba(255,59,59,0)}100%{box-shadow:0 0 0 0 rgba(255,59,59,0)}}
   .sc-stats{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;font-size:12.5px;font-weight:600;align-items:center} .sc-stats:empty{display:none}
   .sc-stats .btn.mini{background:#fff8e1;color:#7a3b10;border:0;font-weight:700}
   .achPop{position:fixed;left:50%;top:84px;transform:translateX(-50%);z-index:30;display:flex;gap:10px;align-items:center;padding:10px 16px;border-radius:14px;animation:npPop .4s ease-out;transition:opacity .5s,transform .5s}
@@ -3934,10 +3937,17 @@ updateParade=function(t, now){
       const pop=Math.min(1,Math.min(u,1-u)*12); x.b.matrixAutoUpdate=false; x.b.matrix.makeBasis(_pr,_pu,_pf).scale(_pa.setScalar(S*pop)).setPosition(_pb.copy(_pu).multiplyScalar(1.0+S*7));
       x.body.rotation.set(-Math.PI/2+Math.sin(t/1100+x.ph)*.12, 0, Math.sin(t/900+x.ph)*.08); x.body.position.y=Math.sin(t/1300+x.ph)*.25; }); }); };
 watchParade=function(i){ i=i||0; const p=PARADES[i]; achieve('parade'); ctlG.minDistance=1.03; flyToLL(p[1]+.2,p[2]-.05,1.12); };
-function paradeLines(now){ if (theme!=='thanksgiving' || !current || current.cc!=='US') return ''; const st=PARADES.map(p=>paradeOn(p,now)); if (!st.some(s=>s)) return '';
-  const live=PARADES.map((p,i)=>st[i]===2?`<a href="#" data-parade="${i}">${p[0]}</a>`:null).filter(Boolean);
-  if (live.length) return `<small>🎈 Parades on now: ${live.join(' · ')} — tap one to watch the balloons</small>`;
-  const later=PARADES.filter((p,i)=>st[i]===1).map(p=>p[0]); if (later.length) return `<small>🎈 Parades later today: ${later.join(', ')} · <a href="#" id="paradeGuide">times</a></small>`; return ''; }
+function paradeYT(p,y){ return 'https://www.youtube.com/results?search_query='+encodeURIComponent(`${p[8].replace(/’/g,"'")} ${y} live`); }
+function paradeLines(now){ if (theme!=='thanksgiving' || !current || current.cc!=='US') return '';
+  const out=[], later=[];
+  PARADES.forEach((p,i)=>{ const t=partsIn(p[3],now); if (t.month!==10 || t.day!==paradeDay(p,t.year)) return; const h=t.hour+t.minute/60+t.second/3600;
+    const yt=`<a class="ytBtn" href="${paradeYT(p,t.year)}" target="_blank" rel="noopener">▶️ Watch on YouTube</a>`;
+    if (h>=p[4] && h<p[5]) out.push(`<small class="pLive"><span class="liveDot"></span><b>LIVE NOW</b> · <a href="#" data-parade="${i}">${esc(p[8])}</a> (${esc(p[0])}) ${yt}</small>`);
+    else if (h>=p[4]-1 && h<p[4]){ const m=Math.ceil((p[4]-h)*60); out.push(`<small>🎈 <b>${esc(p[8])}</b> (${esc(p[0])}) starts in ${m} min ${yt}</small>`); }
+    else if (h>=p[5] && h<p[5]+.5) out.push(`<small>🎈 ${esc(p[8])} just ended ${yt}</small>`);
+    else if (h<p[4]-1) later.push(p[0]); });
+  if (later.length) out.push(`<small>🎈 Parades later today: ${later.join(', ')} · <a href="#" id="paradeGuide">times</a></small>`);
+  return out.join(''); }
 function openParadeGuide(){ const now=simNow(), y0=partsIn('America/New_York',now).year, order=PARADES.map((p,i)=>i).sort((a,b)=>(PARADES[a][7]-PARADES[b][7])||0);
   showModal(`<h3>🎈 Thanksgiving parades ${y0}</h3><p class="mut">Balloons float over each city on the globe while its parade is on. Times are the step-off; end times are approximate.</p>
   ${order.map(i=>{ const p=PARADES[i], s=paradeOn(p,now), y=partsIn(p[3],now).year, d=paradeDay(p,y), start=localToUTC({...current,tz:p[3],exactTz:true},y,10,d,Math.floor(p[4]),Math.round(p[4]%1*60));
