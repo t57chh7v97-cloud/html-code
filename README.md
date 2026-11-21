@@ -218,58 +218,14 @@ night-side city lights placed at real city coordinates.
   Setting `DONATE_URL` in `globe/index.html` adds a 💖 Donate button.
 - The advent calendar has 25 doors, each with a bonus quiz question, and
   "Good King Wenceslas" joins the chiptune carols. **Door 25 (Christmas Day)**
-  is a giant present to shake open, which unlocks three prizes for good:
-  - 🛷 **Fly Santa's sleigh:** steer with ◀ ▶ or the arrow keys, hold 🚀 to go
-    faster, and tap 🎁 (or Space) to drop presents on the real town below.
-    The delivery count is saved.
-  - 🌟 **The Golden Sleigh:** Santa's sleigh turns gold, on the tracker too
-    (it can be turned off in ⋯ More).
-  - 🎓 **An Official Elf certificate** with your name and stats, to save or
-    share.
-- **📅 Daily challenge:** the same 5 cities for everyone each day, one try,
-  with a streak counter and a shareable 🟩🟨🟧🟥 result. The challenge also
-  has 🔊 sound effects: dings for close guesses, a buzzer when time runs out,
-  ticking in the last 5 seconds of Hard mode, and a fanfare at the end.
-- **🎯 Sleigh missions** (once the sleigh is unlocked): Big Apple Run, Grand
-  Tour of Europe, East Asia Express, Around the World and Present Rush.
-  Glowing rings mark each city, the banner points to the next one with an
-  arrow and distance, and your best times are saved.
-- **❄️ Snow cover** layer from NASA MODIS (the last 3 days combined).
-- **⛅ Live weather** for the pin (Open-Meteo, no key needed): the temperature
-  and how it feels, conditions, wind and humidity, a 6-day forecast, °F/°C,
-  snow alerts ("snow day? 🛷"), rain warnings and a White Christmas check once
-  Dec 25 is in the forecast. GitHub site only.
-- More **🗺️ layers**: 🌡️ a live temperature map (Open-Meteo), 🌧️ rain & snow
-  (NASA IMERG, a few hours behind) and ✈️ live flights (OpenSky Network; tap a
-  plane for its callsign, height and speed).
-- **🔭 Tonight's sky:** which planets you can see from your pin tonight
-  (NASA JPL approximate orbits), when and where to look, and a sky map with
-  the brightest stars, the Big Dipper, Orion, Cassiopeia and the Southern
-  Cross.
-- **🏅 Achievements:** 26 badges for exploring, the challenge, Christmas,
-  Halloween, the sleigh and more.
-- **🏆 Club leaderboard** for the daily challenge (Claude version, using its
-  shared data store; members need Contributor access).
-- **🎈 Thanksgiving parades across the US:** balloons float over New York City,
-  Philadelphia, Detroit, Chicago and Houston during their parades (times are
-  approximate), with a parade guide.
-- **🎉 The 100th Macy's Thanksgiving Day Parade (Nov 26, 2026):** a countdown,
-  a gold "100" balloon leading New York's balloons, fun facts, confetti when
-  it starts at 8:30 AM ET, and links to watch it on YouTube. During any
-  parade, tapping its city opens "Watch on YouTube", and your pin steps
-  aside while a parade is marching over it.
-- **🔭 Sky map how-to:** step-by-step instructions, ◀ ▶ to see the sky later
-  tonight, and 🧭 to turn the map with your phone's compass.
-- **🎅 Santa stats:** how far he is from you, distance flown along his whole
-  zig-zag route, speed, and cookies and carrots (about one plate per home),
-  with the gift counter now ticking up smoothly the whole night, plus **🍪 Leave cookies out**: Santa leaves a thank-you note when
-  he reaches your area.
-- **🎃 Trick-or-treating around the world** on Halloween night: pumpkins
-  light up in towns where it's 5–9 PM. Tap them for candy (or a trick!).
-- On phones the time card scrolls inside itself, so its ▾/▴ button always
-  stays reachable.
-- **⏳ Countdowns** to Christmas, New Year, your birthday and the next holiday.
-  The one you pick shows as a number on the app's icon once it's installed.
+  is a giant present to shake open. **Santa brings a different present every
+  year** (2026: 🛷 Sleigh Pilot Kit: fly the sleigh, drop presents on real
+  towns and race the missions · 2027: 🎨 Sleigh Paint Shop · 2028: 🔮 Snow
+  Globe Mode, shake your phone to swirl the snow · 2029: 🧝 Official Elf Pack,
+  a certificate and an elf hat on your pin; then it repeats). Presents you've
+  collected live in ⋯ More, but only during the Christmas season: like
+  everything Christmas (tracker, music, advent, sleigh), they're put away
+  when the season ends and come back the next year.
 - **＋ / − / ◎ buttons** on the right zoom in and out (globe, Santa cam or orbit
   view) and fly back to your location (using GPS if needed).
 - **⛶ Hide panels** clears everything off the screen so you can see the whole

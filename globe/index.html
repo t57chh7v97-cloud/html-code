@@ -106,6 +106,9 @@
   .achPop span{font-size:30px} .achPop small{display:block;color:var(--accent);font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase} .achPop b{font-size:16px} .achPop.out{opacity:0;transform:translate(-50%,-14px)}
   .achGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px} .achItem{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;padding:10px 6px;border-radius:12px;background:rgba(255,255,255,.04);opacity:.55}
   .achItem.got{opacity:1;background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.35)} .achItem span{font-size:26px} .achItem b{font-size:12.5px} .achItem small{font-size:10.5px;color:var(--muted)}
+  #sgGlass{position:fixed;inset:0;pointer-events:none;z-index:3;display:none;background:radial-gradient(ellipse 62% 48% at 50% 46%,rgba(255,255,255,0) 70%,rgba(200,230,255,.10) 84%,rgba(230,245,255,.35) 92%,rgba(10,20,40,.85) 100%)}
+  #sgGlass::after{content:'';position:absolute;left:24%;top:12%;width:22%;height:16%;border-radius:50%;background:radial-gradient(rgba(255,255,255,.28),rgba(255,255,255,0) 70%);transform:rotate(-25deg)}
+  body.snowglobe #sgGlass{display:block} #sgShake{position:fixed;left:14px;bottom:50%;z-index:7}
   #xModal{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;background:rgba(3,6,14,.55);padding:14px}
   #xModal.show{display:flex}
   #xModal .xbox{position:relative;width:min(440px,100%);max-height:calc(100vh - 28px);overflow:auto;padding:18px 18px 16px;animation:npPop .3s ease-out}
@@ -435,7 +438,7 @@
 <div id="mapCtl"><button id="zIn" title="Zoom in" aria-label="Zoom in">＋</button><button id="zOut" title="Zoom out" aria-label="Zoom out">−</button><button id="zMe" title="Back to my location" aria-label="Back to my location">◎</button></div>
 <div id="flyPad"><button id="fpL" aria-label="Turn left">◀</button><button id="fpBoost" aria-label="Go faster">🚀</button><button id="fpDrop" aria-label="Drop a present">🎁</button><button id="fpR" aria-label="Turn right">▶</button>
   <div class="fpRow"><button id="fpCam" class="btn mini">🎥 Free cam</button><button id="fpLand" class="btn mini">🛬 Land</button></div></div>
-<div id="finale"></div>
+<div id="finale"></div><div id="sgGlass"></div><button id="sgShake" class="btn" style="display:none">❄️ Shake</button>
 <div id="game" class="glass"></div><div id="gBoard"></div>
 <div id="xModal"><div class="xbox glass"><button id="xClose" aria-label="Close">✕</button><div id="xBody"></div></div></div>
 <div id="ballDrop" aria-hidden="true"><div class="bdPole"><div id="bdBall"></div></div><div id="bdNum"></div><div class="bdLbl">Times Square</div></div>
@@ -2235,8 +2238,12 @@ const fx = (()=>{
       bursts.push({x,y,px:x,py:y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:1,dec:rnd(.010,.018),col}); } }
   function celebrate(ms=30000){ party=performance.now()+ms; }
   let ov={}, streaks=[]; const PARTY=['#ff4d6d','#ffd23f','#3ddc97','#4cc9f0','#b388ff','#ff9f1c'];
-  function overlay(o){ ov=o||{}; }
+  function overlay(o){ ov=o||{}; } let sg=[], sgE=0; function shake(k=1){ sgE=Math.min(3,sgE+k); }
   function drawOverlay(dt){
+    if (ov.globeSnow){ if (sg.length<220) for (let i=0;i<4;i++) sg.push({x:rnd(0,W),y:rnd(0,H),vx:0,vy:rnd(.2,.6),r:rnd(1.2,3.4),a:rnd(.5,1)}); sgE*=Math.pow(.985,dt);
+      cx.fillStyle='#fff'; for (const f of sg){ if (sgE>.05){ f.vx+= (Math.random()-.5)*sgE*.9*dt; f.vy+= (Math.random()-.62)*sgE*.9*dt; } f.vx*=.96; f.vy=f.vy*.96+.03*dt; f.x+=f.vx*dt; f.y+=f.vy*dt;
+        if (f.y>H+5){ f.y=-5; f.x=rnd(0,W); f.vy=rnd(.2,.6); } if (f.x<-5) f.x=W+5; if (f.x>W+5) f.x=-5; if (f.y<-30) f.y=H; cx.globalAlpha=f.a; cx.beginPath(); cx.arc(f.x,f.y,f.r,0,7); cx.fill(); } cx.globalAlpha=1; }
+    else if (sg.length) sg=[];
     if (ov.meteors && Math.random()<.025*dt) streaks.push({x:rnd(W*.1,W*1.1),y:rnd(-20,H*.45),vx:-rnd(7,13),vy:rnd(3.5,6.5),life:1});
     if (ov.confetti && Math.random()<.15*dt && parts.length<400) { const p=spawn('confetti',false); if (p){ p.c=PARTY[Math.floor(Math.random()*PARTY.length)]; parts.push(p); } }
     cx.lineCap='round';
@@ -2253,7 +2260,7 @@ const fx = (()=>{
   function step(cities){
     const cityParty = kind==='fireworks' && cities && cities.length;
     const t=performance.now(); const dt=Math.min(3,(t-t0)/16.7); t0=t;
-    const ovOn = ov.meteors || ov.confetti || streaks.length;
+    const ovOn = ov.meteors || ov.confetti || ov.globeSnow || streaks.length;
     if ((!kind || (kind==='fireworks' && party<t && !cityParty)) && !bursts.length && !(kind && party>t) && !ovOn && !(party>t)){ if (step.dirty){ cx.clearRect(0,0,W,H); step.dirty=false; } return; }
     step.dirty=true;
     cx.clearRect(0,0,W,H);
@@ -2279,7 +2286,7 @@ const fx = (()=>{
         cx.globalAlpha=Math.min(1,b.life*1.3); cx.strokeStyle=b.col; cx.lineWidth=2; cx.beginPath(); cx.moveTo(b.px,b.py); cx.lineTo(b.x,b.y); cx.stroke(); }
       cx.globalAlpha=1; cx.globalCompositeOperation='source-over'; }
   }
-  return { reset, step, celebrate, burst, overlay };
+  return { reset, step, celebrate, burst, overlay, shake };
 })();
 // screen positions of visible cities celebrating midnight right now
 const _fw=new THREE.Vector3();
@@ -2807,7 +2814,7 @@ function extraLines(now){
   eclipseNow=eclipseAt(now); if (eclipseNow) out.push(`🌑 The Moon's shadow is on Earth right now${eclipseNow.central?(eclipseNow.umbraKm>0?' — total eclipse under the dark spot':' — annular “ring of fire” under the center'):' — a partial eclipse'} · <a href="#" id="shadowGo">show me</a>`);
   const b=birthdayToday(now); if (b){ out.unshift(`🎂 Happy birthday${b.name?', '+esc(b.name):''}! 🎉`);
     const k=localParts(now,current).year+'|'+b.m+'|'+b.d; if (bdayFired!==k){ bdayFired=k; fx.celebrate(12000); } }
-  fx.overlay({meteors:sky.meteors, confetti:!!b}); syncMusicButton();
+  fx.overlay({meteors:sky.meteors, confetti:!!b, globeSnow: typeof snowGlobeOn==='function' && snowGlobeOn()}); syncMusicButton();
   termRing.visible = sky.ring && mode==="globe";
   return out.map(x=>`<small>${x}</small>`).join('');
 }
@@ -3420,7 +3427,7 @@ function openMore(){ const items=[['👥','Club game','Play the challenge togeth
     ['🔔','Reminders','Sunrise, sunset, ISS, Santa',openReminders],['🎂','My birthday','A party on your day',openBirthday],['📸','Postcard','Save or share a picture',()=>{ closeModal(); makePostcard(); }],
     ['📲','Install','Put the globe on your home screen',openInstall],['🔗','Share','QR code and link',openShare],['💬','Feedback','Ideas and bugs',openFeedback],
     ...(DONATE_URL?[['💖','Donate','Support the developer',()=>window.open(DONATE_URL,'_blank','noopener')]]:[]),
-    ...(store.get('sleighUnlocked',false)?[['🛷','Fly the sleigh','Steer it and drop presents',startFlight],['🌟','Golden sleigh',store.get('goldSleigh',true)?'On — tap to turn off':'Off — tap to turn on',()=>{ store.set('goldSleigh',!store.get('goldSleigh',true)); applyGoldSleigh(); openMore(); }],['🎓','Elf certificate','Save or share it',makeCertificate]]:[])];
+    ...(typeof xmasMoreItems==='function'?xmasMoreItems():[])];
   showModal(`<h3>⋯ More</h3><div class="moreGrid">${items.map((it,i)=>`<button class="moreItem" data-i="${i}"><span class="mi">${it[0]}</span><b>${it[1]}</b><small>${it[2]}</small></button>`).join('')}</div>`);
   document.querySelectorAll('.moreItem').forEach(b=>b.onclick=()=>items[+b.dataset.i][3]()); }
 document.addEventListener('click',e=>{ const a=e.target.closest('a'); if (a && a.id==='issGo'){ e.preventDefault(); followISS(); } });
@@ -3458,7 +3465,8 @@ function flyStep(t){ const dt=Math.min(.1,(t-(FLY.last||t))/1000); FLY.last=t;
   santaModel.rotation.z = -FLY.turn*0.25;                                                        // bank into turns
   updateDrops(t); }
 function startFlight(){
-  if (!store.get('sleighUnlocked',false)){ toast('🛷 Open advent door 25 on Christmas Day to unlock this!'); return; }
+  if (!ownsPresent('pilot')){ toast('🛷 This was Santa’s present in another year — open advent door 25 on Christmas Day to see what he brings you!'); return; }
+  if (theme!=='christmas'){ toast('🛷 The sleigh is resting at the North Pole until the Christmas season starts again.'); return; }
   closeModal(); if (GAME.on) quitGame(); if (mode!=='globe') setMode('globe');
   const from=current||{lat:40.7,lon:-74}; FLY.lat=from.lat; FLY.lon=from.lon; FLY.hdg=90; FLY.on=true; FLY.last=0; FLY.turn=0; FLY.boost=false;
   FLY.camFirst=true; FLY.chase=true; applyGoldSleigh(); enterSantaCam(); document.body.classList.add('flying'); $('flyPad').classList.add('show'); updateOverChip(true);
@@ -3491,7 +3499,7 @@ var _exitCam=exitSantaCam; exitSantaCam=function(){ if (FLY.on){ FLY.on=false; s
 // ---- 🌟 the golden sleigh
 var goldMat=new THREE.MeshStandardMaterial({color:0xf5c542,metalness:.85,roughness:.22,emissive:0x3a2600,emissiveIntensity:.35}), sleighRed=null;
 function applyGoldSleigh(){ const b=STOP.sleighBody; if (!b) return; if (!sleighRed) sleighRed=b.material;
-  b.material = store.get('sleighUnlocked',false) && store.get('goldSleigh',true) ? goldMat : sleighRed; }
+  const c = ownsPresent('paint') ? store.get('sleighColor','gold') : 'red'; b.material = c==='red' ? sleighRed : paintMat(c); }
 setTimeout(applyGoldSleigh,0);
 
 // ---- 🎓 Official Elf certificate
@@ -3523,15 +3531,14 @@ function openFinale(){ closeModal(); const el=$('finale'); const L=store.get('le
     <button class="fnGift" id="fnGift" aria-label="Open your present"><span class="fnLid"></span><span class="fnBody"></span><span class="fnBow">🎀</span></button><div class="fnHint">Tap the present to shake it — 3 shakes to open!</div></div>`;
   el.classList.add('show'); let shakes=0;
   $('fnGift').onclick=()=>{ shakes++; const g=$('fnGift'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake'); fx.burst(innerWidth/2+(Math.random()-.5)*200, innerHeight/2-120, false);
-    if (shakes>=3){ g.classList.add('open'); fx.celebrate(15000); store.set('sleighUnlocked',true); store.set('goldSleigh',true); applyGoldSleigh();
+    if (shakes>=3){ g.classList.add('open'); fx.celebrate(15000); const yr=localParts(simNow(),current).year, pr=presentFor(yr), P_=store.get('presents',{}); P_[yr]=pr.id; store.set('presents',P_); applyGoldSleigh();
       if (typeof Chip!=='undefined'){ musicSrc='chip'; if (musicOn) musicStop(); Chip.setTheme('christmas'); Chip.pick('We Wish You a Merry Christmas'); musicStart(); }
-      setTimeout(()=>{ el.querySelector('.fnBox').innerHTML=`<div class="fnTitle">🎁 You unlocked 3 prizes!</div>
-        <div class="fnPrizes"><button class="fnPrize" id="fpFly"><span>🛷</span><b>Fly Santa’s sleigh</b><small>Steer it yourself and drop presents on real towns</small></button>
-          <button class="fnPrize" id="fpGold"><span>🌟</span><b>The Golden Sleigh</b><small>Santa’s sleigh is now solid gold — on the tracker too</small></button>
-          <button class="fnPrize" id="fpCert"><span>🎓</span><b>Official Elf certificate</b><small>With your name, to save or share</small></button></div>
-        <button class="btn" id="fnClose" style="margin-top:14px">Close</button><p class="fnHint">Find them any time in ⋯ More.</p>`;
-        $('fpFly').onclick=()=>{ el.classList.remove('show'); startFlight(); }; $('fpGold').onclick=()=>{ el.classList.remove('show'); toast('🌟 Golden sleigh on! Zoom in on Santa to see it.'); if (theme==='christmas' && santaCardOn()) enterSantaCam(); };
-        $('fpCert').onclick=()=>{ el.classList.remove('show'); makeCertificate(); }; $('fnClose').onclick=()=>el.classList.remove('show'); }, 1300); } }; }
+      const others=PRESENTS.filter(x=>x.id!==pr.id && ownsPresent(x.id));
+      setTimeout(()=>{ el.querySelector('.fnBox').innerHTML=`<div class="fnTitle">🎁 Santa’s present for ${yr}:</div>
+        <div class="fnPrizes"><button class="fnPrize" id="fpThis"><span>${pr.icon}</span><b>${pr.name}</b><small>${pr.desc}</small></button></div>
+        ${others.length?`<p class="fnHint" style="margin-top:14px">Still in your collection: ${others.map(o=>o.icon+' '+o.name).join(' · ')}</p>`:''}
+        <button class="btn" id="fnClose" style="margin-top:14px">Close</button><p class="fnHint">Santa brings something different every year! Your presents live in ⋯ More during the Christmas season.</p>`;
+        $('fpThis').onclick=()=>{ el.classList.remove('show'); pr.open(); }; $('fnClose').onclick=()=>el.classList.remove('show'); }, 1300); } }; }
 
 // ---------- ＋ / − zoom and ◎ back to you
 function zoomBy(f){ const cam = mode!=='globe' ? camO : santaCam ? camS : camG, ctl = mode!=='globe' ? ctlO : santaCam ? ctlS : ctlG;
@@ -3678,7 +3685,7 @@ setInterval(updateBadge, 30*60000); setTimeout(updateBadge, 5000);
 var _om=openMore; openMore=function(){ _om(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
   const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.appendChild(b); };
   add('⏳','Countdowns','Days until Christmas, your birthday…',openCountdowns);
-  if (store.get('sleighUnlocked',false)) add('🎯','Sleigh missions','Race to deliver presents',()=>{ if (!FLY.on) startFlight(); openMissions(); }); };
+  if (ownsPresent('pilot') && theme==='christmas') add('🎯','Sleigh missions','Race to deliver presents',()=>{ if (!FLY.on) startFlight(); openMissions(); }); };
 $('fpDrop').onclick=()=>dropPresent(); $('fpLand').onclick=()=>endFlight();
 { const b=document.createElement('button'); b.className='btn mini'; b.id='fpMis'; b.textContent='🎯 Missions'; b.onclick=openMissions; document.querySelector('#flyPad .fpRow').prepend(b); }
 
@@ -4046,6 +4053,47 @@ var _os2=openSky; openSky=function(){ _os2(); const cv=$('skyMap'); if (!cv) ret
       addEventListener('deviceorientationabsolute',handler); addEventListener('deviceorientation',handler); setTimeout(()=>{ if (comp && !cv.style.transform) toast('🧭 This device didn’t share a compass heading — point the top of your phone north by hand.'); },2500); }
     else { removeEventListener('deviceorientationabsolute',handler); removeEventListener('deviceorientation',handler); cv.style.transform=''; } };
   redraw(); };
+
+
+// ---------- 🎁 a different present from Santa every year (advent door 25), only around during the Christmas season
+var PRESENTS=[
+  {id:'pilot', icon:'🛷', name:'Sleigh Pilot Kit', desc:'Fly Santa’s sleigh yourself, drop presents on real towns, and race the sleigh missions', open:()=>startFlight()},
+  {id:'paint', icon:'🎨', name:'Sleigh Paint Shop', desc:'Paint Santa’s sleigh gold, ice blue, emerald, royal purple or candy cane — on the tracker too', open:()=>openPaint()},
+  {id:'snowglobe', icon:'🔮', name:'Snow Globe Mode', desc:'Turn the whole screen into a snow globe — shake your phone (or tap ❄️) to swirl the snow', open:()=>toggleSnowGlobe(true)},
+  {id:'elf', icon:'🧝', name:'Official Elf Pack', desc:'Your Official Elf certificate, and an elf hat on your pin all season', open:()=>makeCertificate()}];
+const presentFor=y=>PRESENTS[(((y-2026)%PRESENTS.length)+PRESENTS.length)%PRESENTS.length];
+function ownsPresent(id){ const P_=store.get('presents',{}); if (Object.values(P_).includes(id)) return true; return id==='pilot' && store.get('sleighUnlocked',false); }
+function xmasMoreItems(){ if (theme!=='christmas') return []; const out=[];
+  if (ownsPresent('pilot')) out.push(['🛷','Fly the sleigh','Steer it and drop presents',()=>startFlight()]);
+  if (ownsPresent('paint')) out.push(['🎨','Paint the sleigh','Choose its colour',()=>openPaint()]);
+  if (ownsPresent('snowglobe')) out.push(['🔮','Snow globe',snowGlobeOn()?'On — tap to turn off':'Off — tap to turn on',()=>{ toggleSnowGlobe(!snowGlobeOn()); closeModal(); }]);
+  if (ownsPresent('elf')) out.push(['🎓','Elf certificate','Save or share it',()=>makeCertificate()]);
+  return out; }
+// 🎨 paint shop
+var PAINTS={gold:['🌟 Gold',0xf5c542,.85,.22], ice:['❄️ Ice blue',0x7fd4ff,.5,.25], emerald:['💚 Emerald',0x1fa45a,.4,.3], purple:['💜 Royal purple',0x7a3fd1,.4,.3], candy:['🍬 Candy cane',0xffffff,.1,.4], red:['❤️ Classic red',0xc8102e,0,.45]};
+var paintMats={};
+function paintMat(c){ if (c==='gold') return goldMat; if (paintMats[c]) return paintMats[c]; const d=PAINTS[c]||PAINTS.gold; const m=new THREE.MeshStandardMaterial({color:d[1],metalness:d[2],roughness:d[3]});
+  if (c==='candy'){ const cv=document.createElement('canvas'); cv.width=cv.height=128; const x=cv.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,128,128); x.fillStyle='#d6142b'; for (let i=-4;i<8;i++){ x.beginPath(); x.moveTo(i*32,0); x.lineTo(i*32+16,0); x.lineTo(i*32+144,128); x.lineTo(i*32+128,128); x.fill(); }
+    const t=new THREE.CanvasTexture(cv); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(3,3); m.map=t; }
+  return paintMats[c]=m; }
+function openPaint(){ if (!ownsPresent('paint')){ toast('🎨 The Paint Shop is a present from another year!'); return; } const cur=store.get('sleighColor','gold');
+  showModal(`<h3>🎨 Sleigh Paint Shop</h3><p class="mut">Pick a colour for Santa’s sleigh — it shows on the Christmas Eve tracker too.</p><div class="moreGrid">${Object.entries(PAINTS).map(([k,v])=>`<button class="moreItem" data-paint="${k}" style="${k===cur?'border-color:var(--accent)':''}"><b>${v[0]}</b><small>${k===cur?'✓ painted':''}</small></button>`).join('')}</div>`);
+  document.querySelectorAll('[data-paint]').forEach(b=>b.onclick=()=>{ store.set('sleighColor',b.dataset.paint); applyGoldSleigh(); sfx&&sfx('pop'); openPaint(); }); }
+// 🔮 snow globe
+function snowGlobeOn(){ return theme==='christmas' && ownsPresent('snowglobe') && store.get('snowGlobe',false); }
+async function toggleSnowGlobe(on){ if (on && !ownsPresent('snowglobe')){ toast('🔮 Snow Globe Mode is a present from another year!'); return; }
+  if (on && theme!=='christmas'){ toast('🔮 Snow Globe Mode comes back with the Christmas season.'); return; }
+  store.set('snowGlobe',!!on); if (on){ try{ if (window.DeviceMotionEvent && DeviceMotionEvent.requestPermission) await DeviceMotionEvent.requestPermission(); }catch(e){} fx.shake(2); toast('🔮 Shake your phone (or tap ❄️) to swirl the snow!'); }
+  tick(true); syncSnowGlobe(); }
+function syncSnowGlobe(){ const on=snowGlobeOn(); document.body.classList.toggle('snowglobe',on); $('sgShake').style.display=on?'':'none'; }
+addEventListener('devicemotion',e=>{ if (!snowGlobeOn()) return; const a=e.accelerationIncludingGravity||e.acceleration; if (!a) return; const m=Math.hypot(a.x||0,a.y||0,a.z||0); if (m>19) fx.shake((m-19)/8); });
+$('sgShake').onclick=()=>fx.shake(1.6);
+// 🧝 elf hat on your pin all season
+var _hatWas=''; setInterval(()=>{ const want = theme==='christmas' && ownsPresent('elf'); if (!pinLbl) return; const t=pinLbl.textContent; if (want && !t.startsWith('🧝 ')) pinLbl.textContent='🧝 '+t; else if (!want && t.startsWith('🧝 ')) pinLbl.textContent=t.slice(3); }, 1000);
+// the season ends: put Christmas away (it all comes back when the season starts again)
+var _xmasWas=null; setInterval(()=>{ const on=theme==='christmas'; if (on===_xmasWas) return; _xmasWas=on;
+  if (!on){ if (FLY.on) endFlight(); if (typeof MIS!=='undefined' && MIS.on) endMission(true); $('finale').classList.remove('show'); }
+  syncSnowGlobe(); applyGoldSleigh(); }, 1000);
 
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS};
