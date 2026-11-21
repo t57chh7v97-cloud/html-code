@@ -3288,7 +3288,7 @@ function layerLines(now){ const out=[];
 
 // ---------- 🗺️ layers menu
 function renderLayerMenu(){ const m=$('layerMenu'); if (!m || !m.classList.contains('show')) return;
-  const row=(k,icon,name,desc)=>`<label class="mopt${LAYERS[k]?' on':''}"><input type="checkbox" data-l="${k}" ${LAYERS[k]?'checked':''}><span>${icon} ${name}<small>${layerNote[k]&&LAYERS[k]?esc(layerNote[k]):desc}</small></span></label>`;
+  const row=(k,icon,name,desc)=>`<label class="mopt${LAYERS[k]?' on':''}"><input type="checkbox" data-l="${k}" ${LAYERS[k]?'checked':''}><span>${icon} ${name}<small>${layerNote[k]&&LAYERS[k]?esc(noteFor(k)):desc}</small></span></label>`;
   m.innerHTML=row('iss','🛰️','Space station','Where the ISS is now, its path, and when you can see it fly over')+row('clouds','☁️','Clouds','Real clouds from NASA satellites (past day)')
     +row('snow','❄️','Snow cover','Where the ground is snowy, from NASA satellites')+row('quakes','🌎','Earthquakes','Past day, magnitude 2.5+ · tap one for details')+row('aurora','🌌','Northern & southern lights','Live aurora forecast from NOAA');
   m.querySelectorAll('input').forEach(i=>i.onchange=()=>setLayer(i.dataset.l,i.checked)); }
@@ -3748,6 +3748,8 @@ function makeOverlayMesh(tex, scale, nightDim){ const m=new THREE.Mesh(EARTH_GEO
   fragmentShader:`uniform sampler2D map; uniform vec3 sunDir; varying vec2 vUv; varying vec3 vN; void main(){ vec4 c=texture2D(map,vUv); float d=dot(normalize(vN),normalize(sunDir));
     float lit=smoothstep(-0.15,0.2,d); gl_FragColor=vec4(c.rgb*mix(${nightDim.toFixed(2)},1.0,lit), c.a); }` }));
   m.scale.setScalar(scale); m.renderOrder=1; G.frame.add(m); return m; }
+function tempLegend(){ const f=wxF(), d=c=>{ const v=f?Math.round(c*9/5+32):c; return (v<0?'−':'')+Math.abs(v)+'°'; }; return 'Now · 🟣 '+d(-30)+' 🔵 '+d(-15)+' 🩵 '+d(0)+' 🟢 '+d(10)+' 🟡 '+d(20)+' 🟠 '+d(30)+' 🔴 '+d(40)+(f?'F':'C'); }
+function noteFor(k){ const n=layerNote[k]; return n==='LEGEND'?tempLegend():n; }
 const TEMP_STOPS=[[-30,[120,70,200]],[-15,[60,110,230]],[0,[120,200,255]],[10,[120,220,140]],[20,[250,220,80]],[30,[250,130,40]],[40,[200,30,40]]];
 function tempColor(c){ for (let i=1;i<TEMP_STOPS.length;i++){ const [t1,c1]=TEMP_STOPS[i-1],[t2,c2]=TEMP_STOPS[i]; if (c<=t2||i===TEMP_STOPS.length-1){ const k=Math.max(0,Math.min(1,(c-t1)/(t2-t1))); return c1.map((v,j)=>Math.round(v+(c2[j]-v)*k)); } } return TEMP_STOPS[0][1]; }
 var TEMP={mesh:null,at:0,loading:false}, RAIN={mesh:null,at:0,loading:false};
@@ -3765,7 +3767,7 @@ async function tempLoad(){ if (!LAYERS.temp || TEMP.loading || (TEMP.mesh && Dat
         im.data[i]=r; im.data[i+1]=g; im.data[i+2]=b; im.data[i+3]=Math.abs(la)>82?0:120; } }
     x.putImageData(im,0,0); const tex=new THREE.CanvasTexture(c); tex.colorSpace=THREE.NoColorSpace; tex.minFilter=THREE.LinearFilter;
     if (!TEMP.mesh) TEMP.mesh=makeOverlayMesh(tex,1.0018,.45); else { TEMP.mesh.material.uniforms.map.value.dispose(); TEMP.mesh.material.uniforms.map.value=tex; }
-    TEMP.at=Date.now(); layerNote.temp='Now · 🟣 −30° 🔵 −15° 🩵 0° 🟢 10° 🟡 20° 🟠 30° 🔴 40°C';
+    TEMP.at=Date.now(); layerNote.temp='LEGEND';
   }catch(e){ layerNote.temp='couldn’t load weather data here — it works on the GitHub site'; }
   TEMP.loading=false; renderLayerMenu(); }
 async function rainLoad(){ if (!LAYERS.rain || RAIN.loading || (RAIN.mesh && Date.now()-RAIN.at<30*60000)) return; RAIN.loading=true;
@@ -4022,7 +4024,7 @@ function totLine(now){ if (theme!=='halloween' || !current) return ''; const lp=
 LAYERS=Object.assign({temp:false,rain:false,flights:false}, LAYERS);
 var _lk=layerKick; layerKick=function(k){ _lk(k); if (k==='temp') tempLoad(); if (k==='rain') rainLoad(); if (k==='flights') flightsLoad(); };
 var _rlm=renderLayerMenu; renderLayerMenu=function(){ _rlm(); const m=$('layerMenu'); if (!m || !m.classList.contains('show')) return;
-  const row=(k,icon,name,desc)=>`<label class="mopt${LAYERS[k]?' on':''}"><input type="checkbox" data-l="${k}" ${LAYERS[k]?'checked':''}><span>${icon} ${name}<small>${layerNote[k]&&LAYERS[k]?esc(layerNote[k]):desc}</small></span></label>`;
+  const row=(k,icon,name,desc)=>`<label class="mopt${LAYERS[k]?' on':''}"><input type="checkbox" data-l="${k}" ${LAYERS[k]?'checked':''}><span>${icon} ${name}<small>${layerNote[k]&&LAYERS[k]?esc(noteFor(k)):desc}</small></span></label>`;
   m.insertAdjacentHTML('beforeend', row('temp','🌡️','Temperature map','Live temperatures around the world')+row('rain','🌧️','Rain & snow','Where it’s raining or snowing (NASA satellites)')+row('flights','✈️','Live flights','Planes in the air right now · tap one'));
   m.querySelectorAll('input').forEach(i=>i.onchange=()=>setLayer(i.dataset.l,i.checked)); };
 var _lt=layersTick; layersTick=function(now,M){ _lt(now,M); const g=mode==='globe';
@@ -4461,7 +4463,7 @@ var _om4=openMore; openMore=function(){ _om4(); const grid=document.querySelecto
 var _mc=makeCertificate; makeCertificate=function(){ const e=store.get('elf',null); if (e && e.name && !(store.get('letter',null)||{}).name) store.set('nick', store.get('nick','')||e.name); _mc(); };
 
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
-if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS};
+if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS,SET,layerNote,noteFor};
 frame();
 try{ if (window.top===window && !store.get('last',null) && !home) setTimeout(()=>$('locBtn').click(), 600); }catch(e){}
 function exposeDbg(){ window.__dbg = { inNY:()=>pinInNewYork(), nyPlaying:()=>!nyAudio.paused && nyAudio.currentTime>0, camS:()=>camS.position.toArray(), stopAt:L=>{ stopStart=performance.now()-L*1000/STOP_SPEED; }, camAt:(r,u,f,lr=0,lu=0,lf=0)=>{ const T=santaWorld(new THREE.Vector3()), e=santaRig.matrixWorld.elements; const R=new THREE.Vector3(e[0],e[1],e[2]).normalize(), U=new THREE.Vector3(e[4],e[5],e[6]).normalize(), F=new THREE.Vector3(e[8],e[9],e[10]).normalize(); santaSwoop=null; const tgt=T.clone().addScaledVector(R,lr).addScaledVector(U,lu).addScaledVector(F,lf); camS.position.copy(tgt).addScaledVector(R,r).addScaledVector(U,u).addScaledVector(F,f); ctlS.target.copy(tgt); _prevT.copy(T); camS.lookAt(tgt); }, Chip:()=>Chip, pulseInfo:()=>({v:pulse.visible,size:pulse.material.size,op:pulse.material.opacity,flash:flashStop,status:santa.status,stop:santa.stop&&santa.stop[0]}), setOffset:v=>{simOffset=v;}, tick:()=>tick(true), cam:camG, moonState, moonAltAt, moonInfo, simNow, sunState, earthMatrix, ecefToScene, sunDirScene, llToEcef, setPlace, setMode, get current(){return current;} }; }
