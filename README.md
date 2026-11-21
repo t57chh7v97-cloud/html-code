@@ -250,9 +250,15 @@ night-side city lights placed at real city coordinates.
   Halloween, the sleigh and more.
 - **🏆 Club leaderboard** for the daily challenge (Claude version, using its
   shared data store; members need Contributor access).
-- **🎈 Thanksgiving parades across the US:** balloons float over New York City,
-  Philadelphia, Detroit, Chicago and Houston during their parades (times are
-  approximate), with a parade guide.
+- **🎈 Thanksgiving parades across the US:** balloons float over each city
+  while its parade is on, with a parade guide (official names, editions, start
+  times in your time zone, and where to watch):
+  - Plymouth, MA: America's Hometown Thanksgiving Celebration (Saturday before)
+  - Charlotte: Novant Health Thanksgiving Eve Parade (Wednesday evening)
+  - New York City: Macy's (100th) · Philadelphia: 6abc Dunkin' (107th, the
+    oldest) · Detroit: America's Thanksgiving Parade (100th) · Chicago (92nd) ·
+    Houston: H-E-B (77th), all on Thanksgiving morning
+  The day before, the card mentions New York's balloon inflation (1–6 PM ET).
 - **🎉 The 100th Macy's Thanksgiving Day Parade (Nov 26, 2026):** a countdown,
   a gold "100" balloon leading New York's balloons, fun facts, confetti when
   it starts at 8:30 AM ET, and links to watch it on YouTube. During any
