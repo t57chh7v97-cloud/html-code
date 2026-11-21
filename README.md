@@ -235,6 +235,10 @@ night-side city lights placed at real city coordinates.
   Glowing rings mark each city, the banner points to the next one with an
   arrow and distance, and your best times are saved.
 - **❄️ Snow cover** layer from NASA MODIS (the last 3 days combined).
+- **⛅ Live weather** for the pin (Open-Meteo, no key needed): the temperature
+  and how it feels, conditions, wind and humidity, a 6-day forecast, °F/°C,
+  snow alerts ("snow day? 🛷"), rain warnings and a White Christmas check once
+  Dec 25 is in the forecast. GitHub site only.
 - **⏳ Countdowns** to Christmas, New Year, your birthday and the next holiday.
   The one you pick shows as a number on the app's icon once it's installed.
 - **＋ / − / ◎ buttons** on the right zoom in and out (globe, Santa cam or orbit

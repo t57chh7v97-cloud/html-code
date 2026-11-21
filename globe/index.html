@@ -263,7 +263,13 @@
   #cardFoot{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
   .mini{padding:7px 11px;font-size:13px;border-radius:10px}
   #collapse{border:0;background:none;color:var(--muted);cursor:pointer;padding:2px 4px;font-size:18px;line-height:1}
-  #card.collapsed #sunBox,#card.collapsed #cardFoot,#card.collapsed #orbitBox{display:none}
+  #card.collapsed #sunBox,#card.collapsed #cardFoot,#card.collapsed #orbitBox,#card.collapsed #wxBox{display:none}
+  #wxBox{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-size:13px} #wxBox:empty{display:none} body.orbit-mode #wxBox{display:none}
+  .wxNow{display:flex;align-items:center;gap:10px} .wxIc{font-size:34px;line-height:1} .wxT{font-size:22px;font-weight:700} .wxT small{font-size:12.5px;font-weight:500;color:var(--muted)}
+  .wxD{color:var(--muted);font-size:12.5px} .wxNow .btn{margin-left:auto}
+  .wxDays{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:10px;text-align:center} .wxDay{display:flex;flex-direction:column;align-items:center;gap:1px;padding:5px 0;border-radius:8px;background:rgba(255,255,255,.04)}
+  .wxDay span{font-size:19px} .wxDay small{color:var(--muted);font-size:11px} .wxDay b{font-size:13px}
+  .wxNote{margin-top:8px;padding:6px 9px;border-radius:8px;background:rgba(120,180,255,.1);font-weight:600} .wxSrc,.wxErr{margin-top:6px;color:var(--muted);font-size:11.5px}
   #card.collapsed #clock{font-size:32px}
   #card.collapsed #tzLine span:last-child[style]{display:none}
 
@@ -402,6 +408,7 @@
     <div><div class="k">Next full moon</div><div class="v" id="nextFull">—</div></div>
     <div><div class="k">Next new moon</div><div class="v" id="nextNew">—</div></div>
   </div>
+  <div id="wxBox"></div>
   <div id="orbitBox">
     <div><div class="k">Distance to Sun</div><div class="v" id="oDist">—</div></div>
     <div><div class="k">Orbital speed</div><div class="v" id="oSpeed">—</div></div>
@@ -946,7 +953,7 @@ function tick(force){
   if (current.approx) tzHtml += `<span style="width:100%">Pin is approximate (from your time zone) — search your town for an exact spot.</span>`;
   $('tzLine').innerHTML = tzHtml;
 
-  updateHoliday(now); if (EXTRAS_READY){ updateExtras(now); extras2Tick(now); if (GAME.on && !GAME.guessed && GAME.round<=GAME.rounds && now.getSeconds()%10===0) renderGame(); }
+  updateHoliday(now); if (EXTRAS_READY){ updateExtras(now); extras2Tick(now); if (now.getSeconds()%5===0 || !WX.key) wxTick(); if (GAME.on && !GAME.guessed && GAME.round<=GAME.rounds && now.getSeconds()%10===0) renderGame(); }
   if (!$('bedtime').classList.contains('show') && /🎅 nearby!$/.test(pinLbl.textContent) && !(santa.on)) pinLbl.textContent = current.kind==='device' ? `You · ${shortName(current)}` : shortName(current);
   const s=sunState(now); const sa=sunAt(current.lat,current.lon,s,now);
   let status, col;
@@ -3664,6 +3671,37 @@ var _om=openMore; openMore=function(){ _om(); const grid=document.querySelector(
   if (store.get('sleighUnlocked',false)) add('🎯','Sleigh missions','Race to deliver presents',()=>{ if (!FLY.on) startFlight(); openMissions(); }); };
 $('fpDrop').onclick=()=>dropPresent(); $('fpLand').onclick=()=>endFlight();
 { const b=document.createElement('button'); b.className='btn mini'; b.id='fpMis'; b.textContent='🎯 Missions'; b.onclick=openMissions; document.querySelector('#flyPad .fpRow').prepend(b); }
+
+/* =========================================================
+   ⛅ LIVE WEATHER at the pin (Open-Meteo — free, no key): now, today, 6-day forecast, snow alerts and a White Christmas check
+   ========================================================= */
+var WX={key:'', at:0, data:null, err:'', loading:false, unit:store.get('wxUnit',null)};
+const WMO={0:['☀️','Clear'],1:['🌤️','Mostly clear'],2:['⛅','Partly cloudy'],3:['☁️','Cloudy'],45:['🌫️','Fog'],48:['🌫️','Icy fog'],51:['🌦️','Light drizzle'],53:['🌦️','Drizzle'],55:['🌧️','Heavy drizzle'],
+  56:['🌧️','Freezing drizzle'],57:['🌧️','Freezing drizzle'],61:['🌦️','Light rain'],63:['🌧️','Rain'],65:['🌧️','Heavy rain'],66:['🌧️','Freezing rain'],67:['🌧️','Freezing rain'],
+  71:['🌨️','Light snow'],73:['🌨️','Snow'],75:['❄️','Heavy snow'],77:['🌨️','Snow grains'],80:['🌦️','Showers'],81:['🌧️','Showers'],82:['⛈️','Heavy showers'],85:['🌨️','Snow showers'],86:['❄️','Heavy snow showers'],
+  95:['⛈️','Thunderstorm'],96:['⛈️','Thunderstorm with hail'],99:['⛈️','Thunderstorm with hail']};
+const wmo=(c,day=1)=>{ const w=WMO[c]||['🌡️','—']; return (c<=1&&!day)?['🌙',c?'Mostly clear':'Clear']:w; };
+const wxF=()=> WX.unit ? WX.unit==='F' : (current && ['US','LR','MM','BS','BZ','KY','PW','FM','MH'].includes(current.cc));
+async function wxLoad(){ if (!current || WX.loading) return; const key=current.lat.toFixed(2)+','+current.lon.toFixed(2);
+  if (WX.key===key && Date.now()-WX.at<15*60000) return; WX.loading=true;
+  try{ const u=`https://api.open-meteo.com/v1/forecast?latitude=${current.lat.toFixed(3)}&longitude=${current.lon.toFixed(3)}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m,is_day,precipitation&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,snowfall_sum&timezone=auto&forecast_days=7`;
+    WX.data=await getJSON(u); WX.key=key; WX.at=Date.now(); WX.err=''; }
+  catch(e){ WX.err='Live weather works on the GitHub site.'; WX.data=null; WX.key=key; WX.at=Date.now(); }
+  WX.loading=false; wxRender(); }
+const tC=(c)=>wxF()? Math.round(c*9/5+32)+'°' : Math.round(c)+'°';
+function wxRender(){ const el=$('wxBox'); if (!el) return; const D=WX.data;
+  if (!D){ el.innerHTML=WX.err?`<div class="wxErr">⛅ ${WX.err}</div>`:''; return; }
+  const c=D.current, [ic,txt]=wmo(c.weather_code,c.is_day), d=D.daily, wind=wxF()?Math.round(c.wind_speed_10m*0.6214)+' mph':Math.round(c.wind_speed_10m)+' km/h';
+  const days=d.time.slice(0,6).map((t,i)=>{ const dt=new Date(t+'T12:00:00'); return `<div class="wxDay"><small>${i===0?'Today':dt.toLocaleDateString(undefined,{weekday:'short'})}</small><span>${wmo(d.weather_code[i])[0]}</span><b>${tC(d.temperature_2m_max[i])}</b><small>${tC(d.temperature_2m_min[i])}</small></div>`; }).join('');
+  const notes=[]; let snowAt=-1; d.snowfall_sum.slice(0,3).forEach((v,i)=>{ if (v>=0.5 && (snowAt<0 || v>d.snowfall_sum[snowAt])) snowAt=i; });
+  if (snowAt>=0){ const cm=d.snowfall_sum[snowAt], amt=wxF()?(cm/2.54).toFixed(1)+' in':cm.toFixed(1)+' cm'; notes.push(`❄️ Snow ${snowAt===0?'today':snowAt===1?'tomorrow':'in 2 days'} — about ${amt}${cm>=10?' · snow day? 🛷':''}`); }
+  const xi=d.time.findIndex(t=>/-12-25$/.test(t)); if (xi>=0) notes.push(d.snowfall_sum[xi]>0.2||[71,73,75,77,85,86].includes(d.weather_code[xi]) ? '🎄 A White Christmas is in the forecast! ❄️' : `🎄 Christmas forecast: ${wmo(d.weather_code[xi])[1].toLowerCase()}, ${tC(d.temperature_2m_max[xi])}`);
+  if ((d.precipitation_probability_max[0]||0)>=60 && snowAt!==0){ const sn=[71,73,75,77,85,86].includes(d.weather_code[0]); notes.push(sn?`🌨️ ${d.precipitation_probability_max[0]}% chance of snow today — bundle up!`:`☔ ${d.precipitation_probability_max[0]}% chance of rain today — bring an umbrella`); }
+  el.innerHTML=`<div class="wxNow"><span class="wxIc">${ic}</span><div><div class="wxT">${tC(c.temperature_2m)} <small>feels ${tC(c.apparent_temperature)}</small></div><div class="wxD">${txt} · 💨 ${wind} · 💧 ${c.relative_humidity_2m}%</div></div>
+    <button class="btn mini" id="wxU" title="Switch units">°${wxF()?'F':'C'}</button></div><div class="wxDays">${days}</div>${notes.map(n=>`<div class="wxNote">${n}</div>`).join('')}
+    <div class="wxSrc">Live now${traveling()?' (not time-travelled)':''} · Open-Meteo</div>`;
+  $('wxU').onclick=()=>{ WX.unit=wxF()?'C':'F'; store.set('wxUnit',WX.unit); wxRender(); }; }
+var _wxLast=''; function wxTick(){ if (!current) return; const key=current.lat.toFixed(2)+','+current.lon.toFixed(2); if (key!==_wxLast){ _wxLast=key; $('wxBox').innerHTML='<div class="wxErr">⛅ Loading weather…</div>'; } wxLoad(); }
 
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS};
