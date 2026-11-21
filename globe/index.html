@@ -114,6 +114,16 @@
   body.snowglobe #sgGlass{display:block} #sgShake{position:fixed;left:14px;bottom:50%;z-index:7}
   .setRow{padding:10px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px} .setRow small{color:var(--muted);font-size:12px}
   .setSeg{display:flex;flex-wrap:wrap} .setSeg button{flex:1}
+  .menorah{display:flex;justify-content:center;align-items:flex-end;gap:7px;margin:10px 0 14px;padding:10px;border-radius:12px;background:rgba(255,255,255,.04)}
+  .mCand{display:flex;flex-direction:column;align-items:center} .mCand.shamash{margin-bottom:22px} .mStick{width:10px;height:54px;border-radius:3px;background:linear-gradient(#cfe0ff,#7aa2ff)}
+  .mFlame{width:10px;height:16px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;margin-bottom:3px;opacity:.12;background:#ffd166} .mFlame.on{opacity:1;background:radial-gradient(circle at 50% 70%,#fff6c4,#ffb02e 60%,#ff6b00);box-shadow:0 0 14px 4px rgba(255,180,60,.6);animation:flick .25s infinite alternate}
+  @keyframes flick{to{transform:scale(1.08,.92) rotate(2deg)}}
+  .grWall{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;max-height:50vh;overflow:auto} .grLeaf{padding:6px 10px;border-radius:12px;background:rgba(255,160,60,.14);font-size:13.5px;transform:rotate(var(--r))} .grLeaf i{color:var(--muted)}
+  .elfRow{display:flex;align-items:center;gap:8px;margin:6px 0} .elfRow small{width:50px;color:var(--muted)} .elfSw{min-width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.2);margin:2px;cursor:pointer;color:var(--text);font-size:11px;background:rgba(255,255,255,.06)} .elfRow .elfSw[data-k=ears]{border-radius:14px;padding:0 10px}
+  .elfSw.on{border-color:#fff;box-shadow:0 0 0 2px var(--accent)}
+  .snowball{position:fixed;left:-30px;top:60%;z-index:40;font-size:34px;animation:sbOut .7s ease-in forwards} .snowball.in{left:auto;right:-30px;animation:sbIn .7s ease-in forwards}
+  @keyframes sbOut{to{transform:translate(110vw,-30vh) rotate(720deg)}} @keyframes sbIn{to{transform:translate(-55vw,-10vh) scale(2.5) rotate(-540deg)}}
+  .splat{position:fixed;left:50%;top:45%;transform:translate(-50%,-50%);z-index:41;font:900 48px system-ui;color:#fff;text-shadow:0 0 20px #9fd3ff;text-align:center;animation:npPop .3s} .splat small{display:block;font-size:16px}
   #xModal{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;background:rgba(3,6,14,.55);padding:14px}
   #xModal.show{display:flex}
   #xModal .xbox{position:relative;width:min(440px,100%);max-height:calc(100vh - 28px);overflow:auto;padding:18px 18px 16px;animation:npPop .3s ease-out}
@@ -175,7 +185,7 @@
   body.santa-cam #searchWrap{display:none} body.santa-cam #row>*:not(#santaBack):not(#musicBtn):not(#focusBtn){display:none}
   body.focus #top>#searchWrap, body.focus #row>*:not(#focusBtn), body.focus #card, body.focus #santaCard, body.focus #credit, body.focus #legend, body.focus #game:not(.show){display:none!important}
   #focusBtn.on{background:var(--accent);color:#111}
-  @media (max-width:720px){ body.santa-on #card.collapsed #extras, body.santa-on #card.collapsed #clocks, body.santa-on #card.collapsed #tzLine, body.santa-on #holStrip small{display:none} }
+  @media (max-width:720px){ body.santa-live #card.collapsed #extras, body.santa-live #card.collapsed #clocks, body.santa-live #card.collapsed #tzLine, body.santa-live #holStrip small{display:none} }
   @media (max-width:720px){ #santaZoom{margin:0 14px 10px;padding:8px 10px} }
   #santaCard .sc-bot{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;padding:10px 16px 12px;border-top:1.5px solid rgba(255,255,255,.35)}
   #santaCard .sc-k{font-size:11px;font-weight:700;letter-spacing:.08em;color:#fff6d6}
@@ -309,7 +319,7 @@
     #legend,#credit{display:none}
     #row{gap:6px} #row .btn{padding:8px 11px;font-size:13px} .seg button{padding:6px 9px;font-size:13px}
     #modeSeg button[data-m=orbit] .long{display:none}
-    #coordToggle .long,#tBtn .long,#namesBtn .long,#holBtn .long,#shareBtn .long,#layerBtn .long,#focusBtn .long,#musicBtn .long,#locBtn .long{display:none} #locBtn .short{display:inline}
+    #coordToggle .long,#tBtn .long,#namesBtn .long,#holBtn .long,#shareBtn .long,#layerBtn .long,#focusBtn .long,#setTop .long,#musicBtn .long,#locBtn .long{display:none} #locBtn .short{display:inline}
     #clock{font-size:36px}
     #top{max-width:none}
     #card{padding:13px 15px 12px}
@@ -351,6 +361,7 @@
     <button class="btn tog" id="holBtn" title="Holiday themes">🎉<span class="long"> Holidays</span></button>
     <button class="btn" id="layerBtn" title="Live layers">🗺️<span class="long"> Layers</span></button>
     <button class="btn" id="shareBtn" title="Share this app">🔗<span class="long"> Share</span></button>
+    <button class="btn" id="setTop" title="Settings">⚙️<span class="long"> Settings</span></button>
     <button class="btn tog" id="focusBtn" title="Hide panels to see the whole globe">⛶<span class="long"> Hide panels</span></button>
   </div>
   <div id="timeBar" class="glass">
@@ -3967,7 +3978,7 @@ function santaStats(now){ if (!ROUTE.length) return null; if (!SANTA_CUM){ SANTA
   const i=Math.max(0,santa.idx), cur=ROUTE[i], nxt=ROUTE[i+1]; let km=SANTA_CUM[i], kmh=0;
   if (santa.status==='fly' && nxt){ const leg=gcDist(cur[2],cur[3],nxt[2],nxt[3]); km+=gcDist(cur[2],cur[3],santa.lat,santa.lon); kmh=leg/Math.max(1,nxt[4]-cur[5])*3600; }
   return {km,kmh,stops:i}; }
-var _usc=updateSantaCard; updateSantaCard=function(now){ _usc(now); if (!$('santaCard').classList.contains('show')) return; const S=santaStats(now); if (!S) return;
+var _usc=updateSantaCard; updateSantaCard=function(now){ _usc(now); document.body.classList.toggle('santa-live', !!(santa.on && $('santaCard').classList.contains('show'))); if (!$('santaCard').classList.contains('show')) return; const S=santaStats(now); if (!S) return;
   const us=useUS(), dist=us?`${Math.round(S.km*0.6214).toLocaleString()} mi`:`${Math.round(S.km).toLocaleString()} km`, sp=us?`${Math.round(S.kmh*0.6214).toLocaleString()} mph`:`${Math.round(S.kmh).toLocaleString()} km/h`;
   const y=santa.y, C=store.get('cookies',null), mine=C&&C.y===y, big=n=>new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:1}).format(n);
   const homes=(santa.presents||0)/2.5, ck=homes*3, mk=homes, cr=homes*3.5;     // per house: 2–4 cookies, 1 glass of milk, 3–4 carrots for the reindeer
@@ -4202,7 +4213,252 @@ function openSettings(){ const seg=(k,opts)=>`<div class="seg setSeg" data-k="${
   $('setTz').onchange=e=>{ SET.tz=e.target.value; saveSet(); santaVisit={key:''}; tick(true); }; }
 var _om3=openMore; openMore=function(){ _om3(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return; const b=document.createElement('button'); b.className='moreItem';
   b.innerHTML='<span class="mi">⚙️</span><b>Settings</b><small>Time zone, °F/°C, miles/km…</small>'; b.onclick=openSettings; grid.prepend(b); };
-{ const b=document.createElement('button'); b.className='btn mini'; b.id='setBtn'; b.textContent='⚙️ Settings'; b.onclick=openSettings; $('cardFoot').appendChild(b); }
+{ const b=document.createElement('button'); b.className='btn mini'; b.id='setBtn'; b.textContent='⚙️ Settings'; b.onclick=openSettings; $('cardFoot').appendChild(b); } $('setTop').onclick=openSettings;
+
+/* =========================================================
+   EVEN MORE HOLIDAYS: Mardi Gras, Cinco de Mayo, Holi, Mid-Autumn, Juneteenth themes · Hanukkah menorah · Kwanzaa kinara ·
+   Rockefeller tree lighting + holiday lights tour · 4th of July fireworks map · Lunar New Year red envelopes · Easter egg hunt ·
+   St. Patrick's pot of gold · New Year time capsule · gratitude wall · Elf Maker · snowball fight · season changes ·
+   school countdowns (last day of school / winter break, estimated from the town)
+   ========================================================= */
+// ---------- new themes
+Object.assign(HOL,{
+  mardigras:{ name:'Mardi Gras', icon:'🎭', greet:'Laissez les bons temps rouler!', atmo:[0.75,0.45,1.0], fx:'confetti', fxc:['#7b2cbf','#2fbf71','#f4c430'], acc:['#a35cff','#f4c430'], show:true, burst:['#7b2cbf','#2fbf71','#f4c430'],
+              lights:pal(['160,80,255','210,170,255'],['60,200,120','160,240,190'],['250,200,60','255,230,150']) },
+  cincodemayo:{ name:'Cinco de Mayo', icon:'🇲🇽', greet:'¡Feliz Cinco de Mayo!', atmo:[0.5,0.9,0.55], fx:'confetti', fxc:['#006847','#ffffff','#ce1126'], acc:['#2fbf71','#ff4d5a'],
+              lights:pal(['40,200,110','160,240,190'],['255,255,255','255,255,255'],['230,50,60','255,160,165']) },
+  holi:     { name:'Holi', icon:'🎨', greet:'Happy Holi! 🌈', atmo:[1.0,0.5,0.8], fx:'confetti', fxc:['#ff3cac','#ffd23f','#3ddc97','#4cc9f0','#ff6b35','#b388ff'], acc:['#ff3cac','#ffd23f'],
+              lights:pal(['255,60,170','255,170,220'],['255,210,60','255,235,150'],['60,220,150','170,255,210'],['80,200,255','170,230,255']) },
+  midautumn:{ name:'Mid-Autumn Festival', icon:'🥮', greet:'Happy Mid-Autumn Festival!', atmo:[1.0,0.78,0.45], fx:'lanterns', acc:['#ffb02e','#e8231f'],
+              lights:pal(['255,150,40','255,210,130'],['232,35,31','255,140,130']) },
+  juneteenth:{ name:'Juneteenth', icon:'✊🏿', greet:'Celebrating freedom — Juneteenth', atmo:[0.95,0.5,0.45], fx:'stars', fxc:['#e03131','#2f9e44','#f8c51c'], acc:['#e03131','#2f9e44'],
+              lights:pal(['230,50,50','255,160,160'],['50,170,80','160,230,170'],['248,197,28','255,230,140']) }});
+Object.assign(REGION,{ mardigras:['US'], cincodemayo:['US','MX'], holi:['IN','NP','GY','SR','TT','FJ','MU'], midautumn:['CN','TW','HK','MO','SG','MY','VN'], juneteenth:['US'] });
+var HOLI={2025:[2,14],2026:[2,4],2027:[2,22],2028:[2,11],2029:[2,1],2030:[2,20]}, MIDAUTUMN={2025:[9,6],2026:[8,25],2027:[8,15],2028:[9,3],2029:[8,22],2030:[8,12]};
+var _hd=holidayDates; holidayDates=function(y,cc){ const out=_hd(y,cc); const add=(k,m,d,from,to)=>{ if (celebrates(k,cc)){ const b=dayNum(y,m,d); out.push({k,y,m,d,from:b+from,to:b+to}); } };
+  { const [em,ed]=easterOf(y); const c=new Date(Date.UTC(y,em,ed)-47*86400000); add('mardigras',c.getUTCMonth(),c.getUTCDate(),-5,0); }
+  add('cincodemayo',4,5,0,0); add('juneteenth',5,19,-1,0);
+  if (HOLI[y]) add('holi',HOLI[y][0],HOLI[y][1],-1,0); if (MIDAUTUMN[y]) add('midautumn',MIDAUTUMN[y][0],MIDAUTUMN[y][1],-2,0);
+  return out; };
+
+// ---------- generic “tap to collect” hunts on the globe (red envelopes, Easter eggs)
+function emojiTex(e,glow){ const c=document.createElement('canvas'); c.width=c.height=64; const x=c.getContext('2d'); x.font='50px serif'; x.textAlign='center'; x.textBaseline='middle'; if (glow){ x.shadowColor=glow; x.shadowBlur=16; } x.fillText(e,32,36); return new THREE.CanvasTexture(c); }
+function makeHunt(o){ const H={...o, pts:null, at:0, list:[], tex:emojiTex(o.emoji,o.glow)};
+  H.update=now=>{ const on=mode==='globe' && H.active(now); if (!on){ if (H.pts) H.pts.visible=false; return; }
+    if (Math.abs(+now-H.at)>15000 || H.dirty){ H.at=+now; H.dirty=false; const got=new Set(H.found(now)); H.list=H.items(now).filter(it=>!got.has(it.key));
+      if (H.pts){ G.frame.remove(H.pts); H.pts.geometry.dispose(); } const pos=new Float32Array(Math.max(1,H.list.length)*3);
+      H.list.forEach((it,k)=>{ const v=llToEcef(it.lat,it.lon).multiplyScalar(1.003); pos.set([v.x,v.y,v.z],k*3); });
+      const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setDrawRange(0,H.list.length);
+      H.pts=new THREE.Points(g,new THREE.PointsMaterial({size:20,sizeAttenuation:false,map:H.tex,transparent:true,depthWrite:false})); H.pts.frustumCulled=false; H.pts.renderOrder=5; G.frame.add(H.pts); }
+    const d=camG.position.length(); H.pts.visible = !H.minZoom || d<H.minZoom; H.pts.material.size=(15+3*Math.sin(performance.now()/300))*Math.max(.7,Math.min(1.6,2.2/d)); };
+  H.tap=(lat,lon,now)=>{ if (mode!=='globe' || !H.active(now) || !H.list.length) return false; if (H.minZoom && camG.position.length()>=H.minZoom) return false;
+    let best=null, bd=Math.max(60,(camG.position.length()-1)*120); for (const it of H.list){ const dd=gcDist(lat,lon,it.lat,it.lon); if (dd<bd){ bd=dd; best=it; } } if (!best) return false;
+    H.list=H.list.filter(x=>x!==best); H.dirty=true; H.onFind(best,now); return true; };
+  return H; }
+const yearOf=now=>new Date(+now).getUTCFullYear();
+function seeded(seed,n,pool){ const r=rng(seed), out=[], used=new Set(); while (out.length<n && used.size<pool.length){ const i=pool[Math.floor(r()*pool.length)]; if (!used.has(i)){ used.add(i); out.push(i); } } return out; }
+function topCities(n,pred){ const out=[]; if (!P.ready) return out; for (let i=0;i<P.n && out.length<n;i++) if (pred(i)) out.push(i); return out; }
+// 🧧 Lunar New Year red envelopes
+var envelopes=makeHunt({ emoji:'🧧', glow:'#ff3b30',
+  active:now=>theme==='lunarny', found:now=>(store.get('hongbao',{})[yearOf(now)]||{}).got||[],
+  items:now=>{ const pool=topCities(400,i=>celebrates('lunarny',P.cc[i])); const d=Math.floor(+now/86400000); return seeded(d*31+7,40,pool).map(i=>({key:i,lat:P.lat[i],lon:P.lon[i],i})); },
+  onFind:(it,now)=>{ const y=yearOf(now), S=store.get('hongbao',{}), Y=S[y]||{got:[],coins:0}; const c=[8,8,18,28,88,88,168,888][Math.floor(Math.random()*8)]; Y.got.push(it.key); Y.coins+=c; S[y]=Y; store.set('hongbao',S);
+    toast(`🧧 Red envelope from ${P.name[it.i]}! +${c} lucky coins 🪙 · ${Y.coins.toLocaleString()} this year`); try{ sfx('ding',.7); }catch(e){} if (c>=88) fx.celebrate(3000); } });
+// 🥚 Easter egg hunt: 12 eggs hidden in cities — they only show when you zoom in close
+var eggs=makeHunt({ emoji:'🥚', glow:'#ffd6f0', minZoom:1.7,
+  active:now=>theme==='easter', found:now=>(store.get('eggs',{})[yearOf(now)]||[]),
+  items:now=>{ const y=yearOf(now), pool=topCities(500,i=>P.pop[i]>=500000); return seeded(y*977,12,pool).map(i=>({key:i,lat:P.lat[i],lon:P.lon[i],i})); },
+  onFind:(it,now)=>{ const y=yearOf(now), S=store.get('eggs',{}), L=S[y]||[]; L.push(it.key); S[y]=L; store.set('eggs',S);
+    toast(`🥚 You found an egg in ${P.name[it.i]}! ${L.length}/12`); try{ sfx('ding',.8); }catch(e){} if (L.length>=12){ fx.celebrate(12000); toast('🐣 You found all 12 Easter eggs! Happy Easter!'); } } });
+function eggHint(now){ const y=yearOf(now), got=new Set(store.get('eggs',{})[y]||[]), left=eggs.items(now).filter(it=>!got.has(it.key)); if (!left.length) return '';
+  const it=left[0], z=(P.tzList[P.tz[it.i]]||'').split('/')[0]; const area={America:it.lat>12?'North America':'South America',Europe:'Europe',Africa:'Africa',Asia:'Asia',Australia:'Australia',Pacific:'the Pacific'}[z]||'somewhere';
+  return `hint: one is hiding in ${area} (${P.cc[it.i]==='US'?'the USA':regionName(P.cc[it.i])})`; }
+// ☘️ St. Patrick's pot of gold (one hidden city each year; hints get warmer)
+function potCity(y){ const pool=topCities(300,i=>P.pop[i]>=400000); return seeded(y*313+17,1,pool)[0]; }
+function potTap(lat,lon,now){ if (theme!=='stpatricks') return false; const y=yearOf(now), S=store.get('pot',{}); if (S[y]) return false; const i=potCity(y); if (i==null) return false;
+  const d=gcDist(lat,lon,P.lat[i],P.lon[i]); const tries=(store.get('potTries',{})[y]||0)+1, T=store.get('potTries',{}); T[y]=tries; store.set('potTries',T);
+  if (d<350){ S[y]=true; store.set('pot',S); fx.celebrate(10000); toast(`🌈🪙 You found the pot of gold in ${P.name[i]}! (${tries} ${tries===1?'try':'tries'})`); try{ sfx('fanfare'); }catch(e){} return true; }
+  toast(d<1200?'☘️ Very warm! The leprechaun is close…':d<3000?'☘️ Warmer…':'☘️ Cold! Try somewhere else.'); return false; }
+function potLine(now){ if (theme!=='stpatricks') return ''; const y=yearOf(now); if (store.get('pot',{})[y]) return `<small>🌈 You found this year’s pot of gold! ☘️</small>`;
+  const i=potCity(y); if (i==null) return ''; const z=(P.tzList[P.tz[i]]||'').split('/')[0];
+  return `<small>🌈 A leprechaun hid a pot of gold in a big city — ${z==='America'?(P.lat[i]>12?'in North America':'in South America'):'in '+(z==='Australia'?'Australia':z)}. Tap the globe to search: you’ll get warmer/colder hints!</small>`; }
+
+// ---------- 🕎 Hanukkah menorah (everyone, lit at sunset) and 🕯️ Kwanzaa kinara
+function hanukkahNight(now){ if (!current) return 0; const lp=localParts(now,current), md=MOON.hanukkah[lp.year]; if (!md) return 0;
+  const start=dayNum(lp.year,md[0],md[1]), today=dayNum(lp.year,lp.month,lp.day); let n=today-start+1;
+  const s=sunState(now), sa=sunAt(current.lat,current.lon,s,now); if (sa.alt>-0.833 && (!sa.set || +now<+sa.set)) n-=1;     // a new night starts at sunset
+  return n>=1&&n<=8 ? n : 0; }
+function openMenorah(){ const n=hanukkahNight(simNow()), y=localParts(simNow(),current).year, L=store.get('menorah',{}), lit=(L[y]||[]).includes(n);
+  const cand=(i)=>{ const on = i==='s' ? (lit||true) : (i<=n && (i<n || lit)); return `<div class="mCand${i==='s'?' shamash':''}"><div class="mFlame${on?' on':''}"></div><div class="mStick"></div></div>`; };
+  showModal(`<h3>🕎 Hanukkah — night ${n} of 8</h3><p class="mut">Each night after sunset, one more candle is lit, using the helper candle (the shamash) in the middle.</p>
+    <div class="menorah">${[8,7,6,5].map(cand).join('')}${cand('s')}${[4,3,2,1].map(cand).join('')}</div>
+    ${lit?'<p class="mut" style="text-align:center">✨ Tonight’s candles are lit. Chag sameach!</p>':`<button class="btn primary" id="mLight" style="width:100%">🔥 Light tonight’s ${n} candle${n===1?'':'s'}</button>`}`);
+  if ($('mLight')) $('mLight').onclick=()=>{ const S=store.get('menorah',{}), Y=S[y]||[]; if (!Y.includes(n)) Y.push(n); S[y]=Y; store.set('menorah',S); fx.celebrate(4000); openMenorah(); }; }
+var KWANZAA=[['Umoja','Unity'],['Kujichagulia','Self-determination'],['Ujima','Collective work and responsibility'],['Ujamaa','Cooperative economics'],['Nia','Purpose'],['Kuumba','Creativity'],['Imani','Faith']];
+function kwanzaaDay(now){ if (!current) return 0; const lp=localParts(now,current); if (lp.month===11 && lp.day>=26) return lp.day-25; if (lp.month===0 && lp.day===1) return 7; return 0; }
+function openKinara(){ const d=kwanzaaDay(simNow()); const col=['#2f9e44','#2f9e44','#2f9e44','#111','#e03131','#e03131','#e03131'], order=[0,1,2,3,4,5,6]; // green · black (middle) · red
+  const lightOrder=[3,4,2,5,1,6,0]; const litSet=new Set(lightOrder.slice(0,d));
+  showModal(`<h3>🕯️ Kwanzaa — day ${d}: ${KWANZAA[d-1][0]}</h3><p class="mut">${KWANZAA[d-1][1]}. One more candle is lit each day: the black candle first, then red and green.</p>
+    <div class="menorah">${order.map(i=>`<div class="mCand"><div class="mFlame${litSet.has(i)?' on':''}"></div><div class="mStick" style="background:${col[i]}"></div></div>`).join('')}</div>
+    <ol class="steps" style="font-size:13px">${KWANZAA.map((k,i)=>`<li${i===d-1?' style="font-weight:700;color:var(--accent)"':''}>${k[0]} — ${k[1]}</li>`).join('')}</ol>`); }
+
+// ---------- 🎄 Rockefeller Center tree lighting + ✨ holiday lights tour
+var LIGHTS=[['Rockefeller Center Christmas Tree','New York City',40.7587,-73.9787,'50,000+ lights under a Swarovski star · lit Dec 2, 2026, up through mid-January'],
+  ['Dyker Heights Christmas Lights','Brooklyn, NY',40.6215,-74.0153,'whole streets of over-the-top house decorations'],
+  ['Regent Street lights','London',51.5113,-0.1415,'giant angels floating above the street'],['Champs-Élysées','Paris',48.8698,2.3076,'hundreds of trees wrapped in lights up to the Arc de Triomphe'],
+  ['Tivoli Gardens','Copenhagen',55.6737,12.5681,'one of the oldest amusement parks, glowing for Christmas'],['Christkindlmarkt','Vienna',48.2108,16.3578,'Christmas markets in front of City Hall'],
+  ['Christmas market','Strasbourg',48.5818,7.7508,'the “Capital of Christmas”, with markets since 1570'],['Alumbrados','Medellín',6.2442,-75.5812,'millions of lights along the river'],
+  ['Kobe Luminarie','Kobe',34.6851,135.1879,'light arches remembering the 1995 earthquake (usually in winter)']];
+var lightMarks=null;
+function lightsTick(){ const on=theme==='christmas' && mode==='globe'; if (!on){ if (lightMarks) lightMarks.visible=false; return; }
+  if (!lightMarks){ const pos=new Float32Array(LIGHTS.length*3); LIGHTS.forEach((l,i)=>{ const v=llToEcef(l[2],l[3]).multiplyScalar(1.004); pos.set([v.x,v.y,v.z],i*3); });
+    const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); lightMarks=new THREE.Points(g,new THREE.PointsMaterial({size:20,sizeAttenuation:false,map:emojiTex('✨','#ffd166'),transparent:true,depthWrite:false})); lightMarks.frustumCulled=false; lightMarks.renderOrder=5; G.frame.add(lightMarks); }
+  lightMarks.visible=true; lightMarks.material.size=16+5*Math.sin(performance.now()/250); }
+function openLightsTour(){ showModal(`<h3>✨ Holiday lights tour</h3><p class="mut">Famous light displays — the ✨ sparkles on the globe. Tap one to fly there.</p>
+  ${LIGHTS.map((l,i)=>`<div class="advMsg" style="margin-top:6px"><b>${esc(l[0])}</b> · ${esc(l[1])}<br><small class="mut">${esc(l[4])}</small> <button class="btn mini" data-lt="${i}">Fly there</button></div>`).join('')}`);
+  document.querySelectorAll('[data-lt]').forEach(b=>b.onclick=()=>{ const l=LIGHTS[+b.dataset.lt]; closeModal(); ctlG.minDistance=1.05; flyToLL(l[2],l[3],1.18); }); }
+function rockLine(now){ if (theme!=='christmas' || !current || current.cc!=='US') return ''; const t=partsIn('America/New_York',now); if (t.year!==2026 || t.month!==11 && t.month!==10) return '';
+  const start=Date.UTC(2026,11,3,0,0), end=Date.UTC(2026,11,3,3,0), ms=start-now, yt='https://www.youtube.com/results?search_query='+encodeURIComponent('Rockefeller Center Christmas tree lighting 2026');
+  if (ms>0 && ms<10*86400000) return `<small>🎄 Rockefeller Center tree lighting in <span class="cd">${ms>86400000?Math.floor(ms/86400000)+'d ':''}${fmtCountdown(ms%86400000)}</span> · Wed Dec 2, 7 PM ET on NBC${ms<3600000?` <a class="ytBtn" href="${yt}" target="_blank" rel="noopener">▶️ Watch on YouTube</a>`:''}</small>`;
+  if (+now>=start && +now<end+1800000) return `<small class="pLive"><span class="liveDot"></span><b>${+now<end?'LIVE NOW':'Just ended'}</b> · Rockefeller Center tree lighting <a class="ytBtn" href="${yt}" target="_blank" rel="noopener">▶️ Watch on YouTube</a></small>`;
+  return ''; }
+
+// ---------- 🎆 4th of July: fireworks pop over each US city as 9 PM reaches it
+var _fwAt=0, _fwv=new THREE.Vector3();
+function july4Tick(now,M){ if (theme!=='july4' || mode!=='globe' || santaCam) return; const t=performance.now(); if (t-_fwAt<350) return; _fwAt=t;
+  if (!july4Tick.cities) july4Tick.cities=topCities(400,i=>P.cc[i]==='US'); const cams=camG.position, hits=[];
+  for (const i of july4Tick.cities){ const p=partsIn(P.tzList[P.tz[i]],now); if (p.month!==6 || p.day!==4 || p.hour<21 || p.hour>=22) continue;
+    _fwv.set(P.x[i],P.y[i],P.z[i]).applyMatrix4(M); if (_fwv.dot(cams)<1.05) continue; _fwv.project(camG); if (_fwv.z>1) continue; hits.push([(_fwv.x+1)/2*innerWidth,(1-_fwv.y)/2*innerHeight]); }
+  if (hits.length){ const h=hits[Math.floor(Math.random()*hits.length)]; fx.burst(h[0]+(Math.random()-.5)*10,h[1]-20-Math.random()*25,false); } }
+function july4Line(now){ if (theme!=='july4' || !current) return ''; const lp=localParts(now,current); if (lp.month!==6 || lp.day!==4) return '';
+  return `<small>🎆 Fireworks pop over each city on the globe at 9 PM local time — watch them sweep west from the East Coast!</small>`; }
+
+// ---------- ✉️ New Year time capsule
+function capsuleLines(now){ if (!current) return ''; const C=store.get('capsule',null), lp=localParts(now,current), out=[];
+  if (C && !C.opened && +now>=C.unlock) out.push(`<small>📬 Your time capsule from ${C.y} is ready! <a href="#" id="capOpen">Open it</a></small>`);
+  if (theme==='newyear' && !(C && !C.opened && C.y===(lp.month===11?lp.year:lp.year-1))) out.push(`<small>✉️ <a href="#" id="capWrite">Write a time capsule</a> — a note to future you that unlocks next New Year’s</small>`);
+  return out.join(''); }
+function openCapsuleWrite(){ const now=simNow(), lp=localParts(now,current), y=lp.month===11?lp.year:lp.year-1;
+  showModal(`<h3>✉️ Time capsule</h3><p class="mut">Write your resolutions, goals, or a note to yourself. It stays locked on this device until New Year’s Day ${y+2}.</p>
+    <textarea id="capText" rows="7" maxlength="3000" placeholder="Dear future me…"></textarea><button class="btn primary" id="capSeal">🔒 Seal it</button>`);
+  $('capSeal').onclick=()=>{ const t=$('capText').value.trim(); if (!t) return; store.set('capsule',{y, text:t, unlock:+localToUTC(current,y+2,0,1), opened:false}); closeModal(); toast(`🔒 Sealed! See you on New Year’s Day ${y+2}.`); fx.celebrate(3000); tick(true); }; }
+function openCapsule(){ const C=store.get('capsule',null); if (!C) return; C.opened=true; store.set('capsule',C); fx.celebrate(6000);
+  showModal(`<h3>📬 From you, ${C.y}</h3><div class="letter">${esc(C.text).replace(/\n/g,'<br>')}</div><p class="mut">Did it come true? Write a new one this New Year’s!</p>`); tick(true); }
+
+// ---------- 🍂 gratitude wall (Thanksgiving) — shared in the Claude version, on this device elsewhere
+async function openGratitude(){ showModal(`<h3>🍂 Gratitude wall</h3><p class="mut">What are you thankful for this year?</p><div style="display:flex;gap:6px"><input id="grText" maxlength="120" placeholder="I’m thankful for…"><button class="btn primary" id="grAdd" style="flex:none">Add 🍁</button></div><div id="grWall" class="grWall">Loading…</div>`);
+  const b=await boardDb(), y=yearOf(simNow()); let rows=[];
+  const render=()=>{ $('grWall').innerHTML = rows.length ? rows.map((r,i)=>`<span class="grLeaf" style="--r:${(i*37)%20-10}deg">${['🍁','🍂','🍃'][i%3]} ${esc(String(r.text||'').slice(0,120))}${r.nick?` <i>— ${esc(String(r.nick).slice(0,20))}</i>`:''}</span>`).join('') : '<span class="mut">Be the first leaf on the tree!</span>'; };
+  const load=async()=>{ if (b){ try{ const s=await b.db.collection('gratitude').where('y','==',y).limit(200).get(); rows=s.docs.map(d=>d.data()).sort((a,c)=>(a.at||0)-(c.at||0)); }catch(e){ rows=[]; } } else rows=(store.get('gratitude',{})[y]||[]); render(); };
+  $('grAdd').onclick=async()=>{ const t=$('grText').value.trim(); if (!t) return; $('grText').value=''; const r={text:t, nick:store.get('nick',''), y, at:Date.now()};
+    if (b){ try{ await b.db.collection('gratitude').add(r); }catch(e){ toast('Couldn’t add to the shared wall.'); } } else { const G_=store.get('gratitude',{}); (G_[y]=G_[y]||[]).push(r); store.set('gratitude',G_); }
+    fx.burst(innerWidth/2,innerHeight/3,false); await load(); };
+  await load(); if (!b) $('grWall').insertAdjacentHTML('beforebegin','<p class="mut" style="font-size:12px">On this site the wall stays on your device. In the Claude version it’s shared with your club.</p>'); }
+
+// ---------- 🧝 Elf Maker
+var ELF_OPT={skin:['#f9d7c0','#f1c2a0','#d9a07a','#a86b45','#6b4128'], hat:['#d6142b','#1f8a4c','#2a6fdb','#7b3fbf','#f2c14e','#ff6fb5'], suit:['#1f8a4c','#d6142b','#2a6fdb','#7b3fbf','#f2c14e','#222'], ears:['pointy','extra pointy']};
+function elfSVG(e,size=120){ e=Object.assign({skin:ELF_OPT.skin[1],hat:ELF_OPT.hat[0],suit:ELF_OPT.suit[0],ears:'pointy'},e||{}); const ear=e.ears==='extra pointy'?28:16;
+  return `<svg viewBox="0 0 100 120" width="${size}" height="${size*1.2}"><path d="M30 118 L35 72 L65 72 L70 118 Z" fill="${e.suit}"/><rect x="33" y="88" width="34" height="6" fill="#222"/><rect x="46" y="87" width="8" height="8" fill="#f2c14e"/>
+    <path d="M${32-ear} 48 L35 44 L35 56 Z" fill="${e.skin}"/><path d="M${68+ear} 48 L65 44 L65 56 Z" fill="${e.skin}"/><circle cx="50" cy="52" r="18" fill="${e.skin}"/>
+    <circle cx="43" cy="50" r="2.4" fill="#222"/><circle cx="57" cy="50" r="2.4" fill="#222"/><circle cx="40" cy="57" r="3" fill="#f3a0a0" opacity=".7"/><circle cx="60" cy="57" r="3" fill="#f3a0a0" opacity=".7"/>
+    <path d="M44 59 Q50 64 56 59" stroke="#7a2b2b" stroke-width="2" fill="none"/><path d="M31 40 Q50 -4 78 14 Q70 22 69 40 Z" fill="${e.hat}"/><rect x="30" y="36" width="40" height="7" rx="3.5" fill="#fff"/><circle cx="78" cy="14" r="5" fill="#fff"/></svg>`; }
+function openElfMaker(){ const e=Object.assign({skin:ELF_OPT.skin[1],hat:ELF_OPT.hat[0],suit:ELF_OPT.suit[0],ears:'pointy',name:store.get('nick','')},store.get('elf',{}));
+  const sw=(k,v)=>`<button class="elfSw${e[k]===v?' on':''}" data-k="${k}" data-v="${v}" style="${k==='ears'?'':'background:'+v}">${k==='ears'?v:''}</button>`;
+  showModal(`<h3>🧝 Elf Maker</h3><div style="display:flex;justify-content:center" id="elfPrev">${elfSVG(e,110)}</div>
+    <input id="elfName" maxlength="20" placeholder="Elf name" value="${esc(e.name||'')}">
+    ${['skin','hat','suit','ears'].map(k=>`<div class="elfRow"><small>${{skin:'Skin',hat:'Hat',suit:'Outfit',ears:'Ears'}[k]}</small><div>${ELF_OPT[k].map(v=>sw(k,v)).join('')}</div></div>`).join('')}
+    <button class="btn primary" id="elfSave" style="width:100%;margin-top:8px">Save my elf</button>`);
+  document.querySelectorAll('.elfSw').forEach(b=>b.onclick=()=>{ e[b.dataset.k]=b.dataset.v; document.querySelectorAll(`.elfSw[data-k=${b.dataset.k}]`).forEach(x=>x.classList.toggle('on',x===b)); $('elfPrev').innerHTML=elfSVG(e,110); });
+  $('elfSave').onclick=()=>{ e.name=$('elfName').value.trim(); store.set('elf',e); if (e.name && !store.get('nick','')) store.set('nick',e.name); closeModal(); toast(`🧝 ${e.name||'Your elf'} is ready for the workshop!`); fx.celebrate(3000); }; }
+
+// ---------- ❄️ snowball fight (club room, Claude version)
+async function openSnowball(){ let room=null; try{ if (window.claude && window.claude.use) room=await Promise.race([window.claude.use('room'),new Promise(r=>setTimeout(()=>r(null),5000))]); }catch(e){}
+  if (!room){ showModal(`<h3>❄️ Snowball fight</h3><p class="mut">Snowball fights work in the Claude version with the page shared with your club — everyone online can throw at each other.</p>`); return; }
+  let nick=store.get('nick',''); if (!nick){ nick=(prompt('Your nickname:','')||'').trim().slice(0,20)||'Elf'; store.set('nick',nick); }
+  const me={nick, thrown:0, hits:0, throw:null}; room.presence(me); let peers=[], seen={};
+  const render=()=>{ const el=$('sbList'); if (!el) return; const others=peers.filter(p=>!p.self && p.state && p.state.nick);
+    el.innerHTML = others.length ? others.map(p=>`<div class="gBoardR" style="padding:6px 0"><span>☃️ ${esc(String(p.state.nick).slice(0,20))} · hit ${+p.state.hits||0}×</span><button class="btn mini" data-sb="${esc(String(p.state.nick))}">❄️ Throw!</button></div>`).join('') : '<span class="mut">Nobody else is here yet — share the page with your club!</span>';
+    el.querySelectorAll('[data-sb]').forEach(b=>b.onclick=()=>{ me.thrown++; me.throw={to:b.dataset.sb, t:Date.now()}; room.presence(me); snowballFly(false); }); $('sbMe').textContent=`You: thrown ${me.thrown} · hit ${me.hits}×`; };
+  room.onPeers(ps=>{ peers=ps||[]; for (const p of peers){ const s=p.state; if (!s||p.self||!s.throw) continue; const k=s.nick+'|'+s.throw.t; if (seen[k]) continue; seen[k]=1;
+      if (s.throw.to===nick && Date.now()-s.throw.t<20000){ me.hits++; room.presence(me); snowballFly(true, s.nick); } } render(); });
+  showModal(`<h3>❄️ Snowball fight</h3><p class="mut" id="sbMe"></p><div id="sbList"></div>`); render(); }
+function snowballFly(incoming, from){ const b=document.createElement('div'); b.className='snowball'+(incoming?' in':''); b.textContent='⚪'; document.body.appendChild(b);
+  setTimeout(()=>{ b.remove(); if (incoming){ const s=document.createElement('div'); s.className='splat'; s.innerHTML=`❄️ SPLAT!<small>${esc(from||'Someone')} got you!</small>`; document.body.appendChild(s); setTimeout(()=>s.remove(),1800); fx.burst(innerWidth/2,innerHeight/2,true); } },700); }
+
+// ---------- 🌗 the seasons change: how fast daylight is changing at your pin
+function daylightDelta(now){ if (!current) return ''; const a=sunAt(current.lat,current.lon,sunState(now),now), b=sunAt(current.lat,current.lon,sunState(new Date(+now+86400000)),new Date(+now+86400000));
+  if (a.dayHours==null || b.dayHours==null) return ''; const ds=Math.round((b.dayHours-a.dayHours)*3600), m=Math.floor(Math.abs(ds)/60), s=Math.abs(ds)%60;
+  return ds===0?'Daylight is about the same tomorrow':`Tomorrow has ${m?m+'m ':''}${s}s ${ds>0?'more':'less'} daylight here`; }
+function seasonLine(now){ const sk=skyEvents(now); if (!sk.ring) return ''; const d=daylightDelta(now); return d?`<small>🌗 ${d}${/more/.test(d)?' — days are getting longer ☀️':/less/.test(d)?' — days are getting shorter 🌙':' — today is the turning point'}</small>`:''; }
+
+// ---------- 🎒 school countdowns: last day of school (summer) & winter break — estimated from the town, adjustable
+const US_SCHOOL={ // last day of school (month 5 = June): South ends late May, Midwest early June, West mid-June, Northeast late June
+  late:['NY','NJ','CT','MA','RI','NH','VT','ME','PA','MD','DE','DC','VA'], south:['TX','FL','GA','AL','MS','LA','TN','SC','NC','AR','OK','KY','AZ','NM','UT','NV'], west:['CA','OR','WA','ID','MT','WY','CO','AK','HI']};
+function stateOf(){ if (!current || current.cc!=='US' || !P.ready) return ''; const np=nearestPlace(current.lat,current.lon); return np? (P.ad[np.i]||'') : ''; }
+function schoolGuess(y){ const cc=current?current.cc:'US', st=stateOf(); let last, note;
+  if (cc==='US'){ if (US_SCHOOL.late.includes(st)){ last=[5,24]; note='Northeast schools usually finish in late June'; } else if (US_SCHOOL.south.includes(st)){ last=[4,23]; note='Southern schools usually finish in late May'; }
+    else if (US_SCHOOL.west.includes(st)){ last=[5,11]; note='Western schools usually finish in mid-June'; } else { last=[5,4]; note='Midwest schools usually finish in early June'; } }
+  else if (cc==='CA'){ last=[5,26]; note='Canadian schools usually finish in late June'; } else if (cc==='GB'||cc==='IE'){ last=[6,21]; note='UK schools usually finish in late July'; }
+  else if (['AU','NZ','ZA','AR','BR','CL'].includes(cc)){ last=[11,15]; note='Southern-hemisphere schools finish in December (summer)'; } else if (cc==='JP'){ last=[6,19]; note='Japanese schools break for summer around July 20'; }
+  else { last=current&&current.lat<0?[11,15]:[5,26]; note='Estimated for your region'; }
+  let wd=23; while ([0,6].includes(new Date(Date.UTC(y,11,wd)).getUTCDay())) wd--; const winter=[11,wd];   // usually the last weekday on or before Dec 23
+  return { last, winter, note: note+(st?` (${st})`:'') }; }
+function schoolDates(now){ const lp=localParts(now,current), S=store.get('school',{}), g=schoolGuess(lp.year);
+  const mk=(md,key)=>{ const ov=S[key]; const [m,d]=ov?ov.split('-').slice(1).map((v,i)=>+v-(i===0?1:0)):md; let t=dayNum(lp.year,m,d); if (t<dayNum(lp.year,lp.month,lp.day)) t=dayNum(lp.year+1,m,d); return t; };
+  return { last:mk(g.last,'last'), winter:mk(g.winter,'winter'), today:dayNum(lp.year,lp.month,lp.day), guess:g }; }
+var schoolFired={};
+function schoolLine(now){ if (!current || store.get('schoolOff',false)) return ''; const D=schoolDates(now), out=[];
+  for (const [k,icon,name] of [['winter','❄️','Winter break'],['last','🎒','Last day of school']]){ const dd=D[k]-D.today;
+    if (dd===0){ out.push(`<small>${icon} ${name} is TODAY! 🎉</small>`); if (!schoolFired[k+D[k]]){ schoolFired[k+D[k]]=1; fx.celebrate(10000); } }
+    else if (dd>0 && dd<=45) out.push(`<small>${icon} ${name} in ${dd} day${dd===1?'':'s'} · <a href="#" id="schoolSet">change</a></small>`); }
+  return out.join(''); }
+function openSchool(){ const now=simNow(), D=schoolDates(now), S=store.get('school',{}); const iso=dn=>new Date(dn*86400000).toISOString().slice(0,10);
+  showModal(`<h3>🎒 School countdowns</h3><p class="mut">Estimated for ${esc(shortName(current))}: ${esc(D.guess.note)}. Every school is different — set your real dates below.</p>
+    <label class="setRow"><b>❄️ Last day before winter break</b><input type="date" id="scW" value="${S.winter||iso(D.winter)}"></label>
+    <label class="setRow"><b>🎒 Last day of school</b><input type="date" id="scL" value="${S.last||iso(D.last)}"></label>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn primary" id="scSave">Save</button><button class="btn" id="scAuto">Use estimates</button><button class="btn" id="scOff">${store.get('schoolOff',false)?'Show countdowns':'Hide countdowns'}</button></div>`);
+  $('scSave').onclick=()=>{ store.set('school',{winter:$('scW').value,last:$('scL').value}); closeModal(); tick(true); };
+  $('scAuto').onclick=()=>{ store.set('school',{}); closeModal(); tick(true); }; $('scOff').onclick=()=>{ store.set('schoolOff',!store.get('schoolOff',false)); closeModal(); tick(true); }; }
+
+// ---------- wiring
+var _lastTapXY=[innerWidth/2,innerHeight/2]; canvas.addEventListener('pointerdown',e=>{ _lastTapXY=[e.clientX,e.clientY]; });
+var _tt=totTap; totTap=function(lat,lon,now){ if (theme==='holi'){ const c=['#ff3cac','#ffd23f','#3ddc97','#4cc9f0','#ff6b35','#b388ff']; for (let k=0;k<3;k++) fx.burst(_lastTapXY[0]+(Math.random()-.5)*40,_lastTapXY[1]+(Math.random()-.5)*40,k===0); }
+  return envelopes.tap(lat,lon,now) || eggs.tap(lat,lon,now) || potTap(lat,lon,now) || _tt(lat,lon,now); };
+var _lt3=layersTick; layersTick=function(now,M){ _lt3(now,M); envelopes.update(now); eggs.update(now); lightsTick(); july4Tick(now,M); };
+var _ll3=layerLines; layerLines=function(now){ let h=_ll3(now); if (!current) return h; const lp=localParts(now,current);
+  const hn=hanukkahNight(now); if (hn) h+=`<small>🕎 Hanukkah night ${hn} · <a href="#" id="menorahGo">light the menorah</a></small>`;
+  const kd=kwanzaaDay(now); if (kd) h+=`<small>🕯️ Kwanzaa day ${kd}: ${KWANZAA[kd-1][0]} — ${KWANZAA[kd-1][1]} · <a href="#" id="kinaraGo">light the kinara</a></small>`;
+  if (theme==='lunarny'){ const Y=store.get('hongbao',{})[yearOf(now)]; h+=`<small>🧧 Tap the red envelopes floating over cities for lucky coins!${Y?` 🪙 ${Y.coins.toLocaleString()}`:''}</small>`; }
+  if (theme==='easter'){ const n=(store.get('eggs',{})[yearOf(now)]||[]).length; h+=`<small>🥚 Easter egg hunt: ${n}/12 found — zoom in close to spot them · ${eggHint(now)}</small>`; }
+  if (theme==='mardigras') h+=`<small>📿 <a href="#" id="beadsGo">Catch the beads!</a></small>`;
+  if (theme==='holi') h+=`<small>🎨 Tap anywhere on the globe to throw colour!</small>`;
+  if (theme==='midautumn'){ const mi=moonInfo(current.lat,current.lon,now); h+=`<small>🥮 Look for the bright full moon tonight${mi.rise?` — it rises at ${fmtTime(mi.rise,current,false)}`:''}</small>`; }
+  if (theme==='july4') h+=`<small>🇺🇸 Celebrating ${lp.year-1776} years since 1776 · <a href="#" id="usHist">a quick history</a></small>`;
+  if (theme==='thanksgiving') h+=`<small>🍂 <a href="#" id="gratGo">Gratitude wall</a> — what are you thankful for?</small>`;
+  if (theme==='christmas') h+=`<small>✨ <a href="#" id="lightsGo">Holiday lights tour</a> · 🧝 <a href="#" id="elfGo">Elf Maker</a> · ❄️ <a href="#" id="sbGo">Snowball fight</a></small>`;
+  return h+rockLine(now)+july4Line(now)+potLine(now)+capsuleLines(now)+seasonLine(now)+schoolLine(now); };
+function openUSHistory(){ showModal(`<h3>🇺🇸 America’s story in a minute</h3><ol class="steps" style="font-size:14px">
+  <li><b>1776</b> — The Declaration of Independence is adopted on July 4.</li><li><b>1787</b> — The Constitution is written in Philadelphia.</li>
+  <li><b>1865</b> — The Civil War ends; slavery is abolished by the 13th Amendment. On June 19, news of freedom reaches Galveston, Texas — Juneteenth.</li>
+  <li><b>1920</b> — The 19th Amendment gives women the right to vote.</li><li><b>1964</b> — The Civil Rights Act is signed.</li>
+  <li><b>1969</b> — Apollo 11 lands on the Moon.</li><li><b>2026</b> — The United States turns 250 years old.</li></ol>`); }
+function openBeads(){ showModal(`<h3>📿 Catch the beads!</h3><p class="mut">Tap the beads before they fall — 20 seconds!</p><canvas id="bdC" width="600" height="420" style="width:100%;border-radius:12px;background:#1b0f2e;touch-action:none"></canvas><p id="bdS" style="text-align:center;font-weight:700"></p>`);
+  const cv=$('bdC'), x=cv.getContext('2d'), cols=['#7b2cbf','#2fbf71','#f4c430']; let beads=[], score=0, t0=performance.now(), done=false;
+  const hit=e=>{ const r=cv.getBoundingClientRect(), px=(e.clientX-r.left)*cv.width/r.width, py=(e.clientY-r.top)*cv.height/r.height; for (const b of beads) if (!b.got && Math.hypot(b.x-px,b.y-py)<38){ b.got=1; score++; try{ sfx('pop'); }catch(_){} } };
+  cv.addEventListener('pointerdown',hit);
+  (function loop(){ if (!$('bdC')) return; const t=(performance.now()-t0)/1000; if (t>20 && !done){ done=true; $('bdS').textContent=`🎭 You caught ${score} strands of beads!`; const best=store.get('beadsBest',0); if (score>best){ store.set('beadsBest',score); fx.celebrate(5000); $('bdS').textContent+=' New best!'; } return; }
+    if (Math.random()<.06) beads.push({x:30+Math.random()*540,y:-20,v:2+Math.random()*3+t*.12,c:cols[Math.floor(Math.random()*3)]});
+    x.clearRect(0,0,cv.width,cv.height); for (const b of beads){ if (b.got) continue; b.y+=b.v; x.strokeStyle=b.c; x.lineWidth=6; x.beginPath(); x.arc(b.x,b.y,18,0,7); x.stroke(); for (let k=0;k<8;k++){ x.fillStyle=b.c; x.beginPath(); x.arc(b.x+Math.cos(k*.785)*18,b.y+Math.sin(k*.785)*18,5,0,7); x.fill(); } }
+    beads=beads.filter(b=>!b.got && b.y<cv.height+30); x.fillStyle='#fff'; x.font='bold 22px system-ui'; x.fillText(`📿 ${score}   ⏱ ${Math.max(0,20-t).toFixed(0)}s`,14,32); requestAnimationFrame(loop); })(); }
+document.addEventListener('click',e=>{ const a=e.target.closest('a'); if (!a) return; const map={menorahGo:openMenorah,kinaraGo:openKinara,beadsGo:openBeads,usHist:openUSHistory,gratGo:openGratitude,lightsGo:openLightsTour,elfGo:openElfMaker,sbGo:openSnowball,capWrite:openCapsuleWrite,capOpen:openCapsule,schoolSet:openSchool};
+  if (map[a.id]){ e.preventDefault(); map[a.id](); } });
+var _om4=openMore; openMore=function(){ _om4(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
+  const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.appendChild(b); };
+  add('🎒','School countdowns','Last day of school & winter break',openSchool); add('🧝','Elf Maker','Design your own elf',openElfMaker);
+  if (theme==='christmas'){ add('✨','Lights tour','Famous holiday light displays',openLightsTour); add('❄️','Snowball fight','Club game (Claude version)',openSnowball); }
+  if (theme==='thanksgiving') add('🍂','Gratitude wall','What are you thankful for?',openGratitude); };
+// the certificate shows your elf
+var _mc=makeCertificate; makeCertificate=function(){ const e=store.get('elf',null); if (e && e.name && !(store.get('letter',null)||{}).name) store.set('nick', store.get('nick','')||e.name); _mc(); };
 
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS};

@@ -283,10 +283,28 @@ night-side city lights placed at real city coordinates.
   stays reachable.
 - **⏳ Countdowns** to Christmas, New Year, your birthday and the next holiday.
   The one you pick shows as a number on the app's icon once it's installed.
-- **⚙️ Settings** (⋯ More, or the button on the time card): time & date from
+- **⚙️ Settings** (the ⚙️ button in the top bar): time & date from
   the pin's location, your phone, or a time zone you choose · °F/°C/auto ·
   US or metric distances and speeds · 12/24-hour clock · game sounds ·
   holiday effects · holiday themes.
+- **Even more holidays:**
+  - Themes: 🎭 Mardi Gras (with a catch-the-beads mini-game), 🇲🇽 Cinco de
+    Mayo, 🎨 Holi (tap to throw colour), 🥮 Mid-Autumn Festival (when the full
+    moon rises), ✊🏿 Juneteenth.
+  - 🕎 Light the menorah each night of Hanukkah at sunset · 🕯️ Kwanzaa kinara
+    with the day's principle.
+  - 🎄 Rockefeller Center tree lighting countdown and LIVE NOW button (Dec 2,
+    2026, 7 PM ET) · ✨ holiday lights tour with sparkles on the globe.
+  - 🧝 Elf Maker · ❄️ snowball fight (club, Claude version) · 🍂 gratitude
+    wall at Thanksgiving (shared in the Claude version).
+  - 🧧 Lunar New Year red envelopes over cities · 🥚 Easter egg hunt (12 eggs,
+    zoom in close) · 🌈 St. Patrick's pot of gold with warmer/colder hints.
+  - 🎆 4th of July: fireworks pop over each US city at 9 PM local time, plus a
+    quick US history card.
+  - ✉️ New Year time capsule that unlocks the next New Year's Day.
+  - 🌗 On solstices and equinoxes: how much daylight changes tomorrow.
+  - 🎒 Countdowns to the last day of school and winter break, estimated
+    from the town (by US region or country) and adjustable.
 - **＋ / − / ◎ buttons** on the right zoom in and out (globe, Santa cam or orbit
   view) and fly back to your location (using GPS if needed).
 - **⛶ Hide panels** clears everything off the screen so you can see the whole
