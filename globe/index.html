@@ -4083,17 +4083,34 @@ var _os2=openSky; openSky=function(){ _os2(); const cv=$('skyMap'); if (!cv) ret
   cv._at=cv._at||null; $('skH').onclick=()=>{ const h=$('skHow'); h.style.display=h.style.display==='none'?'':'none'; };
   $('skM').onclick=()=>{ off-=3600000; redraw(); }; $('skP').onclick=()=>{ off+=3600000; redraw(); };
   let comp=false, handler=null, gotHeading=false;
-  $('skC').onclick=async()=>{ comp=!comp; $('skC').textContent=comp?'🧭 Compass on':'🧭 Turn with my phone';
-    if (comp){ try{ if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission(); }catch(e){}
-      handler=e=>{ const h = e.webkitCompassHeading!=null ? e.webkitCompassHeading : (e.absolute||e.type==='deviceorientationabsolute') && e.alpha!=null ? 360-e.alpha : null; if (h==null) return; gotHeading=true;
-        if (SKYVIEW.mode==='face'){ SKYVIEW.hdg=h; const n=performance.now(); if (n-(cv._lastDraw||0)>120){ cv._lastDraw=n; redraw(); } } else { cv.style.transform=`rotate(${h}deg)`; cv.style.transition='transform .15s linear'; } };
+  $('skC').onclick=async()=>{ comp=!comp; $('skC').textContent=comp?'🧭 Compass on — tap to stop':'🧭 Turn with my phone'; $('skC').classList.toggle('on',comp);
+    if (comp){ if (SKYVIEW.mode!=='face') setView('face');                       // the compass only makes sense in the facing view
+      try{ if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission){ const r=await DeviceOrientationEvent.requestPermission(); if (r!=='granted'){ comp=false; $('skC').textContent='🧭 Turn with my phone'; showCompassHelp(); return; } } }catch(e){}
+      gotHeading=false; COMPASS.reset(); handler=e=>{ const h=COMPASS.read(e); if (h==null) return; gotHeading=true; SKYVIEW.hdg=h; const n=performance.now(); if (n-(cv._lastDraw||0)>90){ cv._lastDraw=n; redraw(); } };
       addEventListener('deviceorientationabsolute',handler); addEventListener('deviceorientation',handler); setTimeout(()=>{ if (comp && !gotHeading) showCompassHelp(); },2500); }
-    else { removeEventListener('deviceorientationabsolute',handler); removeEventListener('deviceorientation',handler); cv.style.transform=''; } };
+    else { removeEventListener('deviceorientationabsolute',handler); removeEventListener('deviceorientation',handler); } };
   // face the brightest planet that's up at first
   { const t=(cv._at||Date.now()), up=['Jupiter','Venus','Saturn','Mars'].map(n=>{ const pr=planetRaDec(n,t); return {n,...altAz(pr.ra,pr.dec,current.lat,current.lon,t)}; }).find(o=>o.alt>8); SKYVIEW.hdg = up ? Math.round(up.az/45)*45%360 : 180; }
   setView(SKYVIEW.mode); };
+
+// 🧭 which way the BACK of the phone points (hold it up like a camera), smoothed, on iPhone and Android
+var COMPASS=(()=>{ let off=null, sm=null, absSeen=false;
+  const back=(a,b,g)=>{ a*=D2R; b*=D2R; g*=D2R; const cA=Math.cos(a), sA=Math.sin(a), cB=Math.cos(b), sB=Math.sin(b), cG=Math.cos(g), sG=Math.sin(g);
+    const vx=-cA*sG-sA*sB*cG, vy=-sA*sG+cA*sB*cG; let h=Math.atan2(vx,vy)*R2D; return (h+360)%360; };   // W3C “compass heading” of the device’s back
+  return { reset(){ off=null; sm=null; absSeen=false; },
+    read(e){ if (e.alpha==null || e.beta==null || e.gamma==null) return null; let alphaAbs=null;
+      if (e.webkitCompassHeading!=null && !isNaN(e.webkitCompassHeading)){               // iPhone: its compass is reliable when the phone isn't upright — learn the offset then
+        if (Math.abs(e.beta)<55 || off==null){ const o=((360-e.webkitCompassHeading)-e.alpha+720)%360; off = off==null ? o : off + ((((o-off)%360)+540)%360-180)*.2; }
+        alphaAbs=(e.alpha+off+360)%360; }
+      else if (e.absolute || e.type==='deviceorientationabsolute'){ absSeen=true; alphaAbs=e.alpha; }
+      else return null;
+      if (e.type==='deviceorientation' && absSeen && e.webkitCompassHeading==null) return null;
+      let h=back(alphaAbs,e.beta,e.gamma);
+      const so=(screen.orientation&&screen.orientation.angle)||window.orientation||0; h=(h+so+360)%360;   // landscape
+      if (Math.abs(e.beta)<20 && Math.abs(e.gamma)<20) h=(360-alphaAbs+so+360)%360;                     // lying flat: use the top of the phone instead
+      sm = sm==null ? h : (sm + ((((h-sm)%360)+540)%360-180)*.25 + 360)%360; return sm; } }; })();
 function showCompassHelp(){ toast(/github\.io/.test(location.hostname)
-  ? '🧭 Your phone didn’t share a compass heading. On iPhone, allow “Motion & Orientation Access” when asked (Settings → Safari). Meanwhile, use the N E S W buttons or drag the view.'
+  ? '🧭 Your phone didn’t share a compass heading. On iPhone: Settings → Apps → Safari → turn on “Motion & Orientation Access”, then reload. Meanwhile, use the N E S W buttons or drag the view.'
   : '🧭 The compass can’t reach the app inside Claude. Open the GitHub site in Safari for the compass — or use the N E S W buttons / drag the view.'); }
 
 
