@@ -112,6 +112,8 @@
   #sgGlass{position:fixed;inset:0;pointer-events:none;z-index:3;display:none;background:radial-gradient(ellipse 62% 48% at 50% 46%,rgba(255,255,255,0) 70%,rgba(200,230,255,.10) 84%,rgba(230,245,255,.35) 92%,rgba(10,20,40,.85) 100%)}
   #sgGlass::after{content:'';position:absolute;left:24%;top:12%;width:22%;height:16%;border-radius:50%;background:radial-gradient(rgba(255,255,255,.28),rgba(255,255,255,0) 70%);transform:rotate(-25deg)}
   body.snowglobe #sgGlass{display:block} #sgShake{position:fixed;left:14px;bottom:50%;z-index:7}
+  .setRow{padding:10px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px} .setRow small{color:var(--muted);font-size:12px}
+  .setSeg{display:flex;flex-wrap:wrap} .setSeg button{flex:1}
   #xModal{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;background:rgba(3,6,14,.55);padding:14px}
   #xModal.show{display:flex}
   #xModal .xbox{position:relative;width:min(440px,100%);max-height:calc(100vh - 28px);overflow:auto;padding:18px 18px 16px;animation:npPop .3s ease-out}
@@ -957,6 +959,8 @@ function tick(force){
   const off=offsetName(now,current);
   let tzHtml;
   if (traveling()) tzHtml = `<span class="pill est">⏱ TIME TRAVEL · ${travelDesc()}</span><span>${(zoneFor(current).tz||'').replace(/_/g,' ')} · ${off}</span>`;
+  else if (typeof SET!=='undefined' && SET.tzMode==='manual') tzHtml = `<span class="pill est">⚙️ YOUR CHOSEN TIME ZONE</span><span>${SET.tz.replace(/_/g,' ')} · ${off}</span>`;
+  else if (typeof SET!=='undefined' && SET.tzMode==='device' && current.kind!=='device') tzHtml = `<span class="pill live"><span class="dot"></span>YOUR PHONE’S TIME ZONE</span><span>${DEVICE_TZ.replace(/_/g,' ')} · ${off}</span>`;
   else if (current.kind==='device') tzHtml = `<span class="pill live"><span class="dot"></span>YOUR DEVICE CLOCK</span><span>${DEVICE_TZ.replace(/_/g,' ')} · ${off}</span>`;
   else if (current.tz && current.tz===DEVICE_TZ) tzHtml = `<span class="pill live"><span class="dot"></span>SAME ZONE AS YOU</span><span>${current.tz.replace(/_/g,' ')} · ${off}</span>`;
   else if (current.tz && current.exactTz) tzHtml = `<span class="pill live"><span class="dot"></span>LOCAL TIME</span><span>${current.tz.replace(/_/g,' ')} · ${off}</span>`;
@@ -3234,7 +3238,7 @@ async function quakesLoad(){
 function quakeTap(lat,lon){ if (!LAYERS.quakes || !QUAKES.list.length) return false; let best=null, bd=250;
   for (const q of QUAKES.list){ const d=gcDist(lat,lon,q.lat,q.lon); if (d<bd){ bd=d; best=q; } } if (!best) return false;
   const ago=Math.round((Date.now()-best.time)/60000), when=ago<60?`${ago} min ago`:`${Math.round(ago/60)} h ago`;
-  toast(`🌎 Magnitude ${best.mag.toFixed(1)} earthquake — ${best.place} · ${when} · ${Math.round(best.depth)} km deep`); return true; }
+  toast(`🌎 Magnitude ${best.mag.toFixed(1)} earthquake — ${best.place} · ${when} · ${useUS()?Math.round(best.depth*0.6214)+' mi':Math.round(best.depth)+' km'} deep`); return true; }
 
 // ---------- 🌌 aurora forecast (NOAA SWPC OVATION, ~30-minute outlook)
 var AURORA={mesh:null, grid:null, at:0};
@@ -3336,7 +3340,7 @@ function gameGuess(lat,lon){ if (!GAME.on || GAME.guessed || GAME.round>GAME.rou
   if (pts>=4500) fx.celebrate(3500);
   if (!timeout){ addMark(lat,lon,0xff4d6d); addArc(lat,lon,c.lat,c.lon); } addMark(c.lat,c.lon,0x3ddc97);
   const name=`${c.name}, ${c.cc==='US'?(P.ad[GAME.city]||'USA'):regionName(c.cc)}`;
-  renderGame(`<div class="gClue">📍 <b>${esc(name)}</b><br>${timeout?'⏰ Out of time!':`You were <b>${Math.round(km).toLocaleString()} km</b> away`} — <b>+${pts.toLocaleString()}</b> pts ${pts>=4500?'🎯 Bullseye!':pts>3000?'🔥 Great!':pts>1500?'👍 Close!':timeout?'':'🌍 Keep exploring!'}${GAME.streak>=3?` · 🔥 ${GAME.streak} in a row!`:''}</div>
+  renderGame(`<div class="gClue">📍 <b>${esc(name)}</b><br>${timeout?'⏰ Out of time!':`You were <b>${fmtDist(km)}</b> away`} — <b>+${pts.toLocaleString()}</b> pts ${pts>=4500?'🎯 Bullseye!':pts>3000?'🔥 Great!':pts>1500?'👍 Close!':timeout?'':'🌍 Keep exploring!'}${GAME.streak>=3?` · 🔥 ${GAME.streak} in a row!`:''}</div>
     <div class="gRow">${GAME.club&&!GAME.club.host?'<span class="mut">Waiting for the host’s next round…</span>':`<button class="btn mini primary" id="gNext">${GAME.round>=GAME.rounds?'See results':'Next round ▶'}</button>`}</div>`);
   flyToLL(c.lat,c.lon,2.4); clubReport(); return true; }
 function endGame(){ const key='gameBest_'+GAME.mode, best=store.get(key,0), nb=GAME.total>best; if (nb){ store.set(key,GAME.total); fx.celebrate(8000); }
@@ -3638,7 +3642,7 @@ const ARROWS=['⬆️','↗️','➡️','↘️','⬇️','↙️','⬅️','�
 var _uoc=updateOverChip; updateOverChip=function(force){ _uoc(force); if (!MIS.on || !FLY.on) return; const el=$('overChip'), m=MIS.m, left=Math.max(0,Math.ceil(m.secs-(performance.now()-MIS.t0)/1000));
   if (m.targets){ let best=-1, bd=1e9; m.targets.forEach(([n,la,lo],i)=>{ if (MIS.done.includes(i)) return; const d=gcDist(FLY.lat,FLY.lon,la,lo); if (d<bd){ bd=d; best=i; } });
     if (best<0) return; const [n,la,lo]=m.targets[best], rel=(bearingTo(FLY.lat,FLY.lon,la,lo)-FLY.hdg+360+22.5)%360;
-    el.textContent=`${m.icon} ${n} ${ARROWS[Math.floor(rel/45)]} ${Math.round(bd).toLocaleString()} km · ✅ ${MIS.done.length}/${m.targets.length} · ⏱ ${left}s`; }
+    el.textContent=`${m.icon} ${n} ${ARROWS[Math.floor(rel/45)]} ${fmtDist(bd)} · ✅ ${MIS.done.length}/${m.targets.length} · ⏱ ${left}s`; }
   else el.textContent=`${m.icon} ${MIS.towns.size}/${m.any} towns · ⏱ ${left}s`; };
 var _dp=dropPresent; dropPresent=function(){ if (!FLY.on) return; sfx('drop'); const lat=FLY.lat, lon=FLY.lon; _dp(); if (MIS.on){ const np=nearestPlace(lat,lon); missionDrop(lat,lon,np); } };
 setInterval(()=>{ missionTick(); if (MIS.on) updateOverChip(true); }, 500);
@@ -3701,7 +3705,7 @@ const WMO={0:['☀️','Clear'],1:['🌤️','Mostly clear'],2:['⛅','Partly cl
   71:['🌨️','Light snow'],73:['🌨️','Snow'],75:['❄️','Heavy snow'],77:['🌨️','Snow grains'],80:['🌦️','Showers'],81:['🌧️','Showers'],82:['⛈️','Heavy showers'],85:['🌨️','Snow showers'],86:['❄️','Heavy snow showers'],
   95:['⛈️','Thunderstorm'],96:['⛈️','Thunderstorm with hail'],99:['⛈️','Thunderstorm with hail']};
 const wmo=(c,day=1)=>{ const w=WMO[c]||['🌡️','—']; return (c<=1&&!day)?['🌙',c?'Mostly clear':'Clear']:w; };
-const wxF=()=> WX.unit ? WX.unit==='F' : (current && ['US','LR','MM','BS','BZ','KY','PW','FM','MH'].includes(current.cc));
+const wxF=()=> (typeof SET!=='undefined' && SET.temp!=='auto') ? SET.temp==='F' : WX.unit ? WX.unit==='F' : (current && ['US','LR','MM','BS','BZ','KY','PW','FM','MH'].includes(current.cc));
 async function wxLoad(){ if (!current || WX.loading) return; const key=current.lat.toFixed(2)+','+current.lon.toFixed(2);
   if (WX.key===key && Date.now()-WX.at<15*60000) return; WX.loading=true;
   try{ const u=`https://api.open-meteo.com/v1/forecast?latitude=${current.lat.toFixed(3)}&longitude=${current.lon.toFixed(3)}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m,is_day,precipitation&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,snowfall_sum&timezone=auto&forecast_days=7`;
@@ -3711,16 +3715,16 @@ async function wxLoad(){ if (!current || WX.loading) return; const key=current.l
 const tC=(c)=>wxF()? Math.round(c*9/5+32)+'°' : Math.round(c)+'°';
 function wxRender(){ const el=$('wxBox'); if (!el) return; const D=WX.data;
   if (!D){ el.innerHTML=WX.err?`<div class="wxErr">⛅ ${WX.err}</div>`:''; return; }
-  const c=D.current, [ic,txt]=wmo(c.weather_code,c.is_day), d=D.daily, wind=wxF()?Math.round(c.wind_speed_10m*0.6214)+' mph':Math.round(c.wind_speed_10m)+' km/h';
+  const c=D.current, [ic,txt]=wmo(c.weather_code,c.is_day), d=D.daily, wind=useUS()?Math.round(c.wind_speed_10m*0.6214)+' mph':Math.round(c.wind_speed_10m)+' km/h';
   const days=d.time.slice(0,6).map((t,i)=>{ const dt=new Date(t+'T12:00:00'); return `<div class="wxDay"><small>${i===0?'Today':dt.toLocaleDateString(undefined,{weekday:'short'})}</small><span>${wmo(d.weather_code[i])[0]}</span><b>${tC(d.temperature_2m_max[i])}</b><small>${tC(d.temperature_2m_min[i])}</small></div>`; }).join('');
   const notes=[]; let snowAt=-1; d.snowfall_sum.slice(0,3).forEach((v,i)=>{ if (v>=0.5 && (snowAt<0 || v>d.snowfall_sum[snowAt])) snowAt=i; });
-  if (snowAt>=0){ const cm=d.snowfall_sum[snowAt], amt=wxF()?(cm/2.54).toFixed(1)+' in':cm.toFixed(1)+' cm'; notes.push(`❄️ Snow ${snowAt===0?'today':snowAt===1?'tomorrow':'in 2 days'} — about ${amt}${cm>=10?' · snow day? 🛷':''}`); }
+  if (snowAt>=0){ const cm=d.snowfall_sum[snowAt], amt=useUS()?(cm/2.54).toFixed(1)+' in':cm.toFixed(1)+' cm'; notes.push(`❄️ Snow ${snowAt===0?'today':snowAt===1?'tomorrow':'in 2 days'} — about ${amt}${cm>=10?' · snow day? 🛷':''}`); }
   const xi=d.time.findIndex(t=>/-12-25$/.test(t)); if (xi>=0) notes.push(d.snowfall_sum[xi]>0.2||[71,73,75,77,85,86].includes(d.weather_code[xi]) ? '🎄 A White Christmas is in the forecast! ❄️' : `🎄 Christmas forecast: ${wmo(d.weather_code[xi])[1].toLowerCase()}, ${tC(d.temperature_2m_max[xi])}`);
   if ((d.precipitation_probability_max[0]||0)>=60 && snowAt!==0){ const sn=[71,73,75,77,85,86].includes(d.weather_code[0]); notes.push(sn?`🌨️ ${d.precipitation_probability_max[0]}% chance of snow today — bundle up!`:`☔ ${d.precipitation_probability_max[0]}% chance of rain today — bring an umbrella`); }
   el.innerHTML=`<div class="wxNow"><span class="wxIc">${ic}</span><div><div class="wxT">${tC(c.temperature_2m)} <small>feels ${tC(c.apparent_temperature)}</small></div><div class="wxD">${txt} · 💨 ${wind} · 💧 ${c.relative_humidity_2m}%</div></div>
     <button class="btn mini" id="wxU" title="Switch units">°${wxF()?'F':'C'}</button></div><div class="wxDays">${days}</div>${notes.map(n=>`<div class="wxNote">${n}</div>`).join('')}
     <div class="wxSrc">Live now${traveling()?' (not time-travelled)':''} · Open-Meteo</div>`;
-  $('wxU').onclick=()=>{ WX.unit=wxF()?'C':'F'; store.set('wxUnit',WX.unit); wxRender(); }; }
+  $('wxU').onclick=()=>{ const u=wxF()?'C':'F'; WX.unit=u; store.set('wxUnit',u); SET.temp=u; saveSet(); wxRender(); }; }
 var _wxLast=''; function wxTick(){ if (!current) return; const key=current.lat.toFixed(2)+','+current.lon.toFixed(2); if (key!==_wxLast){ _wxLast=key; $('wxBox').innerHTML='<div class="wxErr">⛅ Loading weather…</div>'; } wxLoad(); }
 
 /* =========================================================
@@ -3784,8 +3788,8 @@ function flightsPlace(s){ const m=FLT.mesh; if (!m) return; const M=new THREE.Ma
   m.count=FLT.list.length; m.instanceMatrix.needsUpdate=true; }
 function flightTap(lat,lon){ if (!LAYERS.flights || !FLT.list.length) return false; let best=null, bd=Math.max(40,(camG.position.length()-1)*250);
   for (const f of FLT.list){ const d=gcDist(lat,lon,f.lat,f.lon); if (d<bd){ bd=d; best=f; } } if (!best) return false;
-  const ft=Math.round(best.alt*3.281), mph=Math.round(best.v*2.237);
-  toast(`✈️ ${best.cs} · from ${best.from} · ${ft.toLocaleString()} ft · ${mph} mph · heading ${compass(best.hdg)}`); return true; }
+  const u=useUS(), h=u?`${Math.round(best.alt*3.281).toLocaleString()} ft`:`${Math.round(best.alt).toLocaleString()} m`, v=u?`${Math.round(best.v*2.237)} mph`:`${Math.round(best.v*3.6)} km/h`;
+  toast(`✈️ ${best.cs} · from ${best.from} · ${h} · ${v} · heading ${compass(best.hdg)}`); return true; }
 
 // ---------- 🔭 tonight's sky: planets (JPL approximate orbits), bright stars and a sky map for the pin
 const PLANETS={ // a, e, I, L, long.peri, long.node — and their rates per century (JPL “Approximate Positions of the Planets”)
@@ -3964,7 +3968,7 @@ function santaStats(now){ if (!ROUTE.length) return null; if (!SANTA_CUM){ SANTA
   if (santa.status==='fly' && nxt){ const leg=gcDist(cur[2],cur[3],nxt[2],nxt[3]); km+=gcDist(cur[2],cur[3],santa.lat,santa.lon); kmh=leg/Math.max(1,nxt[4]-cur[5])*3600; }
   return {km,kmh,stops:i}; }
 var _usc=updateSantaCard; updateSantaCard=function(now){ _usc(now); if (!$('santaCard').classList.contains('show')) return; const S=santaStats(now); if (!S) return;
-  const us=current&&current.cc==='US', dist=us?`${Math.round(S.km*0.6214).toLocaleString()} mi`:`${Math.round(S.km).toLocaleString()} km`, sp=us?`${Math.round(S.kmh*0.6214).toLocaleString()} mph`:`${Math.round(S.kmh).toLocaleString()} km/h`;
+  const us=useUS(), dist=us?`${Math.round(S.km*0.6214).toLocaleString()} mi`:`${Math.round(S.km).toLocaleString()} km`, sp=us?`${Math.round(S.kmh*0.6214).toLocaleString()} mph`:`${Math.round(S.kmh).toLocaleString()} km/h`;
   const y=santa.y, C=store.get('cookies',null), mine=C&&C.y===y, big=n=>new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:1}).format(n);
   const homes=(santa.presents||0)/2.5, ck=homes*3, mk=homes, cr=homes*3.5;     // per house: 2–4 cookies, 1 glass of milk, 3–4 carrots for the reindeer
   let away=''; if (santa.on && current){ const km=gcDist(current.lat,current.lon,santa.lat,santa.lon); away=`<span>📍 ${us?Math.round(km*0.6214).toLocaleString()+' mi':Math.round(km).toLocaleString()+' km'} from ${esc(shortName(current))}</span>`; }
@@ -4163,6 +4167,42 @@ var _hatWas=''; setInterval(()=>{ const want = theme==='christmas' && ownsPresen
 var _xmasWas=null; setInterval(()=>{ const on=theme==='christmas'; if (on===_xmasWas) return; _xmasWas=on;
   if (!on){ if (FLY.on) endFlight(); if (typeof MIS!=='undefined' && MIS.on) endMission(true); $('finale').classList.remove('show'); }
   syncSnowGlobe(); applyGoldSleigh(); }, 1000);
+
+
+// ---------- ⚙️ settings: time zone, temperature, units, clock, sounds, effects
+var SET=Object.assign({tzMode:'pin', tz:DEVICE_TZ, temp:'auto', units:'auto', effects:true}, store.get('settings',{}));
+function saveSet(){ store.set('settings',SET); }
+function useUS(){ return SET.units==='us' || (SET.units==='auto' && !!current && ['US','LR','MM'].includes(current.cc)); }
+function fmtDist(km){ return useUS() ? `${Math.round(km*0.6214).toLocaleString()} mi` : `${Math.round(km).toLocaleString()} km`; }
+var _zf=zoneFor; zoneFor=function(p){ if (SET.tzMode==='manual' && SET.tz) return {tz:SET.tz, shift:0}; if (SET.tzMode==='device') return {tz:DEVICE_TZ, shift:0}; return _zf(p); };
+function applyEffects(){ $('fx').style.display = SET.effects ? '' : 'none'; }
+applyEffects();
+function allZones(){ try{ return Intl.supportedValuesOf('timeZone'); }catch(e){ return (P.tzList||[]).slice().sort(); } }
+function openSettings(){ const seg=(k,opts)=>`<div class="seg setSeg" data-k="${k}">${opts.map(([v,l])=>`<button data-v="${v}" class="${String(SET[k])===String(v)?'on':''}">${l}</button>`).join('')}</div>`;
+  const zones=allZones();
+  showModal(`<h3>⚙️ Settings</h3>
+    <div class="setRow"><b>🕐 Time & date</b><small>Which clock the app uses for the time, sunrise, holidays and countdowns.</small>
+      ${seg('tzMode',[['pin','📍 Pin’s location'],['device','📱 My phone'],['manual','⚙️ Choose']])}
+      <select id="setTz" style="${SET.tzMode==='manual'?'':'display:none'}">${zones.map(z=>`<option ${z===SET.tz?'selected':''}>${z}</option>`).join('')}</select></div>
+    <div class="setRow"><b>🌡️ Temperature</b>${seg('temp',[['auto','Auto'],['F','°F'],['C','°C']])}</div>
+    <div class="setRow"><b>📏 Distances & speeds</b>${seg('units',[['auto','Auto'],['us','US (mi, mph, ft)'],['metric','Metric (km, km/h, m)']])}</div>
+    <div class="setRow"><b>⏰ Clock</b>${`<div class="seg setSeg" data-k="h12x"><button data-v="12" class="${h12?'on':''}">12-hour</button><button data-v="24" class="${!h12?'on':''}">24-hour</button></div>`}</div>
+    <div class="setRow"><b>🔊 Game sounds</b>${`<div class="seg setSeg" data-k="sfx"><button data-v="1" class="${SFX.on?'on':''}">On</button><button data-v="0" class="${!SFX.on?'on':''}">Off</button></div>`}</div>
+    <div class="setRow"><b>✨ Holiday effects</b><small>Snow, leaves, confetti and fireworks on the screen.</small>${`<div class="seg setSeg" data-k="effects"><button data-v="1" class="${SET.effects?'on':''}">On</button><button data-v="0" class="${!SET.effects?'on':''}">Off</button></div>`}</div>
+    <div class="setRow"><b>🎉 Holiday themes</b>${`<div class="seg setSeg" data-k="hol"><button data-v="1" class="${holOn?'on':''}">On</button><button data-v="0" class="${!holOn?'on':''}">Off</button></div>`}</div>
+    <p class="mut" style="font-size:12px;margin-top:10px">“Auto” uses what’s normal where your pin is.</p>`);
+  document.querySelectorAll('.setSeg').forEach(g=>g.querySelectorAll('button').forEach(b=>b.onclick=()=>{ const k=g.dataset.k, v=b.dataset.v;
+    g.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+    if (k==='h12x'){ h12=v==='12'; store.set('h12',h12); $('fmtSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',(x.dataset.f==='12')===h12)); }
+    else if (k==='sfx'){ SFX.on=v==='1'; store.set('sfx',SFX.on); }
+    else if (k==='effects'){ SET.effects=v==='1'; saveSet(); applyEffects(); }
+    else if (k==='hol'){ holOn=v==='1'; store.set('holidays',holOn); $('holBtn').classList.toggle('on',holOn); }
+    else { SET[k]=v; saveSet(); if (k==='tzMode') $('setTz').style.display=v==='manual'?'':'none'; if (k==='temp' && v!=='auto'){ WX.unit=v; store.set('wxUnit',v); } }
+    if (typeof wxRender==='function') wxRender(); santaVisit={key:''}; tick(true); }));
+  $('setTz').onchange=e=>{ SET.tz=e.target.value; saveSet(); santaVisit={key:''}; tick(true); }; }
+var _om3=openMore; openMore=function(){ _om3(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return; const b=document.createElement('button'); b.className='moreItem';
+  b.innerHTML='<span class="mi">⚙️</span><b>Settings</b><small>Time zone, °F/°C, miles/km…</small>'; b.onclick=openSettings; grid.prepend(b); };
+{ const b=document.createElement('button'); b.className='btn mini'; b.id='setBtn'; b.textContent='⚙️ Settings'; b.onclick=openSettings; $('cardFoot').appendChild(b); }
 
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS};

@@ -283,6 +283,10 @@ night-side city lights placed at real city coordinates.
   stays reachable.
 - **⏳ Countdowns** to Christmas, New Year, your birthday and the next holiday.
   The one you pick shows as a number on the app's icon once it's installed.
+- **⚙️ Settings** (⋯ More, or the button on the time card): time & date from
+  the pin's location, your phone, or a time zone you choose · °F/°C/auto ·
+  US or metric distances and speeds · 12/24-hour clock · game sounds ·
+  holiday effects · holiday themes.
 - **＋ / − / ◎ buttons** on the right zoom in and out (globe, Santa cam or orbit
   view) and fly back to your location (using GPS if needed).
 - **⛶ Hide panels** clears everything off the screen so you can see the whole
