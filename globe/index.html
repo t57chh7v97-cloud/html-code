@@ -4462,6 +4462,29 @@ var _om4=openMore; openMore=function(){ _om4(); const grid=document.querySelecto
 // the certificate shows your elf
 var _mc=makeCertificate; makeCertificate=function(){ const e=store.get('elf',null); if (e && e.name && !(store.get('letter',null)||{}).name) store.set('nick', store.get('nick','')||e.name); _mc(); };
 
+// ---------- ☁️ settings saved to your Claude account (the Claude viewer can forget phone storage between visits)
+var PREF_KEYS=['settings','h12','layers','sfx','holidays','skyView','wxUnit','school','schoolOff','presents'], PREFDB={ref:null,t:0,pending:{}};
+function prefApply(k,v){ try{
+  if (k==='settings'){ Object.assign(SET,v); applyEffects(); }
+  else if (k==='h12'){ h12=!!v; $('fmtSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',(x.dataset.f==='12')===h12)); }
+  else if (k==='layers'){ Object.keys(v||{}).forEach(l=>{ if (LAYERS[l]!==v[l]){ LAYERS[l]=v[l]; if (v[l]) layerKick(l); } }); renderLayerMenu(); }
+  else if (k==='sfx') SFX.on=!!v;
+  else if (k==='holidays'){ holOn=!!v; $('holBtn').classList.toggle('on',holOn); }
+  else if (k==='skyView') SKYVIEW.mode=v;
+  else if (k==='wxUnit') WX.unit=v;
+}catch(e){} }
+var _storeSet=store.set; store.set=function(k,v){ _storeSet.call(store,k,v); if (PREF_KEYS.includes(k)){ PREFDB.pending[k]=v; clearTimeout(PREFDB.t); PREFDB.t=setTimeout(prefPush,1200); } };
+async function prefPush(){ if (!PREFDB.ref) return; const upd=PREFDB.pending; PREFDB.pending={}; try{ await PREFDB.ref.set(Object.assign({},PREFDB.data||{},upd)); PREFDB.data=Object.assign({},PREFDB.data||{},upd); }catch(e){} }
+(async()=>{ const b=await boardDb(); if (!b) return; try{
+  const ref=b.db.collection('data/users/'+b.id).doc('prefs'), snap=await ref.get(); const data=(snap && (typeof snap.data==='function'?snap.data():snap))||{};
+  PREFDB.ref=ref; PREFDB.data=data;
+  const mine={}; PREF_KEYS.forEach(k=>{ try{ const raw=localStorage.getItem('wwglobe.'+k); if (raw!=null) mine[k]=JSON.parse(raw); }catch(e){} });
+  let changed=false;
+  PREF_KEYS.forEach(k=>{ if (data[k]!==undefined && !(k in PREFDB.pending)){ _storeSet.call(store,k,data[k]); prefApply(k,data[k]); changed=true; } else if (data[k]===undefined && mine[k]!==undefined) PREFDB.pending[k]=mine[k]; });
+  if (Object.keys(PREFDB.pending).length) prefPush();
+  if (changed){ if (typeof wxRender==='function') wxRender(); tick(true); }
+}catch(e){} })();
+
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS,SET,layerNote,noteFor};
 frame();
