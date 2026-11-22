@@ -290,6 +290,17 @@ night-side city lights placed at real city coordinates.
   - Themes: 🎭 Mardi Gras (with a catch-the-beads mini-game), 🇲🇽 Cinco de
     Mayo, 🎨 Holi (tap to throw colour), 🥮 Mid-Autumn Festival (when the full
     moon rises), ✊🏿 Juneteenth.
+  - Round two: 🦫 Groundhog Day (guess whether Phil sees his shadow), 🃏 April
+    Fools' (the globe pranks you), 🌸 Nowruz (countdown to the exact moment of
+    spring), 🍷 Passover, 🍎 Rosh Hashanah and 🕯️ Yom Kippur (sunset reminders),
+    💐 Mother's Day and 👔 Father's Day (card maker), 💦 Songkran (tap for a
+    water splash), 🐉 Dragon Boat Festival (tap-to-paddle race), 🎋 Tanabata
+    (hang a wish on the bamboo), 🥨 Oktoberfest, 🌌 May the 4th (hyperspace
+    streaks when you fly).
+  - 🌑 Winter solstice countdown and daylight gained afterwards · 🎁 Boxing Day
+    · 🏴 Hogmanay · 🌍 Holiday hopper (every holiday on Earth today, in More).
+  - Thanksgiving parades fold into one "LIVE NOW · 5 parades" line with a Watch
+    button when several are on at once.
   - 🕎 Light the menorah each night of Hanukkah at sunset · 🕯️ Kwanzaa kinara
     with the day's principle.
   - 🎄 Rockefeller Center tree lighting countdown and LIVE NOW button (Dec 2,

@@ -4461,6 +4461,236 @@ async function prefPush(){ if (!PREFDB.ref) return; const upd=PREFDB.pending; PR
   if (changed){ if (typeof wxRender==='function') wxRender(); tick(true); }
 }catch(e){} })();
 
+/* =========================================================
+   MORE HOLIDAYS (round 9): winter solstice, Boxing Day, Hogmanay, Groundhog Day game, April Fools' pranks, Nowruz,
+   Passover, Rosh Hashanah, Yom Kippur, Mother's & Father's Day card maker, Songkran splash, Dragon Boat race,
+   Tanabata wishes, Oktoberfest, May the 4th hyperspace, Holiday hopper · compact Thanksgiving parade line
+   ========================================================= */
+function nthSunday(y,m,n){ const first=1+(7-new Date(Date.UTC(y,m,1)).getUTCDay())%7; return first+7*(n-1); }
+var PASSOVER={2025:[3,12],2026:[3,1],2027:[3,21],2028:[3,10],2029:[2,30],2030:[3,17]},           // first seder (evening)
+    ROSHHASH={2025:[8,22],2026:[8,11],2027:[9,1],2028:[8,20],2029:[8,9],2030:[8,27]},              // begins at sunset
+    DRAGONBOAT={2025:[4,31],2026:[5,19],2027:[5,9],2028:[4,28],2029:[5,16],2030:[5,5]},
+    EQUINOX_MAR={2026:[2,20,14,46],2027:[2,20,20,25],2028:[2,20,2,17],2029:[2,20,8,2],2030:[2,20,13,52]},       // UTC
+    SOLSTICE_DEC={2025:[11,21,15,3],2026:[11,21,20,50],2027:[11,22,2,42],2028:[11,21,8,19],2029:[11,21,14,14],2030:[11,21,20,9]};
+function eqAt(T,y){ const a=T[y]; return a?new Date(Date.UTC(y,a[0],a[1],a[2],a[3])):null; }
+
+Object.assign(HOL,{
+  groundhog:{ name:'Groundhog Day', icon:'🦫', greet:'Happy Groundhog Day!', atmo:[0.7,0.8,1.0], fx:'snow', acc:['#c69c6d','#9fd3ff'],
+              lights:pal(['200,160,110','240,215,180'],['160,210,255','220,240,255']) },
+  aprilfools:{ name:"April Fools' Day", icon:'🃏', greet:'Happy April Fools’ Day! 🤡', atmo:[0.9,0.6,1.0], fx:'confetti', fxc:['#ff4d6d','#ffd23f','#3ddc97','#4cc9f0'], acc:['#ffd23f','#ff4d6d'],
+              lights:pal(['255,80,110','255,170,190'],['255,210,60','255,235,150'],['80,200,255','170,230,255']) },
+  nowruz:   { name:'Nowruz', icon:'🌸', greet:'Nowruz Mubarak! Happy spring 🌸', atmo:[0.6,1.0,0.6], fx:'confetti', fxc:['#ff8fb8','#ffd6e5','#8fe3a0','#fff1a8'], acc:['#ff8fb8','#5fd38a'],
+              lights:pal(['255,140,185','255,210,225'],['120,220,150','190,245,205']) },
+  passover: { name:'Passover', icon:'🍷', greet:'Chag Pesach Sameach!', atmo:[0.65,0.7,1.0], fx:'stars', fxc:['#ffffff','#b9c8ff'], acc:['#7d95ff','#e8eeff'],
+              lights:pal(['130,150,255','200,210,255'],['255,255,255','255,255,255']) },
+  roshhashanah:{ name:'Rosh Hashanah', icon:'🍎', greet:'Shanah Tovah! 🍎🍯', atmo:[1.0,0.8,0.5], fx:'stars', fxc:['#ffd36b','#ff6b6b'], acc:['#ff5a5a','#ffd36b'],
+              lights:pal(['255,90,90','255,170,160'],['255,210,110','255,235,180']) },
+  yomkippur:{ name:'Yom Kippur', icon:'🕯️', greet:'G’mar Chatimah Tovah', solemn:true, atmo:[0.7,0.75,0.9], fx:'glow', acc:['#dfe6ff','#9fb0d8'],
+              lights:pal(['230,235,255','250,252,255']) },
+  mothersday:{ name:"Mother's Day", icon:'💐', greet:'Happy Mother’s Day! 💐', atmo:[1.0,0.65,0.8], fx:'hearts', acc:['#ff86a8','#ffd6e5'],
+              lights:pal(['255,120,160','255,200,215'],['255,220,235','255,240,245']) },
+  fathersday:{ name:"Father's Day", icon:'👔', greet:'Happy Father’s Day! 👔', atmo:[0.55,0.75,1.0], fx:'stars', fxc:['#9fd3ff','#ffd36b'], acc:['#5fa8ff','#ffd36b'],
+              lights:pal(['100,170,255','190,220,255'],['255,210,110','255,235,180']) },
+  songkran: { name:'Songkran', icon:'💦', greet:'Happy Songkran! 💦 Thai New Year', atmo:[0.4,0.85,1.0], fx:'confetti', fxc:['#4cc9f0','#9fe3ff','#ffffff'], burst:['#4cc9f0','#7fdcff','#bff0ff'], acc:['#4cc9f0','#ffd23f'],
+              lights:pal(['80,200,255','180,235,255'],['255,255,255','255,255,255']) },
+  dragonboat:{ name:'Dragon Boat Festival', icon:'🐉', greet:'Happy Dragon Boat Festival! 🐉', atmo:[0.5,0.95,0.6], fx:'confetti', fxc:['#e8231f','#2fbf71','#ffd23f'], acc:['#2fbf71','#e8231f'],
+              lights:pal(['232,35,31','255,140,130'],['60,200,120','160,240,190']) },
+  tanabata: { name:'Tanabata', icon:'🎋', greet:'Happy Tanabata! Make a wish 🎋', atmo:[0.5,0.6,1.0], fx:'stars', acc:['#8fa8ff','#ffd36b'],
+              lights:pal(['150,170,255','210,220,255'],['255,220,120','255,240,190']) },
+  oktoberfest:{ name:'Oktoberfest', icon:'🥨', greet:'O’zapft is! Happy Oktoberfest 🥨', atmo:[0.55,0.75,1.0], fx:'confetti', fxc:['#3d8bff','#ffffff'], acc:['#3d8bff','#ffd36b'],
+              lights:pal(['70,140,255','180,210,255'],['255,255,255','255,255,255']) },
+  may4th:   { name:'May the 4th', icon:'🌌', greet:'May the 4th be with you! 🌌', atmo:[0.45,0.5,1.0], fx:'stars', acc:['#8fd3ff','#ffd36b'],
+              lights:pal(['140,200,255','220,240,255'],['255,230,140','255,245,200']) }});
+Object.assign(REGION,{ groundhog:['US','CA'], nowruz:['IR','AF','TJ','AZ','UZ','TM','KG','KZ'], passover:['IL'], roshhashanah:['IL'], yomkippur:['IL'],
+  mothersday:['US','CA','AU','NZ','JP','IT','DE','BR','IN','ZA','CN','PH','SG','TR'], fathersday:['US','CA','GB','IE','FR','JP','IN','ZA','SG','PH','CN','MX','NL'],
+  songkran:['TH','LA','MM','KH'], dragonboat:['CN','TW','HK','MO','SG','MY'], tanabata:['JP'], oktoberfest:['DE','AT'] });
+var _hd9=holidayDates; holidayDates=function(y,cc){ const out=_hd9(y,cc); const add=(k,m,d,from,to,extra={})=>{ if (celebrates(k,cc)){ const b=dayNum(y,m,d); out.push({k,y,m,d,from:b+from,to:b+to,...extra}); } };
+  add('groundhog',1,2,-1,0); add('aprilfools',3,1,0,0); add('may4th',4,4,0,0); add('tanabata',6,7,-1,0); add('songkran',3,13,0,2);
+  add('mothersday',4,nthSunday(y,4,2),-1,0); add('fathersday',5,nthSunday(y,5,3),-1,0);
+  { const e=eqAt(EQUINOX_MAR,y); if (e){ const t=new Date(+e+3.5*3600000); add('nowruz',t.getUTCMonth(),t.getUTCDate(),-1,4); } }
+  if (PASSOVER[y]) add('passover',PASSOVER[y][0],PASSOVER[y][1],0,7);
+  if (ROSHHASH[y]){ add('roshhashanah',ROSHHASH[y][0],ROSHHASH[y][1],0,2); const yk=new Date(Date.UTC(y,ROSHHASH[y][0],ROSHHASH[y][1]+9)); add('yomkippur',yk.getUTCMonth(),yk.getUTCDate(),0,1); }
+  if (DRAGONBOAT[y]) add('dragonboat',DRAGONBOAT[y][0],DRAGONBOAT[y][1],-1,0);
+  { const fs=nthSunday(y,9,1), end=Math.max(fs,3), sd=15+fs; add('oktoberfest',8,sd,0,dayNum(y,9,end)-dayNum(y,8,sd)); }
+  return out; };
+
+// ---------- small helpers
+function todayNum(now){ const lp=localParts(now,current); return [dayNum(lp.year,lp.month,lp.day),lp]; }
+function dayLenH(lat,date){ const doy=Math.floor((Date.UTC(date.getUTCFullYear(),date.getUTCMonth(),date.getUTCDate())-Date.UTC(date.getUTCFullYear(),0,0))/86400000);
+  const dec=-23.44*Math.cos(2*Math.PI/365*(doy+10))*D2R, la=lat*D2R, c=(Math.sin(-0.833*D2R)-Math.sin(la)*Math.sin(dec))/(Math.cos(la)*Math.cos(dec));
+  return c>=1?0:c<=-1?24:2*Math.acos(c)/D2R/15; }
+function untilTxt(ms){ const m=Math.max(0,Math.round(ms/60000)); return m<60?`${m} min`:m<48*60?`${Math.floor(m/60)} h ${m%60} min`:`${Math.round(m/1440)} days`; }
+
+// ---------- 🌑 winter solstice · 🎁 Boxing Day · 🏴 Hogmanay
+function solsticeLine(now){ if (!current) return ''; const [td,lp]=todayNum(now); let y=lp.year; if (lp.month===0) y--; const at=eqAt(SOLSTICE_DEC,y); if (!at) return '';
+  const sp=localParts(at,current), sd=dayNum(sp.year,sp.month,sp.day), north=current.lat>=0, word=north?'winter':'summer', ext=north?'longest night':'longest day';
+  if (td>=sd-7 && td<sd){ const n=sd-td; return `<small>🌑 The ${word} solstice is in ${n} day${n===1?'':'s'} — the ${ext} of the year</small>`; }
+  if (td>sd+6 && td<=sd+31 && Math.abs(current.lat)<66){ const d=Math.round((dayLenH(current.lat,now)-dayLenH(current.lat,at))*60); if (d) return `<small>${north?'☀️':'🌙'} ${d>0?'+':'−'}${Math.abs(d)} min of daylight since the solstice</small>`; }
+  return ''; }
+function boxingLine(now){ if (!current || !['GB','CA','AU','NZ','IE','ZA'].includes(current.cc)) return ''; const lp=localParts(now,current); return lp.month===11 && lp.day===26 ? `<small>🎁 Happy Boxing Day! A day for leftovers, sales and relaxing</small>` : ''; }
+function hogmanayLine(now){ if (!current || current.cc!=='GB') return ''; const t=partsIn('Europe/London',now); if (!(t.month===11 && t.day===31 || t.month===0 && t.day===1 && t.hour<1)) return '';
+  return `<small>🏴 Hogmanay! Edinburgh lights up the castle with fireworks at midnight · <a href="#" id="hogGo">fly to Edinburgh</a></small>`; }
+
+// ---------- 🦫 Groundhog Day guessing game
+function ghKey(now){ return 'gh'+partsIn('America/New_York',now).year; }
+function groundhogLine(now){ if (theme!=='groundhog') return ''; const t=partsIn('America/New_York',now), G=store.get(ghKey(now),{});
+  const yt='https://www.youtube.com/results?search_query='+encodeURIComponent(`Punxsutawney Phil ${t.year} prediction`);
+  if (t.month===1 && t.day===2 && (t.hour>7 || t.hour===7 && t.minute>=25)){
+    if (G.result) return `<small>🦫 Phil ${G.result==='shadow'?'saw his shadow — 6 more weeks of winter ❄️':'saw no shadow — early spring 🌷'}. ${G.guess?(G.guess===G.result?'You guessed right! 🎉':'Your guess was wrong this time 😅'):''}</small>`;
+    return `<small>🦫 Phil’s prediction is in! <a class="ytBtn" href="${yt}" target="_blank" rel="noopener">▶️ Watch</a> Did he see his shadow? <a href="#" data-gh="r:shadow">yes</a> · <a href="#" data-gh="r:none">no</a></small>`; }
+  if (G.guess) return `<small>🦫 You guessed ${G.guess==='shadow'?'6 more weeks of winter ❄️':'an early spring 🌷'} — Phil decides Feb 2 at 7:25 AM ET in Punxsutawney, PA</small>`;
+  return `<small>🦫 Will Punxsutawney Phil see his shadow? Guess: <a href="#" data-gh="g:shadow">❄️ 6 more weeks of winter</a> · <a href="#" data-gh="g:none">🌷 early spring</a></small>`; }
+
+// ---------- 🃏 April Fools' pranks
+var FOOLS={at:0};
+function foolsPrank(){ const c=renderer.domElement; c.style.transition='transform 1.2s ease'; c.style.transform='rotate(180deg)'; toast('🌍 Uh oh… the globe flipped upside down?!');
+  setTimeout(()=>{ c.style.transform=''; setTimeout(()=>{ c.style.transition=''; },1300); toast('🃏 April Fools! The globe is fine 😄'); try{ fx.celebrate(3500); }catch(e){} },3400); }
+function foolsTick(now){ if (theme!=='aprilfools') return; const y=yearOf(now); if (store.get('foolsDone',0)===y || FOOLS.at) return; FOOLS.at=setTimeout(()=>{ store.set('foolsDone',y); foolsPrank(); },5000); }
+function foolsLine(){ return theme==='aprilfools' ? `<small>🃏 Watch out for pranks today… · <a href="#" id="foolsGo">prank me again</a></small>` : ''; }
+
+// ---------- 🌸 Nowruz / spring equinox countdown
+function nowruzLine(now){ if (!current) return ''; const y=yearOf(now), e=eqAt(EQUINOX_MAR,y); if (!e) return ''; const ms=e-now;
+  if (skyEvents(now).ring) return '';
+  if (ms>0 && ms<3*86400000) return `<small>🌸 Spring begins in ${untilTxt(ms)} — at ${fmtTime(e,current,false)} your time${theme==='nowruz'?'. That exact moment is the Persian New Year, Nowruz':' (it’s also Nowruz, the Persian New Year)'}</small>`;
+  if (ms<=0 && ms>-86400000) return `<small>🌸 Spring started at ${fmtTime(e,current,false)} — Nowruz Mubarak! ${current.lat<0?'(For you it’s autumn 🍂)':''}</small>`;
+  return ''; }
+
+// ---------- 🍷 Passover · 🍎 Rosh Hashanah · 🕯️ Yom Kippur (lines show everywhere, like the menorah)
+function jewishLine(now){ if (!current) return ''; const [td,lp]=todayNum(now), y=lp.year, out=[];
+  const seg=(T,label,icon,len,more)=>{ const a=T[y]; if (!a) return; const s=dayNum(y,a[0],a[1]);
+    if (td>=s-5 && td<s) out.push(`<small>${icon} ${label} begins at sunset in ${td===s-1?'1 day':`${s-td} days`}</small>`);
+    else if (td===s) out.push(`<small>${icon} ${label} begins at sunset tonight${more?' · '+more:''}</small>`);
+    else if (td>s && td<=s+len) out.push(`<small>${icon} ${label}${len>1?` · day ${td-s} of ${len}`:' today'}${more?' · '+more:''}</small>`); };
+  seg(PASSOVER,'Passover','🍷',8,'<a href="#" id="sederGo">what’s a seder?</a>');
+  seg(ROSHHASH,'Rosh Hashanah, the Jewish New Year','🍎',2,'apples dipped in honey for a sweet year 🍯');
+  if (ROSHHASH[y]){ const yk=new Date(Date.UTC(y,ROSHHASH[y][0],ROSHHASH[y][1]+9)); seg({[y]:[yk.getUTCMonth(),yk.getUTCDate()]},'Yom Kippur, the Day of Atonement','🕯️',1,''); }
+  return out.join(''); }
+function openSeder(){ showModal(`<h3>🍷 The Passover seder</h3><p class="mut">A special dinner on the first night (or two) of Passover that retells how the Israelites left slavery in Egypt.</p><ol class="steps" style="font-size:14px">
+  <li><b>The seder plate</b> — foods that tell the story: bitter herbs (maror) for the hard times, charoset (apples & nuts) for the bricks, a roasted bone, an egg, greens and salt water for tears.</li>
+  <li><b>Matzah</b> — flat bread, because there was no time for the bread to rise.</li><li><b>The Four Questions</b> — usually asked by the youngest at the table: “Why is this night different from all other nights?”</li>
+  <li><b>Four cups</b> of wine or grape juice, and a cup set out for the prophet Elijah.</li><li><b>The afikoman</b> — a hidden piece of matzah the kids hunt for at the end. 🔎</li></ol>`); }
+
+// ---------- 💐👔 Mother's & Father's Day card maker
+var CARD_DESIGNS={flowers:['🌷','🌸','🌼','💐'],hearts:['💖','💕','💗','❤️'],stars:['⭐','✨','🌟','💫'],trophy:['🏆','🥇','👑','🎉'],games:['🎮','🕹️','👾','🏆']};
+function openCardMaker(kind){ kind=kind||(theme==='fathersday'?'dad':'mom'); const who=kind==='dad'?'Dad':'Mom', nick=store.get('nick','');
+  const S=Object.assign({design:kind==='dad'?'trophy':'flowers', bg:kind==='dad'?'#1e3a6e':'#6e1e4a', msg:`Happy ${kind==='dad'?'Father':'Mother'}’s Day, ${who}!`, from:nick?`Love, ${nick}`:'Love you!'},store.get('card_'+kind,{}));
+  showModal(`<h3>${kind==='dad'?'👔':'💐'} Make a card for ${who}</h3>
+    <div class="seg" id="cdD" style="flex-wrap:wrap">${Object.keys(CARD_DESIGNS).map(k=>`<button data-v="${k}" class="${k===S.design?'on':''}">${CARD_DESIGNS[k][0]}</button>`).join('')}</div>
+    <div class="seg" id="cdB" style="margin-top:6px">${['#6e1e4a','#1e3a6e','#1f5c3a','#5c3a1f','#3b1e6e'].map(c=>`<button data-v="${c}" class="${c===S.bg?'on':''}" style="background:${c};min-width:34px">&nbsp;</button>`).join('')}</div>
+    <input id="cdM" maxlength="60" value="${esc(S.msg)}" style="width:100%;margin-top:8px"><input id="cdF" maxlength="40" value="${esc(S.from)}" style="width:100%;margin-top:6px">
+    <canvas id="cdC" width="800" height="560" style="width:100%;border-radius:12px;margin-top:10px"></canvas>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn primary" id="cdShare">Share…</button><a class="btn" id="cdSave" download="card.png">Save</a></div>`);
+  const draw=()=>{ const c=$('cdC'); if (!c) return; const x=c.getContext('2d'), E=CARD_DESIGNS[S.design]; x.fillStyle=S.bg; x.fillRect(0,0,800,560);
+    const g=x.createRadialGradient(400,250,40,400,280,480); g.addColorStop(0,'rgba(255,255,255,.18)'); g.addColorStop(1,'rgba(0,0,0,.25)'); x.fillStyle=g; x.fillRect(0,0,800,560);
+    x.textAlign='center'; x.textBaseline='middle'; let r=7; for (let i=0;i<26;i++){ r=(r*9301+49297)%233280; const px=r/233280*800; r=(r*9301+49297)%233280; const py=r/233280*560; if (Math.abs(py-280)<120 && px>90 && px<710) continue; x.font=`${30+(i%3)*14}px serif`; x.fillText(E[i%E.length],px,py); }
+    x.strokeStyle='rgba(255,255,255,.6)'; x.lineWidth=4; x.strokeRect(18,18,764,524); x.fillStyle='#fff'; x.font='700 46px system-ui,-apple-system,sans-serif';
+    const words=S.msg.split(' '), lines=[]; let cur=''; words.forEach(w=>{ if (x.measureText(cur+' '+w).width>640 && cur){ lines.push(cur); cur=w; } else cur=cur?cur+' '+w:w; }); lines.push(cur);
+    lines.forEach((l,i)=>x.fillText(l,400,250+(i-(lines.length-1)/2)*56)); x.font='500 30px system-ui,sans-serif'; x.fillStyle='rgba(255,255,255,.85)'; x.fillText(S.from,400,250+lines.length*30+40);
+    x.font='500 15px system-ui,sans-serif'; x.fillStyle='rgba(255,255,255,.5)'; x.fillText('made with Where & When — Live Globe',400,525);
+    try{ $('cdSave').href=c.toDataURL('image/png'); }catch(e){} store.set('card_'+kind,S); };
+  $('cdD').querySelectorAll('button').forEach(b=>b.onclick=()=>{ S.design=b.dataset.v; $('cdD').querySelectorAll('button').forEach(q=>q.classList.toggle('on',q===b)); draw(); });
+  $('cdB').querySelectorAll('button').forEach(b=>b.onclick=()=>{ S.bg=b.dataset.v; $('cdB').querySelectorAll('button').forEach(q=>q.classList.toggle('on',q===b)); draw(); });
+  $('cdM').oninput=e=>{ S.msg=e.target.value; draw(); }; $('cdF').oninput=e=>{ S.from=e.target.value; draw(); };
+  $('cdShare').onclick=()=>$('cdC').toBlob(b=>{ const f=new File([b],'card.png',{type:'image/png'}); if (navigator.canShare && navigator.canShare({files:[f]})) navigator.share({files:[f],title:S.msg}).catch(()=>{}); else toast('Sharing pictures isn’t supported here — try Save, or take a screenshot 📸'); });
+  draw(); }
+
+// ---------- 🐉 Dragon boat race (tap left, right, left, right…)
+function openDragonRace(){ showModal(`<h3>🐉 Dragon boat race</h3><p class="mut">Tap the <b>left</b> and <b>right</b> sides one after the other to paddle. First to the finish wins!</p>
+  <canvas id="drC" width="600" height="380" style="width:100%;border-radius:12px;background:#0e3a52;touch-action:none"></canvas><p id="drS" style="text-align:center;font-weight:700"></p>`);
+  const cv=$('drC'), x=cv.getContext('2d'), L=1000; let me={p:0,v:0}, side=null, go=null, done=false; const ai=[{p:0,v:0,c:'#2fbf71',s:3.1},{p:0,v:0,c:'#ffd23f',s:3.5},{p:0,v:0,c:'#b388ff',s:3.8}];
+  const t0=performance.now(); cv.addEventListener('pointerdown',e=>{ if (!go||done) return; const r=cv.getBoundingClientRect(), s=(e.clientX-r.left)<r.width/2?'L':'R'; if (s!==side){ me.v+=1.25; side=s; try{ sfx('pop'); }catch(_){} } else me.v*=.8; });
+  (function loop(){ if (!$('drC')) return; const t=(performance.now()-t0)/1000; if (!go && t>3) go=performance.now();
+    if (go && !done){ me.v*=.96; me.p+=me.v; ai.forEach(a=>{ a.v=a.s*(0.85+0.3*Math.sin(t*2+a.s)); a.p+=a.v; }); const all=[me,...ai];
+      if (all.some(b=>b.p>=L)){ done=true; const place=1+ai.filter(a=>a.p>me.p).length, secs=((performance.now()-go)/1000).toFixed(1); $('drS').textContent=place===1?`🥇 You won in ${secs}s! 🐉`:`You came ${['','1st','2nd','3rd','4th'][place]} — tap faster next time!`;
+        if (place===1){ fx.celebrate(4000); const b=store.get('dragonBest',0); if (!b || +secs<b){ store.set('dragonBest',+secs); $('drS').textContent+=' New best time!'; } } } }
+    x.clearRect(0,0,600,380); for (let i=0;i<4;i++){ x.fillStyle=i%2?'#114764':'#0f4060'; x.fillRect(0,20+i*85,600,85); }
+    x.fillStyle='#fff'; x.fillRect(560,20,6,340); [{...me,c:'#e8231f',me:1},...ai].forEach((b,i)=>{ const px=30+Math.min(1,b.p/L)*520, py=62+i*85; x.fillStyle=b.c; x.beginPath(); x.ellipse(px,py,42,11,0,0,7); x.fill();
+      x.font='26px serif'; x.textAlign='center'; x.textBaseline='middle'; x.fillText('🐉',px+40,py-4); if (b.me){ x.fillStyle='#fff'; x.font='bold 14px system-ui'; x.fillText('YOU',px-8,py+1); } });
+    x.fillStyle='#fff'; x.font='bold 40px system-ui'; x.textAlign='center'; if (!go) x.fillText(String(Math.ceil(3-t)),300,190);
+    requestAnimationFrame(loop); })(); }
+
+// ---------- 🎋 Tanabata wishes
+function openTanabata(){ const y=yearOf(simNow()), W=store.get('wishes',{}), mine=W[y]||[];
+  const cols=['#ff6b6b','#ffd23f','#3ddc97','#4cc9f0','#b388ff'];
+  showModal(`<h3>🎋 Tanabata wishes</h3><p class="mut">On July 7 in Japan, people write wishes on colourful paper strips (tanzaku) and hang them on bamboo. It celebrates two star-crossed lovers — the stars Vega and Altair — who meet once a year across the Milky Way.</p>
+    <svg viewBox="0 0 300 220" style="width:100%;max-height:240px"><rect width="300" height="220" fill="#0d1838" rx="12"/><path d="M150 215 C150 150 148 80 152 10" stroke="#5fae4f" stroke-width="8" fill="none"/>
+      ${[[150,60,-60],[150,100,70],[151,140,-70],[150,175,60]].map(([x0,y0,dx])=>`<path d="M${x0} ${y0} q${dx/2} -18 ${dx} -10" stroke="#6fbf5c" stroke-width="4" fill="none"/>`).join('')}
+      ${mine.map((w,i)=>{ const px=[95,210,80,215,110,195][i%6], py=[55,95,135,170,90,140][i%6]; return `<g><line x1="${px}" y1="${py-14}" x2="${px}" y2="${py-4}" stroke="#ddd"/><rect x="${px-9}" y="${py-4}" width="18" height="46" fill="${cols[i%5]}" rx="2"/><title>${esc(w)}</title></g>`; }).join('')}
+      <text x="40" y="30" font-size="14">⭐</text><text x="250" y="40" font-size="14">⭐</text></svg>
+    ${mine.map((w,i)=>`<div class="advMsg" style="margin-top:4px;border-left:4px solid ${cols[i%5]}">🎋 ${esc(w)}</div>`).join('')}
+    ${mine.length<6?`<input id="tnW" maxlength="60" placeholder="I wish…" style="width:100%;margin-top:8px"><button class="btn primary" id="tnGo" style="margin-top:6px">Hang my wish</button>`:'<p class="mut">Your bamboo is full of wishes! 🎋</p>'}`);
+  if ($('tnGo')) $('tnGo').onclick=()=>{ const v=$('tnW').value.trim(); if (!v) return; W[y]=[...mine,v]; store.set('wishes',W); try{ fx.celebrate(2000); }catch(e){} openTanabata(); }; }
+
+// ---------- 🌌 May the 4th: hyperspace streaks while flying
+var HYPER=(()=>{ const c=document.createElement('canvas'); c.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:3'; document.body.appendChild(c); const x=c.getContext('2d'); let st=[], on=0;
+  function frame(){ const want=theme==='may4th' && fly && mode==='globe'; on=want?Math.min(1,on+.08):Math.max(0,on-.06);
+    if (on>0){ if (c.width!==innerWidth) { c.width=innerWidth; c.height=innerHeight; } const W=c.width,H=c.height,cx=W/2,cy=H/2; x.clearRect(0,0,W,H);
+      while (st.length<140) st.push({a:Math.random()*6.283,r:Math.random()*40+5,v:Math.random()*.06+.04});
+      x.lineCap='round'; st.forEach(s=>{ const r0=s.r; s.r*=1+s.v*2.2; const al=Math.min(1,s.r/200)*on; x.strokeStyle=`rgba(200,230,255,${al})`; x.lineWidth=1+s.r/300;
+        x.beginPath(); x.moveTo(cx+Math.cos(s.a)*r0,cy+Math.sin(s.a)*r0); x.lineTo(cx+Math.cos(s.a)*s.r,cy+Math.sin(s.a)*s.r); x.stroke(); if (s.r>Math.hypot(W,H)) { s.r=Math.random()*30+5; s.a=Math.random()*6.283; } }); }
+    else if (st.length){ st=[]; x.clearRect(0,0,c.width,c.height); } requestAnimationFrame(frame); }
+  requestAnimationFrame(frame); return {}; })();
+
+// ---------- 🌍 Holiday hopper: every holiday happening on Earth today
+var HOP_PLACES=[['US','New York',40.71,-74.01,'America/New_York'],['CA','Toronto',43.65,-79.38,'America/Toronto'],['MX','Mexico City',19.43,-99.13,'America/Mexico_City'],['BR','Rio de Janeiro',-22.91,-43.17,'America/Sao_Paulo'],
+  ['AR','Buenos Aires',-34.6,-58.38,'America/Argentina/Buenos_Aires'],['GB','London',51.51,-0.13,'Europe/London'],['IE','Dublin',53.35,-6.26,'Europe/Dublin'],['FR','Paris',48.86,2.35,'Europe/Paris'],['DE','Munich',48.14,11.58,'Europe/Berlin'],
+  ['IT','Rome',41.9,12.5,'Europe/Rome'],['ES','Madrid',40.42,-3.7,'Europe/Madrid'],['NL','Amsterdam',52.37,4.9,'Europe/Amsterdam'],['TR','Istanbul',41.01,28.98,'Europe/Istanbul'],['IL','Jerusalem',31.77,35.21,'Asia/Jerusalem'],
+  ['EG','Cairo',30.04,31.24,'Africa/Cairo'],['SA','Riyadh',24.71,46.68,'Asia/Riyadh'],['AE','Dubai',25.2,55.27,'Asia/Dubai'],['IR','Tehran',35.69,51.39,'Asia/Tehran'],['AF','Kabul',34.53,69.17,'Asia/Kabul'],['IN','Delhi',28.61,77.21,'Asia/Kolkata'],
+  ['NP','Kathmandu',27.72,85.32,'Asia/Kathmandu'],['TH','Bangkok',13.76,100.5,'Asia/Bangkok'],['VN','Hanoi',21.03,105.85,'Asia/Ho_Chi_Minh'],['MY','Kuala Lumpur',3.14,101.69,'Asia/Kuala_Lumpur'],['SG','Singapore',1.35,103.82,'Asia/Singapore'],
+  ['ID','Jakarta',-6.2,106.85,'Asia/Jakarta'],['PH','Manila',14.6,120.98,'Asia/Manila'],['CN','Beijing',39.9,116.4,'Asia/Shanghai'],['HK','Hong Kong',22.32,114.17,'Asia/Hong_Kong'],['TW','Taipei',25.03,121.57,'Asia/Taipei'],
+  ['KR','Seoul',37.57,126.98,'Asia/Seoul'],['JP','Tokyo',35.68,139.69,'Asia/Tokyo'],['AU','Sydney',-33.87,151.21,'Australia/Sydney'],['NZ','Auckland',-36.85,174.76,'Pacific/Auckland'],['ZA','Cape Town',-33.92,18.42,'Africa/Johannesburg'],['NG','Lagos',6.52,3.38,'Africa/Lagos']];
+function holidaysToday(now){ const map={};
+  HOP_PLACES.forEach(pl=>{ const t=partsIn(pl[4],now), td=dayNum(t.year,t.month,t.day); let L=[]; try{ L=[...holidayDates(t.year-1,pl[0]),...holidayDates(t.year,pl[0])]; }catch(e){}
+    L.forEach(h=>{ if (td<h.from || td>h.to || !HOL[h.k] || HOL[h.k].name==null || ['easy','medium','hard'].includes(h.k)) return; const day=dayNum(h.y,h.m,h.d)===td; (map[h.k]=map[h.k]||{k:h.k,day:false,places:[]});
+      map[h.k].day=map[h.k].day||day; if (!map[h.k].places.some(q=>q[0]===pl[0])) map[h.k].places.push(pl); }); });
+  return Object.values(map).sort((a,b)=>(b.day-a.day)||(b.places.length-a.places.length)); }
+function openHopper(){ const L=holidaysToday(simNow());
+  showModal(`<h3>🌍 Holiday hopper</h3><p class="mut">Every holiday going on somewhere on Earth right now (in each country’s own time). Tap a city to fly there.</p>
+    ${L.length?L.map(h=>`<div class="advMsg" style="margin-top:6px"><b>${HOL[h.k].icon} ${esc(HOL[h.k].name)}</b> ${h.day?'<small style="color:#ffd36b">· today!</small>':'<small class="mut">· season</small>'}<br>
+      ${h.places.slice(0,8).map(p=>`<button class="btn mini" data-hop="${p[0]}" style="margin:4px 4px 0 0">${esc(p[1])}</button>`).join('')}</div>`).join(''):'<p>No big holidays anywhere today — a perfectly ordinary day on Earth 🌍</p>'}`);
+  document.querySelectorAll('[data-hop]').forEach(b=>b.onclick=()=>{ const p=HOP_PLACES.find(q=>q[0]===b.dataset.hop); closeModal(); ctlG.minDistance=1.05; flyToLL(p[2],p[3],1.6); toast(`✈️ Hopping to ${p[1]}`); }); }
+
+// ---------- 🎈 Thanksgiving parades: one compact line when several are on at once
+var _pl9=paradeLines; paradeLines=function(now){ if (theme!=='thanksgiving' || !current || current.cc!=='US') return '';
+  const st=PARADES.map((p,i)=>{ const t=partsIn(p[3],now); if (t.month!==10 || t.day!==paradeDay(p,t.year)) return null; const h=t.hour+t.minute/60+t.second/3600;
+    return h>=p[4]&&h<p[5]?'live':h>=p[4]-1&&h<p[4]?'soon':h>=p[5]&&h<p[5]+.5?'ended':h<p[4]-1?'later':null; });
+  const n=s=>st.filter(x=>x===s).length, active=n('live')+n('soon')+n('ended'); if (active<=1) return _pl9(now);
+  const bits=[]; if (n('live')) bits.push(`${n('live')} parade${n('live')>1?'s':''} on now`); if (n('soon')) bits.push(`${n('soon')} starting soon`); if (n('ended')) bits.push(`${n('ended')} just ended`);
+  let h=`<small class="pLive">${n('live')?'<span class="liveDot"></span><b>LIVE NOW</b> ·':'🎈'} ${bits.join(' · ')} <a class="ytBtn" href="#" id="paradeAll">▶️ Watch</a></small>`;
+  const later=PARADES.filter((p,i)=>st[i]==='later').map(p=>p[0]); if (later.length) h+=`<small>🎈 Later today: ${later.join(', ')} · <a href="#" id="paradeGuide">times</a></small>`;
+  return h; };
+function openParadeAll(){ const now=simNow();
+  showModal(`<h3>🎈 Parades on now</h3>${PARADES.map((p,i)=>{ const t=partsIn(p[3],now); if (t.month!==10 || t.day!==paradeDay(p,t.year)) return ''; const h=t.hour+t.minute/60;
+      const s=h>=p[4]&&h<p[5]?'<span class="liveDot" style="display:inline-block"></span> <b>LIVE NOW</b>':h>=p[4]-1&&h<p[4]?`starts in ${Math.ceil((p[4]-h)*60)} min`:h>=p[5]&&h<p[5]+.5?'just ended':''; if (!s) return '';
+      return `<div class="advMsg" style="margin-top:6px"><b>${esc(p[8])}</b> · ${esc(p[0])}<br><small>${s}${p[10]?' · 📺 '+esc(p[10]):''}</small><br><a class="ytBtn" href="${paradeYT(p,t.year)}" target="_blank" rel="noopener">▶️ Watch on YouTube</a> <button class="btn mini" data-pfly="${i}">Fly there</button></div>`; }).join('')}
+    <p style="margin-top:10px"><a href="#" id="paradeGuide">All parade times</a></p>`);
+  document.querySelectorAll('[data-pfly]').forEach(b=>b.onclick=()=>{ const p=PARADES[+b.dataset.pfly]; closeModal(); ctlG.minDistance=1.05; flyToLL(p[1],p[2],1.12); }); }
+
+// ---------- wiring
+var _tt9=totTap; totTap=function(lat,lon,now){ if (theme==='songkran'){ for (let k=0;k<3;k++) fx.burst(_lastTapXY[0]+(Math.random()-.5)*50,_lastTapXY[1]+(Math.random()-.5)*50,k===0); } return _tt9(lat,lon,now); };
+var _lt9=layersTick; layersTick=function(now,M){ _lt9(now,M); foolsTick(now); };
+var _ll9=layerLines; layerLines=function(now){ let h=_ll9(now); if (!current) return h;
+  if (theme==='mothersday') h+=`<small>💐 <a href="#" id="cardMom">Make a card for Mom</a></small>`;
+  if (theme==='fathersday') h+=`<small>👔 <a href="#" id="cardDad">Make a card for Dad</a></small>`;
+  if (theme==='songkran') h+=`<small>💦 Tap the globe for a Songkran water splash!</small>`;
+  if (theme==='dragonboat') h+=`<small>🐉 <a href="#" id="dragonGo">Race a dragon boat!</a>${store.get('dragonBest',0)?` · best ${store.get('dragonBest',0)}s`:''} · eat a zongzi (sticky rice dumpling) 🍙</small>`;
+  { const lp=localParts(now,current); if (theme==='tanabata' || lp.month===6 && lp.day===7) h+=`<small>🎋 Tanabata — <a href="#" id="tanaGo">hang a wish on the bamboo</a></small>`; }
+  if (theme==='oktoberfest') h+=`<small>🥨 Munich’s Oktoberfest — the world’s biggest folk festival · <a href="#" id="oktGo">fly to Munich</a></small>`;
+  if (theme==='may4th') h+=`<small>🌌 Search a city and fly there — you’ll jump to hyperspace! ✨</small>`;
+  return h+solsticeLine(now)+boxingLine(now)+hogmanayLine(now)+groundhogLine(now)+foolsLine()+nowruzLine(now)+jewishLine(now); };
+document.addEventListener('click',e=>{ const a=e.target.closest('a,button'); if (!a) return;
+  const map={cardMom:()=>openCardMaker('mom'),cardDad:()=>openCardMaker('dad'),dragonGo:openDragonRace,tanaGo:openTanabata,sederGo:openSeder,paradeAll:openParadeAll,foolsGo:foolsPrank,
+    hogGo:()=>{ ctlG.minDistance=1.05; flyToLL(55.95,-3.19,1.12); }, oktGo:()=>{ ctlG.minDistance=1.05; flyToLL(48.13,11.55,1.12); }};
+  if (map[a.id]){ e.preventDefault(); map[a.id](); return; }
+  if (a.dataset && a.dataset.gh){ e.preventDefault(); const [t,v]=a.dataset.gh.split(':'), k=ghKey(simNow()), G=store.get(k,{}); if (t==='g') G.guess=v; else { G.result=v; if (G.guess===v) try{ fx.celebrate(3000); }catch(_){} } store.set(k,G); tick(true); } });
+var _om9=openMore; openMore=function(){ _om9(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
+  const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.appendChild(b); };
+  add('🌍','Holiday hopper','Every holiday on Earth today',openHopper);
+  if (theme==='mothersday' || theme==='fathersday') add('💌','Card maker',`Make a card for ${theme==='fathersday'?'Dad':'Mom'}`,()=>openCardMaker());
+  if (theme==='dragonboat') add('🐉','Dragon boat race','Tap left-right to paddle',openDragonRace);
+  if (theme==='tanabata') add('🎋','Tanabata wish','Hang a wish on the bamboo',openTanabata); };
+if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x9={openCardMaker,openDragonRace,openTanabata,openHopper,openParadeAll,foolsPrank,closeModal,flyToLL,holidaysToday,get theme(){return theme;}};
+
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS,SET,layerNote,noteFor};
 frame();
