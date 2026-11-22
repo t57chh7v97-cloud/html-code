@@ -2718,7 +2718,7 @@ let musicFor=null;
 function syncMusicButton(){ const mt=musicTheme(), has=!!mt && Chip.has(mt); $('musicBtn').style.display = has ? '' : 'none';
   if (mt!==musicFor){ musicFor=mt; if (musicOn) musicStop(); $('musicMenu').classList.remove('show'); Chip.setTheme(mt); } }
 $('santaBack').onclick=()=>exitSantaCam();
-$('santaCard').addEventListener('click',e=>{ if (e.target.closest('#santaZoom')) return; const c=$('santaCard').classList.toggle('compact'); store.set('scCompact',c); layout(); });
+$('santaCard').addEventListener('click',e=>{ if (e.target.closest('#santaZoom')) return; const c=$('santaCard').classList.toggle('compact'); $('santaCard').dataset.manual=1; store.set('scCompact',c); layout(); });
 $('focusBtn').onclick=()=>{ const on=document.body.classList.toggle('focus'); $('focusBtn').classList.toggle('on',on); $('focusBtn').innerHTML = on ? '👁<span class="long"> Show panels</span>' : '⛶<span class="long"> Hide panels</span>';
   if (on){ $('layerMenu').classList.remove('show'); $('musicMenu').classList.remove('show'); } layout(); };
 $('collapse').onclick=()=>{ const c=$('card').classList.toggle('collapsed'); $('collapse').textContent=c?'▴':'▾'; $('card').scrollTop=0; layout(); };
@@ -2736,16 +2736,22 @@ function globeDist(){
 function orbitHome(){ const dir = camO.aspect<1 ? new THREE.Vector3(0,1.5,1) : new THREE.Vector3(0,.55,1); camO.position.copy(dir.normalize().multiplyScalar(fitDist(camO, camO.aspect<1?13.2:13))); ctlO.target.set(0,0,0); }
 function layout(){
   renderer.setSize(innerWidth,innerHeight);
-  const W=innerWidth, H=innerHeight, card=$('card').getBoundingClientRect(), top=$('top').getBoundingClientRect();
+  const W=innerWidth, H=innerHeight, top=$('top').getBoundingClientRect();
   let ox=0, oy=0;
-  const sc=$('santaCard'); const camMode=typeof santaCam!=='undefined' && santaCam; let stack=camMode?0:card.height;
+  const sc=$('santaCard'); const camMode=typeof santaCam!=='undefined' && santaCam;
+  // phones: the card and the Santa card share the space under the top bar — the card scrolls inside so neither covers the buttons
+  { const avail=H-top.bottom-(W<=720?18:30); let scH=0;
+    if (W<=720 && sc && sc.classList.contains('show') && !camMode){ scH=sc.getBoundingClientRect().height;
+      const cardH=$('card').scrollHeight;
+      if (!sc.dataset.manual && !sc.classList.contains('compact') && scH+8+Math.min(cardH,260)>avail-180){ sc.classList.add('compact'); scH=sc.getBoundingClientRect().height; } }
+    $('card').style.maxHeight=Math.max(130, avail-(scH?scH+8+(sc.dataset.manual?0:180):0))+'px'; }
+  const card=$('card').getBoundingClientRect(); let stack=camMode?0:card.height;
   if (sc && sc.classList.contains('show')){ if (W<=720){ sc.style.bottom=(camMode?12:card.height+12+8)+'px'; stack+=sc.getBoundingClientRect().height+8; } else sc.style.bottom=''; }
   if (W<=720){ oy = Math.round((stack - top.bottom)/2 + 6); }      // centre the globe in the space between bar and card
   else if (W>=900){ ox = -Math.round(Math.min(card.width+20, W*.32)/2); } // nudge right of the side card
   for (const c of [camG,camO,camS]){ c.aspect=W/H; c.setViewOffset(W,H,ox,oy,W,H); c.updateProjectionMatrix(); }
   if (typeof trailMat!=='undefined') trailMat.resolution.set(W,H);
   // never let the card grow under the top bar: it scrolls inside instead, so its ▾/▴ button is always reachable
-  $('card').style.maxHeight=Math.max(160, H-top.bottom-(W<=720?18:30))+'px';
   const mc=$('mapCtl'); if (mc){ if (W<=720){ const cr=$('card').getBoundingClientRect(), sr=sc&&sc.classList.contains('show')&&!camMode?sc.getBoundingClientRect():null, lowest=Math.min(cr.top, sr?sr.top:1e9);
       const room=lowest-top.bottom; mc.style.display = (camMode || room>=160) ? '' : 'none'; mc.style.transform='none'; mc.style.top = camMode ? (top.bottom+12)+'px' : Math.max(top.bottom+10, lowest-148)+'px'; }
     else { mc.style.top=''; mc.style.transform=''; mc.style.display=''; } }
@@ -3959,7 +3965,7 @@ function santaStats(now){ if (!ROUTE.length) return null; if (!SANTA_CUM){ SANTA
   return {km,kmh,stops:i}; }
 var _usc=updateSantaCard; updateSantaCard=function(now){ _usc(now); document.body.classList.toggle('santa-live', !!(santa.on && $('santaCard').classList.contains('show'))); if (!$('santaCard').classList.contains('show')) return; const S=santaStats(now); if (!S) return;
   const us=useUS(), dist=us?`${Math.round(S.km*0.6214).toLocaleString()} mi`:`${Math.round(S.km).toLocaleString()} km`, sp=us?`${Math.round(S.kmh*0.6214).toLocaleString()} mph`:`${Math.round(S.kmh).toLocaleString()} km/h`;
-  const y=santa.y, C=store.get('cookies',null), mine=C&&C.y===y, big=n=>new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:1}).format(n);
+  const y=santa.y, C=store.get('cookies',null), mine=C&&C.y===y, big=n=>Math.round(n).toLocaleString('en-US');
   const homes=(santa.presents||0)/2.5, ck=homes*3, mk=homes, cr=homes*3.5;     // per house: 2–4 cookies, 1 glass of milk, 3–4 carrots for the reindeer
   let away=''; if (santa.on && current){ const km=gcDist(current.lat,current.lon,santa.lat,santa.lon); away=`<span>📍 ${us?Math.round(km*0.6214).toLocaleString()+' mi':Math.round(km).toLocaleString()+' km'} from ${esc(shortName(current))}</span>`; }
   const html=`${away}${S.kmh?`<span>🚀 ${sp}</span>`:''}<span title="2–4 cookies at each house">🍪 ${big(ck)} cookies</span><span title="1 glass of milk at each house">🥛 ${big(mk)} glasses of milk</span><span title="3–4 carrots at each house for the reindeer">🥕 ${big(cr)} carrots</span>`
