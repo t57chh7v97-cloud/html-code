@@ -28,6 +28,15 @@
     --shadow:0 8px 28px rgba(0,0,0,.6); --route-casing:#0b1a2b; --route-line:#4aa8ff;
     --route-alt:#5a5f66; --handle:#55555a;
   }
+  /* Layered on top of light/dark rather than a third theme -- contrast and
+     color scheme are independent preferences, and this only needs to touch
+     the handful of variables that make secondary text and dividers too
+     faint to read comfortably in bright sun or for low-vision riders. */
+  body.high-contrast{ --border:rgba(0,0,0,.6); --sub:#2c2c2e; --shadow:0 0 0 2px rgba(0,0,0,.45); }
+  body[data-theme="dark"].high-contrast{ --border:rgba(255,255,255,.6); --sub:#f0f0f2; --shadow:0 0 0 2px rgba(255,255,255,.35); }
+  body.high-contrast .hint, body.high-contrast .step-meta, body.high-contrast .suggestion-sub,
+  body.high-contrast .nav-instruction, body.high-contrast label{ font-weight:600; }
+  body.high-contrast .step-row, body.high-contrast .suggestion-row{ border-bottom-width:2px; }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,"Segoe UI",Roboto,sans-serif;
@@ -238,6 +247,11 @@
   .offline-banner{pointer-events:auto;background:var(--danger);color:#fff;font-size:12.5px;font-weight:700;
     text-align:center;padding:9px 14px;border-radius:12px;margin:0 0 8px;box-shadow:var(--shadow);}
   .nav-overlay .offline-banner{margin:max(12px,env(safe-area-inset-top)) 12px 8px;}
+  .heatmap-banner{pointer-events:auto;background:var(--accent);color:#fff;font-size:12.5px;font-weight:700;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:9px 10px 9px 14px;border-radius:12px;margin:0 0 8px;box-shadow:var(--shadow);}
+  .heatmap-banner button{flex:none;background:rgba(255,255,255,.25);color:#fff;border:none;border-radius:8px;
+    padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;}
   .nav-icon{flex:none;width:46px;height:46px;border-radius:12px;background:var(--accent);color:#fff;
     display:flex;align-items:center;justify-content:center;}
   .nav-icon.warn{background:var(--danger);}
@@ -288,6 +302,7 @@
 
 <div class="ui-layer" id="searchLayer">
   <div class="offline-banner hidden" id="offlineBannerSearch">You are offline, connect to the Internet or cellular services</div>
+  <div class="heatmap-banner hidden" id="heatmapBanner"><span id="heatmapBannerText">Showing your ride history</span><button id="hideHeatmapBtn">Hide</button></div>
   <div class="topbar">
     <div class="search-pill" id="searchPill">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
@@ -370,6 +385,13 @@
     <button data-v="light">Light</button>
     <button data-v="dark">Dark</button>
   </div>
+
+  <div class="section-title">High contrast</div>
+  <div class="seg" id="highContrastSeg">
+    <button data-v="on">On</button>
+    <button data-v="off" class="active">Off</button>
+  </div>
+  <p class="hint">Stronger borders and darker secondary text, for easier reading in bright sun or low light. Off by default.</p>
 
   <div class="section-title">Voice guidance</div>
   <div class="seg" id="voiceSeg">
@@ -508,9 +530,19 @@
   <div id="tripSummary"></div>
   <div id="tripList"></div>
   <div class="secondary-row" style="margin-top:8px;">
+    <button class="secondary-btn" id="viewHeatmapBtn">View on map</button>
     <button class="secondary-btn" id="exportTripsBtn">Export CSV</button>
     <button class="secondary-btn" id="clearTripsBtn">Clear trip history</button>
   </div>
+  <p class="hint" id="heatmapHint">Shows every ride's route on the map at once, so you can see your most-ridden streets. Only rides completed after this update have a saved route to show.</p>
+
+  <div class="section-title">Backup &amp; restore</div>
+  <div class="secondary-row">
+    <button class="secondary-btn" id="exportBackupBtn">Export backup</button>
+    <button class="secondary-btn" id="importBackupBtn">Import backup</button>
+  </div>
+  <input type="file" id="importBackupFile" accept="application/json" class="hidden">
+  <p class="hint">Saves everything on this device -- settings, favorites, saved routes, parking pin, avoided roads and trip history -- to one file you can keep, move to a new device, or restore from. Importing replaces whatever's currently saved and reloads the page.</p>
 </div>
 
 <div class="modal-backdrop hidden" id="lawBackdrop"></div>
@@ -825,6 +857,8 @@ var state = {
   showRangeRing: localStorage.getItem("ebm_showrangering") === "on",
   showRainRadar: localStorage.getItem("ebm_showrainradar") === "on",
   liveShareActive: false, // in-session only -- a live-share session never survives a reload, same as navigation itself not resuming into one
+  highContrast: localStorage.getItem("ebm_highcontrast") === "on",
+  rideHeatmapActive: false, // in-session only -- an on-demand view, not a standing preference
   bikeLanes: [],
   transitPOIs: [],
   favorites: loadJSON("ebm_favorites", []),
@@ -1087,6 +1121,7 @@ function applyTheme(){
   $("themeBtn").classList.toggle("active", state.theme!=="auto");
   renderRouteLines();
 }
+function applyHighContrast(){ document.body.classList.toggle("high-contrast", state.highContrast); }
 // Cheap re-check for call sites (a GPS fix, a fresh locate) that run often --
 // only touches the DOM and re-renders route lines when the theme actually
 // flips, not on every call.
@@ -1333,6 +1368,37 @@ function rainClearsBy(fromTime){
     if(h.precipProb < RAIN_WARNING_THRESHOLD_PCT) return h.time;
   }
   return null;
+}
+
+/* ---------- "time to leave" reminder ---------- */
+
+// Nothing here survives the tab closing -- there's no push server behind
+// this app, so the Notification API (not the Push API) is as close as a
+// backend-free page can honestly get. It still works for the realistic
+// case of leaving the PWA open in the background while you finish getting
+// ready, just not after the tab itself is gone.
+var LEAVE_REMINDER_LEAD_MS = 5*60*1000;
+var leaveReminderTimer = null;
+function cancelLeaveReminder(){
+  if(leaveReminderTimer){ clearTimeout(leaveReminderTimer); leaveReminderTimer=null; }
+}
+function scheduleLeaveReminder(destName){
+  cancelLeaveReminder();
+  if(!state.plannedDepartureAt || typeof Notification==="undefined") return;
+  var delay = (state.plannedDepartureAt - LEAVE_REMINDER_LEAD_MS) - Date.now();
+  if(delay <= 0) return; // already inside the lead window -- the route card's own ETA is enough warning
+  function fire(){
+    leaveReminderTimer = null;
+    try{ new Notification("Time to leave", { body:"Head out now for "+destName+" to leave on schedule.", tag:"ebm-leave-reminder" }); }catch(e){}
+  }
+  if(Notification.permission === "granted"){
+    leaveReminderTimer = setTimeout(fire, delay);
+    toast("We'll remind you when it's time to leave (if this tab stays open)", 3500);
+  } else if(Notification.permission !== "denied"){
+    Notification.requestPermission().then(function(perm){
+      if(perm==="granted"){ leaveReminderTimer = setTimeout(fire, delay); toast("We'll remind you when it's time to leave (if this tab stays open)", 3500); }
+    }).catch(function(){});
+  }
 }
 
 /* ---------- nearby transit (subway + ferry) + bike parking ---------- */
@@ -2759,14 +2825,15 @@ function showRouteCard(){
   var optimizeBtn=$("optimizeStopsBtn"); if(optimizeBtn) optimizeBtn.addEventListener("click", optimizeStopOrder);
   $("departTimeInput").addEventListener("change", function(e){
     var val = e.target.value;
-    if(!val){ state.plannedDepartureAt = null; showRouteCard(); return; }
+    if(!val){ state.plannedDepartureAt = null; cancelLeaveReminder(); showRouteCard(); return; }
     var parts = val.split(":");
     var d = new Date();
     d.setHours(Number(parts[0]), Number(parts[1]), 0, 0);
     state.plannedDepartureAt = d.getTime();
+    scheduleLeaveReminder(state.destination.name);
     showRouteCard();
   });
-  var clearDepartBtn=$("clearDepartBtn"); if(clearDepartBtn) clearDepartBtn.addEventListener("click", function(){ state.plannedDepartureAt = null; showRouteCard(); });
+  var clearDepartBtn=$("clearDepartBtn"); if(clearDepartBtn) clearDepartBtn.addEventListener("click", function(){ state.plannedDepartureAt = null; cancelLeaveReminder(); showRouteCard(); });
   $("avoidHighwaysChip").addEventListener("click", function(){ setAvoidRestrictedRoads(!state.avoidRestrictedRoads); showRouteCard(); });
   $("avoidHillsChip").addEventListener("click", function(){ setPreferFlatRoute(!state.preferFlatRoute); showRouteCard(); });
   $("avoidBusyChip").addEventListener("click", function(){ setPreferLowTraffic(!state.preferLowTraffic); showRouteCard(); });
@@ -2956,6 +3023,7 @@ function clearRoute(){
   state.waypoints=[]; state.addingStop=false;
   state.userPickedRoute=false;
   state.plannedDepartureAt=null;
+  cancelLeaveReminder();
   clearNavSnapshot();
   clearRouteLines();
   clearBikeLaneLayers();
@@ -3024,6 +3092,7 @@ function startNavigation(){
   window.scrollTo(0,0);
   state.navigating=true;
   state.plannedDepartureAt=null; // you're actually leaving now -- any planned-later preview is moot
+  cancelLeaveReminder();
   state.offRouteStreak=0; state.rerouting=false; state.lastGoodFixTime=null;
   state.speedOverStreak=0; state.lastSpeedWarnAt=null;
   state.lowBatteryWarned=false;
@@ -3124,7 +3193,7 @@ function logTrip(){
     distanceM:state.tripStart.distanceM, energyWh:state.tripStart.energyWh, elapsedMin:elapsedMin,
     assistLevel:state.tripStart.assistLevel, bikeClass:state.tripStart.bikeClass,
     destination:state.tripStart.destination, waypoints:state.tripStart.waypoints,
-    completed:completed
+    completed:completed, latlngs:route ? route.latlngs : null // for the ride-history heatmap view
   });
   state.tripHistory = state.tripHistory.slice(0,50);
   saveJSON("ebm_trips", state.tripHistory);
@@ -3487,6 +3556,7 @@ function openSettings(){
   refreshWeightInput();
   setSeg("unitsSeg", state.units);
   setSeg("themeSeg", state.theme);
+  setSeg("highContrastSeg", state.highContrast?"on":"off");
   setSeg("voiceSeg", state.voiceOn?"on":"off");
   setSeg("hapticSeg", state.hapticOn?"on":"off");
   setSeg("transitSeg", state.showTransit?"on":"off");
@@ -3618,6 +3688,43 @@ function beginSetSlot(slot, label){
   $("searchInput").focus();
 }
 
+// Rough, commonly-cited averages -- not a real emissions/calorie audit, just
+// enough to put the trip-history numbers in a relatable frame.
+var CO2_KG_PER_KM_DRIVING = 0.192; // typical gasoline passenger car
+var CYCLING_MET = 4; // light-effort pedal-assist, well below regular cycling's ~6-8 MET
+function totalCo2SavedKg(){
+  var totalKm = state.tripHistory.reduce(function(s,t){ return s+t.distanceM; },0)/1000;
+  return totalKm*CO2_KG_PER_KM_DRIVING;
+}
+function totalCaloriesBurned(){
+  var totalHours = state.tripHistory.reduce(function(s,t){ return s+(t.elapsedMin||0); },0)/60;
+  return CYCLING_MET*state.riderWeightKg*totalHours;
+}
+
+/* ---------- ride history heatmap ---------- */
+
+var heatmapLayers = [];
+function toggleRideHeatmap(){
+  if(state.rideHeatmapActive){ hideRideHeatmap(); return; }
+  var withRoutes = state.tripHistory.filter(function(t){ return t.latlngs && t.latlngs.length>1; });
+  if(!withRoutes.length){ toast("No ride routes saved yet — only rides completed after this update have one.", 4000); return; }
+  state.rideHeatmapActive = true;
+  var color = getComputedStyle(document.body).getPropertyValue("--accent").trim()||"#1f8bff";
+  withRoutes.forEach(function(t){
+    var line = L.polyline(t.latlngs, { color:color, weight:4, opacity:.12, interactive:false }).addTo(map);
+    heatmapLayers.push(line);
+  });
+  $("heatmapBannerText").textContent = "Showing "+withRoutes.length+" past ride"+(withRoutes.length>1?"s":"");
+  $("heatmapBanner").classList.remove("hidden");
+  closeSettings();
+}
+function hideRideHeatmap(){
+  heatmapLayers.forEach(function(l){ map.removeLayer(l); });
+  heatmapLayers = [];
+  state.rideHeatmapActive = false;
+  $("heatmapBanner").classList.add("hidden");
+}
+
 function renderTripHistory(){
   var summaryBox=$("tripSummary"), listBox=$("tripList");
   if(!state.tripHistory.length){
@@ -3630,7 +3737,11 @@ function renderTripHistory(){
   summaryBox.innerHTML = '<div class="stat-row">'+
     '<div class="stat-card"><div class="v">'+state.tripHistory.length+'</div><div class="l">Rides</div></div>'+
     '<div class="stat-card"><div class="v">'+fmtDist(totalDist)+'</div><div class="l">Total distance</div></div>'+
-    '<div class="stat-card"><div class="v">'+Math.round(totalWh)+' Wh</div><div class="l">Battery used</div></div></div>';
+    '<div class="stat-card"><div class="v">'+Math.round(totalWh)+' Wh</div><div class="l">Battery used</div></div></div>'+
+    '<div class="stat-row" style="margin-top:8px;">'+
+    '<div class="stat-card"><div class="v">'+totalCo2SavedKg().toFixed(1)+' kg</div><div class="l">CO2 saved vs. driving</div></div>'+
+    '<div class="stat-card"><div class="v">'+Math.round(totalCaloriesBurned())+'</div><div class="l">Calories burned</div></div></div>'+
+    '<p class="hint" style="margin:6px 0 0;">Both are rough estimates — CO2 assumes an average gas car for the same distance; calories assume light-effort pedal-assist cycling at your current weight.</p>';
   listBox.innerHTML = state.tripHistory.slice(0,10).map(function(t){
     var d = new Date(t.date);
     var i = state.tripHistory.indexOf(t);
@@ -3670,6 +3781,44 @@ function exportTripsCsv(){
   a.href = url; a.download = "ebike_trips.csv";
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
+
+/* ---------- backup / restore ---------- */
+
+// Everything this app saves is a single "ebm_" prefix away in localStorage
+// -- reading the key list directly (not a hardcoded field-by-field list)
+// means a future feature's new key is backed up automatically, with no
+// separate list to remember to update. ebm_lastnav is deliberately left
+// out: it's a mid-ride resume snapshot, not something worth carrying to a
+// new device or restoring into a session that isn't that same ride.
+function exportBackup(){
+  var data = {};
+  for(var i=0;i<localStorage.length;i++){
+    var key = localStorage.key(i);
+    if(key.indexOf("ebm_")===0 && key!=="ebm_lastnav") data[key] = localStorage.getItem(key);
+  }
+  var payload = { app:"EbikeMaps", exportedAt:new Date().toISOString(), data:data };
+  var blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = "ebikemaps-backup.json";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
+function importBackup(file){
+  var reader = new FileReader();
+  reader.onload = function(){
+    var payload;
+    try{ payload = JSON.parse(reader.result); }catch(e){ toast("That file isn't a valid backup", 3500); return; }
+    if(!payload || typeof payload.data !== "object"){ toast("That file isn't a valid backup", 3500); return; }
+    Object.keys(payload.data).forEach(function(key){
+      if(key.indexOf("ebm_")===0) localStorage.setItem(key, payload.data[key]);
+    });
+    toast("Backup restored — reloading…", 2500);
+    setTimeout(function(){ location.reload(); }, 800);
+  };
+  reader.onerror = function(){ toast("Couldn't read that file", 3500); };
+  reader.readAsText(file);
 }
 
 /* ---------- local e-bike rules panel ---------- */
@@ -3794,9 +3943,19 @@ function wireUI(){
 
   $("clearTripsBtn").addEventListener("click", function(){
     state.tripHistory=[]; saveJSON("ebm_trips", []); renderTripHistory();
+    if(state.rideHeatmapActive) hideRideHeatmap();
   });
   $("exportTripsBtn").addEventListener("click", exportTripsCsv);
+  $("viewHeatmapBtn").addEventListener("click", toggleRideHeatmap);
+  $("hideHeatmapBtn").addEventListener("click", hideRideHeatmap);
   $("clearOfflineMapsBtn").addEventListener("click", clearOfflineMaps);
+  $("exportBackupBtn").addEventListener("click", exportBackup);
+  $("importBackupBtn").addEventListener("click", function(){ $("importBackupFile").click(); });
+  $("importBackupFile").addEventListener("change", function(e){
+    var file = e.target.files && e.target.files[0];
+    if(file) importBackup(file);
+    e.target.value = "";
+  });
 
   $("capacityInput").addEventListener("change", function(e){ state.capacityWh=clamp(Number(e.target.value)||500,50,3000); localStorage.setItem("ebm_capacity",state.capacityWh); renderRangeRing(); if(state.routes.length) showRouteCard(); });
   $("weightInput").addEventListener("change", function(e){
@@ -3817,6 +3976,7 @@ function wireUI(){
     if(state.routes.length) showRouteCard();
   });
   wireSeg("themeSeg", function(v){ state.theme=v; localStorage.setItem("ebm_theme",v); applyTheme(); });
+  wireSeg("highContrastSeg", function(v){ state.highContrast = v==="on"; localStorage.setItem("ebm_highcontrast", v); applyHighContrast(); });
   wireSeg("voiceSeg", function(v){ state.voiceOn = v==="on"; speechOn=state.voiceOn; localStorage.setItem("ebm_voice",v); });
   wireSeg("hapticSeg", function(v){ state.hapticOn = v==="on"; localStorage.setItem("ebm_haptic",v); });
   wireSeg("transitSeg", function(v){
@@ -3934,6 +4094,7 @@ function boot(){
   try{
     initDrag();
     wireUI();
+    applyHighContrast();
     updateOfflineBanner();
     if(state.showRainRadar) toggleRainRadar();
     locateMe(false);
