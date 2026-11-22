@@ -2338,7 +2338,7 @@ canvas.addEventListener('pointerup',e=>{
   if (EXTRAS_READY && GAME.on){ gameGuess(lat,lon); return; }
   if (santaCardOn() && santaStopToast(lat,lon,90)) return;          // tapped one of Santa's stops
   if (EXTRAS_READY){ const pi=paradeAt(lat,lon,simNow()); if (pi>=0){ openParadeWatch(pi); return; } }
-  if (EXTRAS_READY && (totTap(lat,lon,simNow()) || flightTap(lat,lon) || quakeTap(lat,lon))) return;
+  if (EXTRAS_READY && (totTap(lat,lon,simNow()) || quakeTap(lat,lon))) return;
   setPlace({ ...describePoint(lat,lon), lat, lon, kind:'point' });
 });
 function santaStopToast(lat,lon,km){ const r=nearestStop(lat,lon,km); if (!r) return false;
@@ -3781,28 +3781,6 @@ async function rainLoad(){ if (!LAYERS.rain || RAIN.loading || (RAIN.mesh && Dat
   }catch(e){ layerNote.rain='couldn’t load NASA rain data here — it works on the GitHub site'; }
   RAIN.loading=false; renderLayerMenu(); }
 
-// ---------- ✈️ live flights (OpenSky Network, refreshed every 90 s)
-var FLT={list:[], mesh:null, at:0, loading:false};
-async function flightsLoad(){ if (!LAYERS.flights || FLT.loading || Date.now()-FLT.at<90000) return; FLT.loading=true; FLT.at=Date.now();
-  try{ const j=await getJSON('https://opensky-network.org/api/states/all');
-    FLT.list=(j.states||[]).filter(s=>s[5]!=null && s[6]!=null && !s[8]).map(s=>({cs:(s[1]||'').trim()||s[0], from:s[2], lon:s[5], lat:s[6], alt:s[7]||s[13]||0, v:s[9]||0, hdg:s[10]||0}));
-    flightsBuild(); layerNote.flights=`${FLT.list.length.toLocaleString()} planes in the air now · OpenSky Network · tap one`;
-  }catch(e){ layerNote.flights='couldn’t reach OpenSky here (it also limits how often it can be asked) — try the GitHub site in a minute'; }
-  FLT.loading=false; renderLayerMenu(); }
-function flightsBuild(){ const n=FLT.list.length; if (FLT.mesh){ G.frame.remove(FLT.mesh); FLT.mesh.geometry.dispose(); }
-  const sh=new THREE.Shape(); sh.moveTo(0,1); sh.lineTo(.18,.2); sh.lineTo(.9,-.15); sh.lineTo(.9,-.32); sh.lineTo(.16,-.18); sh.lineTo(.12,-.7); sh.lineTo(.35,-.9); sh.lineTo(.35,-1); sh.lineTo(0,-.88);
-  sh.lineTo(-.35,-1); sh.lineTo(-.35,-.9); sh.lineTo(-.12,-.7); sh.lineTo(-.16,-.18); sh.lineTo(-.9,-.32); sh.lineTo(-.9,-.15); sh.lineTo(-.18,.2); sh.lineTo(0,1);
-  const geo=new THREE.ShapeGeometry(sh); geo.rotateX(-Math.PI/2);            // lies flat, nose toward +Z
-  const m=new THREE.InstancedMesh(geo,new THREE.MeshBasicMaterial({color:0xffe08a,side:THREE.DoubleSide,transparent:true,opacity:.95,depthWrite:false}),Math.max(1,n));
-  m.frustumCulled=false; m.renderOrder=4; G.frame.add(m); FLT.mesh=m; FLT.scaleFor=-1; flightsPlace(1); }
-function flightsPlace(s){ const m=FLT.mesh; if (!m) return; const M=new THREE.Matrix4(), up=new THREE.Vector3(), fw=new THREE.Vector3(), rt=new THREE.Vector3(), p=new THREE.Vector3(), sc=new THREE.Vector3(s,s,s);
-  FLT.list.forEach((f,i)=>{ up.copy(llToEcef(f.lat,f.lon)); const [la,lo]=destPoint(f.lat,f.lon,f.hdg,50); fw.copy(llToEcef(la,lo)).sub(up); fw.addScaledVector(up,-fw.dot(up)).normalize(); rt.crossVectors(up,fw).normalize();
-    M.makeBasis(rt,up,fw).scale(sc).setPosition(p.copy(up).multiplyScalar(1.002+f.alt/6371000)); m.setMatrixAt(i,M); });
-  m.count=FLT.list.length; m.instanceMatrix.needsUpdate=true; }
-function flightTap(lat,lon){ if (!LAYERS.flights || !FLT.list.length) return false; let best=null, bd=Math.max(40,(camG.position.length()-1)*250);
-  for (const f of FLT.list){ const d=gcDist(lat,lon,f.lat,f.lon); if (d<bd){ bd=d; best=f; } } if (!best) return false;
-  const u=useUS(), h=u?`${Math.round(best.alt*3.281).toLocaleString()} ft`:`${Math.round(best.alt).toLocaleString()} m`, v=u?`${Math.round(best.v*2.237)} mph`:`${Math.round(best.v*3.6)} km/h`;
-  toast(`✈️ ${best.cs} · from ${best.from} · ${h} · ${v} · heading ${compass(best.hdg)}`); return true; }
 
 // ---------- 🔭 tonight's sky: planets (JPL approximate orbits), bright stars and a sky map for the pin
 const PLANETS={ // a, e, I, L, long.peri, long.node — and their rates per century (JPL “Approximate Positions of the Planets”)
@@ -3887,12 +3865,12 @@ var ACH=[
   ['cookies','🍪','Cookie host','Leave cookies out for Santa — and he eats them'],['gift1','🎁','First delivery','Drop a present from the sleigh'],['gift100','🛷','Elf on duty','Deliver 100 presents'],['gift1000','🌟','Santa’s helper','Deliver 1,000 presents'],
   ['mission','🏁','Mission complete','Finish a sleigh mission'],['missions','🥇','Ace pilot','Finish every sleigh mission'],
   ['candy','🍬','Sweet tooth','Collect 50 Halloween candies'],['candy200','🎃','Candy king','Collect 200 Halloween candies'],['parade','🎈','Parade fan','Watch a Thanksgiving parade'],
-  ['iss','🛰️','Space fan','Follow the space station'],['eclipse','🌑','Shadow chaser','Watch the Moon’s shadow during an eclipse'],['sky','🔭','Stargazer','Open tonight’s sky map'],['flight','✈️','Plane spotter','Tap a live flight'],['club','👥','Team player','Play a club game']];
+  ['iss','🛰️','Space fan','Follow the space station'],['eclipse','🌑','Shadow chaser','Watch the Moon’s shadow during an eclipse'],['sky','🔭','Stargazer','Open tonight’s sky map'],['club','👥','Team player','Play a club game']];
 var achGot=store.get('ach',{});
 function achieve(id){ if (achGot[id]) return; const a=ACH.find(x=>x[0]===id); if (!a) return; achGot[id]=Date.now(); store.set('ach',achGot);
   const el=document.createElement('div'); el.className='achPop glass'; el.innerHTML=`<span>${a[1]}</span><div><small>Achievement unlocked!</small><b>${a[2]}</b></div>`; document.body.appendChild(el);
   setTimeout(()=>el.classList.add('out'),3800); setTimeout(()=>el.remove(),4500); try{ sfx('fanfare'); }catch(e){} }
-function openAchievements(){ const n=Object.keys(achGot).length;
+function openAchievements(){ const n=ACH.filter(a=>achGot[a[0]]).length;
   showModal(`<h3>🏅 Achievements · ${n}/${ACH.length}</h3><div class="achGrid">${ACH.map(([id,ic,name,desc])=>`<div class="achItem${achGot[id]?' got':''}"><span>${achGot[id]?ic:'🔒'}</span><b>${name}</b><small>${desc}</small></div>`).join('')}</div>`); }
 // checks that read saved progress (cheap; every few seconds)
 var achConts=new Set(store.get('conts',[]));
@@ -3913,7 +3891,6 @@ var _mp=makePostcard; makePostcard=function(){ achieve('card'); _mp(); };
 var _wp=watchParade; watchParade=function(i){ achieve('parade'); _wp(i); };
 var _fi=followISS; followISS=function(){ achieve('iss'); _fi(); };
 var _os=openSky; openSky=function(){ achieve('sky'); _os(); };
-var _ft=flightTap; flightTap=function(a,b){ const r=_ft(a,b); if (r) achieve('flight'); return r; };
 document.addEventListener('click',e=>{ const a=e.target.closest('a'); if (a && a.id==='shadowGo') achieve('eclipse'); });
 
 // ---------- 👥 club leaderboard for the daily challenge (Claude version: a shared list for everyone the page is shared with)
@@ -4021,22 +3998,21 @@ function totLine(now){ if (theme!=='halloween' || !current) return ''; const lp=
   if (lp.day===30) return `<small>🎃 Tomorrow night: trick-or-treat around the world on the globe!</small>`; return mine?`<small>🍬 You collected ${mine} candies this Halloween!</small>`:''; }
 
 // ---------- wiring: layer menu rows, taps, ticks, menus
-LAYERS=Object.assign({temp:false,rain:false,flights:false}, LAYERS);
-var _lk=layerKick; layerKick=function(k){ _lk(k); if (k==='temp') tempLoad(); if (k==='rain') rainLoad(); if (k==='flights') flightsLoad(); };
+LAYERS=Object.assign({temp:false,rain:false}, LAYERS); delete LAYERS.flights;
+var _lk=layerKick; layerKick=function(k){ _lk(k); if (k==='temp') tempLoad(); if (k==='rain') rainLoad(); };
 var _rlm=renderLayerMenu; renderLayerMenu=function(){ _rlm(); const m=$('layerMenu'); if (!m || !m.classList.contains('show')) return;
   const row=(k,icon,name,desc)=>`<label class="mopt${LAYERS[k]?' on':''}"><input type="checkbox" data-l="${k}" ${LAYERS[k]?'checked':''}><span>${icon} ${name}<small>${layerNote[k]&&LAYERS[k]?esc(noteFor(k)):desc}</small></span></label>`;
-  m.insertAdjacentHTML('beforeend', row('temp','🌡️','Temperature map','Live temperatures around the world')+row('rain','🌧️','Rain & snow','Where it’s raining or snowing (NASA satellites)')+row('flights','✈️','Live flights','Planes in the air right now · tap one'));
+  m.insertAdjacentHTML('beforeend', row('temp','🌡️','Temperature map','Live temperatures around the world')+row('rain','🌧️','Rain & snow','Where it’s raining or snowing (NASA satellites)'));
   m.querySelectorAll('input').forEach(i=>i.onchange=()=>setLayer(i.dataset.l,i.checked)); };
 var _lt=layersTick; layersTick=function(now,M){ _lt(now,M); const g=mode==='globe';
   if (TEMP.mesh) TEMP.mesh.visible=LAYERS.temp&&g; if (RAIN.mesh) RAIN.mesh.visible=LAYERS.rain&&g;
-  if (FLT.mesh){ FLT.mesh.visible=LAYERS.flights&&g; const s=Math.max(.0016,Math.min(.012,(camG.position.length()-1)*.0045)); if (Math.abs(s-FLT.scaleFor)>FLT.scaleFor*.08){ FLT.scaleFor=s; flightsPlace(s); } }
   totUpdate(now); };
-setInterval(()=>{ for (const k of ['temp','rain','flights']) if (LAYERS[k]) layerKick(k); }, 60000);
-for (const k of ['temp','rain','flights']) if (LAYERS[k]) setTimeout(()=>layerKick(k),2000);
+setInterval(()=>{ for (const k of ['temp','rain']) if (LAYERS[k]) layerKick(k); }, 60000);
+for (const k of ['temp','rain']) if (LAYERS[k]) setTimeout(()=>layerKick(k),2000);
 var _ll=layerLines; layerLines=function(now){ return paradeLines(now)+totLine(now)+_ll(now); };
 var _om2=openMore; openMore=function(){ _om2(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
   const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.prepend(b); };
-  add('🏅','Achievements',`${Object.keys(achGot).length}/${ACH.length} unlocked`,openAchievements); add('🔭','Tonight’s sky','Planets and stars to look for',openSky);
+  add('🏅','Achievements',`${ACH.filter(a=>achGot[a[0]]).length}/${ACH.length} unlocked`,openAchievements); add('🔭','Tonight’s sky','Planets and stars to look for',openSky);
   if (theme==='thanksgiving') add('🎈','Parade guide','Thanksgiving parades across the US',openParadeGuide); };
 
 
@@ -4467,7 +4443,7 @@ var PREF_KEYS=['settings','h12','layers','sfx','holidays','skyView','wxUnit','sc
 function prefApply(k,v){ try{
   if (k==='settings'){ Object.assign(SET,v); applyEffects(); }
   else if (k==='h12'){ h12=!!v; $('fmtSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',(x.dataset.f==='12')===h12)); }
-  else if (k==='layers'){ Object.keys(v||{}).forEach(l=>{ if (LAYERS[l]!==v[l]){ LAYERS[l]=v[l]; if (v[l]) layerKick(l); } }); renderLayerMenu(); }
+  else if (k==='layers'){ Object.keys(v||{}).forEach(l=>{ if (l!=='flights' && LAYERS[l]!==v[l]){ LAYERS[l]=v[l]; if (v[l]) layerKick(l); } }); renderLayerMenu(); }
   else if (k==='sfx') SFX.on=!!v;
   else if (k==='holidays'){ holOn=!!v; $('holBtn').classList.toggle('on',holOn); }
   else if (k==='skyView') SKYVIEW.mode=v;

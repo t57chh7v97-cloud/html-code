@@ -239,9 +239,8 @@ night-side city lights placed at real city coordinates.
   and how it feels, conditions, wind and humidity, a 6-day forecast, °F/°C,
   snow alerts ("snow day? 🛷"), rain warnings and a White Christmas check once
   Dec 25 is in the forecast. GitHub site only.
-- More **🗺️ layers**: 🌡️ a live temperature map (Open-Meteo), 🌧️ rain & snow
-  (NASA IMERG, a few hours behind) and ✈️ live flights (OpenSky Network; tap a
-  plane for its callsign, height and speed).
+- More **🗺️ layers**: 🌡️ a live temperature map (Open-Meteo) and 🌧️ rain & snow
+  (NASA IMERG, a few hours behind). Flight tracking lives in Flightflow.
 - **🔭 Tonight's sky:** which planets you can see from your pin tonight
   (NASA JPL approximate orbits), when and where to look, and a sky map with
   the brightest stars, the Big Dipper, Orion, Cassiopeia and the Southern
