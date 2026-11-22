@@ -30,6 +30,31 @@ install it as an app icon for quick access on a ride. Units (km/mi) default
 to your browser's locale and, along with every other setting, are then saved
 on your device.
 
+## FlightFlow.html
+
+A flight-planning and tracking dashboard. Enter any flight number (50+
+airlines, 79+ airports across six continents) to get a live dashboard: route
+map with a great-circle arc, departure/arrival terminal and gate, aircraft
+type, on-time percentage, a 5-day date strip, and dual-unit weather at both
+airports. Everything runs against free, no-signup-required APIs that you
+bring your own key for in Settings — AeroDataBox (RapidAPI) for live flight
+status and gate/terminal data, OpenWeatherMap for weather, and the
+no-key open.er-api.com for currency conversion (cached for offline use); with
+no key the app still works in demo mode with realistic sample data. Beyond the
+core dashboard there are 30+ tools in one app: jet lag and sleep-schedule
+planners, a visa checklist, a carbon-footprint calculator, a connection-time
+checker, a frequent-flyer mile estimator, emergency phrases in 11 languages,
+a packing list, passport-stamp and bucket-list trackers, a seat-class
+assistant, and a Kid Mode with its own theme and age-appropriate tools. A
+search box mic button (Web Speech API, where the browser supports it) lets
+you say a flight number instead of typing it, and if the tracked flight's
+gate or terminal changes while you have it open, a toast and (if you've
+allowed notifications) a system notification let you know. Six visual themes,
+full dark mode, and a responsive layout from phone to TV-sized displays. Open
+the file directly in a browser, or visit the live site above and use your
+browser's "Add to Home Screen" to install it as an app icon — it also works
+offline after the first visit once installed.
+
 ## EarthClock.html
 
 A live 3D globe (Three.js) that shows you where and when you are. Earth spins

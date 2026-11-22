@@ -1,0 +1,17 @@
+{
+  "name": "FlightFlow",
+  "short_name": "FlightFlow",
+  "description": "A flight-planning and tracking dashboard with live status, weather, currency, and travel tools.",
+  "start_url": "./FlightFlow.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f0f2f8",
+  "theme_color": "#4f6ef7",
+  "icons": [
+    { "src": "icons/flightflow-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/flightflow-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/flightflow-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/flightflow-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

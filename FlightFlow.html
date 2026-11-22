@@ -4,8 +4,141 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>FlightFlow by Playgamez ✈️</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<meta name="theme-color" content="#4f6ef7">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FlightFlow">
+<link rel="manifest" href="flightflow.webmanifest">
+<link rel="apple-touch-icon" href="icons/flightflow-180.png">
+<link rel="icon" href="icons/flightflow-192.png">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<style>
+/* Leaflet 1.9.4 core styles, inlined (not loaded as an external stylesheet) so the
+   app still renders correctly in sandboxed previews that block third-party CSS. */
+.leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0}
+.leaflet-container{overflow:hidden}
+.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow{-webkit-user-select:none;-moz-user-select:none;user-select:none;-webkit-user-drag:none}
+.leaflet-tile::selection{background:transparent}
+.leaflet-safari .leaflet-tile{image-rendering:-webkit-optimize-contrast}
+.leaflet-safari .leaflet-tile-container{width:1600px;height:1600px;-webkit-transform-origin:0 0}
+.leaflet-marker-icon,.leaflet-marker-shadow{display:block}
+.leaflet-container .leaflet-overlay-pane svg{max-width:none!important;max-height:none!important}
+.leaflet-container .leaflet-marker-pane img,.leaflet-container .leaflet-shadow-pane img,.leaflet-container .leaflet-tile-pane img,.leaflet-container img.leaflet-image-layer,.leaflet-container .leaflet-tile{max-width:none!important;max-height:none!important;width:auto;padding:0}
+.leaflet-container img.leaflet-tile{mix-blend-mode:plus-lighter}
+.leaflet-container.leaflet-touch-zoom{-ms-touch-action:pan-x pan-y;touch-action:pan-x pan-y}
+.leaflet-container.leaflet-touch-drag{-ms-touch-action:pinch-zoom;touch-action:none;touch-action:pinch-zoom}
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom{-ms-touch-action:none;touch-action:none}
+.leaflet-container{-webkit-tap-highlight-color:transparent}
+.leaflet-container a{-webkit-tap-highlight-color:rgba(51,181,229,.4)}
+.leaflet-tile{filter:inherit;visibility:hidden}
+.leaflet-tile-loaded{visibility:inherit}
+.leaflet-zoom-box{width:0;height:0;-moz-box-sizing:border-box;box-sizing:border-box;z-index:800}
+.leaflet-overlay-pane svg{-moz-user-select:none}
+.leaflet-pane{z-index:400}
+.leaflet-tile-pane{z-index:200}
+.leaflet-overlay-pane{z-index:400}
+.leaflet-shadow-pane{z-index:500}
+.leaflet-marker-pane{z-index:600}
+.leaflet-tooltip-pane{z-index:650}
+.leaflet-popup-pane{z-index:700}
+.leaflet-map-pane canvas{z-index:100}
+.leaflet-map-pane svg{z-index:200}
+.leaflet-vml-shape{width:1px;height:1px}
+.lvml{behavior:url(#default#VML);display:inline-block;position:absolute}
+.leaflet-control{position:relative;z-index:800;pointer-events:visiblePainted;pointer-events:auto}
+.leaflet-top,.leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}
+.leaflet-top{top:0}
+.leaflet-right{right:0}
+.leaflet-bottom{bottom:0}
+.leaflet-left{left:0}
+.leaflet-control{float:left;clear:both}
+.leaflet-right .leaflet-control{float:right}
+.leaflet-top .leaflet-control{margin-top:10px}
+.leaflet-bottom .leaflet-control{margin-bottom:10px}
+.leaflet-left .leaflet-control{margin-left:10px}
+.leaflet-right .leaflet-control{margin-right:10px}
+.leaflet-fade-anim .leaflet-popup{opacity:0;-webkit-transition:opacity .2s linear;-moz-transition:opacity .2s linear;transition:opacity .2s linear}
+.leaflet-fade-anim .leaflet-map-pane .leaflet-popup{opacity:1}
+.leaflet-zoom-animated{-webkit-transform-origin:0 0;-ms-transform-origin:0 0;transform-origin:0 0}
+svg.leaflet-zoom-animated{will-change:transform}
+.leaflet-zoom-anim .leaflet-zoom-animated{-webkit-transition:-webkit-transform .25s cubic-bezier(0,0,.25,1);-moz-transition:-moz-transform .25s cubic-bezier(0,0,.25,1);transition:transform .25s cubic-bezier(0,0,.25,1)}
+.leaflet-zoom-anim .leaflet-tile,.leaflet-pan-anim .leaflet-tile{-webkit-transition:none;-moz-transition:none;transition:none}
+.leaflet-zoom-anim .leaflet-zoom-hide{visibility:hidden}
+.leaflet-interactive{cursor:pointer}
+.leaflet-grab{cursor:-webkit-grab;cursor:-moz-grab;cursor:grab}
+.leaflet-crosshair,.leaflet-crosshair .leaflet-interactive{cursor:crosshair}
+.leaflet-popup-pane,.leaflet-control{cursor:auto}
+.leaflet-dragging .leaflet-grab,.leaflet-dragging .leaflet-grab .leaflet-interactive,.leaflet-dragging .leaflet-marker-draggable{cursor:move;cursor:-webkit-grabbing;cursor:-moz-grabbing;cursor:grabbing}
+.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-image-layer,.leaflet-pane>svg path,.leaflet-tile-container{pointer-events:none}
+.leaflet-marker-icon.leaflet-interactive,.leaflet-image-layer.leaflet-interactive,.leaflet-pane>svg path.leaflet-interactive,svg.leaflet-image-layer.leaflet-interactive path{pointer-events:visiblePainted;pointer-events:auto}
+.leaflet-container{background:#ddd;outline-offset:1px}
+.leaflet-container a{color:#0078A8}
+.leaflet-zoom-box{border:2px dotted #38f;background:rgba(255,255,255,.5)}
+.leaflet-container{font-family:"Helvetica Neue",Arial,Helvetica,sans-serif;font-size:12px;font-size:.75rem;line-height:1.5}
+.leaflet-bar{box-shadow:0 1px 5px rgba(0,0,0,.65);border-radius:4px}
+.leaflet-bar a{background-color:#fff;border-bottom:1px solid #ccc;width:26px;height:26px;line-height:26px;display:block;text-align:center;text-decoration:none;color:#000}
+.leaflet-bar a,.leaflet-control-layers-toggle{background-position:50% 50%;background-repeat:no-repeat;display:block}
+.leaflet-bar a:hover,.leaflet-bar a:focus{background-color:#f4f4f4}
+.leaflet-bar a:first-child{border-top-left-radius:4px;border-top-right-radius:4px}
+.leaflet-bar a:last-child{border-bottom-left-radius:4px;border-bottom-right-radius:4px;border-bottom:none}
+.leaflet-bar a.leaflet-disabled{cursor:default;background-color:#f4f4f4;color:#bbb}
+.leaflet-touch .leaflet-bar a{width:30px;height:30px;line-height:30px}
+.leaflet-touch .leaflet-bar a:first-child{border-top-left-radius:2px;border-top-right-radius:2px}
+.leaflet-touch .leaflet-bar a:last-child{border-bottom-left-radius:2px;border-bottom-right-radius:2px}
+.leaflet-control-zoom-in,.leaflet-control-zoom-out{font:bold 18px 'Lucida Console',Monaco,monospace;text-indent:1px}
+.leaflet-touch .leaflet-control-zoom-in,.leaflet-touch .leaflet-control-zoom-out{font-size:22px}
+.leaflet-control-layers{box-shadow:0 1px 5px rgba(0,0,0,.4);background:#fff;border-radius:5px}
+.leaflet-control-layers-toggle{width:36px;height:36px}
+.leaflet-touch .leaflet-control-layers-toggle{width:44px;height:44px}
+.leaflet-control-layers .leaflet-control-layers-list,.leaflet-control-layers-expanded .leaflet-control-layers-toggle{display:none}
+.leaflet-control-layers-expanded .leaflet-control-layers-list{display:block;position:relative}
+.leaflet-control-layers-expanded{padding:6px 10px 6px 6px;color:#333;background:#fff}
+.leaflet-control-layers-scrollbar{overflow-y:scroll;overflow-x:hidden;padding-right:5px}
+.leaflet-control-layers-selector{margin-top:2px;position:relative;top:1px}
+.leaflet-control-layers label{display:block;font-size:13px;font-size:1.08333em}
+.leaflet-control-layers-separator{height:0;border-top:1px solid #ddd;margin:5px -10px 5px -6px}
+.leaflet-container .leaflet-control-attribution{background:#fff;background:rgba(255,255,255,.8);margin:0}
+.leaflet-control-attribution,.leaflet-control-scale-line{padding:0 5px;color:#333;line-height:1.4}
+.leaflet-control-attribution a{text-decoration:none}
+.leaflet-control-attribution a:hover,.leaflet-control-attribution a:focus{text-decoration:underline}
+.leaflet-attribution-flag{display:inline!important;vertical-align:baseline!important;width:1em;height:.6669em}
+.leaflet-left .leaflet-control-scale{margin-left:5px}
+.leaflet-bottom .leaflet-control-scale{margin-bottom:5px}
+.leaflet-control-scale-line{border:2px solid #777;border-top:none;line-height:1.1;padding:2px 5px 1px;white-space:nowrap;-moz-box-sizing:border-box;box-sizing:border-box;background:rgba(255,255,255,.8);text-shadow:1px 1px #fff}
+.leaflet-control-scale-line:not(:first-child){border-top:2px solid #777;border-bottom:none;margin-top:-2px}
+.leaflet-control-scale-line:not(:first-child):not(:last-child){border-bottom:2px solid #777}
+.leaflet-touch .leaflet-control-attribution,.leaflet-touch .leaflet-control-layers,.leaflet-touch .leaflet-bar{box-shadow:none}
+.leaflet-touch .leaflet-control-layers,.leaflet-touch .leaflet-bar{border:2px solid rgba(0,0,0,.2);background-clip:padding-box}
+.leaflet-popup{position:absolute;text-align:center;margin-bottom:20px}
+.leaflet-popup-content-wrapper{padding:1px;text-align:left;border-radius:12px}
+.leaflet-popup-content{margin:13px 24px 13px 20px;line-height:1.3;font-size:13px;font-size:1.08333em;min-height:1px}
+.leaflet-popup-content p{margin:17px 0;margin:1.3em 0}
+.leaflet-popup-tip-container{width:40px;height:20px;position:absolute;left:50%;margin-top:-1px;margin-left:-20px;overflow:hidden;pointer-events:none}
+.leaflet-popup-tip{width:17px;height:17px;padding:1px;margin:-10px auto 0;pointer-events:auto;-webkit-transform:rotate(45deg);-moz-transform:rotate(45deg);-ms-transform:rotate(45deg);transform:rotate(45deg)}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#fff;color:#333;box-shadow:0 3px 14px rgba(0,0,0,.4)}
+.leaflet-container a.leaflet-popup-close-button{position:absolute;top:0;right:0;border:none;text-align:center;width:24px;height:24px;font:16px/24px Tahoma,Verdana,sans-serif;color:#757575;text-decoration:none;background:transparent}
+.leaflet-container a.leaflet-popup-close-button:hover,.leaflet-container a.leaflet-popup-close-button:focus{color:#585858}
+.leaflet-popup-scrolled{overflow:auto}
+.leaflet-oldie .leaflet-popup-content-wrapper{-ms-zoom:1}
+.leaflet-oldie .leaflet-popup-tip{width:24px;margin:0 auto;-ms-filter:"progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";filter:progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)}
+.leaflet-oldie .leaflet-control-zoom,.leaflet-oldie .leaflet-control-layers,.leaflet-oldie .leaflet-popup-content-wrapper,.leaflet-oldie .leaflet-popup-tip{border:1px solid #999}
+.leaflet-div-icon{background:#fff;border:1px solid #666}
+.leaflet-tooltip{position:absolute;padding:6px;background-color:#fff;border:1px solid #fff;border-radius:3px;color:#222;white-space:nowrap;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.leaflet-tooltip.leaflet-interactive{cursor:pointer;pointer-events:auto}
+.leaflet-tooltip-top:before,.leaflet-tooltip-bottom:before,.leaflet-tooltip-left:before,.leaflet-tooltip-right:before{position:absolute;pointer-events:none;border:6px solid transparent;background:transparent;content:""}
+.leaflet-tooltip-bottom{margin-top:6px}
+.leaflet-tooltip-top{margin-top:-6px}
+.leaflet-tooltip-bottom:before,.leaflet-tooltip-top:before{left:50%;margin-left:-6px}
+.leaflet-tooltip-top:before{bottom:0;margin-bottom:-12px;border-top-color:#fff}
+.leaflet-tooltip-bottom:before{top:0;margin-top:-12px;margin-left:-6px;border-bottom-color:#fff}
+.leaflet-tooltip-left{margin-left:-6px}
+.leaflet-tooltip-right{margin-left:6px}
+.leaflet-tooltip-left:before,.leaflet-tooltip-right:before{top:50%;margin-top:-6px}
+.leaflet-tooltip-left:before{right:0;margin-right:-12px;border-left-color:#fff}
+.leaflet-tooltip-right:before{left:0;margin-left:-12px;border-right-color:#fff}
+@media print{.leaflet-control{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -100,6 +233,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .sf{flex:1;display:flex;align-items:center;gap:10px;padding:4px 8px}
 .sf input{flex:1;border:none;outline:none;font-size:16px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#0f1117;background:transparent;min-width:0}
 .sf input::placeholder{text-transform:none;font-weight:400;font-size:14px;letter-spacing:0;color:#9ba3b8}
+.micBtn{flex-shrink:0;border:none;background:var(--s2,#f7f8fc);color:#5b6070;width:34px;height:34px;border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s}
+.micBtn:hover{background:var(--accL,#eef1fe);color:var(--acc,#4f6ef7)}
+.micBtn.listening{background:#fee2e2;color:#dc2626;animation:pulse 1s infinite}
 .trk{background:var(--acc);color:#fff;border:none;border-radius:var(--r12);padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;transition:background .15s,transform .1s;flex-shrink:0}
 .trk:hover{background:#3b5de7}
 .trk:active{transform:scale(.97)}
@@ -461,9 +597,22 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
   .ab{padding:10px 14px;font-size:14px}
   .tab{padding:12px 8px;font-size:14px}
 }
+/* === GATE CHANGE TOAST === */
+.gcToast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(0);z-index:9999;
+  max-width:92vw;width:380px;background:var(--Y,#5c4400);background:var(--sur);border:2px solid var(--Y,#d97706);
+  color:var(--txt);border-radius:var(--r18);box-shadow:var(--shL);padding:14px 16px;
+  display:flex;align-items:flex-start;gap:10px;opacity:0;pointer-events:none;
+  transition:opacity .25s ease,transform .25s ease}
+.gcToast.show{opacity:1;transform:translateX(-50%) translateY(-6px);pointer-events:auto}
+.gcToast .gcIc{font-size:22px;line-height:1}
+.gcToast .gcTx{flex:1;font-size:13px;line-height:1.4}
+.gcToast .gcTx b{display:block;font-size:14px;margin-bottom:2px}
+.gcToast .gcCl{background:none;border:none;color:var(--t2);font-size:16px;cursor:pointer;padding:0 2px}
+@media(max-width:600px){.gcToast{bottom:12px;width:calc(100vw - 24px)}}
 </style>
 </head>
 <body>
+<div id="gcToast" class="gcToast" role="status" aria-live="polite"></div>
 <!-- MODALS -->
 <div id="mSet" class="mbg"><div class="modal" style="max-width:500px">
 <div class="mhd"><div class="mic">⚙️</div><div><div class="mtl" data-i18n="settings_title">Settings</div><div class="mst" data-i18n="settings_subtitle">API keys, display and preferences</div></div><button class="mcl" onclick="CM('mSet')">✕</button></div>
@@ -638,7 +787,8 @@ footer .w{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
   </div>
   <div class="sc">
     <div class="sf"><span style="font-size:18px;color:#9ba3b8;flex-shrink:0">🔍</span>
-    <input type="text" id="flIn" data-i18n-ph="hero_placeholder" placeholder="B6 1368, AA 100, DL 220, EK 202..." maxlength="10" autocomplete="off" spellcheck="false"/></div>
+    <input type="text" id="flIn" data-i18n-ph="hero_placeholder" placeholder="B6 1368, AA 100, DL 220, EK 202..." maxlength="10" autocomplete="off" spellcheck="false"/>
+    <button type="button" id="micBtn" class="micBtn" style="display:none" onclick="toggleVoiceSearch()" title="Search by voice">🎤</button></div>
     <button class="trk" onclick="doLkp()" data-i18n="hero_track">📡 Track</button>
   </div>
   <div style="text-align:center;font-size:11px;color:rgba(255,255,255,.6);margin-top:8px" data-i18n="hero_advance_note">Note: We recommend tracking your flight 0-2 days in advance.</div>
@@ -2623,6 +2773,36 @@ function reqNt(){
 }
 function sAlert(dIso,fl){if(!S.notif)return;if(S.aTO)clearTimeout(S.aTO);var dt=isoToDate(dIso);if(!dt)return;var d=dt.getTime()-3*3600000-Date.now();if(d>0&&d<7*24*3600000)S.aTO=setTimeout(function(){new Notification('FlightFlow',{body:fl+' departs in 3 hours!'});},d);}
 function haptic(){try{if(navigator.vibrate)navigator.vibrate(15);}catch(e){}}
+// ═══ GATE/TERMINAL CHANGE ALERT ═══
+// startStatusRefresh() already re-polls AeroDataBox every 10 min for a live,
+// in-progress flight; this just diffs the gate/terminal it gets back each
+// time against what was already on screen, so a real airport gate change is
+// caught instead of silently overwriting the dashboard with no one noticing.
+var S_gcToastTO=null;
+function showGcToast(title,body){
+  var el=g('gcToast');if(!el)return;
+  el.innerHTML='<div class="gcIc">🚪</div><div class="gcTx"><b>'+title+'</b>'+body+'</div><button class="gcCl" onclick="hideGcToast()">✕</button>';
+  el.classList.add('show');
+  haptic();
+  if(S_gcToastTO)clearTimeout(S_gcToastTO);
+  S_gcToastTO=setTimeout(hideGcToast,12000);
+}
+function hideGcToast(){var el=g('gcToast');if(el)el.classList.remove('show');if(S_gcToastTO){clearTimeout(S_gcToastTO);S_gcToastTO=null;}}
+function checkGateChange(oldFd,newFd,fl){
+  if(!oldFd||!newFd)return;
+  var tbd=function(v){return !v||v==='TBD'||v==='-';};
+  var gateChanged=!tbd(oldFd.depG)&&!tbd(newFd.depG)&&oldFd.depG!==newFd.depG;
+  var termChanged=!tbd(oldFd.depT)&&!tbd(newFd.depT)&&oldFd.depT!==newFd.depT;
+  if(!gateChanged&&!termChanged)return;
+  var parts=[];
+  if(termChanged)parts.push('Terminal '+oldFd.depT+'&nbsp;→&nbsp;<b style="color:var(--acc)">'+newFd.depT+'</b>');
+  if(gateChanged)parts.push('Gate '+oldFd.depG+'&nbsp;→&nbsp;<b style="color:var(--acc)">'+newFd.depG+'</b>');
+  var body='<br>'+parts.join('<br>');
+  showGcToast((fl||'Your flight')+' changed',body);
+  if(S.notif&&typeof Notification!=='undefined'&&Notification.permission==='granted'){
+    new Notification('Gate change',{body:(fl||'Your flight')+': '+parts.join(', ').replace(/<\/?b[^>]*>/g,'')});
+  }
+}
 // ═══ DATA EXPORT/CLEAR ═══
 function setDensity(d){
   ls.s('ff_density',d);
@@ -2736,6 +2916,34 @@ function doWithRoutes(parsed,dep,arr,todayFd){
 // ═══ PARSE FLIGHT ═══
 function pFL(raw){var s=raw.replace(/\s+/g,'').toUpperCase();var m=s.match(/^([A-Z0-9]{2})(\d{1,5}[A-Z]?)$/);if(!m)return null;return{code:m[1],num:m[2],full:m[1]+' '+m[2]};}
 function showLd(){g('dash').innerHTML='<div class="ldc"><div class="spn"></div><div class="ldt">Fetching flight data...</div><div class="lds">Connecting to AeroDataBox</div></div>';}
+// ═══ VOICE SEARCH ═══
+var S_recog=null,S_listening=false;
+function initVoiceSearch(){
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  var btn=g('micBtn');
+  if(!SR||!btn)return;
+  btn.style.display='flex';
+}
+function toggleVoiceSearch(){
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR)return;
+  if(S_listening){if(S_recog)try{S_recog.stop();}catch(e){}return;}
+  S_recog=new SR();
+  S_recog.lang='en-US';
+  S_recog.interimResults=false;
+  S_recog.maxAlternatives=1;
+  var btn=g('micBtn');
+  S_recog.onstart=function(){S_listening=true;if(btn)btn.classList.add('listening');};
+  S_recog.onresult=function(e){
+    var txt=(e.results&&e.results[0]&&e.results[0][0]&&e.results[0][0].transcript)||'';
+    var clean=txt.toUpperCase().replace(/[^A-Z0-9]/g,'');
+    var fi=g('flIn');
+    if(fi&&clean){fi.value=clean;doLkp();}
+  };
+  S_recog.onerror=function(){};
+  S_recog.onend=function(){S_listening=false;if(btn)btn.classList.remove('listening');};
+  try{S_recog.start();}catch(e){S_listening=false;}
+}
 function doLkp(force){
   var raw=g('flIn')&&g('flIn').value.trim();var parsed=pFL(raw||'');
   if(!parsed){g('dash').innerHTML='<div class="erm">Enter a valid flight like B6 1368 or AA 100.</div>';return;}
@@ -2933,6 +3141,7 @@ function rDash(parsed,fd){
       +(isKid?'':'<button class="ab" onclick="openVis()">'+t('act_visa')+'</button>')
       +'<button class="ab" onclick="openNts()">'+t('act_notes')+'</button>'
       +'<button class="ab" onclick="openCarbon()">'+t('act_carbon')+'</button>'
+      +'<button class="ab" onclick="openMiles()">🎖️ Miles Estimator</button>'
       +'<button class="ab" onclick="openConn()">'+t('act_connection')+'</button>'
       +'<button class="ab" onclick="openPhr()">'+t('act_phrases')+'</button>'
       +'<button class="ab" onclick="openEsim()">'+t('act_esim')+'</button>'
@@ -3003,6 +3212,7 @@ function startStatusRefresh(parsed,fd){
       if(raw&&S.selDate===0){
         var nfd=mapLive(raw,S.parsed);
         nfd._all=rawArr&&rawArr.length>1?rawArr.map(function(r){return mapLive(r,S.parsed);}):null;
+        checkGateChange(S.fd,nfd,S.parsed&&S.parsed.full);
         S.fd=nfd;rDash(S.parsed,nfd);
       }
     });
@@ -3450,6 +3660,50 @@ function openCarbon(){
     +'<div style="background:var(--s2);border-radius:8px;padding:10px;margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:var(--tM);margin-bottom:4px">Want to offset?</div><div style="font-size:13px;color:var(--t2)">Certified carbon offset programs: <a href="https://climate.org" target="_blank" style="color:var(--acc)">Gold Standard</a>, <a href="https://cooleffect.org" target="_blank" style="color:var(--acc)">Cool Effect</a>, <a href="https://atmosfair.de" target="_blank" style="color:var(--acc)">atmosfair</a></div></div>'
     +'<div style="font-size:11px;color:var(--tM)">Estimate based on ICAO methodology with radiative forcing multiplier 1.9. Economy class. Actual varies by aircraft, load, and route.</div>';
   OM('mCarbon');
+}
+
+// ═══ FREQUENT-FLYER MILE ESTIMATOR ═══
+// Rough, program-agnostic estimate: most airline programs award either
+// distance x a fare-class multiplier, or revenue x a miles-per-dollar rate
+// (plus an elite-status bonus on top) -- exact figures are specific to each
+// airline/alliance, so this is clearly labeled as an estimate, not a quote.
+var MILES_CLASS={eco0:{lbl:'Basic Economy',mult:0.5},eco:{lbl:'Economy',mult:1},prem:{lbl:'Premium Economy',mult:1.25},biz:{lbl:'Business',mult:1.5},first:{lbl:'First',mult:2}};
+var MILES_ELITE={0:'None',25:'Silver / mid-tier (+25%)',50:'Gold (+50%)',75:'Platinum (+75%)',100:'Top-tier (+100%)'};
+function openMiles(){
+  var fd=S.fd;
+  if(g('milesNoFlight'))g('milesNoFlight').style.display=fd?'none':'block';
+  if(g('milesForm'))g('milesForm').style.display=fd?'block':'none';
+  if(!fd){OM('mMiles');return;}
+  var sel=g('milesClass');
+  if(sel&&!sel.innerHTML)sel.innerHTML=Object.keys(MILES_CLASS).map(function(k){return'<option value="'+k+'"'+(k==='eco'?' selected':'')+'>'+MILES_CLASS[k].lbl+'</option>';}).join('');
+  var eSel=g('milesElite');
+  if(eSel&&!eSel.innerHTML)eSel.innerHTML=Object.keys(MILES_ELITE).map(function(k){return'<option value="'+k+'">'+MILES_ELITE[k]+'</option>';}).join('');
+  calcMiles();
+  OM('mMiles');
+}
+function calcMiles(){
+  var fd=S.fd;var el=g('milesResult');if(!el||!fd)return;
+  var dA=AP[fd.dep]||{lat:40,lon:-74},aA=AP[fd.arr]||{lat:33,lon:-84};
+  function gcMi(la1,lo1,la2,lo2){var R=3959,r=function(d){return d*Math.PI/180;};var a=Math.pow(Math.sin(r(la2-la1)/2),2)+Math.cos(r(la1))*Math.cos(r(la2))*Math.pow(Math.sin(r(lo2-lo1)/2),2);return Math.round(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)));}
+  var mi=gcMi(dA.lat,dA.lon,aA.lat,aA.lon);
+  var pax=S.pax||1;
+  var cls=(g('milesClass')&&g('milesClass').value)||'eco';
+  var elite=parseInt((g('milesElite')&&g('milesElite').value)||'0',10);
+  var fare=parseFloat(g('milesFare')&&g('milesFare').value)||0;
+  var rate=parseFloat(g('milesRate')&&g('milesRate').value)||5;
+  var distMiles=Math.round(mi*MILES_CLASS[cls].mult*(1+elite/100));
+  var revMiles=fare>0?Math.round(fare*rate*(1+elite/100)):null;
+  var oneWay=revMiles!=null?revMiles:distMiles;
+  var total=oneWay*pax;
+  var awardPct=Math.min(999,Math.round(total/25000*100));
+  el.innerHTML=
+    '<div style="background:var(--s2);border-radius:12px;padding:14px;margin-bottom:14px;text-align:center">'
+      +'<div style="font-size:36px">🎖️</div>'
+      +'<div style="font-size:24px;font-weight:800;color:var(--txt);margin:4px 0">~'+total.toLocaleString()+' miles</div>'
+      +'<div style="font-size:13px;color:var(--t2)">'+mi.toLocaleString()+' mi flown &bull; '+MILES_CLASS[cls].lbl+(pax>1?' &bull; '+pax+' passengers':'')+(revMiles!=null?' &bull; revenue-based':'')+'</div>'
+    +'</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px">That\'s roughly <b>'+awardPct+'%</b> of a typical 25,000-mile domestic economy award ticket.</div>'
+    +'<div style="font-size:11px;color:var(--tM)">Estimate only — actual miles depend on your specific airline/alliance program, fare bucket, and promotions. Not affiliated with any airline.</div>';
 }
 
 // ═══ CONNECTION TIME CHECK ═══
@@ -4282,8 +4536,15 @@ document.addEventListener('DOMContentLoaded',function(){
   var fi=g('flIn');
   if(fi){fi.addEventListener('keydown',function(e){if(e.key==='Enter')doLkp();});fi.addEventListener('input',function(e){e.target.value=e.target.value.toUpperCase();});}
   loadCk();
+  initVoiceSearch();
   var last=ls.g('ff_last');if(last&&fi){fi.value=last;doLkp();}else{renderWelcome();}
 });
+
+if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register("sw.js").catch(function(){ /* installability is a nice-to-have, not required */ });
+  });
+}
 </script>
 <div id="mPlatf" class="mbg"><div class="modal"><div class="mhd"><div class="mic">🌐</div><div><div class="mtl" data-i18n="m_deploy_title">Deploy FlightFlow</div><div class="mst" data-i18n="m_deploy_sub">Free hosting and app store options</div></div><button class="mcl" onclick="CM('mPlatf')">✕</button></div>
 <div class="mbd">
@@ -4352,6 +4613,27 @@ document.addEventListener('DOMContentLoaded',function(){
 <div id="mCarbon" class="mbg"><div class="modal">
 <div class="mhd"><div class="mic">🌱</div><div><div class="mtl" data-i18n="m_carbon_title">Carbon Footprint</div><div class="mst" data-i18n="m_carbon_sub">Environmental impact of your flight</div></div><button class="mcl" onclick="CM('mCarbon')">✕</button></div>
 <div class="mbd" id="carbonBd"></div></div></div>
+
+<div id="mMiles" class="mbg"><div class="modal">
+<div class="mhd"><div class="mic">🎖️</div><div><div class="mtl">Frequent-Flyer Mile Estimator</div><div class="mst">Rough miles/points for this flight</div></div><button class="mcl" onclick="CM('mMiles')">✕</button></div>
+<div class="mbd">
+  <div id="milesNoFlight" class="mds" style="display:none">Track a flight first.</div>
+  <div id="milesForm">
+    <div class="rpgr" style="margin-bottom:12px">
+      <div><label class="mlb">Fare class</label><select id="milesClass" class="mi" onchange="calcMiles()"></select></div>
+      <div><label class="mlb">Elite status</label><select id="milesElite" class="mi" onchange="calcMiles()"></select></div>
+    </div>
+    <div style="background:var(--s2);border-radius:8px;padding:10px;margin-bottom:14px">
+      <label class="mlb">Or estimate from what you paid (optional, revenue-based programs)</label>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <input id="milesFare" type="number" min="0" step="1" placeholder="Ticket price ($)" class="mi" style="flex:1" oninput="calcMiles()">
+        <input id="milesRate" type="number" min="0" step="0.5" class="mi" style="width:90px" value="5" oninput="calcMiles()" title="Miles earned per $1 spent">
+      </div>
+      <div style="font-size:11px;color:var(--tM);margin-top:4px">miles per $1 spent &bull; leave price blank to use distance x class instead</div>
+    </div>
+    <div id="milesResult"></div>
+  </div>
+</div></div></div>
 
 <div id="mShareImg" class="mbg"><div class="modal">
 <div class="mhd"><div class="mic">🖼️</div><div><div class="mtl" data-i18n="m_shareimg_title">Share as Image</div><div class="mst" data-i18n="m_shareimg_sub">Download a flight card</div></div><button class="mcl" onclick="CM('mShareImg')">✕</button></div>

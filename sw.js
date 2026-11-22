@@ -1,16 +1,20 @@
-// v2: v1 never cached Leaflet itself (loaded from a CDN, not this origin) --
-// offline, that left `L` undefined, initMap() threw immediately, and since
-// nothing after it in boot()'s try block ever ran (not wireUI(), not the
-// offline banner, nothing), the app looked completely dead. Bumping the
-// cache name forces every existing install to pick up this fixed shell list.
-const CACHE = "ebikemaps-shell-v2";
+// v3: this worker now covers every single-file app at this origin (EbikeMaps
+// and FlightFlow both register it from root scope), not just EbikeMaps -- so
+// it shells both apps' own files. Bumping the cache name forces every
+// existing install to pick up this wider shell list.
+const CACHE = "site-shell-v3";
 const SHELL = [
   "./EbikeMaps.html",
   "./ebikemaps.webmanifest",
   "./icons/ebikemaps-192.png",
   "./icons/ebikemaps-512.png",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css",
-  "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
+  "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js",
+  "./FlightFlow.html",
+  "./flightflow.webmanifest",
+  "./icons/flightflow-192.png",
+  "./icons/flightflow-512.png",
+  "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
 ];
 // Populated by EbikeMaps.html's "Download offline map" action (the page
 // writes to this cache directly -- the Cache API is available on window,
