@@ -2066,7 +2066,13 @@ function fetchFl(iata,date,force){
       }
       return r.text().then(function(txt){
         try{S_lastRaw={url:url,when:Date.now(),status:r.status,body:txt.slice(0,4000)};}catch(e){}
-        try{return JSON.parse(txt);}catch(e){return null;}
+        // A 200 with a body that isn't valid JSON used to come out of this
+        // whole chain as a bare null with S_lastFetchErr left at the reset
+        // above -- no reason at all, so the demo-airport screen showed the
+        // generic "no live match" text with nothing to click, even though
+        // the key worked fine and the request succeeded. Tagging the parse
+        // failure instead lets the next .then() report it properly.
+        try{return JSON.parse(txt);}catch(e){return {_unparsable:true};}
       });
     })
     .then(function(j){
@@ -2076,11 +2082,15 @@ function fetchFl(iata,date,force){
         if(old){S_lastFetchErr+=' Showing the last data fetched for this flight instead.';return old;}
         return null;
       }
+      if(j&&j._unparsable){
+        S_lastFetchErr='AeroDataBox returned a 200 OK but the response body was not valid JSON — usually a brief provider hiccup, not a problem with your key or the flight number. Try again in a moment, or check Settings → "Show exactly what AeroDataBox sent back" to see the raw reply.';
+        return null;
+      }
       var out=null;
       if(j&&Array.isArray(j)&&j.length)out=j;
       else if(j&&!Array.isArray(j)&&Object.keys(j).length)out=[j];
       if(out){fcSet(ck,dt,out);return out;}
-      if(j!=null)S_lastFetchErr='AeroDataBox has no data for this flight on this date — it may not be in their coverage yet (common for already-landed or far-future flights on the free tier).';
+      S_lastFetchErr='AeroDataBox has no data for this flight on this date — it may not be in their coverage yet (common for already-landed or far-future flights on the free tier).';
       return null;
     })
     .catch(function(e){
