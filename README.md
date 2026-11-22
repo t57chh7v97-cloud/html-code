@@ -301,6 +301,18 @@ night-side city lights placed at real city coordinates.
     · 🏴 Hogmanay · 🌍 Holiday hopper (every holiday on Earth today, in More).
   - Thanksgiving parades fold into one "LIVE NOW · 5 parades" line with a Watch
     button when several are on at once.
+  - Round three: 👞 St. Nicholas shoe · 🕯️ St. Lucia · 🌟 Las Posadas candles ·
+    👑 Three Kings king cake game · ☦️ Orthodox Christmas · 🎭 Purim mask maker
+    and grogger · 🧡 King's Day · 🪷 Vesak · 🎖️ Anzac Day · 🐘 Ganesh Chaturthi ·
+    🪔 Navratri & Dussehra · 🌕 Chuseok · 🌿 Sukkot (build a sukkah) · 🏴‍☠️ Talk
+    Like a Pirate Day (the card talks pirate) · 🐸 Leap Day.
+  - 🕐 Clocks-change heads-up for the pin's time zone · 🌕 full moon names ·
+    😱 Friday the 13th glitches · 🔔 holiday reminders the day before.
+  - 🃏 April Fools' now has 9 different pranks, a few times through the day.
+  - US extras: 🎃 pumpkin carver and 🎭 costume spinner (Halloween), 🦃 turkey
+    timer, 🥧 pie vote and 🛍️ Black Friday → Giving Tuesday (Thanksgiving),
+    🎄 tree decorator and 🎅 Secret Santa name draw (Christmas).
+  - 🎁 Boxing Day now covers Jamaica, the Caribbean, Africa, Hong Kong and more.
   - 🕎 Light the menorah each night of Hanukkah at sunset · 🕯️ Kwanzaa kinara
     with the day's principle.
   - 🎄 Rockefeller Center tree lighting countdown and LIVE NOW button (Dec 2,

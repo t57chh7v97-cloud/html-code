@@ -4691,6 +4691,260 @@ var _om9=openMore; openMore=function(){ _om9(); const grid=document.querySelecto
   if (theme==='tanabata') add('🎋','Tanabata wish','Hang a wish on the bamboo',openTanabata); };
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x9={openCardMaker,openDragonRace,openTanabata,openHopper,openParadeAll,foolsPrank,closeModal,flyToLL,holidaysToday,get theme(){return theme;}};
 
+/* =========================================================
+   ROUND 10: St. Nicholas shoe · St. Lucia · Las Posadas · Three Kings king cake · Orthodox Christmas · clocks-change alerts ·
+   Purim mask maker · King's Day · Vesak · Anzac Day · Ganesh Chaturthi · Navratri/Dussehra · Chuseok · Sukkot ·
+   Talk Like a Pirate Day · full moon names · Friday the 13th · Leap Day · holiday reminders · more April Fools' pranks ·
+   US extras: pumpkin carver, costume spinner, turkey timer, pie poll, Black Friday, tree decorator, Secret Santa
+   ========================================================= */
+var PURIM={2026:[2,3],2027:[2,23],2028:[2,12],2029:[2,1],2030:[2,19]}, VESAK={2026:[4,31],2027:[4,20],2028:[4,9],2029:[4,27],2030:[4,16]},
+    GANESH={2026:[8,14],2027:[8,4],2028:[7,23],2029:[8,11],2030:[8,1]}, DUSSEHRA={2026:[9,20],2027:[9,9],2028:[8,27],2029:[9,16],2030:[9,6]};
+Object.assign(HOL,{
+  threekings:{ name:'Three Kings Day', icon:'👑', greet:'¡Feliz Día de Reyes! 👑', atmo:[1.0,0.85,0.45], fx:'stars', fxc:['#ffd36b','#ffffff'], acc:['#ffd36b','#b388ff'],
+              lights:pal(['255,210,110','255,235,180'],['180,140,255','220,200,255']) },
+  orthodoxxmas:{ name:'Orthodox Christmas', icon:'☦️', greet:'Merry Christmas! (Orthodox Christmas) ☦️', atmo:[0.62,0.86,1.0], fx:'snow', acc:['#ffd36b','#9fd3ff'],
+              lights:pal(['255,215,140','255,240,200'],['150,200,255','215,235,255']) },
+  purim:    { name:'Purim', icon:'🎭', greet:'Chag Purim Sameach! 🎭', atmo:[0.9,0.6,1.0], fx:'confetti', fxc:['#ff4d6d','#ffd23f','#4cc9f0','#b388ff'], acc:['#b388ff','#ffd23f'],
+              lights:pal(['180,130,255','220,200,255'],['255,210,60','255,235,150']) },
+  kingsday: { name:"King's Day", icon:'🧡', greet:'Fijne Koningsdag! 🧡', atmo:[1.0,0.55,0.15], fx:'confetti', fxc:['#ff7a00','#ffa640','#ffffff'], acc:['#ff7a00','#ffd36b'],
+              lights:pal(['255,120,0','255,190,120']) },
+  vesak:    { name:'Vesak', icon:'🪷', greet:'Happy Vesak 🪷', atmo:[1.0,0.85,0.55], fx:'lanterns', acc:['#ffd36b','#ff9ec7'],
+              lights:pal(['255,215,110','255,240,190'],['255,160,200','255,215,230']) },
+  anzac:    { name:'Anzac Day', icon:'🎖️', greet:'Lest we forget', solemn:true, atmo:[0.85,0.7,0.6], fx:'poppies', acc:['#d9202f','#e8e0d0'],
+              lights:pal(['220,40,50','255,150,150']) },
+  ganesh:   { name:'Ganesh Chaturthi', icon:'🐘', greet:'Ganpati Bappa Morya! 🐘', atmo:[1.0,0.7,0.35], fx:'marigolds', acc:['#ff9a1f','#e8231f'],
+              lights:pal(['255,150,40','255,210,130'],['232,35,31','255,140,130']) },
+  navratri: { name:'Navratri & Dussehra', icon:'🪔', greet:'Happy Navratri! 🪔', atmo:[1.0,0.6,0.4], fx:'diyas', acc:['#ff7a1a','#ff3cac'],
+              lights:pal(['255,140,40','255,210,140'],['255,60,170','255,170,220']) },
+  chuseok:  { name:'Chuseok', icon:'🌕', greet:'Happy Chuseok! 🌕 (Korean harvest festival)', atmo:[1.0,0.8,0.5], fx:'leaves', acc:['#ffb02e','#ffd36b'],
+              lights:pal(['255,180,60','255,225,150']) },
+  sukkot:   { name:'Sukkot', icon:'🌿', greet:'Chag Sukkot Sameach! 🌿', atmo:[0.6,0.95,0.5], fx:'leaves', acc:['#5fd38a','#ffd36b'],
+              lights:pal(['110,220,140','190,245,205'],['255,210,110','255,235,180']) },
+  pirate:   { name:'Talk Like a Pirate Day', icon:'🏴‍☠️', greet:'Ahoy, matey! 🏴‍☠️', atmo:[0.45,0.7,1.0], fx:'stars', fxc:['#ffd36b'], acc:['#ffd36b','#c69c6d'],
+              lights:pal(['255,210,110','255,235,180']) },
+  leapday:  { name:'Leap Day', icon:'🐸', greet:'Happy Leap Day! 🐸 A bonus day!', atmo:[0.45,1.0,0.5], fx:'confetti', fxc:['#3ddc84','#a6f0c6','#ffd23f'], acc:['#3ddc84','#ffd23f'],
+              lights:pal(['80,220,130','180,245,200']) }});
+Object.assign(REGION,{ threekings:['ES','MX','PR','AR','CO','VE','UY','PY','DO','CU','PE','IT','PL','AT'], orthodoxxmas:['RU','BY','RS','GE','ET','EG','MK','ME','MD'],
+  purim:['IL'], kingsday:['NL','AW','CW','SX'], vesak:['SG','MY','LK','TH','ID','MM','KH','LA','BT','NP'], anzac:['AU','NZ'], ganesh:['IN'], navratri:['IN','NP'], chuseok:['KR'], sukkot:['IL'] });
+var _hd10=holidayDates; holidayDates=function(y,cc){ const out=_hd10(y,cc); const add=(k,m,d,from,to)=>{ if (celebrates(k,cc)){ const b=dayNum(y,m,d); out.push({k,y,m,d,from:b+from,to:b+to}); } };
+  add('threekings',0,6,-1,0); add('orthodoxxmas',0,7,-1,0); add('anzac',3,25,0,0); add('pirate',8,19,0,0);
+  { const d=new Date(Date.UTC(y,3,27)).getUTCDay()===0?26:27; add('kingsday',3,d,0,0); }
+  if (y%4===0 && (y%100!==0 || y%400===0)) add('leapday',1,29,0,0);
+  if (PURIM[y]) add('purim',PURIM[y][0],PURIM[y][1],-1,0); if (VESAK[y]) add('vesak',VESAK[y][0],VESAK[y][1],-1,0); if (GANESH[y]) add('ganesh',GANESH[y][0],GANESH[y][1],0,9);
+  if (DUSSEHRA[y]) add('navratri',DUSSEHRA[y][0],DUSSEHRA[y][1],-9,0);
+  if (MIDAUTUMN[y]) add('chuseok',MIDAUTUMN[y][0],MIDAUTUMN[y][1],-1,1);
+  if (ROSHHASH[y]){ const d=new Date(Date.UTC(y,ROSHHASH[y][0],ROSHHASH[y][1]+14)); add('sukkot',d.getUTCMonth(),d.getUTCDate(),0,7); }
+  return out; };
+
+// ---------- 🎁 Boxing Day: more countries (Jamaica and the Caribbean, Africa, Hong Kong…)
+var BOXING_CC=['GB','CA','AU','NZ','IE','ZA','JM','BS','BB','TT','BZ','GY','AG','DM','GD','KN','LC','VC','KE','NG','GH','UG','TZ','ZW','ZM','BW','NA','MW','HK','SG','DE','AT','NL','PL','DK','NO','SE','FI'];
+boxingLine=function(now){ if (!current || !BOXING_CC.includes(current.cc)) return ''; const lp=localParts(now,current); if (lp.month!==11 || lp.day!==26) return '';
+  return ['DE','AT','NL','PL','DK','NO','SE','FI'].includes(current.cc) ? `<small>🎄 Second Day of Christmas — another day of celebrating!</small>` :
+    current.cc==='JM' ? `<small>🎁 Happy Boxing Day, Jamaica! 🇯🇲 A public holiday for family, food and Junkanoo-style fun</small>` : `<small>🎁 Happy Boxing Day! A day for family, leftovers and relaxing</small>`; };
+
+// ---------- 👞 St. Nicholas · 🕯️ St. Lucia · 🌟 Las Posadas
+var NICK_GIFTS=['🍫 chocolate coins','🍊 a clementine','🍬 a candy cane','🥜 a handful of nuts','🍪 gingerbread','🧦 tiny socks','🎮 a pixel-art sticker'];
+function stNickLine(now){ if (!current) return ''; const lp=localParts(now,current); if (lp.month!==11) return ''; const S=store.get('shoe',{})[lp.year];
+  if (lp.day===5 && lp.hour>=15) return S?`<small>👞 Your shoe is out by the door — check it in the morning!</small>`:`<small>👞 Tonight is St. Nicholas Eve — <a href="#" id="shoeGo">put your shoe out</a></small>`;
+  if (lp.day===6) return S?`<small>👞 St. Nicholas filled your shoe with ${NICK_GIFTS[lp.year%NICK_GIFTS.length]}! 🎉</small>`:`<small>👞 Happy St. Nicholas Day! In many countries kids find treats in their shoes this morning</small>`;
+  return ''; }
+function stLuciaLine(now){ if (!current) return ''; const lp=localParts(now,current); if (lp.month!==11 || lp.day!==13) return '';
+  return `<small>🕯️ St. Lucia Day — in Sweden, Norway and Finland, kids wear crowns of candles and sing in the darkest time of the year · <a href="#" id="luciaGo">fly to Stockholm</a></small>`; }
+function posadasNight(now){ if (!current) return 0; const lp=localParts(now,current); return lp.month===11 && lp.day>=16 && lp.day<=24 ? lp.day-15 : 0; }
+function posadasLine(now){ if (!current || !['MX','US','GT','SV','HN','NI','CR','PA'].includes(current.cc)) return ''; const n=posadasNight(now); return n?`<small>🌟 Las Posadas night ${n} of 9 · <a href="#" id="posGo">light tonight’s candle</a></small>`:''; }
+function openPosadas(){ const n=posadasNight(simNow())||1, y=yearOf(simNow()), lit=store.get('posadas',{})[y]||0;
+  showModal(`<h3>🌟 Las Posadas</h3><p class="mut">For 9 nights before Christmas, families in Mexico and Central America walk from house to house with candles, re-enacting Mary and Joseph’s search for a place to stay (“posada”). Each night ends with a party and a piñata! 🪅</p>
+    <div style="display:flex;justify-content:center;gap:10px;font-size:30px;margin:16px 0;flex-wrap:wrap">${Array.from({length:9},(_,i)=>`<span style="opacity:${i<lit?1:.25};filter:${i<lit?'drop-shadow(0 0 8px #ffb02e)':'none'}">🕯️</span>`).join('')}</div>
+    ${lit<n?`<button class="btn primary" id="posLight">Light candle ${lit+1}</button>`:`<p style="text-align:center">✨ ${lit} candle${lit>1?'s':''} lit — see you tomorrow night!</p>`}`);
+  if ($('posLight')) $('posLight').onclick=()=>{ const P=store.get('posadas',{}); P[y]=Math.min(n,lit+1); store.set('posadas',P); try{ fx.celebrate(1500); }catch(e){} openPosadas(); }; }
+
+// ---------- 👑 Three Kings king cake (find the baby)
+function openKingCake(){ const y=yearOf(simNow()), K=store.get('kingcake',{}); let tries=0, done=!!K[y]; const baby=Math.floor(Math.random()*8);
+  showModal(`<h3>👑 Rosca de Reyes</h3><p class="mut">On Three Kings Day, families share a ring-shaped king cake with a tiny baby figurine hidden inside. Pick a slice — whoever finds the baby hosts a tamale party on February 2! 🫔</p>
+    <div id="kcRing" style="position:relative;width:260px;height:260px;margin:12px auto">${Array.from({length:8},(_,i)=>{ const a=i/8*6.283-1.57, x=130+Math.cos(a)*95-26, yy=130+Math.sin(a)*95-26;
+      return `<button class="btn" data-kc="${i}" style="position:absolute;left:${x}px;top:${yy}px;width:52px;height:52px;border-radius:50%;font-size:24px;padding:0">🍰</button>`; }).join('')}
+      <div style="position:absolute;left:105px;top:105px;font-size:40px">👑</div></div><p id="kcMsg" style="text-align:center;font-weight:700">${done?`You found the baby this year in ${K[y]} tr${K[y]>1?'ies':'y'}! 👶`:''}</p>`);
+  document.querySelectorAll('[data-kc]').forEach(b=>b.onclick=()=>{ if (b.disabled) return; tries++; b.disabled=true;
+    if (+b.dataset.kc===baby){ b.textContent='👶'; $('kcMsg').textContent=`👶 You found the baby in ${tries} tr${tries>1?'ies':'y'}! You’re hosting the tamale party 🫔`; if (!done){ K[y]=tries; store.set('kingcake',K); } try{ fx.celebrate(3000); }catch(e){} document.querySelectorAll('[data-kc]').forEach(q=>q.disabled=true); }
+    else { b.textContent='🍞'; $('kcMsg').textContent='Just cake… try another slice!'; } }); }
+
+// ---------- 🕐 clocks change (daylight saving) heads-up, for whatever time zone the pin is in
+function tzOffMin(tz,t){ const p=partsIn(tz,new Date(t)); return Math.round((Date.UTC(p.year,p.month,p.day,p.hour,p.minute)-Math.floor(t/60000)*60000)/60000); }
+var DSTC={key:'',val:null};
+function nextClockChange(now){ if (!current) return null; const tz=zoneFor(current).tz, k=tz+Math.floor(+now/3600000); if (DSTC.key===k) return DSTC.val; DSTC.key=k; DSTC.val=null;
+  const t0=Math.floor(+now/3600000)*3600000, o0=tzOffMin(tz,t0); for (let h=1;h<=60;h++){ const o=tzOffMin(tz,t0+h*3600000); if (o!==o0){ let lo=t0+(h-1)*3600000, hi=t0+h*3600000; while (hi-lo>60000){ const m=(lo+hi)/2; if (tzOffMin(tz,m)===o0) lo=m; else hi=m; } DSTC.val={at:new Date(hi),diff:o-o0}; break; } }
+  return DSTC.val; }
+function clockAtTxt(at){ const p=localParts(new Date(+at-1),current); let h=p.hour, m=p.minute+1; if (m===60){ m=0; h=(h+1)%24; } const mm=String(m).padStart(2,'0'); return h12?`${(h%12)||12}:${mm} ${h<12?'AM':'PM'}`:`${String(h).padStart(2,'0')}:${mm}`; }
+function clockLine(now){ const c=nextClockChange(now); if (!c) return ''; const back=c.diff<0, h=Math.abs(c.diff)/60, lp=localParts(now,current), cp=localParts(c.at,current), tonight=cp.day!==lp.day||cp.hour<6;
+  return `<small>🕐 Clocks go ${back?'back':'forward'} ${h===1?'1 hour':h+' hours'} ${tonight?'tonight':'today'} at ${clockAtTxt(c.at)}${back?' — an extra hour of sleep! 😴':' — you lose an hour of sleep 😩'}</small>`; }
+
+// ---------- 🎭 Purim mask maker + grogger
+function openPurim(){ const M=Object.assign({c:'#b388ff',d:'feathers'},store.get('mask',{}));
+  const draw=()=>`<svg viewBox="0 0 300 170" style="width:100%;max-width:340px;display:block;margin:8px auto">${M.d==='feathers'?`<path d="M60 60 C40 10 70 0 80 50 M80 55 C80 5 110 5 100 55 M240 60 C260 10 230 0 220 50 M220 55 C220 5 190 5 200 55" stroke="#ffd23f" stroke-width="8" fill="none" stroke-linecap="round"/>`:''}
+    <path d="M30 80 C30 40 120 40 150 70 C180 40 270 40 270 80 C270 130 200 140 170 110 C160 100 140 100 130 110 C100 140 30 130 30 80Z" fill="${M.c}" stroke="#fff" stroke-width="3"/>
+    <ellipse cx="95" cy="85" rx="30" ry="18" fill="#05070f"/><ellipse cx="205" cy="85" rx="30" ry="18" fill="#05070f"/>
+    ${M.d==='sparkles'?[[60,60],[240,60],[150,90],[45,110],[255,110]].map(([x,y])=>`<text x="${x}" y="${y}" font-size="18" text-anchor="middle">✨</text>`).join(''):''}${M.d==='stars'?[[150,62],[60,115],[240,115]].map(([x,y])=>`<text x="${x}" y="${y}" font-size="20" text-anchor="middle">⭐</text>`).join(''):''}
+    ${M.d==='gems'?[[70,68],[230,68],[150,95]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="7" fill="#4cc9f0" stroke="#fff"/>`).join(''):''}</svg>`;
+  showModal(`<h3>🎭 Purim mask maker</h3><p class="mut">On Purim people dress up, give gifts of food, and spin noisy groggers whenever the villain Haman’s name is read from the story of Queen Esther.</p><div id="pmV">${draw()}</div>
+    <div class="seg" id="pmC" style="flex-wrap:wrap">${['#b388ff','#ff4d6d','#ffd23f','#4cc9f0','#3ddc97','#222'].map(c=>`<button data-v="${c}" style="background:${c};min-width:34px">&nbsp;</button>`).join('')}</div>
+    <div class="seg" id="pmD" style="margin-top:6px">${[['feathers','🪶'],['sparkles','✨'],['stars','⭐'],['gems','💎']].map(([k,e])=>`<button data-v="${k}">${e}</button>`).join('')}</div>
+    <button class="btn primary" id="pmG" style="margin-top:10px">🔊 Spin the grogger!</button>`);
+  const up=()=>{ $('pmV').innerHTML=draw(); store.set('mask',M); };
+  $('pmC').querySelectorAll('button').forEach(b=>b.onclick=()=>{ M.c=b.dataset.v; up(); }); $('pmD').querySelectorAll('button').forEach(b=>b.onclick=()=>{ M.d=b.dataset.v; up(); });
+  $('pmG').onclick=()=>{ for (let i=0;i<6;i++) setTimeout(()=>{ try{ sfx('buzz'); }catch(e){} },i*90); try{ fx.shake(); }catch(e){} toast('🔊 BOOOO Haman! 🎭'); }; }
+
+// ---------- 🌿 build a sukkah
+function openSukkah(){ const y=yearOf(simNow()), S=store.get('sukkah',{}), items=S[y]||[];
+  showModal(`<h3>🌿 Build a sukkah</h3><p class="mut">During Sukkot, families build a small hut with a roof of branches (you should see the stars through it!), decorate it with fruit, and eat their meals inside for a week.</p>
+    <svg viewBox="0 0 300 200" style="width:100%"><rect width="300" height="200" fill="#0d1838" rx="10"/><text x="40" y="30" font-size="12">⭐</text><text x="250" y="22" font-size="12">⭐</text>
+      <rect x="50" y="70" width="200" height="115" fill="#c69c6d" stroke="#8a6440" stroke-width="3"/><rect x="110" y="110" width="80" height="75" fill="#5c3a1f"/>
+      <path d="M40 72 L260 72" stroke="#3a8f3a" stroke-width="14" stroke-linecap="round"/>${Array.from({length:9},(_,i)=>`<path d="M${50+i*25} 72 q8 -18 18 -6" stroke="#5fae4f" stroke-width="5" fill="none"/>`).join('')}
+      ${items.map((e,i)=>`<text x="${60+(i*37)%180}" y="${90+((i*53)%3)*14}" font-size="16">${e}</text>`).join('')}</svg>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">${['🍋','🍎','🍇','🍐','🌽','🎃','💡','🌸'].map(e=>`<button class="btn" data-sk="${e}" style="font-size:20px">${e}</button>`).join('')}</div>
+    <p class="mut" style="text-align:center">${items.length}/15 decorations</p>`);
+  document.querySelectorAll('[data-sk]').forEach(b=>b.onclick=()=>{ if (items.length>=15) return; S[y]=[...items,b.dataset.sk]; store.set('sukkah',S); openSukkah(); }); }
+
+// ---------- 🏴‍☠️ Talk Like a Pirate Day: the card talks pirate
+var PIRATE=[[/\bHello\b/g,'Ahoy'],[/\bhello\b/g,'ahoy'],[/\byou\b/g,'ye'],[/\bYou\b/g,'Ye'],[/\byour\b/g,'yer'],[/\bYour\b/g,'Yer'],[/\bmy\b/g,'me'],[/\bis\b/g,'be'],[/\bare\b/g,'be'],[/\bthe\b/g,'th’'],[/\bThe\b/g,'Th’'],
+  [/\bfriends?\b/g,'mateys'],[/\bfor\b/g,'fer'],[/\bmoney\b/g,'doubloons'],[/\bcoins\b/g,'doubloons'],[/\btreasure\b/g,'booty'],[/\bstop\b/g,'avast'],[/\byes\b/g,'aye'],[/\bYes\b/g,'Aye'],[/\bwow\b/gi,'shiver me timbers']];
+function piratify(root){ if (!root) return; const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT); let n; while ((n=w.nextNode())){ let t=n.nodeValue, o=t; PIRATE.forEach(([r,s])=>t=t.replace(r,s)); if (t!==o) n.nodeValue=t; } }
+
+// ---------- 🌕 full moon names
+var MOON_NAMES=['Wolf Moon 🐺','Snow Moon ❄️','Worm Moon 🪱','Pink Moon 🌸','Flower Moon 🌼','Strawberry Moon 🍓','Buck Moon 🦌','Sturgeon Moon 🐟','Harvest Moon 🌾','Hunter’s Moon 🏹','Beaver Moon 🦫','Cold Moon 🥶'];
+function fullMoonLine(now){ if (!current) return ''; const s=sunState(now), m=moonState(now,s); if (m.illum<.975) return ''; const lp=localParts(now,current);
+  let name=MOON_NAMES[lp.month]; if (lp.month===8 || lp.month===9){ const eq=Date.UTC(lp.year,8,22), mi=moonInfo(current.lat,current.lon,now); const f=mi.full?+mi.full:+now; if (Math.abs(f-eq)<16*86400000 && lp.month===8 || lp.month===9 && f<eq+16*86400000) name='Harvest Moon 🌾'; }
+  return `<small>🌕 Full moon tonight — the ${name}</small>`; }
+
+// ---------- 😱 Friday the 13th glitches · 🐸 Leap Day
+function isF13(now){ if (!current) return false; const lp=localParts(now,current); return lp.day===13 && new Date(Date.UTC(lp.year,lp.month,13)).getUTCDay()===5; }
+function f13Line(now){ return isF13(now)?`<small>😱 Friday the 13th… watch out for glitches today 🐈‍⬛</small>`:''; }
+setInterval(()=>{ try{ if (!isF13(simNow()) || Math.random()>.35) return; const c=$('clock'); c.classList.add('glitch'); setTimeout(()=>c.classList.remove('glitch'),700); if (Math.random()<.3) toast(['🐈‍⬛ A black cat just walked across the screen…','🪜 Don’t walk under any ladders today','🪞 Careful with mirrors!'][Math.floor(Math.random()*3)]); }catch(e){} },20000);
+function leapLine(now){ if (theme!=='leapday') return ''; const y=yearOf(now); let n=y+4; while (!(n%4===0&&(n%100!==0||n%400===0))) n+=4; return `<small>🐸 A bonus day that only comes every 4 years — the next one is in ${n}. Born today? You’re a “leapling”!</small>`; }
+
+// ---------- 🃏 more April Fools' pranks (a different one each time, a few times a day)
+var PRANKS=[
+  ()=>{ const c=renderer.domElement; c.style.transition='transform 1.2s ease'; c.style.transform='rotate(180deg)'; toast('🌍 Uh oh… the globe flipped upside down?!'); return ()=>{ c.style.transform=''; setTimeout(()=>c.style.transition='',1300); }; },
+  ()=>{ document.body.style.transition='transform .8s'; document.body.style.transform='scaleX(-1)'; toast('🪞 Everything is backwards!'); return ()=>{ document.body.style.transform=''; setTimeout(()=>document.body.style.transition='',900); }; },
+  ()=>{ document.body.classList.add('fools-wobble'); toast('🥴 Is the app… wobbling?'); return ()=>document.body.classList.remove('fools-wobble'); },
+  ()=>{ document.documentElement.style.filter='hue-rotate(160deg) saturate(1.6)'; toast('🎨 Who changed all the colors?!'); return ()=>document.documentElement.style.filter=''; },
+  ()=>{ const c=$('clock'), o=c.style.visibility; c.dataset.fool='1'; toast('⏰ Wait — is it really 13:61?!'); const iv=setInterval(()=>{ c.textContent='13:61:99'; },50); return ()=>{ clearInterval(iv); delete c.dataset.fool; tick(true); }; },
+  ()=>{ toast('🎅 BREAKING: Santa took off early this year! 🦌'); return ()=>{}; },
+  ()=>{ const c=renderer.domElement; c.style.transition='transform 1s'; c.style.transform='scale(.25)'; toast('🔬 Earth is shrinking!!'); return ()=>{ c.style.transform=''; setTimeout(()=>c.style.transition='',1100); }; },
+  ()=>{ document.body.classList.add('fools-fall'); toast('⬇️ Gravity is broken!'); return ()=>document.body.classList.remove('fools-fall'); },
+  ()=>{ const s=$('search')||document.querySelector('input[type=search],#q'); const ph=s?s.placeholder:''; if (s) s.placeholder='Search any town on Mars… 👽'; toast('👽 The search now only finds places on Mars'); return ()=>{ if (s) s.placeholder=ph; }; },
+];
+var FOOLS2={next:0,count:0,last:-1};
+foolsPrank=function(){ let i; do{ i=Math.floor(Math.random()*PRANKS.length); }while(i===FOOLS2.last && PRANKS.length>1); FOOLS2.last=i; let undo=()=>{}; try{ undo=PRANKS[i]()||undo; }catch(e){}
+  setTimeout(()=>{ try{ undo(); }catch(e){} toast('🃏 April Fools! 😄'); try{ fx.celebrate(3000); }catch(e){} },3600); };
+foolsTick=function(now){ if (theme!=='aprilfools') return; const t=Date.now(); if (!FOOLS2.next){ FOOLS2.next=t+5000; return; } if (t<FOOLS2.next || FOOLS2.count>=6) return; FOOLS2.count++; FOOLS2.next=t+(90+Math.random()*150)*1000; foolsPrank(); };
+
+// ---------- 🔔 holiday reminders (the day before, at 9 AM at your pin)
+REM=Object.assign({holidays:false},REM);
+var _orem=openReminders; openReminders=function(){ _orem(); const L=$('remList'); if (!L) return;
+  L.insertAdjacentHTML('beforeend',`<label class="mopt${REM.holidays?' on':''}"><input type="checkbox" data-r2="holidays" ${REM.holidays?'checked':''}><span>🎉 Holidays<small>The day before a holiday where your pin is (9 AM)</small></span></label>`);
+  const i=L.querySelector('[data-r2]'); i.onchange=async()=>{ if (i.checked && 'Notification' in window && Notification.permission==='default'){ try{ await Notification.requestPermission(); }catch(e){} } REM.holidays=i.checked; store.set('reminders',REM); i.closest('label').classList.toggle('on',i.checked); }; };
+var HREM={at:0};
+function holRemTick(now){ if (!REM.holidays || !current || Date.now()-HREM.at<60000) return; HREM.at=Date.now(); const lp=localParts(now,current); if (lp.hour<9) return;
+  const td=dayNum(lp.year,lp.month,lp.day); let L=[]; try{ L=holidayDates(lp.year,current.cc).concat(holidayDates(lp.year+1,current.cc)); }catch(e){}
+  L.forEach(h=>{ if (dayNum(h.y,h.m,h.d)===td+1 && HOL[h.k] && HOL[h.k].name) notify('hol'+h.k+h.y,`${HOL[h.k].icon} ${HOL[h.k].name} is tomorrow!`,`Open the globe to see what’s happening in ${shortName(current)}.`); }); }
+
+// ---------- 🎃 pumpkin carver · 🎭 costume spinner (Halloween)
+function openPumpkin(){ const P=Object.assign({eyes:'tri',nose:'tri',mouth:'teeth',glow:true},store.get('pumpkin',{}));
+  const eyes={tri:'M100 95 L125 60 L150 95Z M190 95 L215 60 L240 95Z',round:'M125 80 m-22 0 a22 22 0 1 0 44 0 a22 22 0 1 0 -44 0 M215 80 m-22 0 a22 22 0 1 0 44 0 a22 22 0 1 0 -44 0',angry:'M98 70 L150 92 L105 100Z M242 70 L190 92 L235 100Z',happy:'M100 92 Q125 55 150 92 Z M190 92 Q215 55 240 92Z'},
+      nose={tri:'M160 120 L170 100 L180 120Z',round:'M170 112 m-9 0 a9 9 0 1 0 18 0 a9 9 0 1 0 -18 0',none:''},
+      mouth={teeth:'M95 140 Q170 200 245 140 L230 150 L215 140 L200 155 L185 142 L170 158 L155 142 L140 155 L125 140 L110 150Z',smile:'M100 140 Q170 210 240 140 Q170 175 100 140Z',o:'M170 160 m-22 0 a22 26 0 1 0 44 0 a22 26 0 1 0 -44 0',zig:'M100 145 L125 165 L150 145 L170 165 L190 145 L215 165 L240 145 L240 155 L215 178 L190 158 L170 178 L150 158 L125 178 L100 155Z'};
+  const svg=()=>`<svg viewBox="0 0 340 260" style="width:100%;max-width:320px;display:block;margin:6px auto"><rect width="340" height="260" rx="14" fill="#120a1e"/>
+    <path d="M165 40 q-4 -24 14 -30" stroke="#3a8f3a" stroke-width="9" fill="none" stroke-linecap="round"/><ellipse cx="170" cy="130" rx="140" ry="105" fill="#ff7a1a"/><ellipse cx="170" cy="130" rx="70" ry="105" fill="none" stroke="#e0600a" stroke-width="4"/>
+    <path d="${eyes[P.eyes]} ${nose[P.nose]} ${mouth[P.mouth]}" fill="${P.glow?'#ffe066':'#2a1205'}" style="${P.glow?'filter:drop-shadow(0 0 8px #ffcc00)':''}"/></svg>`;
+  const seg=(k,o)=>`<div class="seg" data-pk="${k}" style="margin-top:6px;flex-wrap:wrap">${o.map(([v,l])=>`<button data-v="${v}" class="${P[k]===v?'on':''}">${l}</button>`).join('')}</div>`;
+  showModal(`<h3>🎃 Carve a pumpkin</h3><div id="pkV">${svg()}</div>${seg('eyes',[['tri','▲ Eyes'],['round','● Eyes'],['angry','😠'],['happy','😊']])}${seg('nose',[['tri','▲ Nose'],['round','● Nose'],['none','No nose']])}
+    ${seg('mouth',[['teeth','🦷 Teeth'],['smile','🙂 Smile'],['o','😮 O'],['zig','⚡ Zigzag']])}${seg('glow',[[true,'🕯️ Candle on'],[false,'Off']])}`);
+  document.querySelectorAll('[data-pk]').forEach(g=>g.querySelectorAll('button').forEach(b=>b.onclick=()=>{ const k=g.dataset.pk; P[k]=k==='glow'?b.dataset.v==='true':b.dataset.v; g.querySelectorAll('button').forEach(q=>q.classList.toggle('on',q===b)); $('pkV').innerHTML=svg(); store.set('pumpkin',P); })); }
+function openCostume(){ const A=['glow-in-the-dark','zombie','space','pixel-art','vampire','pirate','superhero','sleepy','robot','haunted','disco','ninja','tiny','giant'],
+    B=['astronaut','dinosaur','wizard','pizza slice','video game controller','scarecrow','mummy','shark','taco','traffic cone','jellyfish','mad scientist','pumpkin king','ghost chef','alien tourist'];
+  const pick=()=>`${A[Math.floor(Math.random()*A.length)]} ${B[Math.floor(Math.random()*B.length)]}`;
+  showModal(`<h3>🎭 Costume idea spinner</h3><p class="mut">Stuck on a costume? Spin for a (silly) idea!</p><p id="csOut" style="font-size:26px;font-weight:800;text-align:center;margin:22px 0">${pick()}</p><button class="btn primary" id="csGo" style="display:block;margin:0 auto">🎰 Spin again</button>`);
+  $('csGo').onclick=()=>{ let n=0; const iv=setInterval(()=>{ $('csOut').textContent=pick(); if (++n>12){ clearInterval(iv); try{ sfx('pop'); }catch(e){} } },70); }; }
+
+// ---------- 🦃 turkey timer · 🥧 pie poll · 🛍️ Black Friday (Thanksgiving)
+function openTurkey(){ const T=Object.assign({lb:16,stuffed:false,dinner:'16:00'},store.get('turkey',{})), metric=!useUS();
+  showModal(`<h3>🦃 Turkey timer</h3><p class="mut">When to put the turkey in so it’s ready for dinner (roasting at 325°F / 165°C). Always check it with a thermometer: 165°F / 74°C in the thickest part.</p>
+    <label class="setRow"><b>Weight (${metric?'kg':'lb'})</b><input type="number" id="tkW" min="2" max="40" step="0.5" value="${metric?(T.lb/2.2046).toFixed(1):T.lb}"></label>
+    <label class="setRow"><b>Dinner time</b><input type="time" id="tkD" value="${T.dinner}"></label>
+    <div class="seg" id="tkS" style="margin-top:6px"><button data-v="0" class="${!T.stuffed?'on':''}">Not stuffed</button><button data-v="1" class="${T.stuffed?'on':''}">Stuffed</button></div><div id="tkOut" class="advMsg"></div>`);
+  const calc=()=>{ const w=parseFloat($('tkW').value)||0, lb=metric?w*2.2046:w; T.lb=Math.round(lb*2)/2; T.dinner=$('tkD').value||'16:00'; store.set('turkey',T); if (lb<2){ $('tkOut').textContent='Enter the weight'; return; }
+    const mins=Math.round(lb*(T.stuffed?15:13)), rest=30, [dh,dm]=T.dinner.split(':').map(Number), start=dh*60+dm-mins-rest, f=m=>{ m=(m+1440)%1440; const h=Math.floor(m/60), mm=String(m%60).padStart(2,'0'); return h12?`${(h%12)||12}:${mm} ${h<12?'AM':'PM'}`:`${String(h).padStart(2,'0')}:${mm}`; };
+    $('tkOut').innerHTML=`⏲️ Roasting time: about <b>${Math.floor(mins/60)} h ${mins%60} min</b><br>🔥 Put it in the oven at <b>${f(start)}</b><br>🍽️ Take it out at <b>${f(start+mins)}</b> and let it rest 30 min<br>🧊 Frozen? Thaw it in the fridge for about <b>${Math.ceil(lb/4.5)} days</b> first`; };
+  $('tkW').oninput=calc; $('tkD').oninput=calc; $('tkS').querySelectorAll('button').forEach(b=>b.onclick=()=>{ T.stuffed=b.dataset.v==='1'; $('tkS').querySelectorAll('button').forEach(q=>q.classList.toggle('on',q===b)); calc(); }); calc(); }
+var PIES=[['pumpkin','🎃','Pumpkin'],['apple','🍎','Apple'],['pecan','🥜','Pecan'],['sweetpotato','🍠','Sweet potato'],['cherry','🍒','Cherry'],['chocolate','🍫','Chocolate cream']];
+async function openPies(){ const y=yearOf(simNow()), b=await boardDb(); let mine=store.get('pieVote',{})[y]||'', counts={};
+  const load=async()=>{ counts={}; if (b){ try{ const s=await b.db.collection('pies').where('y','==',y).limit(500).get(); s.docs.forEach(d=>{ const v=d.data().pie; counts[v]=(counts[v]||0)+1; }); }catch(e){} } if (!Object.keys(counts).length && mine) counts[mine]=1; render(); };
+  const render=()=>{ const tot=Object.values(counts).reduce((a,c)=>a+c,0)||1; $('pieList').innerHTML=PIES.map(([k,e,n])=>{ const c=counts[k]||0, pc=Math.round(c/tot*100);
+      return `<button class="btn" data-pie="${k}" style="display:block;width:100%;text-align:left;margin-top:6px;position:relative;overflow:hidden${mine===k?';outline:2px solid #ffd36b':''}"><span style="position:absolute;inset:0;width:${mine?pc:0}%;background:rgba(255,211,107,.18)"></span><span style="position:relative">${e} ${n}${mine?` · ${pc}% (${c})`:''}</span></button>`; }).join('');
+    document.querySelectorAll('[data-pie]').forEach(q=>q.onclick=async()=>{ mine=q.dataset.pie; const V=store.get('pieVote',{}); V[y]=mine; store.set('pieVote',V); if (b){ try{ await b.db.collection('pies').doc(b.id+'_'+y).set({y,pie:mine}); }catch(e){} } load(); }); };
+  showModal(`<h3>🥧 Best Thanksgiving pie?</h3><p class="mut">${b?'Vote — results are shared with everyone using this app in Claude.':'Vote for your favorite!'}</p><div id="pieList"></div>`); load(); }
+function blackFridayLine(now){ if (!current || current.cc!=='US') return ''; const lp=localParts(now,current); if (lp.month!==10 && lp.month!==11) return ''; const tg=nthWeekday(lp.year,10,4,4), td=dayNum(lp.year,lp.month,lp.day), t0=dayNum(lp.year,10,tg);
+  return td===t0+1?`<small>🛍️ Black Friday — then Small Business Saturday and Cyber Monday</small>`:td===t0+2?`<small>🏪 Small Business Saturday — shop local in ${esc(shortName(current))}!</small>`:td===t0+4?`<small>💻 Cyber Monday</small>`:td===t0+5?`<small>💝 Giving Tuesday — a day for giving back and helping others</small>`:''; }
+
+// ---------- 🎄 tree decorator · 🎅 Secret Santa (Christmas)
+function openTree(){ const y=yearOf(simNow()), T=store.get('tree',{}), orn=T[y]||[]; let pick='🔴', lit=store.get('treeLit',true);
+  const svg=()=>`<svg id="trSvg" viewBox="0 0 300 330" style="width:100%;max-width:320px;display:block;margin:6px auto;touch-action:manipulation"><rect width="300" height="330" rx="14" fill="#0b1430"/>
+    <polygon points="150,30 60,140 95,140 40,230 85,230 25,300 275,300 215,230 260,230 205,140 240,140" fill="#1f7a3a" stroke="#155c2b" stroke-width="3"/><rect x="132" y="300" width="36" height="24" fill="#6b4226"/>
+    ${lit?Array.from({length:18},(_,i)=>{ const yy=70+i*12, w=(yy-30)*.42; const x=150+Math.sin(i*1.7)*w*.8; return `<circle cx="${x}" cy="${yy}" r="3" fill="${['#ffd36b','#ff6b6b','#4cc9f0','#3ddc97'][i%4]}" class="trLight" style="animation-delay:${i*.13}s"/>`; }).join(''):''}
+    ${orn.map(o=>`<text x="${o[1]}" y="${o[2]}" font-size="${o[0]==='⭐'?34:18}" text-anchor="middle" dominant-baseline="middle">${o[0]}</text>`).join('')}</svg>`;
+  showModal(`<h3>🎄 Decorate the tree</h3><p class="mut">Pick an ornament, then tap the tree to hang it.</p><div id="trV">${svg()}</div>
+    <div class="seg" id="trP" style="flex-wrap:wrap">${['🔴','🟡','🔵','🟣','🎀','🍬','🔔','🎁','⭐'].map(e=>`<button data-v="${e}" class="${e===pick?'on':''}">${e}</button>`).join('')}</div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn" id="trL">💡 Lights ${lit?'off':'on'}</button><button class="btn" id="trU">↩️ Undo</button><button class="btn" id="trC">🗑️ Clear</button></div>`);
+  const save=()=>{ T[y]=orn; store.set('tree',T); $('trV').innerHTML=svg(); bind(); };
+  const bind=()=>{ $('trSvg').onclick=e=>{ const r=$('trSvg').getBoundingClientRect(), x=(e.clientX-r.left)/r.width*300, yy=(e.clientY-r.top)/r.height*330; if (yy<20||yy>305||orn.length>=60) return; orn.push([pick,Math.round(x),Math.round(yy)]); try{ sfx('pop'); }catch(_){} save(); }; };
+  $('trP').querySelectorAll('button').forEach(b=>b.onclick=()=>{ pick=b.dataset.v; $('trP').querySelectorAll('button').forEach(q=>q.classList.toggle('on',q===b)); });
+  $('trL').onclick=()=>{ lit=!lit; store.set('treeLit',lit); $('trL').textContent=`💡 Lights ${lit?'off':'on'}`; save(); }; $('trU').onclick=()=>{ orn.pop(); save(); }; $('trC').onclick=()=>{ orn.length=0; save(); }; bind(); }
+function openSecretSanta(){ const S=store.get('ssanta',{names:[],pairs:null,seen:[]});
+  const draw=names=>{ for (let k=0;k<200;k++){ const s=names.slice().sort(()=>Math.random()-.5); if (s.every((n,i)=>n!==names[i])) return Object.fromEntries(names.map((n,i)=>[n,s[i]])); } return null; };
+  if (!S.pairs){ showModal(`<h3>🎅 Secret Santa</h3><p class="mut">Great for the club! Type everyone’s name (one per line), then draw. Pass the phone around — each person taps their own name to see who they’re giving to.</p>
+      <textarea id="ssN" rows="7" style="width:100%" placeholder="Liam&#10;Alex&#10;Sam…">${esc(S.names.join('\n'))}</textarea><button class="btn primary" id="ssGo" style="margin-top:8px">🎲 Draw names</button>`);
+    $('ssGo').onclick=()=>{ const names=[...new Set($('ssN').value.split('\n').map(s=>s.trim()).filter(Boolean))]; if (names.length<3){ toast('Add at least 3 names'); return; } const p=draw(names); if (!p) return; store.set('ssanta',{names,pairs:p,seen:[]}); try{ fx.celebrate(1500); }catch(e){} openSecretSanta(); }; return; }
+  showModal(`<h3>🎅 Secret Santa</h3><p class="mut">Pass the phone! Tap <b>your</b> name — don’t peek at anyone else’s. 🤫</p><div id="ssL">${S.names.map(n=>`<button class="btn" data-ss="${esc(n)}" style="margin:4px">${S.seen.includes(n)?'✅ ':''}${esc(n)}</button>`).join('')}</div>
+    <div id="ssR" class="advMsg" style="display:none;text-align:center"></div><button class="btn" id="ssReset" style="margin-top:12px">Start over</button>`);
+  document.querySelectorAll('[data-ss]').forEach(b=>b.onclick=()=>{ const n=b.dataset.ss; $('ssL').style.display='none'; $('ssR').style.display='';
+    $('ssR').innerHTML=`<b>${esc(n)}</b>, you’re giving a gift to…<div style="font-size:30px;font-weight:800;margin:14px 0">🎁 ${esc(S.pairs[n])}</div><button class="btn primary" id="ssHide">Got it — hide</button>`;
+    $('ssHide').onclick=()=>{ if (!S.seen.includes(n)) S.seen.push(n); store.set('ssanta',S); openSecretSanta(); }; });
+  $('ssReset').onclick=()=>{ store.set('ssanta',{names:S.names,pairs:null,seen:[]}); openSecretSanta(); }; }
+
+// ---------- wiring
+document.head.insertAdjacentHTML('beforeend',`<style>
+  #clock.glitch{animation:f13 .7s steps(2) 1} @keyframes f13{0%{transform:translate(2px,-1px);filter:hue-rotate(90deg)}25%{transform:translate(-3px,2px) skewX(8deg)}50%{transform:translate(1px,1px);opacity:.4}75%{transform:translate(-1px,-2px) skewX(-6deg)}100%{transform:none}}
+  body.fools-wobble{animation:fwob .5s ease-in-out infinite alternate} @keyframes fwob{from{transform:rotate(-1.5deg)}to{transform:rotate(1.5deg)}}
+  body.fools-fall .btn,body.fools-fall #card{transition:transform 1.2s cubic-bezier(.5,0,1,.5);transform:translateY(110vh) rotate(25deg)}
+  .trLight{animation:trTw 1.6s ease-in-out infinite alternate} @keyframes trTw{from{opacity:.35}to{opacity:1}}</style>`);
+var _lt10=layersTick; layersTick=function(now,M){ _lt10(now,M); holRemTick(now); if (theme==='pirate'){ piratify($('holStrip')); } };
+var _ll10=layerLines; layerLines=function(now){ let h=_ll10(now); if (!current) return h;
+  if (theme==='halloween') h+=`<small>🎃 <a href="#" id="pumpGo">Carve a pumpkin</a> · 🎭 <a href="#" id="costGo">costume idea spinner</a></small>`;
+  if (theme==='thanksgiving') h+=`<small>🦃 <a href="#" id="turkGo">Turkey timer</a> · 🥧 <a href="#" id="pieGo">best pie vote</a></small>`;
+  if (theme==='christmas') h+=`<small>🎄 <a href="#" id="treeGo">Decorate a tree</a> · 🎅 <a href="#" id="ssGo2">Secret Santa</a></small>`;
+  if (theme==='threekings' || localParts(now,current).month===0 && localParts(now,current).day===6) h+=`<small>👑 <a href="#" id="kcGo">Find the baby in the king cake!</a></small>`;
+  if (theme==='purim') h+=`<small>🎭 <a href="#" id="purimGo">Make a Purim mask</a> and spin the grogger!</small>`;
+  if (theme==='sukkot') h+=`<small>🌿 <a href="#" id="sukGo">Build a sukkah</a></small>`;
+  if (theme==='kingsday') h+=`<small>🧡 The whole country dresses in orange for the King’s birthday — street markets everywhere!</small>`;
+  if (theme==='vesak') h+=`<small>🪷 Vesak celebrates the Buddha’s birth, enlightenment and passing — lanterns light up the night</small>`;
+  if (theme==='anzac') h+=`<small>🎖️ Dawn services remember those who served · 🍪 Anzac biscuits</small>`;
+  if (theme==='ganesh') h+=`<small>🐘 Ten days of celebrating Lord Ganesha, ending with statues carried to the sea · 🍡 modak sweets</small>`;
+  if (theme==='navratri'){ const lp=localParts(now,current), d=DUSSEHRA[lp.year]; h+= d && lp.month===d[0] && lp.day===d[1] ? `<small>🏹 Dussehra — good wins over evil! Giant Ravana figures go up in fireworks tonight 🎆</small>` : `<small>💃 Nine nights of dancing (garba) before Dussehra</small>`; }
+  if (theme==='chuseok') h+=`<small>🌕 Families gather, visit ancestors’ hometowns and make songpyeon rice cakes under the full moon</small>`;
+  if (theme==='pirate') h+=`<small>🏴‍☠️ Arr! Th’ whole card be talkin’ like a pirate today, matey</small>`;
+  return h+stNickLine(now)+stLuciaLine(now)+posadasLine(now)+clockLine(now)+fullMoonLine(now)+f13Line(now)+leapLine(now)+blackFridayLine(now); };
+document.addEventListener('click',e=>{ const a=e.target.closest('a,button'); if (!a) return;
+  const map={shoeGo:()=>{ const y=yearOf(simNow()), S=store.get('shoe',{}); S[y]=true; store.set('shoe',S); toast('👞 Shoe is out! Check it tomorrow morning.'); tick(true); },
+    luciaGo:()=>{ ctlG.minDistance=1.05; flyToLL(59.33,18.07,1.12); }, posGo:openPosadas, kcGo:openKingCake, purimGo:openPurim, sukGo:openSukkah,
+    pumpGo:openPumpkin, costGo:openCostume, turkGo:openTurkey, pieGo:openPies, treeGo:openTree, ssGo2:openSecretSanta};
+  if (map[a.id]){ e.preventDefault(); map[a.id](); } });
+var _om10=openMore; openMore=function(){ _om10(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
+  const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.appendChild(b); };
+  if (theme==='halloween'){ add('🎃','Pumpkin carver','Carve your own jack-o’-lantern',openPumpkin); add('🎭','Costume spinner','Get a silly costume idea',openCostume); }
+  if (theme==='thanksgiving'){ add('🦃','Turkey timer','When to put the turkey in',openTurkey); add('🥧','Pie vote','Best Thanksgiving pie?',openPies); }
+  if (theme==='christmas'){ add('🎄','Tree decorator','Hang ornaments on a tree',openTree); add('🎅','Secret Santa','Draw names for the club',openSecretSanta); } };
+if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {openPumpkin,openCostume,openTurkey,openPies,openTree,openSecretSanta,openKingCake,openPurim,openSukkah,openPosadas,foolsPrank,nextClockChange});
+
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS,SET,layerNote,noteFor};
 frame();
