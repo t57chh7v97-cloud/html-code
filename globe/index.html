@@ -2758,6 +2758,12 @@ function layout(){
 }
 if (window.ResizeObserver){ const ro=new ResizeObserver(()=>{ if (typeof layout==='function') layout(); }); addEventListener('load',()=>{ ro.observe($('card')); ro.observe($('santaCard')); }); }
 addEventListener('resize',()=>{ layout(); });
+// iPhone: closing the keyboard (after a search) or rotating doesn't always fire 'resize' — the globe then stays drawn at the old,
+// shorter size while labels use the new one. Re-check the size often and fix it whenever it's out of step.
+{ const fixSize=()=>{ const c=renderer.domElement; if (Math.abs(c.clientWidth-innerWidth)>1 || Math.abs(c.clientHeight-innerHeight)>1) layout(); };
+  if (window.visualViewport) visualViewport.addEventListener('resize',()=>setTimeout(fixSize,60));
+  addEventListener('orientationchange',()=>setTimeout(layout,300)); document.addEventListener('focusout',()=>{ setTimeout(fixSize,150); setTimeout(fixSize,600); });
+  setInterval(fixSize,700); }
 if (innerWidth<=720){ $('card').classList.add('collapsed'); $('collapse').textContent='▴'; }
 layout(); orbitHome(); applyDev();
 
