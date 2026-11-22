@@ -3967,11 +3967,13 @@ var _usc=updateSantaCard; updateSantaCard=function(now){ _usc(now); document.bod
   const us=useUS(), dist=us?`${Math.round(S.km*0.6214).toLocaleString()} mi`:`${Math.round(S.km).toLocaleString()} km`, sp=us?`${Math.round(S.kmh*0.6214).toLocaleString()} mph`:`${Math.round(S.kmh).toLocaleString()} km/h`;
   const y=santa.y, C=store.get('cookies',null), mine=C&&C.y===y, big=n=>Math.round(n).toLocaleString('en-US');
   const homes=(santa.presents||0)/2.5, ck=homes*3, mk=homes, cr=homes*3.5;     // per house: 2–4 cookies, 1 glass of milk, 3–4 carrots for the reindeer
+  const vAt=current?santaVisitFor(current,y).at:null, visited=!!(vAt && +now>=+vAt);      // based on the time right now — so time travelling back un-eats them
   let away=''; if (santa.on && current){ const km=gcDist(current.lat,current.lon,santa.lat,santa.lon); away=`<span>📍 ${us?Math.round(km*0.6214).toLocaleString()+' mi':Math.round(km).toLocaleString()+' km'} from ${esc(shortName(current))}</span>`; }
   const html=`${away}${S.kmh?`<span>🚀 ${sp}</span>`:''}<span title="2–4 cookies at each house">🍪 ${big(ck)} cookies</span><span title="1 glass of milk at each house">🥛 ${big(mk)} glasses of milk</span><span title="3–4 carrots at each house for the reindeer">🥕 ${big(cr)} carrots</span>`
-    +(!santa.done && !mine ? `<button class="btn mini" id="scCookies">🍪 Leave cookies out</button>` : mine && !C.eaten ? `<span>🍪 Your cookies are out!</span>` : mine && C.eaten ? `<span>😋 Santa ate your cookies!</span>` : '');
+    +(!mine ? (!santa.done && !visited ? `<button class="btn mini" id="scCookies">🍪 Leave cookies out</button>` : '') : !visited ? `<span>🍪 Your cookies are out!</span>` : `<span>😋 Santa ate your cookies!</span>`);
   const el=$('scStats'); if (el.dataset.h!==html){ el.dataset.h=html; el.innerHTML=html; if ($('scCookies')) $('scCookies').onclick=e=>{ e.stopPropagation(); store.set('cookies',{y,eaten:false}); toast('🍪🥛 Milk and cookies are out for Santa — and a carrot for Rudolph! 🥕'); updateSantaCard(simNow()); }; }
-  if (mine && !C.eaten && current){ const v=santaVisitFor(current,y); if (v.at && +now>=+v.at){ store.set('cookies',{y,eaten:true}); achieve('cookies'); fx.celebrate(5000);
+  if (mine && C.eaten && current && !visited) store.set('cookies',{y,eaten:false});
+  if (mine && !C.eaten && current && visited && +now-vAt<3*3600000){ { store.set('cookies',{y,eaten:true}); achieve('cookies'); fx.celebrate(5000);
       showModal(`<h3>🍪 Santa ate your cookies!</h3><div class="letter reply">Mmm — thank you for the cookies and the milk! Rudolph loved his carrot too. 🥕<br><br>Merry Christmas!<br>— Santa 🎅</div>`); } } };
 
 // ---------- 🎃 Halloween: trick-or-treating sweeps around the world as evening arrives (5–9 PM local, Oct 31)
