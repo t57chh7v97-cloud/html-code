@@ -4881,14 +4881,23 @@ function openCostume(){ const A=['glow-in-the-dark','zombie','space','pixel-art'
   $('csGo').onclick=()=>{ let n=0; const iv=setInterval(()=>{ $('csOut').textContent=pick(); if (++n>12){ clearInterval(iv); try{ sfx('pop'); }catch(e){} } },70); }; }
 
 // ---------- 🦃 turkey timer · 🥧 pie poll · 🛍️ Black Friday (Thanksgiving)
-function openTurkey(){ const T=Object.assign({lb:16,stuffed:false,dinner:'16:00'},store.get('turkey',{})), metric=!useUS();
-  showModal(`<h3>🦃 Turkey timer</h3><p class="mut">When to put the turkey in so it’s ready for dinner (roasting at 325°F / 165°C). Always check it with a thermometer: 165°F / 74°C in the thickest part.</p>
+function openTurkey(){ const T=Object.assign({lb:16,stuffed:false,dinner:'16:00',when:'day'},store.get('turkey',{})), metric=!useUS();
+  const lp=current?localParts(simNow(),current):partsIn(DEVICE_TZ,simNow()); let ty=lp.year; if (lp.month===11) ty++; const tg=nthWeekday(ty,10,4,4);
+  showModal(`<h3>🦃 Turkey timer</h3><p class="mut">When to put the turkey in so it’s ready (roasting at 325°F / 165°C). Always check it with a thermometer: 165°F / 74°C in the thickest part.</p>
+    <div class="setRow"><b>When are you cooking it?</b><div class="seg" id="tkWhen" style="flex-wrap:wrap"><button data-v="day">🦃 Thanksgiving Day</button><button data-v="before">🧳 Day before (traveling)</button></div></div>
     <label class="setRow"><b>Weight (${metric?'kg':'lb'})</b><input type="number" id="tkW" min="2" max="40" step="0.5" value="${metric?(T.lb/2.2046).toFixed(1):T.lb}"></label>
-    <label class="setRow"><b>Dinner time</b><input type="time" id="tkD" value="${T.dinner}"></label>
+    <label class="setRow"><b id="tkDL">Dinner time</b><input type="time" id="tkD" value="${T.dinner}"></label>
     <div class="seg" id="tkS" style="margin-top:6px"><button data-v="0" class="${!T.stuffed?'on':''}">Not stuffed</button><button data-v="1" class="${T.stuffed?'on':''}">Stuffed</button></div><div id="tkOut" class="advMsg"></div>`);
-  const calc=()=>{ const w=parseFloat($('tkW').value)||0, lb=metric?w*2.2046:w; T.lb=Math.round(lb*2)/2; T.dinner=$('tkD').value||'16:00'; store.set('turkey',T); if (lb<2){ $('tkOut').textContent='Enter the weight'; return; }
-    const mins=Math.round(lb*(T.stuffed?15:13)), rest=30, [dh,dm]=T.dinner.split(':').map(Number), start=dh*60+dm-mins-rest, f=m=>{ m=(m+1440)%1440; const h=Math.floor(m/60), mm=String(m%60).padStart(2,'0'); return h12?`${(h%12)||12}:${mm} ${h<12?'AM':'PM'}`:`${String(h).padStart(2,'0')}:${mm}`; };
-    $('tkOut').innerHTML=`⏲️ Roasting time: about <b>${Math.floor(mins/60)} h ${mins%60} min</b><br>🔥 Put it in the oven at <b>${f(start)}</b><br>🍽️ Take it out at <b>${f(start+mins)}</b> and let it rest 30 min<br>🧊 Frozen? Thaw it in the fridge for about <b>${Math.ceil(lb/4.5)} days</b> first`; };
+  const dayTxt=(off)=>new Date(Date.UTC(ty,10,tg+off)).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'});
+  const calc=()=>{ const w=parseFloat($('tkW').value)||0, lb=metric?w*2.2046:w; T.lb=Math.round(lb*2)/2; T.dinner=$('tkD').value||'16:00'; store.set('turkey',T);
+    $('tkWhen').querySelectorAll('button').forEach(q=>q.classList.toggle('on',q.dataset.v===T.when)); const before=T.when==='before'; $('tkDL').textContent=before?'Done-by time (day before)':'Dinner time';
+    if (lb<2){ $('tkOut').textContent='Enter the weight'; return; }
+    const mins=Math.round(lb*(T.stuffed?15:13)), rest=30, [dh,dm]=T.dinner.split(':').map(Number), start=dh*60+dm-mins-rest, cookDay=before?-1:0;
+    const f=m=>{ const dayOff=Math.floor(m/1440); m=((m%1440)+1440)%1440; const h=Math.floor(m/60), mm=String(m%60).padStart(2,'0'); return (h12?`${(h%12)||12}:${mm} ${h<12?'AM':'PM'}`:`${String(h).padStart(2,'0')}:${mm}`)+(dayOff?` (${dayTxt(cookDay+dayOff)})`:''); };
+    const thaw=Math.ceil(lb/4.5);
+    $('tkOut').innerHTML=`⏲️ Roasting time: about <b>${Math.floor(mins/60)} h ${mins%60} min</b><br>🔥 Put it in the oven <b>${dayTxt(cookDay)}</b> at <b>${f(start)}</b><br>🍽️ Take it out at <b>${f(start+mins)}</b> and let it rest 30 min<br>🧊 Frozen? Move it to the fridge to thaw by <b>${dayTxt(cookDay-thaw)}</b> (about ${thaw} day${thaw>1?'s':''})`
+      +(before?`<br><br><b>🧳 Making it ahead to travel:</b><br>• Carve it within 2 hours of cooking, then refrigerate it in shallow containers (whole turkeys cool too slowly)<br>• Pack it in a cooler with ice packs so it stays at 40°F / 4°C or colder on the trip<br>• To reheat on Thanksgiving: covered, with a splash of broth, at 325°F / 165°C until it’s 165°F / 74°C again (about 20–30 min for slices)<br>• Eat the leftovers within 3–4 days`:''); };
+  $('tkWhen').querySelectorAll('button').forEach(b=>b.onclick=()=>{ T.when=b.dataset.v; calc(); });
   $('tkW').oninput=calc; $('tkD').oninput=calc; $('tkS').querySelectorAll('button').forEach(b=>b.onclick=()=>{ T.stuffed=b.dataset.v==='1'; $('tkS').querySelectorAll('button').forEach(q=>q.classList.toggle('on',q===b)); calc(); }); calc(); }
 var PIES=[['pumpkin','🎃','Pumpkin'],['apple','🍎','Apple'],['pecan','🥜','Pecan'],['sweetpotato','🍠','Sweet potato'],['cherry','🍒','Cherry'],['chocolate','🍫','Chocolate cream']];
 async function openPies(){ const y=yearOf(simNow()), b=await boardDb(); let mine=store.get('pieVote',{})[y]||'', counts={};
@@ -4896,7 +4905,7 @@ async function openPies(){ const y=yearOf(simNow()), b=await boardDb(); let mine
   const render=()=>{ const tot=Object.values(counts).reduce((a,c)=>a+c,0)||1; $('pieList').innerHTML=PIES.map(([k,e,n])=>{ const c=counts[k]||0, pc=Math.round(c/tot*100);
       return `<button class="btn" data-pie="${k}" style="display:block;width:100%;text-align:left;margin-top:6px;position:relative;overflow:hidden${mine===k?';outline:2px solid #ffd36b':''}"><span style="position:absolute;inset:0;width:${mine?pc:0}%;background:rgba(255,211,107,.18)"></span><span style="position:relative">${e} ${n}${mine?` · ${pc}% (${c})`:''}</span></button>`; }).join('');
     document.querySelectorAll('[data-pie]').forEach(q=>q.onclick=async()=>{ mine=q.dataset.pie; const V=store.get('pieVote',{}); V[y]=mine; store.set('pieVote',V); if (b){ try{ await b.db.collection('pies').doc(b.id+'_'+y).set({y,pie:mine}); }catch(e){} } load(); }); };
-  showModal(`<h3>🥧 Best Thanksgiving pie?</h3><p class="mut">${b?'Vote — results are shared with everyone using this app in Claude.':'Vote for your favorite!'}</p><div id="pieList"></div>`); load(); }
+  showModal(`<h3>🥧 Best Thanksgiving pie?</h3><p class="mut">${b?'One vote per person — results are shared with everyone using this app in Claude.':'Vote for your favorite! On this website your vote stays on this device, so each phone or computer counts on its own. The shared vote with everyone’s results is in the Claude version.'}</p><div id="pieList"></div>`); load(); }
 function blackFridayLine(now){ if (!current || current.cc!=='US') return ''; const lp=localParts(now,current); if (lp.month!==10 && lp.month!==11) return ''; const tg=nthWeekday(lp.year,10,4,4), td=dayNum(lp.year,lp.month,lp.day), t0=dayNum(lp.year,10,tg);
   return td===t0+1?`<small>🛍️ Black Friday — then Small Business Saturday and Cyber Monday</small>`:td===t0+2?`<small>🏪 Small Business Saturday — shop local in ${esc(shortName(current))}!</small>`:td===t0+4?`<small>💻 Cyber Monday</small>`:td===t0+5?`<small>💝 Giving Tuesday — a day for giving back and helping others</small>`:''; }
 
