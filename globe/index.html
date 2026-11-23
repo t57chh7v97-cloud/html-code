@@ -107,7 +107,7 @@
   .sc-stats{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;font-size:12.5px;font-weight:600;align-items:center} .sc-stats:empty{display:none} #scCk{margin-top:6px}
   /* numbers keep the same width as they count up, and phones use a fixed 2-column grid, so the Santa card never changes height (which made the globe jump) */
   .sc-stats,#santaCard .sc-in,#santaCard .sc-gifts{font-variant-numeric:tabular-nums}
-  @media (max-width:720px){ #scCk{display:block} .sc-stats{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px} .sc-stats>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .sc-stats>.btn,.sc-stats>span.ckQ{grid-column:1/-1;justify-self:start;white-space:normal} }
+  @media (max-width:720px){ #scCk{display:block} .sc-stats{display:grid;grid-template-columns:1fr;gap:3px 8px} .sc-stats>span{white-space:nowrap} .sc-stats>.btn,.sc-stats>span.ckQ{grid-column:1/-1;justify-self:start;white-space:normal} }
   .ckQ a{color:inherit;opacity:.8;font-size:11px}
   .sc-stats .btn.mini{background:#fff8e1;color:#7a3b10;border:0;font-weight:700}
   .achPop{position:fixed;left:50%;top:84px;transform:translateX(-50%);z-index:30;display:flex;gap:10px;align-items:center;padding:10px 16px;border-radius:14px;animation:npPop .4s ease-out;transition:opacity .5s,transform .5s}
@@ -2163,8 +2163,10 @@ const HS_PIN=/pLive|ytBtn|liveDot|LIVE|Happy birthday|shadow is on Earth|[Pp]ara
 function stripSplit(ex){ const parts=ex.match(/<small[\s\S]*?<\/small>/g)||[]; const pin=[], more=[]; parts.forEach(x=>(HS_PIN.test(x)?pin:more).push(x));
   if (more.length<2) return parts.join('');
   return pin.join('')+(HS_OPEN?more.join(''):'')+`<small class="hsMore"><a href="#" id="hsMoreBtn">${HS_OPEN?'Show less ▴':`More (${more.length}) ▾`}</a></small>`; }
+// safety net: never leave an empty pop-up's dark backdrop over the app (it would block every tap)
+setInterval(()=>{ const m=$('xModal'); if (m.classList.contains('show') && !$('xBody').innerHTML.trim()) m.classList.remove('show'); },1000);
 // pointerdown, not click: the box re-draws every second (countdowns), which can swallow a slow tap's click
-document.addEventListener('pointerdown',e=>{ const a=e.target.closest('#hsMoreBtn'); if (!a) return; e.preventDefault(); HS_OPEN=!HS_OPEN; tick(true); });
+document.addEventListener('pointerdown',e=>{ const a=e.target.closest('#hsMoreBtn'); if (!a) return; e.preventDefault(); HS_OPEN=!HS_OPEN; const sc=$('santaCard'); if (HS_OPEN && innerWidth<=720 && sc.classList.contains('show')){ sc.classList.add('compact'); delete sc.dataset.manual; } tick(true); setTimeout(layout,50); });
 document.addEventListener('click',e=>{ if (e.target.closest('#hsMoreBtn')) e.preventDefault(); });
 // jump buttons (time travel previews)
 document.querySelectorAll('#timeBar [data-jump]').forEach(b=>b.onclick=()=>{
@@ -2736,7 +2738,9 @@ $('santaBack').onclick=()=>exitSantaCam();
 $('santaCard').addEventListener('click',e=>{ if (e.target.closest('#santaZoom,#scCk button,#scCk a') || Date.now()-(window._scBtnAt||0)<800) return; const c=$('santaCard').classList.toggle('compact'); $('santaCard').dataset.manual=1; store.set('scCompact',c); layout(); });
 $('focusBtn').onclick=()=>{ const on=document.body.classList.toggle('focus'); $('focusBtn').classList.toggle('on',on); $('focusBtn').innerHTML = on ? '👁<span class="long"> Show panels</span>' : '⛶<span class="long"> Hide panels</span>';
   if (on){ $('layerMenu').classList.remove('show'); $('musicMenu').classList.remove('show'); } layout(); };
-$('collapse').onclick=()=>{ const c=$('card').classList.toggle('collapsed'); $('collapse').textContent=c?'▴':'▾'; $('card').scrollTop=0; layout(); };
+$('collapse').onclick=()=>{ const c=$('card').classList.toggle('collapsed'); $('collapse').textContent=c?'▴':'▾'; $('card').scrollTop=0;
+  const sc=$('santaCard'); if (!c && innerWidth<=720 && sc.classList.contains('show')){ sc.classList.add('compact'); delete sc.dataset.manual; }   // opening the info card shrinks the Santa card
+  layout(); };
 
 let toastT; function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),6500); }
 
@@ -2757,9 +2761,12 @@ function layout(){
   // phones: the card and the Santa card share the space under the top bar — the card scrolls inside so neither covers the buttons
   { const avail=H-top.bottom-(W<=720?18:30); let scH=0;
     if (W<=720 && sc && sc.classList.contains('show') && !camMode){ scH=sc.getBoundingClientRect().height;
-      const cardH=$('card').scrollHeight;
-      if (!sc.dataset.manual && !sc.classList.contains('compact') && scH+8+Math.min(cardH,260)>avail-180){ sc.classList.add('compact'); scH=sc.getBoundingClientRect().height; } }
-    $('card').style.maxHeight=Math.max(130, avail-(scH?scH+8+(sc.dataset.manual?0:180):0))+'px'; }
+      // the globe always keeps at least ~170px: the Santa card and the info card take turns being open
+      const GLOBE=170, cardH=$('card').scrollHeight;
+      if (!sc.classList.contains('compact') && scH+8+Math.min(cardH,220)>avail-GLOBE){
+        if (sc.dataset.manual){ if (!$('card').classList.contains('collapsed')){ $('card').classList.add('collapsed'); $('collapse').textContent='▴'; HS_OPEN=false; } }   // you opened Santa → fold the info card
+        else { sc.classList.add('compact'); scH=sc.getBoundingClientRect().height; } } }
+    $('card').style.maxHeight=Math.max(110, avail-(scH?scH+8+170:0))+'px'; }
   const card=$('card').getBoundingClientRect(); let stack=camMode?0:card.height;
   if (sc && sc.classList.contains('show')){ if (W<=720){ sc.style.bottom=(camMode?12:card.height+12+8)+'px'; stack+=sc.getBoundingClientRect().height+8; } else sc.style.bottom=''; }
   if (W<=720){ oy = Math.round((stack - top.bottom)/2 + 6); }      // centre the globe in the space between bar and card
@@ -3987,8 +3994,10 @@ function santaStats(now){ if (!ROUTE.length) return null; if (!SANTA_CUM){ SANTA
   if (santa.status==='fly' && nxt) km+=gcDist(cur[2],cur[3],santa.lat,santa.lon);
   if (santa.on){ let d=0, t=0; for (let j=Math.max(0,i-5);j<Math.min(ROUTE.length-1,i+5);j++){ d+=SANTA_CUM[j+1]-SANTA_CUM[j]; t+=Math.max(0,ROUTE[j+1][4]-ROUTE[j][5]); } kmh=t>0?d/t*3600:0; }
   return {km,kmh,stops:i}; }
-var CK_NOTYET=false;
-var _usc=updateSantaCard; updateSantaCard=function(now){ _usc(now); document.body.classList.toggle('santa-live', !!(santa.on && $('santaCard').classList.contains('show'))); if (!$('santaCard').classList.contains('show')) return; const S=santaStats(now); if (!S) return;
+var CK_NOTYET=false, SC_FORCE=false;
+var _usc=updateSantaCard, SC_STAT_AT=0; updateSantaCard=function(now){ _usc(now); const live=!!(santa.on && $('santaCard').classList.contains('show')); if (document.body.classList.contains('santa-live')!==live) document.body.classList.toggle('santa-live', live); if (!$('santaCard').classList.contains('show')) return;
+  // the stats only need refreshing a few times a second — doing it every frame kept the phone so busy that taps on buttons got dropped
+  const tnow=performance.now(); if (tnow-SC_STAT_AT<250 && !SC_FORCE) return; SC_STAT_AT=tnow; SC_FORCE=false; const S=santaStats(now); if (!S) return;
   const us=useUS(), dist=us?`${Math.round(S.km*0.6214).toLocaleString()} mi`:`${Math.round(S.km).toLocaleString()} km`, sp=(us?`${(Math.round(S.kmh*0.6214/100)*100).toLocaleString()} mph`:`${(Math.round(S.kmh/100)*100).toLocaleString()} km/h`)+` · Mach ${Math.round(S.kmh/1235)}`;
   const y=santa.y, C=store.get('cookies',null), mine=!!(C&&C.y===y&&C.at&&+now>=C.at), big=n=>Math.round(n).toLocaleString('en-US');
   const homes=(santa.presents||0)/2.5, ck=homes*3, mk=homes, cr=homes*3.5;     // per house: 2–4 cookies, 1 glass of milk, 3–4 carrots for the reindeer
@@ -4001,11 +4010,11 @@ var _usc=updateSantaCard; updateSantaCard=function(now){ _usc(now); document.bod
        : !visited ? `<span class="ckQ">🍪 Your cookies, milk &amp; carrots are out! <a href="#" id="ckUndo">not really?</a></span>` : `<span>😋 Santa ate your cookies!</span>`);
   const el=$('scStats'); if (el.dataset.h!==html){ el.dataset.h=html; el.innerHTML=html; }
   let ckEl=$('scCk'); if (!ckEl){ ckEl=document.createElement('div'); ckEl.id='scCk'; ckEl.className='sc-stats'; el.after(ckEl); }
-  if (ckEl.dataset.h!==ckHtml){ ckEl.dataset.h=ckHtml; ckEl.innerHTML=ckHtml; const putOut=e=>{ e.stopPropagation(); store.set('cookies',{y,eaten:false,at:+simNow()}); toast('🍪🥛 Milk and cookies are out for Santa — and carrots for the reindeer! 🥕'); updateSantaCard(simNow()); };
+  if (ckEl.dataset.h!==ckHtml){ ckEl.dataset.h=ckHtml; ckEl.innerHTML=ckHtml; const putOut=e=>{ e.stopPropagation(); store.set('cookies',{y,eaten:false,at:+simNow()}); toast('🍪🥛 Milk and cookies are out for Santa — and carrots for the reindeer! 🥕'); SC_FORCE=true; updateSantaCard(simNow()); };
     const once=f=>{ let t=0; return e=>{ window._scBtnAt=Date.now(); e.stopPropagation(); if (e.preventDefault) e.preventDefault(); if (Date.now()-t<600) return; t=Date.now(); f(e); }; };
     for (const [id,f] of [['scCookies',putOut],['ckYes',putOut]]) if ($(id)){ $(id).onclick=once(f); $(id).addEventListener('pointerup',once(f)); }
-    if ($('ckNo')) $('ckNo').onclick=$('ckNo').onpointerup=e=>{ window._scBtnAt=Date.now(); if (CK_NOTYET) return; e.stopPropagation(); CK_NOTYET=true; toast('🍪 Don’t forget — Santa gets hungry! Tap the button when they’re out.'); updateSantaCard(simNow()); };
-    if ($('ckUndo')) $('ckUndo').onclick=e=>{ window._scBtnAt=Date.now(); e.preventDefault(); e.stopPropagation(); store.set('cookies',null); CK_NOTYET=true; updateSantaCard(simNow()); }; }
+    if ($('ckNo')) $('ckNo').onclick=$('ckNo').onpointerup=e=>{ window._scBtnAt=Date.now(); if (CK_NOTYET) return; e.stopPropagation(); CK_NOTYET=true; toast('🍪 Don’t forget — Santa gets hungry! Tap the button when they’re out.'); SC_FORCE=true; updateSantaCard(simNow()); };
+    if ($('ckUndo')) $('ckUndo').onclick=e=>{ window._scBtnAt=Date.now(); e.preventDefault(); e.stopPropagation(); store.set('cookies',null); CK_NOTYET=true; SC_FORCE=true; updateSantaCard(simNow()); }; }
   if (mine && C.eaten && current && !visited) store.set('cookies',{...C,eaten:false});
   if (mine && !C.eaten && current && visited && +now-vAt<3*3600000){ { store.set('cookies',{...C,eaten:true}); achieve('cookies'); fx.celebrate(5000);
       showModal(`<h3>🍪 Santa ate your cookies!</h3><div class="letter reply">Mmm — thank you for the cookies and the milk! Rudolph loved his carrot too. 🥕<br><br>Merry Christmas!<br>— Santa 🎅</div>`); } } };
