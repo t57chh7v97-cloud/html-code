@@ -104,10 +104,10 @@
   .ytBtn{display:inline-block;margin:3px 0 0 4px;padding:3px 9px;border-radius:999px;background:#ff0033;color:#fff!important;text-decoration:none;font-weight:700;font-size:12px}
   .pLive{display:flex;flex-wrap:wrap;align-items:center;gap:4px} .liveDot{width:8px;height:8px;border-radius:50%;background:#ff3b3b;box-shadow:0 0 0 0 rgba(255,59,59,.7);animation:livePulse 1.4s infinite}
   @keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(255,59,59,.7)}70%{box-shadow:0 0 0 8px rgba(255,59,59,0)}100%{box-shadow:0 0 0 0 rgba(255,59,59,0)}}
-  .sc-stats{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;font-size:12.5px;font-weight:600;align-items:center} .sc-stats:empty{display:none}
+  .sc-stats{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;font-size:12.5px;font-weight:600;align-items:center} .sc-stats:empty{display:none} #scCk{margin-top:6px}
   /* numbers keep the same width as they count up, and phones use a fixed 2-column grid, so the Santa card never changes height (which made the globe jump) */
   .sc-stats,#santaCard .sc-in,#santaCard .sc-gifts{font-variant-numeric:tabular-nums}
-  @media (max-width:720px){ .sc-stats{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px} .sc-stats>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .sc-stats>.btn,.sc-stats>span.ckQ{grid-column:1/-1;justify-self:start;white-space:normal} }
+  @media (max-width:720px){ #scCk{display:block} .sc-stats{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px} .sc-stats>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .sc-stats>.btn,.sc-stats>span.ckQ{grid-column:1/-1;justify-self:start;white-space:normal} }
   .ckQ a{color:inherit;opacity:.8;font-size:11px}
   .sc-stats .btn.mini{background:#fff8e1;color:#7a3b10;border:0;font-weight:700}
   .achPop{position:fixed;left:50%;top:84px;transform:translateX(-50%);z-index:30;display:flex;gap:10px;align-items:center;padding:10px 16px;border-radius:14px;animation:npPop .4s ease-out;transition:opacity .5s,transform .5s}
@@ -2478,7 +2478,8 @@ function setMode(m){
 $('recenter').onclick=()=>{ if (mode==='orbit') orbitHome(); else flyTo(); };
 $('fmtSeg').querySelectorAll('button').forEach(b=>{ b.classList.toggle('on', (b.dataset.f==='12')===h12); b.onclick=()=>{ h12=b.dataset.f==='12'; store.set('h12',h12); $('fmtSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); tick(true); }; });
 $('moonBtn').onclick=()=>flyToMoon();
-$('santaZoom').onclick=()=>enterSantaCam();
+// pointerup as well as click: on iPhone a tap on a card that's updating many times a second can lose its click
+$('santaZoom').onclick=()=>{ if (!santaCam) enterSantaCam(); }; $('santaZoom').addEventListener('pointerup',e=>{ window._scBtnAt=Date.now(); e.stopPropagation(); if (!santaCam) enterSantaCam(); });
 /* =========================================================
    CHRISTMAS MUSIC — four sources, chosen in the 🎵 menu
    • Chiptune carols: public-domain carols synthesised in the browser (no player, no download)
@@ -2732,7 +2733,7 @@ let musicFor=null;
 function syncMusicButton(){ const mt=musicTheme(), has=!!mt && Chip.has(mt); $('musicBtn').style.display = has ? '' : 'none';
   if (mt!==musicFor){ musicFor=mt; if (musicOn) musicStop(); $('musicMenu').classList.remove('show'); Chip.setTheme(mt); } }
 $('santaBack').onclick=()=>exitSantaCam();
-$('santaCard').addEventListener('click',e=>{ if (e.target.closest('#santaZoom')) return; const c=$('santaCard').classList.toggle('compact'); $('santaCard').dataset.manual=1; store.set('scCompact',c); layout(); });
+$('santaCard').addEventListener('click',e=>{ if (e.target.closest('#santaZoom,#scCk button,#scCk a') || Date.now()-(window._scBtnAt||0)<800) return; const c=$('santaCard').classList.toggle('compact'); $('santaCard').dataset.manual=1; store.set('scCompact',c); layout(); });
 $('focusBtn').onclick=()=>{ const on=document.body.classList.toggle('focus'); $('focusBtn').classList.toggle('on',on); $('focusBtn').innerHTML = on ? '👁<span class="long"> Show panels</span>' : '⛶<span class="long"> Hide panels</span>';
   if (on){ $('layerMenu').classList.remove('show'); $('musicMenu').classList.remove('show'); } layout(); };
 $('collapse').onclick=()=>{ const c=$('card').classList.toggle('collapsed'); $('collapse').textContent=c?'▴':'▾'; $('card').scrollTop=0; layout(); };
@@ -3981,23 +3982,30 @@ var SANTA_CUM=null;
 function santaStats(now){ if (!ROUTE.length) return null; if (!SANTA_CUM){ SANTA_CUM=[0]; for (let i=1;i<ROUTE.length;i++) SANTA_CUM.push(SANTA_CUM[i-1]+gcDist(ROUTE[i-1][2],ROUTE[i-1][3],ROUTE[i][2],ROUTE[i][3])); }
   if (!santa.on && !santa.done) return {km:0,kmh:0,stops:0}; if (santa.done) return {km:SANTA_CUM.at(-1),kmh:0,stops:ROUTE.length-2};
   const i=Math.max(0,santa.idx), cur=ROUTE[i], nxt=ROUTE[i+1]; let km=SANTA_CUM[i], kmh=0;
-  if (santa.status==='fly' && nxt){ const leg=gcDist(cur[2],cur[3],nxt[2],nxt[3]); km+=gcDist(cur[2],cur[3],santa.lat,santa.lon); kmh=leg/Math.max(1,nxt[4]-cur[5])*3600; }
+  // speed: the route's hops are only a minute or so each, so one hop alone gives silly numbers (95 mph one minute, 200,000 mph the next).
+  // Use his average flying speed over the 10 hops around him instead — a steady, believable "cruising speed".
+  if (santa.status==='fly' && nxt) km+=gcDist(cur[2],cur[3],santa.lat,santa.lon);
+  if (santa.on){ let d=0, t=0; for (let j=Math.max(0,i-5);j<Math.min(ROUTE.length-1,i+5);j++){ d+=SANTA_CUM[j+1]-SANTA_CUM[j]; t+=Math.max(0,ROUTE[j+1][4]-ROUTE[j][5]); } kmh=t>0?d/t*3600:0; }
   return {km,kmh,stops:i}; }
 var CK_NOTYET=false;
 var _usc=updateSantaCard; updateSantaCard=function(now){ _usc(now); document.body.classList.toggle('santa-live', !!(santa.on && $('santaCard').classList.contains('show'))); if (!$('santaCard').classList.contains('show')) return; const S=santaStats(now); if (!S) return;
-  const us=useUS(), dist=us?`${Math.round(S.km*0.6214).toLocaleString()} mi`:`${Math.round(S.km).toLocaleString()} km`, sp=us?`${Math.round(S.kmh*0.6214).toLocaleString()} mph`:`${Math.round(S.kmh).toLocaleString()} km/h`;
+  const us=useUS(), dist=us?`${Math.round(S.km*0.6214).toLocaleString()} mi`:`${Math.round(S.km).toLocaleString()} km`, sp=(us?`${(Math.round(S.kmh*0.6214/100)*100).toLocaleString()} mph`:`${(Math.round(S.kmh/100)*100).toLocaleString()} km/h`)+` · Mach ${Math.round(S.kmh/1235)}`;
   const y=santa.y, C=store.get('cookies',null), mine=!!(C&&C.y===y&&C.at&&+now>=C.at), big=n=>Math.round(n).toLocaleString('en-US');
   const homes=(santa.presents||0)/2.5, ck=homes*3, mk=homes, cr=homes*3.5;     // per house: 2–4 cookies, 1 glass of milk, 3–4 carrots for the reindeer
   const vAt=current?santaVisitFor(current,y).at:null, visited=!!(vAt && +now>=+vAt);      // based on the time right now — so time travelling back un-eats them
   let away=''; if (santa.on && current){ const km=gcDist(current.lat,current.lon,santa.lat,santa.lon); away=`<span>📍 ${us?Math.round(km*0.6214).toLocaleString()+' mi':Math.round(km).toLocaleString()+' km'} from ${esc(shortName(current))}</span>`; }
-  const html=`${away}${S.kmh?`<span>🚀 ${sp}</span>`:''}<span title="2–4 cookies at each house">🍪 ${big(ck)} cookies</span><span title="1 glass of milk at each house">🥛 ${big(mk)} glasses of milk</span><span title="3–4 carrots at each house for the reindeer">🥕 ${big(cr)} carrots</span>`
-    +(!mine ? (!santa.done && !visited ? (CK_NOTYET ? `<button class="btn mini" id="scCookies">🍪 I put them out now</button>` : `<span class="ckQ">🍪 Did you put out cookies, milk &amp; carrots for Santa? <button class="btn mini" id="ckYes">✅ Yes</button> <button class="btn mini" id="ckNo">Not yet</button></span>`)
+  const html=`${away}${S.kmh?`<span>🚀 ${sp}</span>`:''}<span title="2–4 cookies at each house">🍪 ${big(ck)} cookies</span><span title="1 glass of milk at each house">🥛 ${big(mk)} glasses of milk</span><span title="3–4 carrots at each house for the reindeer">🥕 ${big(cr)} carrots</span>`;
+  // the cookie question lives in its own box that only re-draws when it changes — the stats above update many times a second, which swallowed taps on its buttons
+  const ckHtml=(!mine ? (!santa.done && !visited ? (CK_NOTYET ? `<button class="btn mini" id="scCookies">🍪 I put them out now</button>` : `<span class="ckQ">🍪 Did you put out cookies, milk &amp; carrots for Santa? <button class="btn mini" id="ckYes">✅ Yes</button> <button class="btn mini" id="ckNo">Not yet</button></span>`)
           : visited ? `<span class="ckQ">🎅 Santa came by — no cookies this time, but he still left your presents!</span>` : '')
        : !visited ? `<span class="ckQ">🍪 Your cookies, milk &amp; carrots are out! <a href="#" id="ckUndo">not really?</a></span>` : `<span>😋 Santa ate your cookies!</span>`);
-  const el=$('scStats'); if (el.dataset.h!==html){ el.dataset.h=html; el.innerHTML=html; const putOut=e=>{ e.stopPropagation(); store.set('cookies',{y,eaten:false,at:+simNow()}); toast('🍪🥛 Milk and cookies are out for Santa — and carrots for the reindeer! 🥕'); updateSantaCard(simNow()); };
-    if ($('scCookies')) $('scCookies').onclick=putOut; if ($('ckYes')) $('ckYes').onclick=putOut;
-    if ($('ckNo')) $('ckNo').onclick=e=>{ e.stopPropagation(); CK_NOTYET=true; toast('🍪 Don’t forget — Santa gets hungry! Tap the button when they’re out.'); updateSantaCard(simNow()); };
-    if ($('ckUndo')) $('ckUndo').onclick=e=>{ e.preventDefault(); e.stopPropagation(); store.set('cookies',null); CK_NOTYET=true; updateSantaCard(simNow()); }; }
+  const el=$('scStats'); if (el.dataset.h!==html){ el.dataset.h=html; el.innerHTML=html; }
+  let ckEl=$('scCk'); if (!ckEl){ ckEl=document.createElement('div'); ckEl.id='scCk'; ckEl.className='sc-stats'; el.after(ckEl); }
+  if (ckEl.dataset.h!==ckHtml){ ckEl.dataset.h=ckHtml; ckEl.innerHTML=ckHtml; const putOut=e=>{ e.stopPropagation(); store.set('cookies',{y,eaten:false,at:+simNow()}); toast('🍪🥛 Milk and cookies are out for Santa — and carrots for the reindeer! 🥕'); updateSantaCard(simNow()); };
+    const once=f=>{ let t=0; return e=>{ window._scBtnAt=Date.now(); e.stopPropagation(); if (e.preventDefault) e.preventDefault(); if (Date.now()-t<600) return; t=Date.now(); f(e); }; };
+    for (const [id,f] of [['scCookies',putOut],['ckYes',putOut]]) if ($(id)){ $(id).onclick=once(f); $(id).addEventListener('pointerup',once(f)); }
+    if ($('ckNo')) $('ckNo').onclick=$('ckNo').onpointerup=e=>{ window._scBtnAt=Date.now(); if (CK_NOTYET) return; e.stopPropagation(); CK_NOTYET=true; toast('🍪 Don’t forget — Santa gets hungry! Tap the button when they’re out.'); updateSantaCard(simNow()); };
+    if ($('ckUndo')) $('ckUndo').onclick=e=>{ window._scBtnAt=Date.now(); e.preventDefault(); e.stopPropagation(); store.set('cookies',null); CK_NOTYET=true; updateSantaCard(simNow()); }; }
   if (mine && C.eaten && current && !visited) store.set('cookies',{...C,eaten:false});
   if (mine && !C.eaten && current && visited && +now-vAt<3*3600000){ { store.set('cookies',{...C,eaten:true}); achieve('cookies'); fx.celebrate(5000);
       showModal(`<h3>🍪 Santa ate your cookies!</h3><div class="letter reply">Mmm — thank you for the cookies and the milk! Rudolph loved his carrot too. 🥕<br><br>Merry Christmas!<br>— Santa 🎅</div>`); } } };
