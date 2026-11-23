@@ -313,6 +313,14 @@ night-side city lights placed at real city coordinates.
     timer, 🥧 pie vote and 🛍️ Black Friday → Giving Tuesday (Thanksgiving),
     🎄 tree decorator and 🎅 Secret Santa name draw (Christmas).
   - 🎁 Boxing Day now covers Jamaica, the Caribbean, Africa, Hong Kong and more.
+  - More US extras — 🎃 Halloween: haunted house builder, monster maker, candy
+    trade (with friends in the Claude version, or the Candy Witch), an orange
+    Moon and purple-orange glow after dark on Oct 31. 🦃 Thanksgiving: dinner
+    planner, trivia, travel check (distance, drive/flight time, the weather
+    there), leftover sandwich stacker, wishbone pull. 🎄 Christmas: sleeps
+    countdown, naughty-or-nice quiz, ugly sweater maker, gingerbread house,
+    reindeer roll call, Christmas morning presents to unwrap, snow day
+    predictor. The turkey timer can plan cooking the day before for travelers.
   - 🕎 Light the menorah each night of Hanukkah at sunset · 🕯️ Kwanzaa kinara
     with the day's principle.
   - 🎄 Rockefeller Center tree lighting countdown and LIVE NOW button (Dec 2,
