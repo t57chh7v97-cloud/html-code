@@ -932,7 +932,8 @@ function flyToMoon(){ if (mode!=='globe') setMode('globe'); const from=camG.posi
 /* =========================================================
    TIME FORMATTING
    ========================================================= */
-function fmtParts(date, tz, opts){ try{ return new Intl.DateTimeFormat('en-US',{timeZone:tz,...opts}).format(date); }catch(e){ return new Intl.DateTimeFormat('en-US',{timeZone:'UTC',...opts}).format(date); } }
+var APP_LOCALE=(()=>{ try{ const L=JSON.parse(localStorage.getItem('wwglobe.lang')||'"system"'); return L==='system'?(navigator.language||'en-US'):L; }catch(e){ return 'en-US'; } })();   // dates and times follow the chosen language
+function fmtParts(date, tz, opts){ try{ return new Intl.DateTimeFormat(APP_LOCALE,{timeZone:tz,...opts}).format(date); }catch(e){ return new Intl.DateTimeFormat('en-US',{timeZone:'UTC',...opts}).format(date); } }
 function zoneFor(p){ // returns {tz, shift} ; shift in ms for nautical time formatted as UTC
   if (p.kind==='device') return { tz: DEVICE_TZ, shift:0 };
   if (p.tz) return { tz:p.tz, shift:0 };
@@ -3453,7 +3454,7 @@ function remindersTick(now){ if (!current || traveling()) return; const t=+now, 
 // ---------- 📲 install as an app (GitHub site): offline cache + home-screen icon
 var installEvt=null;
 addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); installEvt=e; });
-if ('serviceWorker' in navigator && /github\.io$|^localhost$|^127\.0\.0\.1$/.test(location.hostname)) addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+if ('serviceWorker' in navigator && !window.Capacitor && /github\.io$|^localhost$|^127\.0\.0\.1$/.test(location.hostname)) addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 function openInstall(){ const standalone=matchMedia('(display-mode: standalone)').matches || navigator.standalone;
   const ios=/iPhone|iPad|iPod/.test(navigator.userAgent), onGH=/github\.io$/.test(location.hostname);
   if (standalone){ showModal(`<h3>📲 Installed!</h3><p class="mut">You’re using Where & When as an app. It opens even without internet (live layers need a connection).</p>`); return; }
@@ -5689,6 +5690,91 @@ async function texSave(){ try{ if (!('caches' in window)) return; const c=await 
     nightBase=document.createElement('canvas'); nightBase.width=TW; nightBase.height=TH; nightBase.getContext('2d').drawImage(nightCanvas,0,0); TEXC.used=true;
     if (P.ready) addCityLights(); $('loading').classList.add('hide'); }
   catch(e){ store.set('texCached',''); const w=()=>{ if (TEXC.world) texFallback(); else setTimeout(w,200); }; w(); } })();
+
+/* =========================================================
+   🌐 LANGUAGE — Settings → Language: "System language" (follows the phone) or a chosen language.
+   Buttons, menus, settings and card labels are translated; dates and times use the language's own format.
+   Holiday messages and longer texts stay in English for now.
+   ========================================================= */
+var LANGS=[['en','English'],['es','Español'],['fr','Français'],['de','Deutsch'],['pt','Português'],['it','Italiano'],['zh','中文'],['ja','日本語']];
+// English → [es, fr, de, pt, it, zh, ja]
+var I18N={
+ 'Search any town, village or city…':['Busca cualquier pueblo o ciudad…','Cherchez une ville ou un village…','Suche nach einem Ort oder einer Stadt…','Procure qualquer cidade ou vila…','Cerca una città o un paese…','搜索任何城镇或城市…','町や都市を検索…'],
+ 'Use My Location':['Usar mi ubicación','Utiliser ma position','Meinen Standort verwenden','Usar minha localização','Usa la mia posizione','使用我的位置','現在地を使う'],
+ 'My Location':['Mi ubicación','Ma position','Mein Standort','Minha localização','La mia posizione','我的位置','現在地'],
+ 'Globe':['Globo','Globe','Globus','Globo','Globo','地球','地球儀'], 'Orbit':['Órbita','Orbite','Umlaufbahn','Órbita','Orbita','轨道','軌道'],
+ 'Coordinates':['Coordenadas','Coordonnées','Koordinaten','Coordenadas','Coordinate','坐标','座標'], 'Names':['Nombres','Noms','Namen','Nomes','Nomi','名称','地名'],
+ 'Music':['Música','Musique','Musik','Música','Musica','音乐','音楽'], 'Holidays':['Fiestas','Fêtes','Feiertage','Feriados','Feste','节日','祝日'],
+ 'Layers':['Capas','Calques','Ebenen','Camadas','Livelli','图层','レイヤー'], 'Share':['Compartir','Partager','Teilen','Compartilhar','Condividi','分享','共有'],
+ 'Settings':['Ajustes','Réglages','Einstellungen','Configurações','Impostazioni','设置','設定'], 'Hide panels':['Ocultar paneles','Masquer les panneaux','Bereiche ausblenden','Ocultar painéis','Nascondi pannelli','隐藏面板','パネルを隠す'],
+ 'Challenge':['Desafío','Défi','Herausforderung','Desafio','Sfida','挑战','チャレンジ'], 'More':['Más','Plus','Mehr','Mais','Altro','更多','その他'],
+ 'World clocks':['Relojes del mundo','Horloges du monde','Weltuhren','Relógios mundiais','Orologi del mondo','世界时钟','世界時計'],
+ 'Sunrise':['Amanecer','Lever du soleil','Sonnenaufgang','Nascer do sol','Alba','日出','日の出'], 'Sunset':['Atardecer','Coucher du soleil','Sonnenuntergang','Pôr do sol','Tramonto','日落','日の入り'],
+ 'Day length':['Duración del día','Durée du jour','Tageslänge','Duração do dia','Durata del giorno','白昼时长','昼の長さ'],
+ 'Sun overhead at':['Sol más alto a las','Soleil au plus haut à','Sonnenhöchststand um','Sol mais alto às','Sole più alto alle','太阳最高时刻','南中時刻'],
+ 'Moonrise':['Salida de la luna','Lever de lune','Mondaufgang','Nascer da lua','Sorgere della luna','月出','月の出'], 'Moonset':['Puesta de la luna','Coucher de lune','Monduntergang','Pôr da lua','Tramonto della luna','月落','月の入り'],
+ 'Next full moon':['Próxima luna llena','Prochaine pleine lune','Nächster Vollmond','Próxima lua cheia','Prossima luna piena','下次满月','次の満月'],
+ 'Next new moon':['Próxima luna nueva','Prochaine nouvelle lune','Nächster Neumond','Próxima lua nova','Prossima luna nuova','下次新月','次の新月'],
+ 'Distance to Sun':['Distancia al Sol','Distance au Soleil','Entfernung zur Sonne','Distância ao Sol','Distanza dal Sole','与太阳的距离','太陽までの距離'],
+ 'Orbital speed':['Velocidad orbital','Vitesse orbitale','Bahngeschwindigkeit','Velocidade orbital','Velocità orbitale','公转速度','公転速度'],
+ 'Recenter':['Centrar','Recentrer','Zentrieren','Centralizar','Ricentra','回到中心','中心に戻す'], 'This is me':['Este soy yo','C’est moi','Das bin ich','Este sou eu','Questo sono io','这是我','ここが私'],
+ 'See the Moon':['Ver la Luna','Voir la Lune','Mond ansehen','Ver a Lua','Guarda la Luna','看月亮','月を見る'],
+ 'Zoom in on Santa':['Acercar a Santa','Zoomer sur le Père Noël','Zum Weihnachtsmann zoomen','Aproximar do Papai Noel','Zoom su Babbo Natale','放大看圣诞老人','サンタにズーム'],
+ 'tap to shrink':['toca para encoger','touchez pour réduire','zum Verkleinern tippen','toque para encolher','tocca per ridurre','点按缩小','タップで縮小'],
+ 'Time & date':['Hora y fecha','Heure et date','Uhrzeit & Datum','Hora e data','Ora e data','时间和日期','時刻と日付'],
+ 'Temperature':['Temperatura','Température','Temperatur','Temperatura','Temperatura','温度','気温'],
+ 'Distances & speeds':['Distancias y velocidades','Distances et vitesses','Entfernungen & Tempo','Distâncias e velocidades','Distanze e velocità','距离和速度','距離と速度'],
+ 'Clock':['Reloj','Horloge','Uhr','Relógio','Orologio','时钟','時計'], 'Game sounds':['Sonidos del juego','Sons du jeu','Spielgeräusche','Sons do jogo','Suoni del gioco','游戏音效','ゲームの効果音'],
+ 'Holiday effects':['Efectos festivos','Effets de fête','Festtagseffekte','Efeitos festivos','Effetti festivi','节日特效','祝日エフェクト'],
+ 'Holiday themes':['Temas festivos','Thèmes de fête','Festtagsthemen','Temas festivos','Temi festivi','节日主题','祝日テーマ'],
+ 'Text size':['Tamaño del texto','Taille du texte','Textgröße','Tamanho do texto','Dimensione del testo','文字大小','文字サイズ'],
+ 'High contrast':['Alto contraste','Contraste élevé','Hoher Kontrast','Alto contraste','Alto contrasto','高对比度','ハイコントラスト'],
+ 'Calm mode':['Modo tranquilo','Mode calme','Ruhemodus','Modo calmo','Modalità calma','安静模式','落ち着きモード'],
+ 'Language':['Idioma','Langue','Sprache','Idioma','Lingua','语言','言語'], 'System language':['Idioma del sistema','Langue du système','Systemsprache','Idioma do sistema','Lingua di sistema','系统语言','システムの言語'],
+ 'On':['Sí','Activé','An','Ligado','Attivo','开','オン'], 'Off':['No','Désactivé','Aus','Desligado','Spento','关','オフ'],
+ 'Bigger':['Más grande','Plus grand','Größer','Maior','Più grande','更大','大きく'], 'Normal':['Normal','Normal','Normal','Normal','Normale','正常','標準'], 'Auto':['Auto','Auto','Auto','Auto','Auto','自动','自動'],
+ '12-hour':['12 horas','12 heures','12 Stunden','12 horas','12 ore','12小时制','12時間'], '24-hour':['24 horas','24 heures','24 Stunden','24 horas','24 ore','24小时制','24時間'],
+ 'Pin’s location':['Ubicación del pin','Lieu de l’épingle','Ort der Stecknadel','Local do pino','Posizione del segnaposto','图钉位置','ピンの場所'],
+ 'My phone':['Mi teléfono','Mon téléphone','Mein Handy','Meu celular','Il mio telefono','我的手机','自分のスマホ'], 'Choose':['Elegir','Choisir','Auswählen','Escolher','Scegli','选择','選ぶ'],
+ 'Offline':['Sin conexión','Hors ligne','Offline','Offline','Offline','离线','オフライン'],
+ 'Glance':['Vistazo','Coup d’œil','Überblick','Visão rápida','Colpo d’occhio','一览','ひと目で'], 'My events':['Mis eventos','Mes événements','Meine Termine','Meus eventos','I miei eventi','我的活动','マイイベント'],
+ 'Friend’s time':['Hora de un amigo','Heure d’un ami','Uhrzeit von Freunden','Hora de um amigo','Ora di un amico','朋友的时间','友だちの時刻'],
+ 'Achievements':['Logros','Succès','Erfolge','Conquistas','Traguardi','成就','実績'], 'Reminders':['Recordatorios','Rappels','Erinnerungen','Lembretes','Promemoria','提醒','リマインダー'],
+ 'Feedback':['Comentarios','Avis','Feedback','Feedback','Feedback','反馈','フィードバック'], 'Install':['Instalar','Installer','Installieren','Instalar','Installa','安装','インストール'],
+ 'Sign in':['Iniciar sesión','Se connecter','Anmelden','Entrar','Accedi','登录','サインイン'], 'Account':['Cuenta','Compte','Konto','Conta','Account','账户','アカウント'],
+ 'Live':['En vivo','En direct','Live','Ao vivo','Dal vivo','实时','ライブ'], 'Next':['Siguiente','Suivant','Weiter','Próximo','Avanti','下一个','次へ'],
+ 'Save':['Guardar','Enregistrer','Speichern','Salvar','Salva','保存','保存'], 'Play again':['Jugar de nuevo','Rejouer','Nochmal spielen','Jogar de novo','Gioca ancora','再玩一次','もう一度'],
+ 'Show less':['Mostrar menos','Afficher moins','Weniger anzeigen','Mostrar menos','Mostra meno','收起','閉じる'],
+ 'Advent':['Adviento','Avent','Advent','Advento','Avvento','降临节','アドベント'], 'Letter to Santa':['Carta a Santa','Lettre au Père Noël','Brief an den Weihnachtsmann','Carta ao Papai Noel','Lettera a Babbo Natale','给圣诞老人的信','サンタへの手紙'],
+ 'Tonight’s sky':['El cielo esta noche','Le ciel ce soir','Der Himmel heute Nacht','O céu esta noite','Il cielo stanotte','今晚的星空','今夜の空'],
+ 'Space station':['Estación espacial','Station spatiale','Raumstation','Estação espacial','Stazione spaziale','空间站','宇宙ステーション'],
+ 'Clouds':['Nubes','Nuages','Wolken','Nuvens','Nuvole','云','雲'], 'Earthquakes':['Terremotos','Séismes','Erdbeben','Terremotos','Terremoti','地震','地震'],
+ 'Temperature map':['Mapa de temperatura','Carte des températures','Temperaturkarte','Mapa de temperatura','Mappa delle temperature','温度图','気温マップ'],
+ 'Rain & snow':['Lluvia y nieve','Pluie et neige','Regen & Schnee','Chuva e neve','Pioggia e neve','雨和雪','雨と雪'],
+};
+const LANG_IDX={es:0,fr:1,de:2,pt:3,it:4,zh:5,ja:6};
+function langCode(){ const L=store.get('lang','system'); const c=(L==='system'?(navigator.language||'en'):L).slice(0,2).toLowerCase(); return c in LANG_IDX||c==='en'?c:'en'; }
+var I18N_ORIG=new WeakMap(), I18N_ATTR=new WeakMap(), I18N_BUSY=false;
+const I18N_SPLIT=/^([^\p{L}\d]*)(.*?)([^\p{L}\d)]*)$/su;
+function trCore(core,i){ const e=I18N[core]; if (e) return e[i]; const m=core.match(/^More \((\d+)\)$/); if (m) return `${I18N.More[i]} (${m[1]})`; return null; }
+function i18nApply(root){ if (I18N_BUSY) return; I18N_BUSY=true; try{ const c=langCode(), i=LANG_IDX[c];
+  const w=document.createTreeWalker(root||document.body,NodeFilter.SHOW_TEXT,{acceptNode:n=>{ const p=n.parentElement; if (!p || /^(SCRIPT|STYLE|TEXTAREA)$/.test(p.tagName) || p.closest('#clock,#labels,#scStats,#scCk,#scArrK,#scArr,#scStopK,#scStop,#scInK,#scIn,#holStrip')) return NodeFilter.FILTER_REJECT; return NodeFilter.FILTER_ACCEPT; }});
+  let n; while ((n=w.nextNode())){ const cur=n.nodeValue; if (!cur || !cur.trim()) continue;
+    let orig=I18N_ORIG.get(n); if (orig && cur!==orig.out) orig=null;              // the app changed it since: start from the new text
+    const src=orig?orig.src:cur;
+    if (i==null){ if (orig){ n.nodeValue=orig.src; I18N_ORIG.delete(n); } continue; }
+    const m=src.match(I18N_SPLIT); if (!m) continue; const t=trCore(m[2].trim(),i); if (!t) continue;
+    const out=m[1]+(m[2].startsWith(' ')?' ':'')+t+m[3]; if (out!==cur){ n.nodeValue=out; } I18N_ORIG.set(n,{src,out}); }
+  const s=$('search'); if (s){ if (!I18N_ATTR.has(s)) I18N_ATTR.set(s,s.placeholder); const o=I18N_ATTR.get(s); s.placeholder=i==null?o:(trCore(o,i)||o); }
+  document.documentElement.lang=c; }finally{ I18N_BUSY=false; } }
+var I18N_T=0; new MutationObserver(()=>{ if (I18N_BUSY || langCode()==='en' && !I18N_T) return; clearTimeout(I18N_T); I18N_T=setTimeout(()=>{ I18N_T=0; i18nApply(); },120); }).observe(document.body,{childList:true,subtree:true,characterData:true});
+setTimeout(()=>i18nApply(),300);
+var _os14=openSettings; openSettings=function(){ _os14(); const b=$('xBody'); if (!b) return; const cur=store.get('lang','system'), sys=(navigator.language||'en').slice(0,2), sysName=(LANGS.find(l=>l[0]===sys)||[0,navigator.language||'English'])[1];
+  b.querySelector('h3').insertAdjacentHTML('afterend',`<div class="setRow"><b>🌐 Language</b><select id="setLang"><option value="system" ${cur==='system'?'selected':''}>${(LANG_IDX[langCode()]!=null?I18N['System language'][LANG_IDX[langCode()]]:'System language')} (${esc(sysName)})</option>${LANGS.map(([k,n])=>`<option value="${k}" ${cur===k?'selected':''}>${n}</option>`).join('')}</select><small class="mut">Buttons, menus and dates change language. Some holiday messages stay in English for now.</small></div>`);
+  $('setLang').onchange=e=>{ store.set('lang',e.target.value); const L=e.target.value; APP_LOCALE=L==='system'?(navigator.language||'en-US'):({en:'en-US',es:'es',fr:'fr',de:'de',pt:'pt-BR',it:'it',zh:'zh-CN',ja:'ja'}[L]||'en-US'); i18nApply(); tick(true); };
+  i18nApply(b); };
+if (typeof PREF_KEYS!=='undefined' && !PREF_KEYS.includes('lang')) PREF_KEYS.push('lang'); if (typeof SYNC_KEYS!=='undefined' && !SYNC_KEYS.includes('lang')) SYNC_KEYS.push('lang');
+['setTop','setBtn'].forEach(k=>{ const el=document.getElementById(k); if (el) el.onclick=()=>openSettings(); });   // use the newest Settings (with language & accessibility)
 
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS,SET,layerNote,noteFor};

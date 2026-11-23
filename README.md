@@ -330,6 +330,9 @@ night-side city lights placed at real city coordinates.
   contrast / calm mode (no effects) in Settings, 📴 an offline badge, 📅 your
   own events with countdowns, 👫 a friend's time with good times to call, and
   ⚡ a faster start (the drawn Earth maps are saved after the first visit).
+- **🌐 Language** in Settings: System language (follows your phone) or English,
+  Español, Français, Deutsch, Português, Italiano, 中文 or 日本語 — buttons,
+  menus, settings and dates change; some holiday messages stay in English.
 - **👤 Accounts (optional):** sign in / sign up with email, Google or Apple
   through Firebase, syncing settings and progress across devices, with
   account deletion. Switched on by filling in `FIREBASE_CONFIG` — see
