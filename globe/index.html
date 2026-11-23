@@ -5161,40 +5161,50 @@ function openTrivia(){ let i=0, score=0; const Q=TG_TRIVIA.slice().sort(()=>Math
 // ---------- 🚗 Thanksgiving travel check
 function findPlace(q){ const k=fold(q); if (!k || !P.ready) return -1; let best=-1, bp=-1; for (let i=0;i<P.name.length;i++){ const key=P.key[i]; if (key===k || key.startsWith(k)){ const pop=(P.pop[i]||0)*(key===k?10:1); if (pop>bp){ bp=pop; best=i; } } } return best; }
 function roadEstimate(km){ const road=km*(km<100?1.4:km<500?1.28:1.2), kmh=km<30?40:km<100?60:km<300?80:km<800?95:100; return {km:road, h:road/kmh}; }
-// Thanksgiving traffic: how much slower than normal, by day (0 = Wed before … 4 = Sunday after) and hour
-function tgTraffic(dayOff,hour){ if (dayOff===-1) return hour>=14&&hour<20?1.7:hour>=6&&hour<10?1.35:1.15;      // Wednesday: the big one
-  if (dayOff===0) return hour<10?1.0:hour<14?1.15:1.05;                                                        // Thanksgiving morning is usually quiet
-  if (dayOff===1) return 1.1; if (dayOff===3) return hour>=11&&hour<20?1.6:1.2; return 1.1; }
-async function openTravel(){ const T=Object.assign({to:'',day:-1,time:'09:00'},store.get('trip',{}));
+// Thanksgiving traffic: how much slower than normal, by days from Thanksgiving (−1 = Wednesday before) and hour; any other day = normal rush hours
+function tgTraffic(dayOff,hour,dow){ const rush=(dow>=1&&dow<=5)?(hour>=7&&hour<10?1.3:hour>=16&&hour<19?1.35:1.0):1.0;
+  if (dayOff===-1) return hour>=14&&hour<20?1.7:hour>=6&&hour<10?1.35:1.15;      // Wednesday: the big one
+  if (dayOff===-2) return hour>=15&&hour<20?1.4:Math.max(rush,1.1);             // Tuesday before: lots of people leave early
+  if (dayOff===0) return hour<10?1.0:hour<14?1.15:1.05;                          // Thanksgiving morning is usually quiet
+  if (dayOff===1) return 1.1; if (dayOff===2) return 1.05;
+  if (dayOff===3) return hour>=11&&hour<20?1.6:1.2;                              // Sunday after: everyone heads home
+  if (dayOff===4) return Math.max(rush*1.05,1.1);                                // Monday after: some stragglers + work traffic
+  return rush; }
+async function openTravel(){ const y0=yearOf(simNow()), tg0=nthWeekday(y0,10,4,4), iso=d=>d.toISOString().slice(0,10), tgDate=new Date(Date.UTC(y0,10,tg0));
+  const T=Object.assign({to:'',time:'09:00'},store.get('trip',{})); if (!T.date) T.date=iso(new Date(+tgDate+((T.day!=null?T.day:-1))*86400000));
+  const chips=[-3,-2,-1,0,1,2,3,4].map(o=>{ const d=new Date(+tgDate+o*86400000); return [iso(d),(o===0?'🦃 ':'')+d.toLocaleDateString(undefined,{weekday:'short',day:'numeric',timeZone:'UTC'})]; });
   showModal(`<h3>🚗 Thanksgiving travel check</h3><p class="mut">Where are you going, and when are you leaving?</p>
     <div style="display:flex;gap:6px"><input id="trTo" placeholder="Town or city" value="${esc(T.to)}" style="flex:1"><button class="btn primary" id="trGo">Check</button></div>
-    <div class="seg" id="trDay" style="margin-top:8px;flex-wrap:wrap">${[[-1,'Wed'],[0,'🦃 Thu'],[1,'Fri'],[2,'Sat'],[3,'Sun']].map(([v,l])=>`<button data-v="${v}" class="${T.day===v?'on':''}">${l}</button>`).join('')}</div>
-    <label class="setRow"><b>Leaving at</b><input type="time" id="trTime" value="${T.time}"></label><div id="trOut"></div>`);
-  let last=null;
+    <div class="seg" id="trDay" style="margin-top:8px;flex-wrap:wrap">${chips.map(([v,l])=>`<button data-v="${v}" class="${T.date===v?'on':''}">${l}</button>`).join('')}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px"><label class="setRow" style="margin:0"><b>Or pick any date</b><input type="date" id="trDate" value="${T.date}"></label><label class="setRow" style="margin:0"><b>Leaving at</b><input type="time" id="trTime" value="${T.time}"></label></div><div id="trOut"></div>`);
   const go=async()=>{ const q=$('trTo').value.trim(); if (!q || !current) return; const i=findPlace(q); if (i<0){ $('trOut').innerHTML='<p class="mut">Couldn’t find that place — try a bigger town nearby.</p>'; return; }
-    T.to=q; T.time=$('trTime').value||'09:00'; store.set('trip',T);
+    T.to=q; T.time=$('trTime').value||'09:00'; T.date=$('trDate').value||T.date; delete T.day; store.set('trip',T);
+    $('trDay').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===T.date));
     const km=gcDist(current.lat,current.lon,P.lat[i],P.lon[i]), us=useUS(), dist=k=>us?`${Math.round(k*.6214).toLocaleString()} mi`:`${Math.round(k).toLocaleString()} km`;
-    const y=yearOf(simNow()), tg=nthWeekday(y,10,4,4), dayDate=new Date(Date.UTC(y,10,tg+T.day)), dayTxt=dayDate.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric',timeZone:'UTC'});
+    const dayDate=new Date(T.date+'T00:00:00Z'), dayOff=Math.round((dayDate-tgDate)/86400000), dow=dayDate.getUTCDay(), dayTxt=dayDate.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric',timeZone:'UTC'});
     const hm=h=>{ const m=Math.round(h*60); return m<60?`${m} min`:`${Math.floor(m/60)} h ${m%60} min`; };
     const [th,tm]=T.time.split(':').map(Number), f=m=>{ m=((m%1440)+1440)%1440; const h=Math.floor(m/60), mm=String(m%60).padStart(2,'0'); return h12?`${(h%12)||12}:${mm} ${h<12?'AM':'PM'}`:`${String(h).padStart(2,'0')}:${mm}`; };
-    const render=(road,src)=>{ const mult=tgTraffic(T.day,th), h=road.h*mult, arrive=th*60+tm+Math.round(h*60);
+    const holiday=dayOff>=-2&&dayOff<=4;
+    const render=(road,src)=>{ const mult=tgTraffic(dayOff,th,dow), h=road.h*mult, arrive=th*60+tm+Math.round(h*60);
+      const why=mult<=1.05?' — traffic is usually light then 👍':holiday?` — ${mult>=1.5?'heavy':'some'} holiday traffic`:' — rush-hour traffic';
       $('trRes').innerHTML=`<b>${esc(placeLabel(i).join(', '))}</b><br>📏 ${dist(km)} away in a straight line · about <b>${dist(road.km)}</b> by road<br>
         🚗 Normally about <b>${hm(road.h)}</b>${src?` <small class="mut">(${src})</small>`:''}<br>
-        🚦 Leaving <b>${dayTxt} at ${f(th*60+tm)}</b>: expect about <b>${hm(h)}</b>${mult>1.05?` — ${mult>=1.5?'heavy':'some'} holiday traffic`:' — usually light then 👍'}<br>
+        🚦 Leaving <b>${dayTxt} at ${f(th*60+tm)}</b>: expect about <b>${hm(h)}</b>${why}<br>
         🏁 You’d arrive around <b>${f(arrive)}</b>${arrive>=1440?' (the next day)':''}
-        ${T.day===-1&&th>=14&&th<20?'<br>💡 Wednesday afternoon is the worst time to drive — leaving before 7 AM or on Thanksgiving morning is usually much faster.':''}
-        ${T.day===0&&th<10?'<br>💡 Early Thanksgiving morning is one of the easiest times to drive — nice pick!':''}
+        ${dayOff===-1&&th>=14&&th<20?'<br>💡 Wednesday afternoon is the worst time to drive — leaving before 7 AM or on Thanksgiving morning is usually much faster.':''}
+        ${dayOff===0&&th<10?'<br>💡 Early Thanksgiving morning is one of the easiest times to drive — nice pick!':''}
+        ${dayOff<-2?'<br>💡 Leaving early in the week beats the holiday rush — smart!':''}${dayOff>4?'<br>💡 Coming back after the holiday weekend means you skip the Sunday rush.':''}
         ${km>300?`<br>✈️ Flying would take about <b>${hm(km/800+2.5)}</b> with airport time`:''}`; };
     $('trOut').innerHTML=`<div class="advMsg" id="trRes"></div><p class="mut" id="trWx">Checking the weather there…</p>`;
-    let road=roadEstimate(km), src='estimate'; render(road,src);
+    let road=roadEstimate(km); render(road,'estimate');
     try{ const j=await getJSON(`https://router.project-osrm.org/route/v1/driving/${current.lon.toFixed(5)},${current.lat.toFixed(5)};${P.lon[i].toFixed(5)},${P.lat[i].toFixed(5)}?overview=false`);
-      const r=j.routes&&j.routes[0]; if (r){ road={km:r.distance/1000,h:r.duration/3600*1.12}; src='real roads, OpenStreetMap'; render(road,src); } }catch(e){}
+      const r=j.routes&&j.routes[0]; if (r){ road={km:r.distance/1000,h:r.duration/3600*1.12}; render(road,'real roads, OpenStreetMap'); } }catch(e){}
     try{ const j=await getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${P.lat[i].toFixed(3)}&longitude=${P.lon[i].toFixed(3)}&daily=weather_code,temperature_2m_max,temperature_2m_min,snowfall_sum&timezone=auto&forecast_days=16`);
-      const want=dayDate.toISOString().slice(0,10), k=j.daily.time.findIndex(t=>t===want); if (k<0) throw 0; const w=wmo(j.daily.weather_code[k]);
+      const k=j.daily.time.findIndex(t=>t===T.date); if (k<0) throw 0; const w=wmo(j.daily.weather_code[k]);
       $('trWx').innerHTML=`🌤️ ${dayTxt} there: ${w[0]} ${w[1]}, high ${tC(j.daily.temperature_2m_max[k])} / low ${tC(j.daily.temperature_2m_min[k])}${j.daily.snowfall_sum[k]>0.5?' · ❄️ snow possible — drive carefully!':''}`; }
     catch(e){ $('trWx').textContent='The forecast shows up on the GitHub site once the day is within 16 days.'; } };
-  $('trDay').querySelectorAll('button').forEach(b=>b.onclick=()=>{ T.day=+b.dataset.v; $('trDay').querySelectorAll('button').forEach(q=>q.classList.toggle('on',q===b)); go(); });
-  $('trTime').onchange=go; $('trGo').onclick=go; $('trTo').onkeydown=e=>{ if (e.key==='Enter') go(); }; if (T.to) go(); }
+  $('trDay').querySelectorAll('button').forEach(b=>b.onclick=()=>{ $('trDate').value=b.dataset.v; go(); });
+  $('trDate').onchange=go; $('trTime').onchange=go; $('trGo').onclick=go; $('trTo').onkeydown=e=>{ if (e.key==='Enter') go(); }; if (T.to) go(); }
 
 // ---------- 🥪 leftover sandwich stacker
 function openSandwich(){ showModal(`<h3>🥪 Leftover sandwich stacker</h3><p class="mut">Tap to drop each layer — line it up with the one below! Overhanging bits fall off.</p><canvas id="swC" width="360" height="460" style="width:100%;max-width:360px;display:block;margin:0 auto;border-radius:12px;background:#2a1a10;touch-action:manipulation"></canvas><p id="swS" style="text-align:center;font-weight:700"></p>`);
