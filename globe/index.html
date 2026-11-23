@@ -105,6 +105,10 @@
   .pLive{display:flex;flex-wrap:wrap;align-items:center;gap:4px} .liveDot{width:8px;height:8px;border-radius:50%;background:#ff3b3b;box-shadow:0 0 0 0 rgba(255,59,59,.7);animation:livePulse 1.4s infinite}
   @keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(255,59,59,.7)}70%{box-shadow:0 0 0 8px rgba(255,59,59,0)}100%{box-shadow:0 0 0 0 rgba(255,59,59,0)}}
   .sc-stats{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;font-size:12.5px;font-weight:600;align-items:center} .sc-stats:empty{display:none}
+  /* numbers keep the same width as they count up, and phones use a fixed 2-column grid, so the Santa card never changes height (which made the globe jump) */
+  .sc-stats,#santaCard .sc-in,#santaCard .sc-gifts{font-variant-numeric:tabular-nums}
+  @media (max-width:720px){ .sc-stats{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px} .sc-stats>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .sc-stats>.btn,.sc-stats>span.ckQ{grid-column:1/-1;justify-self:start;white-space:normal} }
+  .ckQ a{color:inherit;opacity:.8;font-size:11px}
   .sc-stats .btn.mini{background:#fff8e1;color:#7a3b10;border:0;font-weight:700}
   .achPop{position:fixed;left:50%;top:84px;transform:translateX(-50%);z-index:30;display:flex;gap:10px;align-items:center;padding:10px 16px;border-radius:14px;animation:npPop .4s ease-out;transition:opacity .5s,transform .5s}
   .achPop span{font-size:30px} .achPop small{display:block;color:var(--accent);font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase} .achPop b{font-size:16px} .achPop.out{opacity:0;transform:translate(-50%,-14px)}
@@ -3979,17 +3983,23 @@ function santaStats(now){ if (!ROUTE.length) return null; if (!SANTA_CUM){ SANTA
   const i=Math.max(0,santa.idx), cur=ROUTE[i], nxt=ROUTE[i+1]; let km=SANTA_CUM[i], kmh=0;
   if (santa.status==='fly' && nxt){ const leg=gcDist(cur[2],cur[3],nxt[2],nxt[3]); km+=gcDist(cur[2],cur[3],santa.lat,santa.lon); kmh=leg/Math.max(1,nxt[4]-cur[5])*3600; }
   return {km,kmh,stops:i}; }
+var CK_NOTYET=false;
 var _usc=updateSantaCard; updateSantaCard=function(now){ _usc(now); document.body.classList.toggle('santa-live', !!(santa.on && $('santaCard').classList.contains('show'))); if (!$('santaCard').classList.contains('show')) return; const S=santaStats(now); if (!S) return;
   const us=useUS(), dist=us?`${Math.round(S.km*0.6214).toLocaleString()} mi`:`${Math.round(S.km).toLocaleString()} km`, sp=us?`${Math.round(S.kmh*0.6214).toLocaleString()} mph`:`${Math.round(S.kmh).toLocaleString()} km/h`;
-  const y=santa.y, C=store.get('cookies',null), mine=C&&C.y===y, big=n=>Math.round(n).toLocaleString('en-US');
+  const y=santa.y, C=store.get('cookies',null), mine=!!(C&&C.y===y&&C.at&&+now>=C.at), big=n=>Math.round(n).toLocaleString('en-US');
   const homes=(santa.presents||0)/2.5, ck=homes*3, mk=homes, cr=homes*3.5;     // per house: 2–4 cookies, 1 glass of milk, 3–4 carrots for the reindeer
   const vAt=current?santaVisitFor(current,y).at:null, visited=!!(vAt && +now>=+vAt);      // based on the time right now — so time travelling back un-eats them
   let away=''; if (santa.on && current){ const km=gcDist(current.lat,current.lon,santa.lat,santa.lon); away=`<span>📍 ${us?Math.round(km*0.6214).toLocaleString()+' mi':Math.round(km).toLocaleString()+' km'} from ${esc(shortName(current))}</span>`; }
   const html=`${away}${S.kmh?`<span>🚀 ${sp}</span>`:''}<span title="2–4 cookies at each house">🍪 ${big(ck)} cookies</span><span title="1 glass of milk at each house">🥛 ${big(mk)} glasses of milk</span><span title="3–4 carrots at each house for the reindeer">🥕 ${big(cr)} carrots</span>`
-    +(!mine ? (!santa.done && !visited ? `<button class="btn mini" id="scCookies">🍪 Leave cookies out</button>` : '') : !visited ? `<span>🍪 Your cookies are out!</span>` : `<span>😋 Santa ate your cookies!</span>`);
-  const el=$('scStats'); if (el.dataset.h!==html){ el.dataset.h=html; el.innerHTML=html; if ($('scCookies')) $('scCookies').onclick=e=>{ e.stopPropagation(); store.set('cookies',{y,eaten:false}); toast('🍪🥛 Milk and cookies are out for Santa — and a carrot for Rudolph! 🥕'); updateSantaCard(simNow()); }; }
-  if (mine && C.eaten && current && !visited) store.set('cookies',{y,eaten:false});
-  if (mine && !C.eaten && current && visited && +now-vAt<3*3600000){ { store.set('cookies',{y,eaten:true}); achieve('cookies'); fx.celebrate(5000);
+    +(!mine ? (!santa.done && !visited ? (CK_NOTYET ? `<button class="btn mini" id="scCookies">🍪 I put them out now</button>` : `<span class="ckQ">🍪 Did you put out cookies, milk &amp; carrots for Santa? <button class="btn mini" id="ckYes">✅ Yes</button> <button class="btn mini" id="ckNo">Not yet</button></span>`)
+          : visited ? `<span class="ckQ">🎅 Santa came by — no cookies this time, but he still left your presents!</span>` : '')
+       : !visited ? `<span class="ckQ">🍪 Your cookies, milk &amp; carrots are out! <a href="#" id="ckUndo">not really?</a></span>` : `<span>😋 Santa ate your cookies!</span>`);
+  const el=$('scStats'); if (el.dataset.h!==html){ el.dataset.h=html; el.innerHTML=html; const putOut=e=>{ e.stopPropagation(); store.set('cookies',{y,eaten:false,at:+simNow()}); toast('🍪🥛 Milk and cookies are out for Santa — and carrots for the reindeer! 🥕'); updateSantaCard(simNow()); };
+    if ($('scCookies')) $('scCookies').onclick=putOut; if ($('ckYes')) $('ckYes').onclick=putOut;
+    if ($('ckNo')) $('ckNo').onclick=e=>{ e.stopPropagation(); CK_NOTYET=true; toast('🍪 Don’t forget — Santa gets hungry! Tap the button when they’re out.'); updateSantaCard(simNow()); };
+    if ($('ckUndo')) $('ckUndo').onclick=e=>{ e.preventDefault(); e.stopPropagation(); store.set('cookies',null); CK_NOTYET=true; updateSantaCard(simNow()); }; }
+  if (mine && C.eaten && current && !visited) store.set('cookies',{...C,eaten:false});
+  if (mine && !C.eaten && current && visited && +now-vAt<3*3600000){ { store.set('cookies',{...C,eaten:true}); achieve('cookies'); fx.celebrate(5000);
       showModal(`<h3>🍪 Santa ate your cookies!</h3><div class="letter reply">Mmm — thank you for the cookies and the milk! Rudolph loved his carrot too. 🥕<br><br>Merry Christmas!<br>— Santa 🎅</div>`); } } };
 
 // ---------- 🎃 Halloween: trick-or-treating sweeps around the world as evening arrives (5–9 PM local, Oct 31)
