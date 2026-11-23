@@ -77,10 +77,7 @@ night-side city lights placed at real city coordinates.
   - 🦃 Thanksgiving (Nov 2 – Thanksgiving Day): falling leaves
   - 🎄 Christmas (day after Thanksgiving – Dec 29): snow and multicolour
     lights. On Christmas Eve, a Santa tracker flies **Google Santa Tracker's
-    real 420-stop route** (the 2019 flight, shifted to this year), plus six
-    stops added for the club: West Palm Beach and Wellington, FL; and Yonkers,
-    Hempstead, Mount Pleasant and Pleasantville, NY. Each added stop is a
-    30-second visit, and the nearby Google stops shift by only 1–3 minutes. Every
+    real 420-stop route** (the 2019 flight, shifted to this year). Every
     stop comes with his
     path drawn in green (Google-tracker style) and a Google-style tracker card: when he arrives near you, a live
     gifts-delivered counter, and his next stop with an arrival countdown. Every
@@ -112,7 +109,7 @@ night-side city lights placed at real city coordinates.
     - **🎹 Chiptune carols:** Jingle Bells, Deck the Halls and We Wish You a
       Merry Christmas (all public domain), synthesised live in the browser
       with Web Audio. There's no player and no download.
-    - **🎧 Club song:** `globe/music/christmas.mp3`, if it's added to the repo.
+    - **🎧 Bonus song:** `globe/music/christmas.mp3`, if it's added to the repo.
       It plays in the background.
     - **📁 A song from this device:** the viewer picks an audio file. It's kept
       only in their browser and plays in the background.
@@ -157,8 +154,7 @@ night-side city lights placed at real city coordinates.
     Day) are quiet, with gentle stars or poppies and no fireworks.
 
   - 🌍 Earth Day (Apr 22), π Pi Day (Mar 14, with fireworks at 1:59:26 PM)
-    and 🎮 Video Game Day (Sep 12) for everyone. Setting `CLUB_FOUNDED` in
-    `globe/index.html` adds a yearly anniversary theme for the video game club.
+    and 🎮 Video Game Day (Sep 12) for everyone.
   - 🌌 **Sky events** are added on top of any theme, at the pin's own date:
     - solstices and equinoxes, with their exact time and a gold ring
       along the day/night line
@@ -209,7 +205,7 @@ night-side city lights placed at real city coordinates.
   - 🔴 **Hard:** any city over 150,000 people, only the time and the sky, and
     a 30-second timer (faster answers score more).
   Streaks and bullseyes get fireworks.
-  **👥 Club game** (Claude version, page shared with the club): the host
+  **👥 Play with friends** (Claude version, page shared with friends): the host
   starts each round, everyone plays the same cities, and scores show live.
 - **🕒 World clocks**, **🔔 reminders** (sunrise, sunset, ISS flyovers, Santa's
   takeoff), and **📲 install as an app** (manifest + service worker, so it
@@ -247,8 +243,8 @@ night-side city lights placed at real city coordinates.
   Cross.
 - **🏅 Achievements:** 26 badges for exploring, the challenge, Christmas,
   Halloween, the sleigh and more.
-- **🏆 Club leaderboard** for the daily challenge (Claude version, using its
-  shared data store; members need Contributor access).
+- **🏆 Friends leaderboard** for the daily challenge (Claude version, using its
+  shared data store; friends need Contributor access).
 - **🎈 Thanksgiving parades across the US:** balloons float over each city
   while its parade is on, with a parade guide (official names, editions, start
   times in your time zone, and where to watch):
@@ -326,13 +322,23 @@ night-side city lights placed at real city coordinates.
     haunted places tour · 🍁 Friendsgiving sign-up (shared in Claude), 🫙
     thankful jar, 🏃 Turkey Trot tips · 📸 holiday photo booth, 📮 Santa's
     postcards (collect a country at each stop you watch), ❄️ first snow alert,
-    ☕ hot cocoa meter, 🎮 club holiday party kit · 🎯 resolution tracker, 📊
+    ☕ hot cocoa meter · 🎯 resolution tracker, 📊
     year in review with 🏅 holiday badges · 🌍 holiday challenge game.
+- **More everyday features:** 👀 Glance (a big, simple clock + weather + next
+  holiday), 💡 a daily world fact, 🌅 "Where's the sun rising?" game, 🏆 a
+  monthly season on top of the daily leaderboard, ♿ bigger text / high
+  contrast / calm mode (no effects) in Settings, 📴 an offline badge, 📅 your
+  own events with countdowns, 👫 a friend's time with good times to call, and
+  ⚡ a faster start (the drawn Earth maps are saved after the first visit).
+- **👤 Accounts (optional):** sign in / sign up with email, Google or Apple
+  through Firebase, syncing settings and progress across devices, with
+  account deletion. Switched on by filling in `FIREBASE_CONFIG` — see
+  `docs/ACCOUNTS.md`.
   - 🕎 Light the menorah each night of Hanukkah at sunset · 🕯️ Kwanzaa kinara
     with the day's principle.
   - 🎄 Rockefeller Center tree lighting countdown and LIVE NOW button (Dec 2,
     2026, 7 PM ET) · ✨ holiday lights tour with sparkles on the globe.
-  - 🧝 Elf Maker · ❄️ snowball fight (club, Claude version) · 🍂 gratitude
+  - 🧝 Elf Maker · ❄️ snowball fight (with friends, Claude version) · 🍂 gratitude
     wall at Thanksgiving (shared in the Claude version).
   - 🧧 Lunar New Year red envelopes over cities · 🥚 Easter egg hunt (12 eggs,
     zoom in close) · 🌈 St. Patrick's pot of gold with warmer/colder hints.

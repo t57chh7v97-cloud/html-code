@@ -1,10 +1,10 @@
-# Club song
+# Bonus song
 
 To give everyone a Christmas song, put an MP3 here named exactly:
 
     christmas.mp3
 
-The 🎵 menu then shows a **🎧 Club song** option. It plays in the background
+The 🎵 menu then shows a **🎧 Bonus song** option. It plays in the background
 with no player on screen and loops.
 
 Only use music you're allowed to share: your own recording, a royalty-free
