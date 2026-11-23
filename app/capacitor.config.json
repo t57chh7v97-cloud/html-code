@@ -1,0 +1,11 @@
+{
+  "appId": "com.CHANGEME.whereandwhen",
+  "appName": "Where & When",
+  "webDir": "www",
+  "backgroundColor": "#05070f",
+  "ios": { "contentInset": "never", "scrollEnabled": false, "limitsNavigationsToAppBoundDomains": false },
+  "plugins": {
+    "SplashScreen": { "launchShowDuration": 800, "backgroundColor": "#05070f", "showSpinner": false },
+    "StatusBar": { "style": "DARK", "overlaysWebView": true }
+  }
+}
