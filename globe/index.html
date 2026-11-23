@@ -100,6 +100,7 @@
   .fnGift.open .fnLid{transform:translateY(-140px) rotate(-25deg)} .fnGift.open .fnBow{transform:translate(-50%,-170px) rotate(30deg)}
   .fnPrizes{display:grid;gap:10px;margin-top:20px} .fnPrize{display:flex;flex-direction:column;align-items:center;gap:3px;padding:16px;border-radius:16px;border:1px solid rgba(255,230,170,.4);background:rgba(255,255,255,.08);color:#fff;cursor:pointer;font:inherit;animation:npPop .5s both}
   .fnPrize span{font-size:38px} .fnPrize b{font-size:18px} .fnPrize small{opacity:.8} .fnPrize:nth-child(2){animation-delay:.15s} .fnPrize:nth-child(3){animation-delay:.3s} .fnPrize:hover{background:rgba(255,255,255,.16)}
+  #holStrip .hsMore{margin-top:2px} #holStrip .hsMore a{font-weight:700;text-decoration:none;opacity:.9}
   .ytBtn{display:inline-block;margin:3px 0 0 4px;padding:3px 9px;border-radius:999px;background:#ff0033;color:#fff!important;text-decoration:none;font-weight:700;font-size:12px}
   .pLive{display:flex;flex-wrap:wrap;align-items:center;gap:4px} .liveDot{width:8px;height:8px;border-radius:50%;background:#ff3b3b;box-shadow:0 0 0 0 rgba(255,59,59,.7);animation:livePulse 1.4s infinite}
   @keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(255,59,59,.7)}70%{box-shadow:0 0 0 8px rgba(255,59,59,0)}100%{box-shadow:0 0 0 0 rgba(255,59,59,0)}}
@@ -2149,9 +2150,18 @@ function updateHoliday(now){
     html = `${info.icon} ${n.k==='newyear'?`New Year ${n.y}`:holName(n)} in ${dd} day${dd===1?'':'s'}`; }
   if (!(a && a.k==='newyear')) nyBall=null;
   if (EXTRAS_READY){ updateBallDrop(nyBall?nyBall[0]:1e9, !!nyBall && pinInNewYork(), nyBall?nyBall[1]:0);
-    const ex=extraLines(now)+layerLines(now); if (ex){ html+=ex; cls='show'; } }
+    const ex=extraLines(now)+layerLines(now); if (ex){ html+=stripSplit(ex); cls='show'; } }
   if (strip.innerHTML!==html) strip.innerHTML=html; strip.className=cls;
 }
+// the holiday box shows the big holiday news; everything else folds into "More" inside the box
+var HS_OPEN=false;
+const HS_PIN=/pLive|ytBtn|liveDot|LIVE|Happy birthday|shadow is on Earth|[Pp]arade|🎅|Santa|😴|Clocks go|Trick-or-treating|Hanukkah night|Kwanzaa day|tree lighting|[Ff]ireworks|Already 20|Next to celebrate|20\d\d in |Unwrap your presents|April Fools|pranks/;
+function stripSplit(ex){ const parts=ex.match(/<small[\s\S]*?<\/small>/g)||[]; const pin=[], more=[]; parts.forEach(x=>(HS_PIN.test(x)?pin:more).push(x));
+  if (more.length<2) return parts.join('');
+  return pin.join('')+(HS_OPEN?more.join(''):'')+`<small class="hsMore"><a href="#" id="hsMoreBtn">${HS_OPEN?'Show less ▴':`More (${more.length}) ▾`}</a></small>`; }
+// pointerdown, not click: the box re-draws every second (countdowns), which can swallow a slow tap's click
+document.addEventListener('pointerdown',e=>{ const a=e.target.closest('#hsMoreBtn'); if (!a) return; e.preventDefault(); HS_OPEN=!HS_OPEN; tick(true); });
+document.addEventListener('click',e=>{ if (e.target.closest('#hsMoreBtn')) e.preventDefault(); });
 // jump buttons (time travel previews)
 document.querySelectorAll('#timeBar [data-jump]').forEach(b=>b.onclick=()=>{
   if (!current) return; if (!holOn){ holOn=true; store.set('holidays',true); $('holBtn').classList.add('on'); }
@@ -5053,15 +5063,56 @@ var GLOW=(()=>{ const d=document.createElement('div'); d.style.cssText='position
 function halloweenNight(now){ if (!current) return false; const lp=localParts(now,current); if (lp.month!==9 || lp.day!==31) return false; const sa=sunAt(current.lat,current.lon,sunState(now),now); return sa.alt<-2 || lp.hour>=18; }
 function spookyTick(now){ const on=theme==='halloween' && halloweenNight(now); GLOW.style.opacity=on?'1':'0'; if (moonMat.uniforms && moonMat.uniforms.tint) moonMat.uniforms.tint.value.set(on?1.35:1,on?.72:1,on?.35:1); }
 
-// ---------- 🍽️ Thanksgiving dinner planner
-function openPlanner(){ const P=Object.assign({guests:8,kids:2,leftovers:true},store.get('planner',{})), metric=!useUS();
-  showModal(`<h3>🍽️ Dinner planner</h3><p class="mut">How much to make for Thanksgiving dinner.</p>
-    <label class="setRow"><b>Grown-ups</b><input type="number" id="plG" min="1" max="60" value="${P.guests}"></label><label class="setRow"><b>Kids</b><input type="number" id="plK" min="0" max="40" value="${P.kids}"></label>
-    <div class="seg" id="plL" style="margin-top:6px"><button data-v="1" class="${P.leftovers?'on':''}">🥪 Want leftovers</button><button data-v="0" class="${!P.leftovers?'on':''}">No leftovers</button></div><div id="plOut" class="advMsg"></div>`);
-  const calc=()=>{ P.guests=Math.max(0,+$('plG').value|0); P.kids=Math.max(0,+$('plK').value|0); store.set('planner',P); const pp=P.guests+P.kids*.5, k=P.leftovers?1.5:1;
-    const lb=Math.ceil(pp*1.25*k), W=x=>metric?`${(x/2.2046).toFixed(1)} kg`:`${x} lb`, C=x=>metric?`${Math.round(x*240)} ml`:`${x} cup${x===1?'':'s'}`;
-    $('plOut').innerHTML=`🦃 Turkey: <b>${W(lb)}</b><br>🥔 Potatoes: <b>${W(Math.ceil(pp*.5*k))}</b><br>🍞 Stuffing: <b>${C(Math.ceil(pp*.75*k))}</b><br>🍒 Cranberry sauce: <b>${C(Math.ceil(pp*.25*k*2)/2)}</b><br>🥫 Gravy: <b>${C(Math.ceil(pp*.33*k))}</b><br>🥦 Green beans: <b>${W(Math.ceil(pp*.25*k))}</b><br>🍞 Rolls: <b>${Math.ceil(pp*1.5*k)}</b><br>🥧 Pies: <b>${Math.max(1,Math.ceil((P.guests+P.kids)/8))}</b> (8 slices each)`; };
-  $('plG').oninput=calc; $('plK').oninput=calc; $('plL').querySelectorAll('button').forEach(b=>b.onclick=()=>{ P.leftovers=b.dataset.v==='1'; $('plL').querySelectorAll('button').forEach(q=>q.classList.toggle('on',q===b)); calc(); }); calc(); }
+// ---------- 🍽️ Thanksgiving dinner planner — pick your own dishes (everyone's dinner is different) · or plan the dish you're bringing
+// [id, emoji, name, amount per person, unit (lb|cup|each|pie), cook minutes, hot?]
+var DISHES=[['turkey','🦃','Turkey',1.25,'lb',0,1],['ham','🍖','Ham',.5,'lb',0,1],['veg','🎃','Veggie main (stuffed squash)',.5,'each',60,1],['mash','🥔','Mashed potatoes',.5,'lb',45,1],
+  ['sweetpot','🍠','Sweet potato casserole',.33,'lb',60,1],['stuffing','🍞','Stuffing',.75,'cup',45,1],['mac','🧀','Mac and cheese',.75,'cup',45,1],['greenbean','🥦','Green bean casserole',.25,'lb',45,1],
+  ['collards','🥬','Collard greens',.33,'lb',60,1],['corn','🌽','Corn',.25,'lb',20,1],['rice','🍚','Rice',.5,'cup',25,1],['gravy','🥫','Gravy',.33,'cup',15,1],['cranberry','🍒','Cranberry sauce',.25,'cup',20,0],
+  ['salad','🥗','Salad',1,'cup',15,0],['rolls','🥖','Rolls',1.5,'each',20,1],['pie','🥧','Pie',1/8,'pie',75,0],['cake','🍰','Cake',1/12,'each',60,0]];
+function dishAmt(d,people,metric){ const n=d[3]*people; if (d[4]==='lb') return metric?`${(n/2.2046).toFixed(1)} kg`:`${Math.ceil(n*2)/2} lb`; if (d[4]==='cup') return metric?`${Math.round(n*240/50)*50} ml`:`${Math.ceil(n*2)/2} cups`;
+  if (d[4]==='pie') return `${Math.max(1,Math.ceil(n))} pie${Math.ceil(n)>1?'s':''}`; if (d[0]==='veg') return `${Math.max(1,Math.ceil(n))} squash`; if (d[0]==='cake') return `${Math.max(1,Math.ceil(n))} cake${Math.ceil(n)>1?'s':''}`; return /^c\d/.test(d[0])?`${Math.ceil(n)} servings`:`${Math.ceil(n)}`; }
+function openPlanner(tab){ const PL=Object.assign({guests:8,kids:2,veg:0,leftovers:true,pick:['turkey','mash','stuffing','greenbean','cranberry','gravy','rolls','pie'],custom:[],tab:'host',
+    bring:['mash'],party:12,arrive:'15:00',drive:60},store.get('planner',{})), metric=!useUS(); if (tab) PL.tab=tab;
+  const all=()=>[...DISHES,...PL.custom.map(c=>[c.id,'🍽️',c.name,1,'each',+c.min||0,c.hot?1:0])];
+  const trip=store.get('trip',{}); 
+  showModal(`<h3>🍽️ Dinner planner</h3><div class="seg" id="plT"><button data-v="host" class="${PL.tab==='host'?'on':''}">🏠 Hosting dinner</button><button data-v="bring" class="${PL.tab==='bring'?'on':''}">🚗 Bringing a dish</button></div><div id="plBody"></div>`);
+  const host=()=>{ $('plBody').innerHTML=`<p class="mut">Everyone’s Thanksgiving is different — tick what <b>your</b> family eats.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"><label class="setRow" style="margin:0"><b>Grown-ups</b><input type="number" id="plG" min="0" max="60" value="${PL.guests}"></label><label class="setRow" style="margin:0"><b>Kids</b><input type="number" id="plK" min="0" max="40" value="${PL.kids}"></label><label class="setRow" style="margin:0"><b>🥕 Vegetarians</b><input type="number" id="plV" min="0" max="60" value="${PL.veg}"></label></div>
+      <div class="seg" id="plL" style="margin-top:6px"><button data-v="1" class="${PL.leftovers?'on':''}">🥪 Want leftovers</button><button data-v="0" class="${!PL.leftovers?'on':''}">No leftovers</button></div>
+      <div id="plPick" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${all().map(d=>`<button class="btn mini ${PL.pick.includes(d[0])?'primary':''}" data-pk="${d[0]}">${d[1]} ${esc(d[2])}</button>`).join('')}</div>
+      <div style="display:flex;gap:6px;margin-top:6px"><input id="plNew" maxlength="30" placeholder="Add your family’s dish (like pernil, lasagna, tamales…)" style="flex:1"><button class="btn mini" id="plAdd">＋ Add</button></div>
+      <div id="plOut" class="advMsg"></div>`;
+    const calc=()=>{ PL.guests=Math.max(0,+$('plG').value|0); PL.kids=Math.max(0,+$('plK').value|0); PL.veg=Math.min(PL.guests+PL.kids,Math.max(0,+$('plV').value|0)); store.set('planner',PL);
+      const k=PL.leftovers?1.5:1, ppl=(PL.guests+PL.kids*.6)*k, meat=Math.max(0,(PL.guests+PL.kids-PL.veg)/(PL.guests+PL.kids||1))*ppl, vegP=PL.veg*k, meats=['turkey','ham'].filter(x=>PL.pick.includes(x)).length||1;
+      const rows=all().filter(d=>PL.pick.includes(d[0])).map(d=>{ const people=d[0]==='turkey'||d[0]==='ham'?meat/meats:d[0]==='veg'?Math.max(vegP,PL.pick.includes('turkey')||PL.pick.includes('ham')?0:ppl):ppl; return `${d[1]} ${esc(d[2])}: <b>${dishAmt(d,people,metric)}</b>`; });
+      $('plOut').innerHTML=rows.length?rows.join('<br>')+(PL.veg&&!PL.pick.includes('veg')?'<br><br>🥕 You have vegetarians coming — tap “Veggie main” to add a dish for them.':''):'Tick the dishes you’re making.'; };
+    ['plG','plK','plV'].forEach(id=>$(id).oninput=calc);
+    $('plL').querySelectorAll('button').forEach(b=>b.onclick=()=>{ PL.leftovers=b.dataset.v==='1'; $('plL').querySelectorAll('button').forEach(q=>q.classList.toggle('on',q===b)); calc(); });
+    $('plPick').querySelectorAll('[data-pk]').forEach(b=>b.onclick=()=>{ const k=b.dataset.pk; PL.pick=PL.pick.includes(k)?PL.pick.filter(x=>x!==k):[...PL.pick,k]; b.classList.toggle('primary'); calc(); });
+    $('plAdd').onclick=()=>{ const n=$('plNew').value.trim(); if (!n) return; const id='c'+Date.now(); PL.custom.push({id,name:n,min:0,hot:1}); PL.pick.push(id); store.set('planner',PL); host(); };
+    calc(); };
+  const bring=()=>{ $('plBody').innerHTML=`<p class="mut">Driving to Thanksgiving and bringing something? Plan when to cook so it’s ready when you leave.</p>
+      <div id="plB" style="display:flex;flex-wrap:wrap;gap:6px">${all().map(d=>`<button class="btn mini ${PL.bring.includes(d[0])?'primary':''}" data-bk="${d[0]}">${d[1]} ${esc(d[2])}</button>`).join('')}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px"><label class="setRow" style="margin:0"><b>People there</b><input type="number" id="plP" min="1" max="80" value="${PL.party}"></label>
+        <label class="setRow" style="margin:0"><b>Arrive by</b><input type="time" id="plA" value="${PL.arrive}"></label><label class="setRow" style="margin:0"><b>Drive (min)</b><input type="number" id="plD" min="0" max="900" value="${PL.drive}"></label></div>
+      ${trip.to?`<p class="mut" style="font-size:12px">Tip: your travel check says ${esc(trip.to)} — <a href="#" id="plUseTrip">use that drive time</a></p>`:''}<div id="plOut" class="advMsg"></div>`;
+    const f=m=>{ m=((m%1440)+1440)%1440; const h=Math.floor(m/60), mm=String(m%60).padStart(2,'0'); return h12?`${(h%12)||12}:${mm} ${h<12?'AM':'PM'}`:`${String(h).padStart(2,'0')}:${mm}`; };
+    const calc=()=>{ PL.party=Math.max(1,+$('plP').value|0); PL.arrive=$('plA').value||'15:00'; PL.drive=Math.max(0,+$('plD').value|0); store.set('planner',PL);
+      const [ah,am]=PL.arrive.split(':').map(Number), leave=ah*60+am-Math.round(PL.drive*1.25)-10, ready=leave-15, D=all().filter(d=>PL.bring.includes(d[0]));
+      if (!D.length){ $('plOut').innerHTML='Tap the dish(es) you’re bringing.'; return; } const share=PL.party/Math.max(1,D.length>1?1:1);
+      const rows=D.map(d=>{ let min=d[5]; if (d[0]==='turkey'||d[0]==='ham'){ const lb=d[3]*share; min=Math.round(lb*(d[0]==='turkey'?13:15))+30; } else if (!min) min=45;
+        return `${d[1]} <b>${esc(d[2])}</b> (${dishAmt(d,share,metric)}): start at <b>${f(ready-min)}</b> — about ${min>=60?Math.floor(min/60)+' h ':''}${min%60?min%60+' min':''}`; });
+      const hot=D.some(d=>d[6]), cold=D.some(d=>!d[6]);
+      $('plOut').innerHTML=`🚗 Leave at <b>${f(leave)}</b> (includes extra time for holiday traffic)<br>✅ Have everything done by <b>${f(ready)}</b><br><br>${rows.join('<br>')}`
+        +(hot?`<br><br><b>🔥 Keeping hot food hot:</b> wrap the dish in foil, then towels, and put it in an insulated bag or cooler (no ice!). If the drive is over 2 hours, chill it instead and reheat it there to 165°F / 74°C.`:'')
+        +(cold?`<br><b>🧊 Keeping cold food cold:</b> cooler with ice packs — 40°F / 4°C or colder. Pies and cranberry sauce travel best in a box on the car floor, not the seat.`:'')
+        +`<br>👍 Tell the host what you’re bringing so there aren’t three mac and cheeses 😄`; };
+    ['plP','plA','plD'].forEach(id=>$(id).oninput=calc);
+    $('plB').querySelectorAll('[data-bk]').forEach(b=>b.onclick=()=>{ const k=b.dataset.bk; PL.bring=PL.bring.includes(k)?PL.bring.filter(x=>x!==k):[...PL.bring,k]; b.classList.toggle('primary'); calc(); });
+    if ($('plUseTrip')) $('plUseTrip').onclick=e=>{ e.preventDefault(); const i=findPlace(trip.to); if (i<0||!current) return; const km=gcDist(current.lat,current.lon,P.lat[i],P.lon[i]); $('plD').value=Math.round(km*1.2/105*60); calc(); };
+    calc(); };
+  const show=()=>{ $('plT').querySelectorAll('button').forEach(q=>q.classList.toggle('on',q.dataset.v===PL.tab)); (PL.tab==='bring'?bring:host)(); };
+  $('plT').querySelectorAll('button').forEach(b=>b.onclick=()=>{ PL.tab=b.dataset.v; store.set('planner',PL); show(); }); show(); }
 
 // ---------- 🧠 holiday trivia (Thanksgiving)
 var TG_TRIVIA=[['The first Thanksgiving feast was in which year?',['1621','1776','1492'],0,'The Pilgrims and the Wampanoag shared a three-day harvest feast in 1621.'],
