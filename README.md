@@ -321,6 +321,13 @@ night-side city lights placed at real city coordinates.
     countdown, naughty-or-nice quiz, ugly sweater maker, gingerbread house,
     reindeer roll call, Christmas morning presents to unwrap, snow day
     predictor. The turkey timer can plan cooking the day before for travelers.
+  - Even more: 🎃 Sleepy Hollow night (the Headless Horseman rides across the
+    screen), spooky story maker (Claude writes it in the Claude version),
+    haunted places tour · 🍁 Friendsgiving sign-up (shared in Claude), 🫙
+    thankful jar, 🏃 Turkey Trot tips · 📸 holiday photo booth, 📮 Santa's
+    postcards (collect a country at each stop you watch), ❄️ first snow alert,
+    ☕ hot cocoa meter, 🎮 club holiday party kit · 🎯 resolution tracker, 📊
+    year in review with 🏅 holiday badges · 🌍 holiday challenge game.
   - 🕎 Light the menorah each night of Hanukkah at sunset · 🕯️ Kwanzaa kinara
     with the day's principle.
   - 🎄 Rockefeller Center tree lighting countdown and LIVE NOW button (Dec 2,

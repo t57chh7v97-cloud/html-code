@@ -2160,7 +2160,7 @@ function updateHoliday(now){
 // the holiday box shows the big holiday news; everything else folds into "More" inside the box
 var HS_OPEN=false;
 const HS_PIN=/pLive|ytBtn|liveDot|LIVE|Happy birthday|shadow is on Earth|[Pp]arade|🎅|Santa|😴|Clocks go|Trick-or-treating|Hanukkah night|Kwanzaa day|tree lighting|[Ff]ireworks|Already 20|Next to celebrate|20\d\d in |Unwrap your presents|April Fools|pranks/;
-function stripSplit(ex){ const parts=ex.match(/<small[\s\S]*?<\/small>/g)||[]; const pin=[], more=[]; parts.forEach(x=>(HS_PIN.test(x)?pin:more).push(x));
+function stripSplit(ex){ const parts=ex.match(/<small[\s\S]*?<\/small>/g)||[]; const pin=[], more=[]; parts.forEach(x=>{ const links=(x.match(/<a /g)||[]).length, activity=links>=2 && !/LIVE|ytBtn|liveDot/.test(x); (HS_PIN.test(x)&&!activity?pin:more).push(x); });   // lines of activity links (tree · Secret Santa…) always fold away
   if (more.length<2) return parts.join('');
   return pin.join('')+(HS_OPEN?more.join(''):'')+`<small class="hsMore"><a href="#" id="hsMoreBtn">${HS_OPEN?'Show less ▴':`More (${more.length}) ▾`}</a></small>`; }
 // safety net: never leave an empty pop-up's dark backdrop over the app (it would block every tap)
@@ -5315,6 +5315,196 @@ var _om11=openMore; openMore=function(){ _om11(); const grid=document.querySelec
   if (theme==='christmas'){ add('📜','Naughty or nice?','Take Santa’s quiz',openNaughtyNice); add('🧶','Ugly sweater','Design one',openSweater); add('🏠','Gingerbread house','Decorate with candy',openGingerbread); add('🦌','Reindeer roll call','Meet the team',openReindeer); }
   if ([10,11,0,1,2].includes(new Date().getMonth())) add('❄️','Snow day predictor','Chance of a snow day tomorrow',openSnowDay); };
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {openHaunted,openMonster,openCandyTrade,openPlanner,openTrivia,openTravel,openSandwich,openWishbone,openSweater,openGingerbread,openPresents,openNaughtyNice,openReindeer,openSnowDay});
+
+/* =========================================================
+   ROUND 12: 🎃 Sleepy Hollow night · spooky story maker · haunted places tour
+   🦃 Friendsgiving sign-up · thankful jar · Turkey Trot
+   🎄 holiday photo booth · Santa's postcards · first snow alert · hot cocoa meter · club holiday party kit
+   🎆 resolution tracker · year in review · 🌍 holiday streak badges · holiday challenge game
+   ========================================================= */
+// ---------- tracking for streaks & year in review
+function yr(now){ return localParts(now||simNow(),current).year; }
+var TRACK={last:'',pin:''};
+function trackTick(now){ if (!current) return; const y=yr(now);
+  if (theme && TRACK.last!==theme+y){ TRACK.last=theme+y; const S=store.get('holSeen',{}); S[y]=S[y]||[]; if (!S[y].includes(theme)){ S[y].push(theme); store.set('holSeen',S); if (S[y].length>1) toast(`🏅 Holiday badge: ${HOL[theme]?HOL[theme].icon+' '+HOL[theme].name:theme}! (${S[y].length} this year)`); } }
+  const k=current.lat.toFixed(1)+','+current.lon.toFixed(1); if (TRACK.pin!==k){ TRACK.pin=k; const V=store.get('placesSeen',{}); V[y]=V[y]||[]; if (!V[y].includes(k)){ V[y].push(k); if (V[y].length>400) V[y].shift(); store.set('placesSeen',V); } } }
+
+// ---------- 🎃 Sleepy Hollow night: the Headless Horseman rides across the screen on Halloween night
+var HORSE={at:0};
+function horsemanTick(now){ if (theme!=='halloween' || typeof halloweenNight!=='function' || !halloweenNight(now) || Date.now()-HORSE.at<45000) return; HORSE.at=Date.now();
+  const d=document.createElement('div'); d.textContent='🏇'; d.style.cssText='position:fixed;z-index:6;pointer-events:none;font-size:46px;top:'+(18+Math.random()*30)+'%;left:-60px;transform:scaleX(-1);filter:drop-shadow(0 0 8px #ff7a00);transition:left 6s linear';
+  const p=document.createElement('div'); p.textContent='🎃'; p.style.cssText='position:absolute;left:-6px;top:-18px;font-size:22px;transform:scaleX(-1)'; d.appendChild(p); document.body.appendChild(d);
+  requestAnimationFrame(()=>d.style.left=(innerWidth+60)+'px'); setTimeout(()=>d.remove(),6300); }
+function openSleepyHollow(){ showModal(`<h3>🎃 The Legend of Sleepy Hollow</h3><p class="mut">Written by Washington Irving in 1820, set in Sleepy Hollow, New York — just a few miles from Pleasantville!</p>
+  <div class="advMsg" style="line-height:1.55">Long ago, a lanky schoolteacher named <b>Ichabod Crane</b> came to the sleepy village of Sleepy Hollow. He loved good food, spooky stories… and Katrina Van Tassel, the daughter of a rich farmer.<br><br>
+  The locals told tales of the <b>Headless Horseman</b> — the ghost of a soldier who rode through the hollow at night, searching for his lost head.<br><br>
+  One autumn night, riding home alone after a party, Ichabod heard hoofbeats behind him. A huge dark rider was following — and where its head should be, it carried something round in its arms! The chase thundered to the old bridge by the church… and the rider <b>hurled its head</b> at Ichabod.<br><br>
+  The next morning, Ichabod was gone. All anyone found was his hat — and a <b>smashed pumpkin</b>. 🎃 Was it really a ghost? Or was it Brom Bones, Ichabod’s rival, playing a trick? Nobody knows…</div>
+  <button class="btn primary" id="shFly" style="margin-top:10px">Fly to Sleepy Hollow</button>`);
+  $('shFly').onclick=()=>{ closeModal(); ctlG.minDistance=1.05; flyToLL(41.086,-73.862,1.08); }; }
+
+// ---------- 👻 spooky story maker (Claude writes it in the Claude version)
+var SPOOK={set:['an old lighthouse','a haunted school','a foggy pumpkin patch','an abandoned arcade','a creaky treehouse','a snowy cabin'],mon:['a ghost','a vampire bat','a friendly zombie','a shadow monster','a witch’s cat','a haunted robot'],tw:['it just wanted a friend','it was your best friend in a costume','it was afraid of YOU','it only came out on video game night','it left candy behind','it was a dream… or was it?']};
+async function openSpookyStory(){ const pick=(k)=>`<select id="ss_${k}">${SPOOK[k].map(v=>`<option>${v}</option>`).join('')}</select>`;
+  showModal(`<h3>👻 Spooky story maker</h3><p class="mut">Pick the pieces and get a (not too) scary story.</p><b>Where?</b>${pick('set')}<b>Who?</b>${pick('mon')}<b>The twist…</b>${pick('tw')}<button class="btn primary" id="ssGo">✨ Tell me the story</button><div id="ssOut" class="advMsg" style="display:none;line-height:1.55"></div>`);
+  $('ssGo').onclick=async()=>{ const s=$('ss_set').value, m=$('ss_mon').value, t=$('ss_tw').value, out=$('ssOut'); out.style.display=''; out.textContent='🕯️ Writing…';
+    let sample=null; try{ if (window.claude && window.claude.use) sample=await Promise.race([window.claude.use('sample'),new Promise(r=>setTimeout(()=>r(null),3000))]); }catch(e){}
+    if (sample){ try{ const r=await sample(`Write a short, fun, kid-friendly spooky story (120–160 words, plain text, no markdown, short paragraphs) for Halloween. Setting: ${s}. Creature: ${m}. Twist at the end: ${t}. Make it a little creepy but not gory or truly frightening, with a satisfying ending.`,{onText:({text})=>{ if (text && !/^Thinking/.test(text)) out.innerHTML=esc(text).replace(/\n/g,'<br>'); }}); if (r && r.text){ out.innerHTML=esc(r.text.trim()).replace(/\n/g,'<br>'); return; } }catch(e){} }
+    out.innerHTML=`It was a dark and windy Halloween night when I snuck into ${s}. The floorboards creaked. Somewhere, something went <i>tap… tap… tap…</i><br><br>My flashlight flickered — and there it was: ${m}, staring right at me with glowing eyes. I froze. It took one slow step closer… then another…<br><br>I screamed. It screamed louder! And then I realized the truth: ${t}. 🎃<br><br>We both laughed so hard the cobwebs shook. But as I walked home, I could still hear it… <i>tap… tap… tap…</i> 👻`; }; }
+
+// ---------- 🏚️ haunted places tour
+var HAUNTED=[['Sleepy Hollow, NY','Home of the Headless Horseman legend',41.086,-73.862],['Salem, Massachusetts','Famous for its 1692 witch trials — huge Halloween celebrations every October',42.519,-70.896],['Bran Castle, Romania','“Dracula’s Castle” in Transylvania',45.515,25.367],['Edinburgh, Scotland','Spooky underground vaults beneath the Old Town',55.949,-3.191],['Tower of London, England','Said to be haunted by ghosts of famous prisoners',51.508,-0.076],['Catacombs of Paris, France','Tunnels lined with the bones of millions',48.834,2.332],['Eastern State Penitentiary, Philadelphia','A giant abandoned prison turned haunted attraction',39.968,-75.173],['Winchester Mystery House, California','A mansion with stairs to nowhere and doors into walls',37.318,-121.951],['Island of the Dolls, Mexico','An island covered in old, creepy dolls',19.290,-99.096],['New Orleans, Louisiana','Ghost tours through the French Quarter',29.958,-90.065]];
+function openHauntedTour(){ showModal(`<h3>🏚️ Haunted places tour</h3><p class="mut">The world’s spookiest spots. Tap one to fly there… if you dare. 👻</p>
+  ${HAUNTED.map((h,i)=>`<div class="advMsg" style="margin-top:6px"><b>${esc(h[0])}</b><br><small class="mut">${esc(h[1])}</small> <button class="btn mini" data-hp="${i}">Fly there</button></div>`).join('')}`);
+  document.querySelectorAll('[data-hp]').forEach(b=>b.onclick=()=>{ const h=HAUNTED[+b.dataset.hp]; closeModal(); ctlG.minDistance=1.05; flyToLL(h[2],h[3],1.12); }); }
+
+// ---------- 🍁 Friendsgiving sign-up (shared in the Claude version)
+async function openFriendsgiving(){ const y=yr(), b=await boardDb(); let rows=[];
+  const load=async()=>{ if (b){ try{ const s=await b.db.collection('friendsgiving').where('y','==',y).limit(200).get(); rows=s.docs.map(d=>({id:d.id,...d.data()})); }catch(e){ rows=[]; } } else rows=(store.get('friendsgiving',{})[y]||[]); render(); };
+  const render=()=>{ const el=$('fgList'); if (!el) return; const dup={}; rows.forEach(r=>{ const k=fold(r.dish||''); dup[k]=(dup[k]||0)+1; });
+    el.innerHTML=rows.length?rows.map(r=>`<div class="gBoardR" style="padding:5px 0"><span>${esc(r.who||'?')} → <b>${esc(r.dish||'')}</b>${dup[fold(r.dish||'')]>1?' ⚠️ <small>double!</small>':''}</span></div>`).join(''):'<span class="mut">Nobody’s signed up yet — be first!</span>'; };
+  showModal(`<h3>🍁 Friendsgiving sign-up</h3><p class="mut">${b?'Shared with everyone using this app in Claude — sign up for a dish so nobody brings the same thing!':'Write down who’s bringing what (saved on this device — the shared list is in the Claude version).'}</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><input id="fgWho" placeholder="Your name" maxlength="20" value="${esc(store.get('nick',''))}" style="flex:1;min-width:100px"><input id="fgDish" placeholder="Dish (like mac and cheese)" maxlength="40" style="flex:2;min-width:140px"><button class="btn primary" id="fgAdd">Sign up</button></div><div id="fgList"></div>`);
+  $('fgAdd').onclick=async()=>{ const who=$('fgWho').value.trim(), dish=$('fgDish').value.trim(); if (!who||!dish) return; store.set('nick',who); $('fgDish').value='';
+    if (b){ try{ await b.db.collection('friendsgiving').doc(b.id+'_'+y+'_'+Date.now()).set({y,who,dish,at:Date.now()}); }catch(e){ toast('Couldn’t save — you may need Contributor access to this page.'); } }
+    else { const F=store.get('friendsgiving',{}); F[y]=[...(F[y]||[]),{who,dish}]; store.set('friendsgiving',F); } load(); };
+  load(); }
+
+// ---------- 🫙 thankful jar (one thing a day in November, opened on Thanksgiving)
+function openThankfulJar(){ const now=simNow(), lp=localParts(now,current), y=lp.year, tg=nthWeekday(y,10,4,4), J=store.get('jar',{}), mine=J[y]||{}, td=lp.month===10?lp.day:0, open=lp.month>10||(lp.month===10&&lp.day>=tg);
+  const n=Object.keys(mine).length;
+  showModal(`<h3>🫙 Thankful jar</h3><p class="mut">Add one thing you’re thankful for each day in November. On Thanksgiving, open the jar and read them all!</p>
+    <div style="font-size:60px;text-align:center">🫙</div><p style="text-align:center;font-weight:700">${n} note${n===1?'':'s'} in the jar</p>
+    ${open?(n?Object.entries(mine).sort((a,b)=>+a[0]-+b[0]).map(([d,t])=>`<div class="advMsg" style="margin-top:4px">📝 <small class="mut">Nov ${d}</small> ${esc(t)}</div>`).join(''):'<p class="mut">The jar is empty this year — start next November!</p>')
+      :(td?(mine[td]?`<p style="text-align:center">✅ You added today’s note. Come back tomorrow!</p>`:`<input id="jarT" maxlength="80" placeholder="Today I’m thankful for…"><button class="btn primary" id="jarAdd">Add to the jar</button>`):'<p class="mut">The jar opens for notes on November 1.</p>')+`<p class="mut" style="text-align:center">🔒 Opens on Thanksgiving (Nov ${tg})</p>`}`);
+  if ($('jarAdd')) $('jarAdd').onclick=()=>{ const t=$('jarT').value.trim(); if (!t) return; mine[td]=t; J[y]=mine; store.set('jar',J); try{ fx.burst(innerWidth/2,innerHeight/2,false); }catch(e){} openThankfulJar(); }; }
+
+// ---------- 🏃 Turkey Trot (Thanksgiving morning fun runs)
+function turkeyTrotLine(now){ if (theme!=='thanksgiving' || !current || current.cc!=='US') return ''; const lp=localParts(now,current), tg=nthWeekday(lp.year,10,4,4); if (lp.month!==10 || lp.day!==tg || lp.hour>=11) return '';
+  return `<small>🏃 Turkey Trot morning! Thousands of towns hold fun runs before the feast · <a href="#" id="trotGo">tips</a></small>`; }
+function openTrot(){ showModal(`<h3>🏃 Turkey Trot</h3><p class="mut">Turkey Trots are fun runs (often 5K — about 3.1 miles) held on Thanksgiving morning. The oldest one, in Buffalo, NY, started in 1896!</p><ol class="steps" style="font-size:14px">
+  <li>Dress in layers — November mornings are chilly. Costumes (turkey hats!) are encouraged 🦃</li><li>Get there early: big Trots fill up with thousands of runners and walkers.</li><li>Walking counts! Lots of families walk the whole thing.</li><li>Drink water and stretch first — then you’ve earned that second slice of pie 🥧</li></ol>
+  <a class="btn primary" href="https://www.google.com/search?q=${encodeURIComponent('Turkey Trot near '+(current?shortName(current):'me'))}" target="_blank" rel="noopener">🔎 Find a Turkey Trot near you</a>`); }
+
+// ---------- 📸 holiday photo booth (front camera + a festive overlay)
+var BOOTH_PROPS={santa:['🎅','Santa hat'],antlers:['🦌','Antlers'],elf:['🧝','Elf'],snow:['❄️','Snow frame'],turkey:['🦃','Turkey'],pumpkin:['🎃','Pumpkin'],party:['🎉','New Year']};
+async function openBooth(){ const def=theme==='halloween'?'pumpkin':theme==='thanksgiving'?'turkey':theme==='newyear'?'party':'santa'; let prop=def, stream=null;
+  showModal(`<h3>📸 Holiday photo booth</h3><p class="mut">Put your face in the circle and smile!</p><div style="position:relative"><video id="pbV" playsinline autoplay muted style="width:100%;border-radius:12px;transform:scaleX(-1);background:#000;min-height:200px"></video><canvas id="pbO" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas></div>
+    <div class="seg" id="pbP" style="margin-top:8px;flex-wrap:wrap">${Object.entries(BOOTH_PROPS).map(([k,v])=>`<button data-v="${k}" class="${k===prop?'on':''}">${v[0]}</button>`).join('')}</div>
+    <div style="display:flex;gap:8px;margin-top:8px"><button class="btn primary" id="pbSnap">📸 Snap</button></div><div id="pbRes"></div>`);
+  const v=$('pbV'), o=$('pbO');
+  const drawProps=(x,W,H)=>{ x.textAlign='center'; x.textBaseline='middle'; const cx=W/2, cy=H*.48, r=Math.min(W,H)*.28;
+    if (prop==='santa'){ x.font=`${r*1.1}px serif`; x.fillText('🎅',cx,cy-r*1.15); }
+    else if (prop==='antlers'){ x.font=`${r*.8}px serif`; x.fillText('🦌',cx-r*.75,cy-r*1.05); x.fillText('🦌',cx+r*.75,cy-r*1.05); x.font=`${r*.35}px serif`; x.fillText('🔴',cx,cy+r*.05); }
+    else if (prop==='elf'){ x.font=`${r*.9}px serif`; x.fillText('🧝',cx,cy-r*1.2); }
+    else if (prop==='snow'){ x.font=`${r*.3}px serif`; for (let i=0;i<26;i++){ const a=i/26*6.283; x.fillText('❄️',cx+Math.cos(a)*r*1.55,cy+Math.sin(a)*r*1.35); } }
+    else if (prop==='turkey'){ x.font=`${r*.7}px serif`; x.fillText('🦃',cx-r*1.15,cy+r*.9); x.fillText('🍂',cx+r*1.15,cy-r*.9); }
+    else if (prop==='pumpkin'){ x.font=`${r*.6}px serif`; x.fillText('🎃',cx-r*1.15,cy+r*.95); x.fillText('🦇',cx+r*1.1,cy-r*1.05); x.fillText('👻',cx-r*1.1,cy-r*1.05); }
+    else { x.font=`${r*.75}px serif`; x.fillText('🥳',cx,cy-r*1.25); x.font=`${r*.4}px serif`; x.fillText('🎆',cx-r*1.2,cy-r*.6); x.fillText('🎇',cx+r*1.2,cy-r*.6); } };
+  const guide=()=>{ if (!$('pbO')) return; const W=o.width=o.clientWidth*2, H=o.height=o.clientHeight*2, x=o.getContext('2d'); x.clearRect(0,0,W,H); x.strokeStyle='rgba(255,255,255,.5)'; x.setLineDash([10,8]); x.lineWidth=3; x.beginPath(); x.ellipse(W/2,H*.48,Math.min(W,H)*.22,Math.min(W,H)*.28,0,0,7); x.stroke(); x.setLineDash([]); drawProps(x,W,H); };
+  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false}); v.srcObject=stream; v.onloadedmetadata=guide; }
+  catch(e){ $('pbRes').innerHTML='<p class="mut">The camera isn’t available here — allow camera access, or try the GitHub site in Safari.</p>'; }
+  const stop=()=>{ try{ stream&&stream.getTracks().forEach(t=>t.stop()); }catch(e){} }; const mo=new MutationObserver(()=>{ if (!$('pbV')){ stop(); mo.disconnect(); } }); mo.observe($('xBody'),{childList:true});
+  $('xClose').addEventListener('click',stop,{once:true});
+  $('pbP').querySelectorAll('button').forEach(b=>b.onclick=()=>{ prop=b.dataset.v; $('pbP').querySelectorAll('button').forEach(q=>q.classList.toggle('on',q===b)); guide(); });
+  $('pbSnap').onclick=()=>{ if (!v.videoWidth) return; const W=v.videoWidth, H=v.videoHeight, c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d'); x.translate(W,0); x.scale(-1,1); x.drawImage(v,0,0,W,H); x.setTransform(1,0,0,1,0,0); drawProps(x,W,H);
+    x.fillStyle='rgba(0,0,0,.45)'; x.fillRect(0,H-H*.09,W,H*.09); x.fillStyle='#fff'; x.font=`600 ${Math.round(H*.04)}px system-ui`; x.textAlign='center'; x.fillText(`${HOL[theme]?HOL[theme].greet:'Happy holidays!'}`,W/2,H-H*.035);
+    try{ fx.celebrate(1500); }catch(e){}
+    c.toBlob(bl=>{ const url=URL.createObjectURL(bl), f=new File([bl],'holiday-photo.png',{type:'image/png'}); $('pbRes').innerHTML=`<img src="${url}" style="width:100%;border-radius:12px;margin-top:8px"><button class="btn primary" id="pbShare" style="margin-top:6px">Share…</button>`;
+      $('pbShare').onclick=()=>{ if (navigator.canShare && navigator.canShare({files:[f]})) navigator.share({files:[f],title:'Holiday photo'}).catch(()=>{}); else toast('Press and hold the photo to save it 📸'); }; },'image/png'); }; }
+
+// ---------- 🖼️ Santa's postcards: collect a postcard from each country Santa visits while you watch
+var PC={last:-1};
+function postcardTick(now){ if (typeof santa==='undefined' || !santa.on || santa.status!=='at' || santa.idx===PC.last || !ROUTE[santa.idx]) return; PC.last=santa.idx;
+  const r=ROUTE[santa.idx], country=r[1]&&r[1].includes(',')?r[1].split(',').pop().trim():r[1]; if (!country || /North Pole/.test(country)) return;
+  const P_=store.get('postcards',{}), y=santa.y; P_[y]=P_[y]||[]; if (!P_[y].includes(country)){ P_[y].push(country); store.set('postcards',P_); toast(`📮 Postcard collected from ${country}! (${P_[y].length})`); } }
+function openPostcards(){ const y=(typeof santa!=='undefined'&&santa.y)||yr(), got=(store.get('postcards',{})[y]||[]); const all=[...new Set(ROUTE.slice(1).map(r=>r[1]&&r[1].includes(',')?r[1].split(',').pop().trim():r[1]).filter(c=>c&&!/North Pole/.test(c)))];
+  showModal(`<h3>📮 Santa’s postcards ${y}</h3><p class="mut">Watch Santa fly on Christmas Eve — every time he stops in a new country while you’re watching, you collect a postcard!</p>
+    <p style="font-weight:800;text-align:center;font-size:20px">${got.length} / ${all.length} countries</p><div style="height:10px;border-radius:5px;background:rgba(255,255,255,.12);overflow:hidden;margin-bottom:10px"><div style="height:100%;width:${Math.round(got.length/Math.max(1,all.length)*100)}%;background:linear-gradient(90deg,#e8231f,#3ddc97)"></div></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${all.map(c=>`<span class="advMsg" style="margin:0;padding:6px 9px;font-size:12px;opacity:${got.includes(c)?1:.35}">${got.includes(c)?'📮':'✉️'} ${esc(c)}</span>`).join('')}</div>`); }
+
+// ---------- ❄️ first snow alert · ☕ hot cocoa meter (live weather at the pin)
+const SNOWCODES=[71,73,75,77,85,86];
+function winterKey(now){ const lp=localParts(now,current); return lp.month>=6?lp.year:lp.year-1; }
+function weatherFunTick(now){ if (!current || !WX.data || !WX.data.current) return; const c=WX.data.current, snowing=SNOWCODES.includes(c.weather_code)||(c.snowfall||0)>0; if (!snowing) return;
+  const k=winterKey(now)+'|'+current.lat.toFixed(1)+','+current.lon.toFixed(1), F=store.get('firstSnow',{}); if (F[k]) return; F[k]=Date.now(); store.set('firstSnow',F);
+  try{ fx.celebrate(5000); }catch(e){} toast(`❄️ FIRST SNOW of the winter in ${shortName(current)}! ☃️`); }
+function weatherFunLines(now){ if (!current || !WX.data || !WX.data.current) return ''; const c=WX.data.current, t=c.apparent_temperature!=null?c.apparent_temperature:c.temperature_2m; let h='';
+  if (SNOWCODES.includes(c.weather_code)) h+=`<small>❄️ It’s snowing in ${esc(shortName(current))}! ☃️</small>`;
+  if (t<=7){ const lvl=t<=-8?5:t<=-3?4:t<=1?3:t<=4?2:1; h+=`<small>☕ Hot cocoa meter: ${'☕'.repeat(lvl)}${'·'.repeat(5-lvl)} — ${['nice','good','great','perfect','PERFECT'][lvl-1]} hot cocoa weather (feels like ${tC(t)})</small>`; }
+  return h; }
+
+// ---------- 🎮 club holiday party kit (meetings are on Wednesdays)
+var PARTY_GAMES=['Mario Kart tournament (bracket style!)','Smash Bros. free-for-all','Just Dance holiday battle','Jackbox party games','Minecraft build-off: best gingerbread house in 20 minutes','Rocket League 2v2','Tetris 99 / Tetris Effect high-score challenge','Pictionary: draw your favorite game character','Video game trivia (teams)','Retro hour: oldest game in the room'];
+function openPartyKit(){ const now=simNow(), D=typeof schoolDates==='function'?schoolDates(now):null, lp=localParts(now,current); let party=null;
+  if (D){ for (let t=D.winter;t>=D.today;t--){ if (new Date(t*86400000).getUTCDay()===3){ party=t; break; } } }
+  const days=party!=null?party-D.today:null, dTxt=party!=null?new Date(party*86400000).toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric',timeZone:'UTC'}):'';
+  const L=store.get('partyList',{snacks:false,music:false,controllers:false,bracket:false,decor:false,prizes:false});
+  const item=(k,t)=>`<label class="mopt${L[k]?' on':''}"><input type="checkbox" data-pl="${k}" ${L[k]?'checked':''}><span>${t}</span></label>`;
+  showModal(`<h3>🎮 Club holiday party kit</h3>${party!=null&&days>45?`<p style="font-weight:700">❄️ Winter break is here (or almost) — enjoy it! Next year’s party will be on <b>${dTxt}</b>.</p>`:party!=null?`<p style="font-weight:700">🎉 Last club meeting before winter break: <b>${dTxt}</b>${days===0?' — that’s TODAY!':` — in ${days} day${days===1?'':'s'}`}</p><p class="mut">Based on Wednesday meetings and your winter break date (change it in 🎒 School countdowns).</p>`:'<p class="mut">Set your winter break date in 🎒 School countdowns to get a party countdown.</p>'}
+    <b>🎲 Game picker</b><div class="advMsg" id="pkGame" style="font-weight:700">${PARTY_GAMES[Math.floor(Math.random()*PARTY_GAMES.length)]}</div><button class="btn" id="pkSpin">🎰 Pick another</button>
+    <b style="display:block;margin-top:10px">✅ Party checklist</b><div id="pkList">${item('snacks','🍪 Snacks & drinks')+item('controllers','🎮 Enough controllers (and charged!)')+item('bracket','🏆 Tournament bracket')+item('music','🎵 Holiday music')+item('decor','🎄 Decorations')+item('prizes','🥇 Prizes for winners')}</div>
+    <p class="mut" style="margin-top:8px">💡 Tip: ask your club advisor if the room has a projector for big-screen games!</p>`);
+  $('pkSpin').onclick=()=>{ let n=0; const iv=setInterval(()=>{ $('pkGame').textContent=PARTY_GAMES[Math.floor(Math.random()*PARTY_GAMES.length)]; if (++n>10) clearInterval(iv); },70); };
+  document.querySelectorAll('[data-pl]').forEach(i=>i.onchange=()=>{ L[i.dataset.pl]=i.checked; store.set('partyList',L); i.closest('label').classList.toggle('on',i.checked); }); }
+
+// ---------- 🎯 resolution tracker (set on New Year's, check in each month)
+function openResolutions(){ const y=yr(), R=store.get('resolutions',{}), mine=R[y]||{list:[],checks:{}}; const m=localParts(simNow(),current).month;
+  if (!mine.list.length){ showModal(`<h3>🎯 New Year’s resolutions ${y}</h3><p class="mut">Pick up to 3 goals for the year. The app will check in on the 1st of every month!</p>
+      ${[0,1,2].map(i=>`<input id="rs${i}" maxlength="50" placeholder="${['Like: read 10 books','Like: learn to cook one meal','Like: win the club tournament'][i]}">`).join('')}<button class="btn primary" id="rsSave">Save my resolutions</button>`);
+    $('rsSave').onclick=()=>{ const list=[0,1,2].map(i=>$('rs'+i).value.trim()).filter(Boolean); if (!list.length) return; R[y]={list,checks:{}}; store.set('resolutions',R); try{ fx.celebrate(2000); }catch(e){} openResolutions(); }; return; }
+  const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  showModal(`<h3>🎯 My resolutions ${y}</h3><p class="mut">Tap a month to mark it ✅ if you stuck with it.</p>${mine.list.map((r,i)=>`<div class="advMsg" style="margin-top:6px"><b>${esc(r)}</b><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:6px">${M.map((mm,j)=>`<button class="btn mini" data-rk="${i}_${j}" ${j>m?'disabled':''} style="padding:3px 6px;${mine.checks[i+'_'+j]?'background:#3ddc97;color:#04210f':''}">${mm}</button>`).join('')}</div></div>`).join('')}
+    <button class="btn" id="rsReset" style="margin-top:10px">Change my resolutions</button>`);
+  document.querySelectorAll('[data-rk]').forEach(b=>b.onclick=()=>{ mine.checks[b.dataset.rk]=!mine.checks[b.dataset.rk]; R[y]=mine; store.set('resolutions',R); openResolutions(); });
+  $('rsReset').onclick=()=>{ R[y]={list:[],checks:{}}; store.set('resolutions',R); openResolutions(); }; }
+function resolutionLine(now){ if (!current) return ''; const lp=localParts(now,current), R=store.get('resolutions',{})[lp.year];
+  if (lp.month===0 && lp.day<=7 && !(R&&R.list.length)) return `<small>🎯 <a href="#" id="resGo">Set your New Year’s resolutions</a></small>`;
+  if (R && R.list.length && lp.day<=3 && lp.month>0 && !R.checks['0_'+(lp.month-1)]) return `<small>🎯 Monthly check-in: <a href="#" id="resGo">did you stick to your resolutions in ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][lp.month-1]}?</a></small>`;
+  return ''; }
+
+// ---------- 📊 year in review · 🏅 holiday badges
+function openYearReview(){ const y=(()=>{ const lp=localParts(simNow(),current); return lp.month===0?lp.year-1:lp.year; })();
+  const seen=(store.get('holSeen',{})[y]||[]), places=(store.get('placesSeen',{})[y]||[]).length, candy=((store.get('candy',{})[y]||{}).n)||0, pc=(store.get('postcards',{})[y]||[]).length, eggs=(store.get('eggs',{})[y]||[]).length, ach=Object.keys(store.get('ach',{})).length, nn=(store.get('nnList',{})[y]||{}).pc;
+  const stat=(e,n,l)=>`<div class="advMsg" style="margin:0;text-align:center"><div style="font-size:26px">${e}</div><div style="font-size:22px;font-weight:800">${n}</div><small class="mut">${l}</small></div>`;
+  showModal(`<h3>📊 Your ${y} in review</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${stat('🎉',seen.length,'holidays celebrated')+stat('🗺️',places,'places explored')+stat('🍬',candy,'Halloween candies')+stat('📮',pc,'Santa postcards')+stat('🥚',eggs,'Easter eggs found')+stat('🏅',ach,'achievements')}</div>
+    ${nn!=null?`<p style="text-align:center;margin-top:10px">📜 Santa’s list: <b>${nn>=60?'NICE ✅':nn>=40?'on the edge ⚠️':'naughty ❌'}</b> (${nn}% nice)</p>`:''}
+    <b style="display:block;margin-top:10px">🏅 Holiday badges</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${seen.map(k=>HOL[k]?`<span class="advMsg" style="margin:0;padding:5px 8px;font-size:12px">${HOL[k].icon} ${esc(HOL[k].name)}</span>`:'').join('')||'<span class="mut">Open the app on a holiday to earn a badge!</span>'}</div>`);
+  try{ fx.celebrate(2500); }catch(e){} }
+function yearReviewLine(now){ if (!current) return ''; const lp=localParts(now,current); return (lp.month===11&&lp.day>=26)||(lp.month===0&&lp.day<=7)?`<small>📊 <a href="#" id="yirGo">See your year in review</a></small>`:''; }
+
+// ---------- 🌍 holiday challenge: guess the city from its holiday clue
+var HCH=[['Where do 1 million people watch a glittering ball drop at midnight on New Year’s Eve?',['New York','London','Tokyo'],[40.758,-73.986]],['Where do giant balloons float down the streets for the 100th time this Thanksgiving?',['New York','Chicago','Toronto'],[40.776,-73.976]],['In which city do sky lanterns light up the night for Diwali along the Ganges?',['Varanasi','Bangkok','Cairo'],[25.317,82.974]],
+  ['Where do people throw colored powder at each other during Holi in Krishna’s hometown?',['Mathura','Lima','Madrid'],[27.492,77.674]],['Which city holds the world’s biggest Oktoberfest?',['Munich','Vienna','Prague'],[48.131,11.549]],['Where do families build huge ofrendas and parade as skeletons for Día de los Muertos?',['Mexico City','Rio de Janeiro','Seville'],[19.433,-99.133]],
+  ['Which city is famous for Carnival with samba parades in the Sambadrome?',['Rio de Janeiro','Venice','Havana'],[-22.912,-43.197]],['Where can you see Sydney Harbour Bridge fireworks — the first big New Year’s show of the year?',['Sydney','Auckland','Honolulu'],[-33.852,151.211]],['Where is “Santa’s official hometown” on the Arctic Circle?',['Rovaniemi','Reykjavik','Oslo'],[66.503,25.729]],
+  ['Which city’s Chinese New Year parade is said to be the oldest in the US?',['San Francisco','Boston','Seattle'],[37.794,-122.407]],['Where do thousands of lanterns float into the sky during Yi Peng?',['Chiang Mai','Seoul','Manila'],[18.788,98.985]],['Which town is home to the Headless Horseman legend?',['Sleepy Hollow','Salem','Plymouth'],[41.086,-73.862]]];
+function openHolChallenge(){ let i=0, score=0; const Q=HCH.slice().sort(()=>Math.random()-.5).slice(0,6);
+  const show=()=>{ if (i>=Q.length){ const b=store.get('hchBest',0); if (score>b) store.set('hchBest',score); showModal(`<h3>🌍 Holiday challenge</h3><p style="font-size:22px;font-weight:800;text-align:center">${score}/${Q.length} ${score===Q.length?'🏆':'🎉'}</p><p class="mut" style="text-align:center">Best: ${Math.max(b,score)}/${Q.length}</p><button class="btn primary" id="hcA" style="display:block;margin:0 auto">Play again</button>`); $('hcA').onclick=openHolChallenge; if (score===Q.length) try{ fx.celebrate(3000); }catch(e){} return; }
+    const q=Q[i], order=[0,1,2].sort(()=>Math.random()-.5);
+    showModal(`<h3>🌍 Holiday challenge <small class="mut">${i+1}/${Q.length}</small></h3><p style="font-size:16px;font-weight:700">${q[0]}</p>${order.map(k=>`<button class="btn" data-hc="${k}" style="display:block;width:100%;text-align:left;margin-top:6px">${q[1][k]}</button>`).join('')}<p id="hcE"></p>`);
+    document.querySelectorAll('[data-hc]').forEach(b=>b.onclick=()=>{ const ok=+b.dataset.hc===0; if (ok) score++; document.querySelectorAll('[data-hc]').forEach(x=>{ x.disabled=true; if (+x.dataset.hc===0) x.style.outline='2px solid #3ddc97'; }); if (!ok) b.style.outline='2px solid #ff4d6d';
+      ctlG.minDistance=1.05; flyToLL(q[2][0],q[2][1],1.6); $('hcE').innerHTML=`${ok?'✅ Correct!':'❌ It’s '+q[1][0]+'.'} <button class="btn primary" id="hcN">Next</button>`; $('hcN').onclick=()=>{ i++; show(); }; }); };
+  show(); }
+
+// ---------- wiring
+var _lt12=layersTick; layersTick=function(now,M){ _lt12(now,M); trackTick(now); horsemanTick(now); postcardTick(now); weatherFunTick(now); };
+var _ll12=layerLines; layerLines=function(now){ let h=_ll12(now); if (!current) return h;
+  if (theme==='halloween') h+=`<small>🎃 <a href="#" id="shGo">Sleepy Hollow legend</a> · 👻 <a href="#" id="spGo">spooky story maker</a> · 🏚️ <a href="#" id="htGo">haunted places</a></small>`;
+  if (theme==='thanksgiving') h+=`<small>🍁 <a href="#" id="fgGo">Friendsgiving sign-up</a> · 🫙 <a href="#" id="jarGo">thankful jar</a></small>`;
+  else { const lp=localParts(now,current); if (lp.month===10) h+=`<small>🫙 <a href="#" id="jarGo">Thankful jar</a> — add today’s note</small>`; }
+  if (theme==='christmas') h+=`<small>📸 <a href="#" id="pbGo">Photo booth</a> · 📮 <a href="#" id="pcGo">Santa’s postcards</a> · 🎮 <a href="#" id="pkGo">club party kit</a></small>`;
+  return h+turkeyTrotLine(now)+weatherFunLines(now)+resolutionLine(now)+yearReviewLine(now); };
+document.addEventListener('click',e=>{ const a=e.target.closest('a,button'); if (!a) return;
+  const map={shGo:openSleepyHollow,spGo:openSpookyStory,htGo:openHauntedTour,fgGo:openFriendsgiving,jarGo:openThankfulJar,trotGo:openTrot,pbGo:openBooth,pcGo:openPostcards,pkGo:openPartyKit,resGo:openResolutions,yirGo:openYearReview};
+  if (map[a.id]){ e.preventDefault(); map[a.id](); } });
+var _om12=openMore; openMore=function(){ _om12(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
+  const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.appendChild(b); };
+  add('🌍','Holiday challenge','Guess the city from its holiday',openHolChallenge); add('📸','Photo booth','Holiday selfie with props',openBooth); add('📊','Year in review','Your year + holiday badges',openYearReview); add('🎯','Resolutions','Your goals for the year',openResolutions);
+  if (theme==='halloween'){ add('🎃','Sleepy Hollow','The Headless Horseman legend',openSleepyHollow); add('👻','Spooky story','Make a scary story',openSpookyStory); add('🏚️','Haunted places','Tour spooky spots',openHauntedTour); }
+  if (theme==='thanksgiving'){ add('🍁','Friendsgiving','Who’s bringing what',openFriendsgiving); add('🏃','Turkey Trot','Thanksgiving fun runs',openTrot); }
+  const lp=current?localParts(simNow(),current):null; if (theme==='thanksgiving' || (lp&&lp.month===10)) add('🫙','Thankful jar','One thankful note a day',openThankfulJar);
+  if (theme==='christmas'){ add('📮','Santa’s postcards','Collect them on Christmas Eve',openPostcards); add('🎮','Club party kit','Plan the holiday party',openPartyKit); } };
+if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {sdbg:()=>({status:santa.status,idx:santa.idx,on:santa.on,pc:PC.last}),openSleepyHollow,openSpookyStory,openHauntedTour,openFriendsgiving,openThankfulJar,openTrot,openBooth,openPostcards,openPartyKit,openResolutions,openYearReview,openHolChallenge});
 
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS,SET,layerNote,noteFor};
