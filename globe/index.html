@@ -5127,7 +5127,7 @@ function openPlanner(tab){ const PL=Object.assign({guests:8,kids:2,veg:0,leftove
         +`<br>👍 Tell the host what you’re bringing so there aren’t three mac and cheeses 😄`; };
     ['plP','plA','plD'].forEach(id=>$(id).oninput=calc);
     $('plB').querySelectorAll('[data-bk]').forEach(b=>b.onclick=()=>{ const k=b.dataset.bk; PL.bring=PL.bring.includes(k)?PL.bring.filter(x=>x!==k):[...PL.bring,k]; b.classList.toggle('primary'); calc(); });
-    if ($('plUseTrip')) $('plUseTrip').onclick=e=>{ e.preventDefault(); const i=findPlace(trip.to); if (i<0||!current) return; const km=gcDist(current.lat,current.lon,P.lat[i],P.lon[i]); $('plD').value=Math.round(km*1.2/105*60); calc(); };
+    if ($('plUseTrip')) $('plUseTrip').onclick=e=>{ e.preventDefault(); const i=findPlace(trip.to); if (i<0||!current) return; const km=gcDist(current.lat,current.lon,P.lat[i],P.lon[i]); $('plD').value=Math.round(roadEstimate(km).h*60); calc(); };
     calc(); };
   const show=()=>{ $('plT').querySelectorAll('button').forEach(q=>q.classList.toggle('on',q.dataset.v===PL.tab)); (PL.tab==='bring'?bring:host)(); };
   $('plT').querySelectorAll('button').forEach(b=>b.onclick=()=>{ PL.tab=b.dataset.v; store.set('planner',PL); show(); }); show(); }
@@ -5151,18 +5151,41 @@ function openTrivia(){ let i=0, score=0; const Q=TG_TRIVIA.slice().sort(()=>Math
 
 // ---------- 🚗 Thanksgiving travel check
 function findPlace(q){ const k=fold(q); if (!k || !P.ready) return -1; let best=-1, bp=-1; for (let i=0;i<P.name.length;i++){ const key=P.key[i]; if (key===k || key.startsWith(k)){ const pop=(P.pop[i]||0)*(key===k?10:1); if (pop>bp){ bp=pop; best=i; } } } return best; }
-async function openTravel(){ const T=store.get('trip',{to:''});
-  showModal(`<h3>🚗 Thanksgiving travel check</h3><p class="mut">Where are you going for Thanksgiving?</p><div style="display:flex;gap:6px"><input id="trTo" placeholder="Town or city" value="${esc(T.to)}" style="flex:1"><button class="btn primary" id="trGo">Check</button></div><div id="trOut"></div>`);
-  const go=async()=>{ const q=$('trTo').value.trim(); if (!q || !current) return; const i=findPlace(q); if (i<0){ $('trOut').innerHTML='<p class="mut">Couldn’t find that place — try a bigger town nearby.</p>'; return; } store.set('trip',{to:q});
-    const km=gcDist(current.lat,current.lon,P.lat[i],P.lon[i]), us=useUS(), d=us?`${Math.round(km*.6214).toLocaleString()} mi`:`${Math.round(km).toLocaleString()} km`, drive=km*1.2/105, fly=km/800+2.5;
-    const hm=h=>`${Math.floor(h)} h ${Math.round(h%1*60)} min`, y=yearOf(simNow()), tg=nthWeekday(y,10,4,4);
-    let html=`<div class="advMsg"><b>${esc(placeLabel(i).join(', '))}</b><br>📏 ${d} away (straight line)<br>${km<1500?`🚗 Driving: about <b>${hm(drive)}</b> (more with traffic!)<br>`:''}${km>250?`✈️ Flying: about <b>${hm(fly)}</b> with airport time<br>`:''}⚠️ Wednesday before Thanksgiving is one of the busiest travel days of the year — leave early, and expect the Sunday after to be busy too.</div>`;
-    $('trOut').innerHTML=html+'<p class="mut" id="trWx">Checking the weather there…</p>';
+function roadEstimate(km){ const road=km*(km<100?1.4:km<500?1.28:1.2), kmh=km<30?40:km<100?60:km<300?80:km<800?95:100; return {km:road, h:road/kmh}; }
+// Thanksgiving traffic: how much slower than normal, by day (0 = Wed before … 4 = Sunday after) and hour
+function tgTraffic(dayOff,hour){ if (dayOff===-1) return hour>=14&&hour<20?1.7:hour>=6&&hour<10?1.35:1.15;      // Wednesday: the big one
+  if (dayOff===0) return hour<10?1.0:hour<14?1.15:1.05;                                                        // Thanksgiving morning is usually quiet
+  if (dayOff===1) return 1.1; if (dayOff===3) return hour>=11&&hour<20?1.6:1.2; return 1.1; }
+async function openTravel(){ const T=Object.assign({to:'',day:-1,time:'09:00'},store.get('trip',{}));
+  showModal(`<h3>🚗 Thanksgiving travel check</h3><p class="mut">Where are you going, and when are you leaving?</p>
+    <div style="display:flex;gap:6px"><input id="trTo" placeholder="Town or city" value="${esc(T.to)}" style="flex:1"><button class="btn primary" id="trGo">Check</button></div>
+    <div class="seg" id="trDay" style="margin-top:8px;flex-wrap:wrap">${[[-1,'Wed'],[0,'🦃 Thu'],[1,'Fri'],[2,'Sat'],[3,'Sun']].map(([v,l])=>`<button data-v="${v}" class="${T.day===v?'on':''}">${l}</button>`).join('')}</div>
+    <label class="setRow"><b>Leaving at</b><input type="time" id="trTime" value="${T.time}"></label><div id="trOut"></div>`);
+  let last=null;
+  const go=async()=>{ const q=$('trTo').value.trim(); if (!q || !current) return; const i=findPlace(q); if (i<0){ $('trOut').innerHTML='<p class="mut">Couldn’t find that place — try a bigger town nearby.</p>'; return; }
+    T.to=q; T.time=$('trTime').value||'09:00'; store.set('trip',T);
+    const km=gcDist(current.lat,current.lon,P.lat[i],P.lon[i]), us=useUS(), dist=k=>us?`${Math.round(k*.6214).toLocaleString()} mi`:`${Math.round(k).toLocaleString()} km`;
+    const y=yearOf(simNow()), tg=nthWeekday(y,10,4,4), dayDate=new Date(Date.UTC(y,10,tg+T.day)), dayTxt=dayDate.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric',timeZone:'UTC'});
+    const hm=h=>{ const m=Math.round(h*60); return m<60?`${m} min`:`${Math.floor(m/60)} h ${m%60} min`; };
+    const [th,tm]=T.time.split(':').map(Number), f=m=>{ m=((m%1440)+1440)%1440; const h=Math.floor(m/60), mm=String(m%60).padStart(2,'0'); return h12?`${(h%12)||12}:${mm} ${h<12?'AM':'PM'}`:`${String(h).padStart(2,'0')}:${mm}`; };
+    const render=(road,src)=>{ const mult=tgTraffic(T.day,th), h=road.h*mult, arrive=th*60+tm+Math.round(h*60);
+      $('trRes').innerHTML=`<b>${esc(placeLabel(i).join(', '))}</b><br>📏 ${dist(km)} away in a straight line · about <b>${dist(road.km)}</b> by road<br>
+        🚗 Normally about <b>${hm(road.h)}</b>${src?` <small class="mut">(${src})</small>`:''}<br>
+        🚦 Leaving <b>${dayTxt} at ${f(th*60+tm)}</b>: expect about <b>${hm(h)}</b>${mult>1.05?` — ${mult>=1.5?'heavy':'some'} holiday traffic`:' — usually light then 👍'}<br>
+        🏁 You’d arrive around <b>${f(arrive)}</b>${arrive>=1440?' (the next day)':''}
+        ${T.day===-1&&th>=14&&th<20?'<br>💡 Wednesday afternoon is the worst time to drive — leaving before 7 AM or on Thanksgiving morning is usually much faster.':''}
+        ${T.day===0&&th<10?'<br>💡 Early Thanksgiving morning is one of the easiest times to drive — nice pick!':''}
+        ${km>300?`<br>✈️ Flying would take about <b>${hm(km/800+2.5)}</b> with airport time`:''}`; };
+    $('trOut').innerHTML=`<div class="advMsg" id="trRes"></div><p class="mut" id="trWx">Checking the weather there…</p>`;
+    let road=roadEstimate(km), src='estimate'; render(road,src);
+    try{ const j=await getJSON(`https://router.project-osrm.org/route/v1/driving/${current.lon.toFixed(5)},${current.lat.toFixed(5)};${P.lon[i].toFixed(5)},${P.lat[i].toFixed(5)}?overview=false`);
+      const r=j.routes&&j.routes[0]; if (r){ road={km:r.distance/1000,h:r.duration/3600*1.12}; src='real roads, OpenStreetMap'; render(road,src); } }catch(e){}
     try{ const j=await getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${P.lat[i].toFixed(3)}&longitude=${P.lon[i].toFixed(3)}&daily=weather_code,temperature_2m_max,temperature_2m_min,snowfall_sum&timezone=auto&forecast_days=16`);
-      const k=j.daily.time.findIndex(t=>t===`${y}-11-${String(tg).padStart(2,'0')}`); if (k<0) throw 0; const w=wmo(j.daily.weather_code[k]);
-      $('trWx').innerHTML=`🌤️ Thanksgiving there: ${w[0]} ${w[1]}, high ${tC(j.daily.temperature_2m_max[k])} / low ${tC(j.daily.temperature_2m_min[k])}${j.daily.snowfall_sum[k]>0.5?' · ❄️ snow possible — drive carefully!':''}`; }
-    catch(e){ $('trWx').textContent='The forecast there shows up on the GitHub site once Thanksgiving is within 16 days.'; } };
-  $('trGo').onclick=go; $('trTo').onkeydown=e=>{ if (e.key==='Enter') go(); }; if (T.to) go(); }
+      const want=dayDate.toISOString().slice(0,10), k=j.daily.time.findIndex(t=>t===want); if (k<0) throw 0; const w=wmo(j.daily.weather_code[k]);
+      $('trWx').innerHTML=`🌤️ ${dayTxt} there: ${w[0]} ${w[1]}, high ${tC(j.daily.temperature_2m_max[k])} / low ${tC(j.daily.temperature_2m_min[k])}${j.daily.snowfall_sum[k]>0.5?' · ❄️ snow possible — drive carefully!':''}`; }
+    catch(e){ $('trWx').textContent='The forecast shows up on the GitHub site once the day is within 16 days.'; } };
+  $('trDay').querySelectorAll('button').forEach(b=>b.onclick=()=>{ T.day=+b.dataset.v; $('trDay').querySelectorAll('button').forEach(q=>q.classList.toggle('on',q===b)); go(); });
+  $('trTime').onchange=go; $('trGo').onclick=go; $('trTo').onkeydown=e=>{ if (e.key==='Enter') go(); }; if (T.to) go(); }
 
 // ---------- 🥪 leftover sandwich stacker
 function openSandwich(){ showModal(`<h3>🥪 Leftover sandwich stacker</h3><p class="mut">Tap to drop each layer — line it up with the one below! Overhanging bits fall off.</p><canvas id="swC" width="360" height="460" style="width:100%;max-width:360px;display:block;margin:0 auto;border-radius:12px;background:#2a1a10;touch-action:manipulation"></canvas><p id="swS" style="text-align:center;font-weight:700"></p>`);
