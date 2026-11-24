@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>Where & When — Live Globe</title>
 <link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0b1020">
 <link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Where & When">
@@ -23,7 +23,7 @@
   .glass{background:var(--panel);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 10px 40px rgba(0,0,0,.45)}
 
   /* top bar */
-  #top{position:fixed;left:12px;right:12px;top:12px;display:flex;flex-direction:column;gap:8px;z-index:5;max-width:460px}
+  #top{position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top));display:flex;flex-direction:column;gap:8px;z-index:5;max-width:460px}
   #searchWrap{position:relative}
   #search{width:100%;padding:13px 44px 13px 42px;border-radius:14px;border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);outline:none;font-size:16px}
   #search:focus{border-color:rgba(111,182,255,.6);box-shadow:0 0 0 3px rgba(111,182,255,.15)}
@@ -309,6 +309,12 @@
   .lbl.season small{display:block;color:var(--muted);font-weight:500}
   .lbl.sun{background:none;border:0;color:#ffe3a3;font-size:13px}
 
+  /* iPhone app / home-screen app: keep everything clear of the status bar, notch and home bar */
+  #xModal{padding-top:calc(14px + env(safe-area-inset-top));padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+  #xModal .xbox{max-height:calc(100vh - 28px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+  #card{bottom:calc(12px + env(safe-area-inset-bottom))}
+  @media (min-width:721px){ #top{top:calc(20px + env(safe-area-inset-top))} #card{bottom:calc(20px + env(safe-area-inset-bottom))} }
+  #toast{margin-top:env(safe-area-inset-top)}
   #toast{position:fixed;left:50%;top:calc(12px + 110px);transform:translateX(-50%) translateY(-8px);opacity:0;transition:.3s;z-index:9;max-width:min(440px,calc(100vw - 24px));padding:12px 14px;font-size:13.5px;line-height:1.4;pointer-events:none}
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
@@ -2765,7 +2771,7 @@ function layout(){
         else { sc.classList.add('compact'); scH=sc.getBoundingClientRect().height; } } }
     $('card').style.maxHeight=Math.max(110, avail-(scH?scH+8+170:0))+'px'; }
   const card=$('card').getBoundingClientRect(); let stack=camMode?0:card.height;
-  if (sc && sc.classList.contains('show')){ if (W<=720){ sc.style.bottom=(camMode?12:card.height+12+8)+'px'; stack+=sc.getBoundingClientRect().height+8; } else sc.style.bottom=''; }
+  if (sc && sc.classList.contains('show')){ if (W<=720){ sc.style.bottom=(camMode?12+(H-card.bottom-12):(H-card.bottom)+card.height+8)+'px'; stack+=sc.getBoundingClientRect().height+8; } else sc.style.bottom=''; }
   if (W<=720){ oy = Math.round((stack - top.bottom)/2 + 6); }      // centre the globe in the space between bar and card
   else if (W>=900){ ox = -Math.round(Math.min(card.width+20, W*.32)/2); } // nudge right of the side card
   for (const c of [camG,camO,camS]){ c.aspect=W/H; c.setViewOffset(W,H,ox,oy,W,H); c.updateProjectionMatrix(); }
