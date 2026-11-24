@@ -1,7 +1,9 @@
 #!/bin/bash
-# Run once on the Mac, after `npx cap add ios`. Adds the permission messages Apple requires
-# (location for "My Location", camera for the photo booth) and sets the app to dark/portrait-friendly defaults.
+# Run on the Mac after `npx cap add ios` (safe to run again any time).
+# 1) adds the permission messages Apple requires (location, camera, photos)
+# 2) raises the minimum iOS version to 15.0 — newer Xcode versions refuse to build for iOS 14
 set -e
+cd "$(dirname "$0")/.."
 PLIST="ios/App/App/Info.plist"
 [ -f "$PLIST" ] || { echo "Run 'npx cap add ios' first"; exit 1; }
 PB=/usr/libexec/PlistBuddy
@@ -12,3 +14,13 @@ add NSPhotoLibraryAddUsageDescription string "Lets you save your holiday cards a
 add ITSAppUsesNonExemptEncryption bool false
 add UIUserInterfaceStyle string Dark
 echo "✅ Info.plist updated"
+
+# minimum iOS 15.0 for the app…
+sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 1[0-4]\.[0-9];/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g' ios/App/App.xcodeproj/project.pbxproj
+# …and for every plugin (CocoaPods)
+if [ -f ios/App/Podfile ]; then
+  sed -i '' "s/platform :ios, '1[0-4]\.[0-9]'/platform :ios, '15.0'/" ios/App/Podfile
+  grep -q "WW_MIN_IOS" ios/App/Podfile || perl -0pi -e "s/post_install do \|installer\|\n/post_install do |installer|\n  # WW_MIN_IOS\n  installer.pods_project.targets.each { |t| t.build_configurations.each { |c| c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0' } }\n/" ios/App/Podfile
+  (cd ios/App && pod install)
+fi
+echo "✅ Minimum iOS set to 15.0"
