@@ -2883,7 +2883,11 @@ function flyToLL(lat,lon,d){ if (mode!=='globe') setMode('globe'); if (santaCam)
 
 // ---- 🎈 Thanksgiving Day parade over New York City (US Thanksgiving, 9 AM – noon Eastern)
 var parade=null;
-function paradeState(now){ const p=partsIn('America/New_York',now); if (p.month!==10 || p.day!==nthWeekday(p.year,10,4,4)) return {day:false};
+// 2026: the 100th Macy's parade was moved from Thanksgiving (Thu Nov 26) to Sat Nov 28 because of a nor'easter
+var MACY_MOVE={2026:2};
+function macyDay(y){ return nthWeekday(y,10,4,4)+(MACY_MOVE[y]||0); }
+function macyMovedToday(now){ const p=partsIn('America/New_York',now); return !!MACY_MOVE[p.year] && p.month===10 && p.day===macyDay(p.year); }
+function paradeState(now){ const p=partsIn('America/New_York',now); if (p.month!==10 || p.day!==macyDay(p.year)) return {day:false};
   const h=p.hour+p.minute/60; return {day:true, on:h>=8.5&&h<12, before:h<8.5, after:h>=12}; }
 function buildParade(){
   const M_=(c,o={})=>new THREE.MeshStandardMaterial({color:c,roughness:o.r??.45,metalness:0,emissive:o.e??0,emissiveIntensity:o.ei??1});
@@ -2920,7 +2924,7 @@ function buildParade(){
   parade={root,balloons}; }
 var _pa=new THREE.Vector3(), _pb=new THREE.Vector3(), _pu=new THREE.Vector3(), _pf=new THREE.Vector3(), _pr=new THREE.Vector3();
 function updateParade(t, now){
-  const st = theme==='thanksgiving' && mode==='globe' ? paradeState(now) : {day:false};
+  const st = (theme==='thanksgiving'||macyMovedToday(now)) && mode==='globe' ? paradeState(now) : {day:false};
   if (!st.on){ if (parade){ parade.root.visible=false; if (ctlG.minDistance<1.25) ctlG.minDistance=1.25; } return; }
   if (!parade) buildParade(); parade.root.visible=true;
   // route: down Central Park West to Herald Square, stretched so the giant balloons have room
@@ -3954,10 +3958,10 @@ var PARADES=[ // city, lat, lon, time zone, start hour, end hour (≈), what it 
   ['Houston',29.76,-95.37,'America/Chicago',9,11.5,'through downtown Houston — floats, balloons and marching bands, free sidewalk viewing',0,'H-E-B Thanksgiving Day Parade','77th',''],
   ['Charlotte',35.227,-80.843,'America/New_York',17.5,20,'an evening parade along Tryon Street in Uptown with lit-up floats, balloons and bands',-1,'Novant Health Thanksgiving Eve Parade','80th',''],
   ['Plymouth, MA',41.958,-70.662,'America/New_York',10,13,'from Plymouth Rock along Water, Main and Court Streets — the only historically accurate chronological parade, 17th to 21st century, themed on America’s 250th',-5,'America’s Hometown Thanksgiving Celebration','31st','WCVB 5 / WMUR · rebroadcast Thanksgiving 9–11 AM']];
-function paradeDay(p,y){ const d=nthWeekday(y,10,4,4)+p[7]; return d; }
+function paradeDay(p,y){ return p[0]==='New York City' ? macyDay(y) : nthWeekday(y,10,4,4)+p[7]; }
 function paradeOn(p,now){ const t=partsIn(p[3],now); if (t.month!==10 || t.day!==paradeDay(p,t.year)) return 0; const h=t.hour+t.minute/60; return h>=p[4]&&h<p[5] ? 2 : h<p[4] ? 1 : 3; }
 updateParade=function(t, now){
-  const on = theme==='thanksgiving' && mode==='globe' ? PARADES.map(p=>paradeOn(p,now)===2) : PARADES.map(()=>false);
+  const on = (theme==='thanksgiving'||macyMovedToday(now)) && mode==='globe' ? PARADES.map(p=>paradeOn(p,now)===2) : PARADES.map(()=>false);
   if (!on.some(Boolean)){ if (parade){ parade.root.visible=false; if (ctlG.minDistance<1.25) ctlG.minDistance=1.25; } return; }
   if (!parade) buildParade(); parade.root.visible=true;
   if (!parade.extra){ parade.extra=PARADES.map((p,i)=> i===0 ? parade.balloons : [0,1,2].map(k=>{ const pool=parade.balloons.filter(x=>!x.gold100 || /^100th/.test(p[9])), src=pool[(i+k)%pool.length]; const b=src.b.clone(true); parade.root.add(b); return {b, body:b.children[0], ph:k*1.7+i}; })); }
@@ -3969,7 +3973,7 @@ updateParade=function(t, now){
       x.body.rotation.set(-Math.PI/2+Math.sin(t/1100+x.ph)*.12, 0, Math.sin(t/900+x.ph)*.08); x.body.position.y=Math.sin(t/1300+x.ph)*.25; }); }); };
 watchParade=function(i){ i=i||0; const p=PARADES[i]; achieve('parade'); ctlG.minDistance=1.03; flyToLL(p[1]+.2,p[2]-.05,1.12); };
 function paradeYT(p,y){ return 'https://www.youtube.com/results?search_query='+encodeURIComponent(`${p[8].replace(/’/g,"'")} ${y} live`); }
-function paradeLines(now){ if (theme!=='thanksgiving' || !current || current.cc!=='US') return '';
+function paradeLines(now){ if ((theme!=='thanksgiving' && !macyMovedToday(now)) || !current || current.cc!=='US') return '';
   const out=[], later=[];
   PARADES.forEach((p,i)=>{ const t=partsIn(p[3],now); if (t.month!==10 || t.day!==paradeDay(p,t.year)) return; const h=t.hour+t.minute/60+t.second/3600;
     const yt=`<a class="ytBtn" href="${paradeYT(p,t.year)}" target="_blank" rel="noopener">▶️ Watch on YouTube</a>`;
@@ -4067,16 +4071,16 @@ var _ll=layerLines; layerLines=function(now){ return paradeLines(now)+totLine(no
 var _om2=openMore; openMore=function(){ _om2(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
   const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.prepend(b); };
   add('🏅','Achievements',`${ACH.filter(a=>achGot[a[0]]).length}/${ACH.length} unlocked`,openAchievements); add('🔭','Tonight’s sky','Planets and stars to look for',openSky);
-  if (theme==='thanksgiving') add('🎈','Parade guide','Thanksgiving parades across the US',openParadeGuide); };
+  if (theme==='thanksgiving'||macyMovedToday(simNow())) add('🎈','Parade guide','Thanksgiving parades across the US',openParadeGuide); };
 
 
 // ---------- 🎈 parade extras: the pin steps aside, tap a balloon to watch the real thing, and the 100th parade in New York
 var PIN_HIDE=false;
 var _up2=updateParade; updateParade=function(t,now){ _up2(t,now);
-  let near=false; if (current && theme==='thanksgiving' && !GAME.on) for (const p of PARADES) if (paradeOn(p,now)===2 && gcDist(current.lat,current.lon,p[1],p[2])<260) near=true;
+  let near=false; if (current && (theme==='thanksgiving'||macyMovedToday(now)) && !GAME.on) for (const p of PARADES) if (paradeOn(p,now)===2 && gcDist(current.lat,current.lon,p[1],p[2])<260) near=true;
   if (near!==PIN_HIDE){ PIN_HIDE=near; G.pin.visible=!near && !!current; } if (near && G.pin.visible) G.pin.visible=false; };
 const BALLOON_YT=['Tom Turkey balloon','star balloon','gift balloon','snowman balloon','pumpkin balloon'];
-function paradeAt(lat,lon,now){ if (theme!=='thanksgiving') return -1; let best=-1, bd=200; PARADES.forEach((p,i)=>{ if (paradeOn(p,now)!==2) return; const d=gcDist(lat,lon,p[1],p[2]); if (d<bd){ bd=d; best=i; } }); return best; }
+function paradeAt(lat,lon,now){ if (theme!=='thanksgiving' && !macyMovedToday(now)) return -1; let best=-1, bd=200; PARADES.forEach((p,i)=>{ if (paradeOn(p,now)!==2) return; const d=gcDist(lat,lon,p[1],p[2]); if (d<bd){ bd=d; best=i; } }); return best; }
 function openParadeWatch(i){ const p=PARADES[i], nyc=i===0, y=partsIn(p[3],simNow()).year;
   const q=encodeURIComponent(`${p[8].replace(/’/g,"'")} ${y}${nyc?' live':''}`);
   showModal(`<h3>🎈 ${y===2026?'The '+p[9].split(' ')[0]+' ':''}${esc(p[8])}</h3>
@@ -4087,18 +4091,19 @@ function openParadeWatch(i){ const p=PARADES[i], nyc=i===0, y=partsIn(p[3],simNo
 // the centennial: a gold “100” balloon leads New York’s parade, a countdown, fun facts and confetti at 8:30 AM ET
 var centFired=false;
 function is100(now){ const t=partsIn('America/New_York',now); return t.year===2026; }
-function centennialLine(now){ if (!current || current.cc!=='US' || !is100(now)) return ''; const t=partsIn('America/New_York',now), d=nthWeekday(2026,10,4,4);
-  if (t.month!==10 || t.day>d || t.day<d-7) return ''; const start=Date.UTC(2026,10,d,13,30), ms=start-now;
-  const infl = t.day===d-1 ? (t.hour>=13&&t.hour<18 ? ' · 🎈 Balloon inflation is happening now near the Museum of Natural History (until 6 PM ET)!' : t.hour<13 ? ' · 🎈 Balloon inflation today 1–6 PM ET' : '') : '';
-  if (ms>0) return `<small>🎉 The 100th Macy’s Thanksgiving Day Parade starts in <span class="cd">${ms>86400000?Math.floor(ms/86400000)+'d ':''}${fmtCountdown(ms%86400000)}</span>${infl} · <a href="#" id="cent100">100 years of balloons</a></small>`;
+function centennialLine(now){ if (!current || current.cc!=='US' || !is100(now)) return ''; const t=partsIn('America/New_York',now), d=macyDay(2026), moved=MACY_MOVE[2026]?' (moved to Saturday because of the storm)':'';
+  if (t.month!==10 || t.day>d || t.day<d-9) return ''; const start=Date.UTC(2026,10,d,13,30), ms=start-now;
+  const infl = !MACY_MOVE[2026] && t.day===d-1 ? (t.hour>=13&&t.hour<18 ? ' · 🎈 Balloon inflation is happening now near the Museum of Natural History (until 6 PM ET)!' : t.hour<13 ? ' · 🎈 Balloon inflation today 1–6 PM ET' : '') : '';
+  if (ms>0) return `<small>🎉 The 100th Macy’s Thanksgiving Day Parade${moved} starts in <span class="cd">${ms>86400000?Math.floor(ms/86400000)+'d ':''}${fmtCountdown(ms%86400000)}</span>${infl} · <a href="#" id="cent100">100 years of balloons</a></small>`;
   if (ms>-3.5*3600000){ if (!centFired && ms>-120000){ centFired=true; fx.celebrate(20000); toast('🎉 The 100th Macy’s Thanksgiving Day Parade is starting in New York City!'); } return `<small>🎉 The 100th parade is marching now! <a href="#" id="cent100">Fun facts</a></small>`; }
   return ''; }
 function open100(){ showModal(`<h3>🎉 100 parades (1924–2026)</h3>
-  <div class="advMsg">🗓️ The 100th Macy’s Thanksgiving Day Parade is on <b>Thursday, November 26, 2026</b>, from 8:30 AM to about noon (Eastern).</div>
+  <div class="advMsg">🗓️ The 100th Macy’s Thanksgiving Day Parade is now on <b>Saturday, November 28, 2026</b>, stepping off at 8:30 AM (Eastern). It was moved from Thanksgiving Day because of a powerful storm with high winds — the first time it’s ever been moved to another day.</div>
+  <div class="advMsg" style="margin-top:6px">📺 On Thanksgiving morning NBC is showing last year’s (2025) parade at 8:30 AM instead.</div>
   <div class="advMsg" style="margin-top:6px">🗽 It marches about <b>2.5 miles</b>, from the Upper West Side down to Herald Square at 34th Street.</div>
   <div class="advMsg" style="margin-top:6px">🎈 This year: <b>26 character balloons</b>, <b>28 floats</b> and nearly two dozen performances — including new balloons and a refreshed Tom Turkey.</div>
   <div class="advMsg" style="margin-top:6px">🕰️ The first one was in <b>1924</b>. The giant balloons arrived a few years later, inspired by puppeteer Tony Sarg.</div>
-  <div class="advMsg" style="margin-top:6px">🎈 The balloons are blown up the day before — Wednesday, Nov 25, 1–6 PM — near the American Museum of Natural History.</div>
+  <div class="advMsg" style="margin-top:6px">🎈 The balloons are usually blown up the day before near the American Museum of Natural History. This year they were deflated on Wednesday night because of the storm.</div>
   <div class="advMsg" style="margin-top:6px">📺 Watch live on NBC and Peacock, or find clips on YouTube. Detroit’s parade turns 100 this year too!</div>
   <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn primary" id="c100w">▶️ Watch on YouTube</button><button class="btn" id="c100g">🎈 See the balloons on the globe</button></div>`);
   $('c100w').onclick=()=>window.open('https://www.youtube.com/results?search_query='+encodeURIComponent("100th Macy's Thanksgiving Day Parade 2026"),'_blank','noopener');
@@ -4712,7 +4717,7 @@ function openHopper(){ const L=holidaysToday(simNow());
   document.querySelectorAll('[data-hop]').forEach(b=>b.onclick=()=>{ const p=HOP_PLACES.find(q=>q[0]===b.dataset.hop); closeModal(); ctlG.minDistance=1.05; flyToLL(p[2],p[3],1.6); toast(`✈️ Hopping to ${p[1]}`); }); }
 
 // ---------- 🎈 Thanksgiving parades: one compact line when several are on at once
-var _pl9=paradeLines; paradeLines=function(now){ if (theme!=='thanksgiving' || !current || current.cc!=='US') return '';
+var _pl9=paradeLines; paradeLines=function(now){ if ((theme!=='thanksgiving' && !macyMovedToday(now)) || !current || current.cc!=='US') return '';
   const st=PARADES.map((p,i)=>{ const t=partsIn(p[3],now); if (t.month!==10 || t.day!==paradeDay(p,t.year)) return null; const h=t.hour+t.minute/60+t.second/3600;
     return h>=p[4]&&h<p[5]?'live':h>=p[4]-1&&h<p[4]?'soon':h>=p[5]&&h<p[5]+.5?'ended':h<p[4]-1?'later':null; });
   const n=s=>st.filter(x=>x===s).length, active=n('live')+n('soon')+n('ended'); if (active<=1) return _pl9(now);
@@ -6124,14 +6129,14 @@ function openPicks(){ const y=yr(), K=store.get('paradePicks',{}), me=K[y]||{p:[
   const save=()=>{ K[y]=me; store.set('paradePicks',K); openPicks(); };
   document.querySelectorAll('[data-pp]').forEach(b=>b.onclick=()=>{ const v=b.dataset.pp; if (me.p.includes(v)){ me.p=me.p.filter(x=>x!==v); me.seen=me.seen.filter(x=>x!==v); } else if (me.p.length<5) me.p.push(v); else { toast('You already picked 5 — unpick one first.'); return; } save(); });
   document.querySelectorAll('[data-ps]').forEach(b=>b.onclick=()=>{ const v=b.dataset.ps; me.seen=me.seen.includes(v)?me.seen.filter(x=>x!==v):[...me.seen,v]; if (!me.seen.includes(v)) {} else try{ sfx('ding'); }catch(e){} save(); }); }
-async function openBalloonWind(){ const tg=nthWeekday(yr(),10,4,4), y=yr(), ds=`${y}-11-${String(tg).padStart(2,'0')}`;
+async function openBalloonWind(){ const tg=macyDay(yr()), y=yr(), ds=`${y}-11-${String(tg).padStart(2,'0')}`;
   showModal(`<h3>🌬️ Balloon wind check</h3><p class="mut">New York City rules: the giant balloons can’t fly high if winds are over <b>23 mph</b> or gusts are over <b>34 mph</b>. Handlers fly them low — or keep them grounded.</p><div id="bwOut" class="advMsg">Checking the forecast for Central Park West…</div>`);
   try{ const j=await getJSON(`https://api.open-meteo.com/v1/forecast?latitude=40.77&longitude=-73.98&hourly=wind_speed_10m,wind_gusts_10m,temperature_2m,weather_code&wind_speed_unit=mph&timezone=America%2FNew_York&forecast_days=16`); const H=j.hourly;
     const rows=[8,9,10,11,12].map(h=>H.time.indexOf(`${ds}T${String(h).padStart(2,'0')}:00`)).filter(i=>i>=0);
     if (!rows.length){ $('bwOut').innerHTML='The forecast for parade day isn’t out yet — check back closer to Thanksgiving!'; return; }
     const mx=Math.max(...rows.map(i=>H.wind_speed_10m[i])), gu=Math.max(...rows.map(i=>H.wind_gusts_10m[i])), ok=mx<=23&&gu<=34, close=!ok?false:(mx>17||gu>28);
     $('bwOut').innerHTML=`<div style="font-size:22px;font-weight:800">${ok?(close?'🟡 Probably flying — but breezy!':'🟢 Balloons should fly high!'):'🔴 Too windy — balloons may fly low or stay grounded'}</div>
-      ${rows.map(i=>`<div class="gBoardR" style="padding:3px 0"><span>${H.time[i].slice(11)}</span><span>💨 ${Math.round(H.wind_speed_10m[i])} mph · gusts ${Math.round(H.wind_gusts_10m[i])} · ${wmo(H.weather_code[i])[0]} ${tC(H.temperature_2m[i])}</span></div>`).join('')}<small class="mut">Forecast for parade morning (Eastern time). The final call is made by the NYPD the morning of the parade.</small>`; }
+      ${rows.map(i=>`<div class="gBoardR" style="padding:3px 0"><span>${H.time[i].slice(11)}</span><span>💨 ${Math.round(H.wind_speed_10m[i])} mph · gusts ${Math.round(H.wind_gusts_10m[i])} · ${wmo(H.weather_code[i])[0]} ${tC(H.temperature_2m[i])}</span></div>`).join('')}<small class="mut">Forecast for parade morning (Eastern time)${MACY_MOVE[y]?' — Saturday, Nov 28 this year':''}. The final call is made by the NYPD the morning of the parade.</small>`; }
   catch(e){ $('bwOut').textContent='The live wind forecast works on the GitHub site.'; } }
 
 // ---------- 🍗 carving countdown, 🪑 seating chart, 🍽️ kids' table games
@@ -6210,7 +6215,8 @@ var _tt16=totTap; totTap=function(lat,lon,now){ return _tt16(lat,lon,now) || tre
 var _lt16=layersTick; layersTick=function(now,M){ _lt16(now,M); santaWarnTick(now); radioTick(now); treesTick(now); };
 var _ll16=layerLines; layerLines=function(now){ let h=_ll16(now); if (!current) return h;
   if (theme==='halloween') h+=spookyLine(now)+`<small>🍬 <a href="#" id="clGo">Candy log</a> · 🏠 <a href="#" id="bsGo">best streets</a></small>`;
-  if (theme==='thanksgiving') h+=carveLine(now)+`<small>🎈 <a href="#" id="bgGo">Parade bingo</a> · 🔮 <a href="#" id="ppGo">guess the balloons</a> · 🌬️ <a href="#" id="bwGo">balloon wind check</a></small><small>🪑 <a href="#" id="stGo">Seating chart</a> · 🍽️ <a href="#" id="ktGo">kids’ table games</a> · 🍗 <a href="#" id="carveSet2">carving countdown</a></small>`;
+  if (theme==='thanksgiving'||macyMovedToday(now)) h+=`<small>🎈 <a href="#" id="bgGo">Parade bingo</a> · 🔮 <a href="#" id="ppGo">guess the balloons</a> · 🌬️ <a href="#" id="bwGo">balloon wind check</a></small>`;
+  if (theme==='thanksgiving') h+=carveLine(now)+`<small>🪑 <a href="#" id="stGo">Seating chart</a> · 🍽️ <a href="#" id="ktGo">kids’ table games</a> · 🍗 <a href="#" id="carveSet2">carving countdown</a></small>`;
   if (theme==='christmas') h+=myStopLine(now)+(typeof santa!=='undefined'&&santa.on?`<small class="pLive">📻 <a href="#" id="rdGo">Sleigh radio — LIVE</a></small>`:'');
   if (hanukkahNight(now)) h+=`<small>🕎 <a href="#" id="drGo">Play dreidel</a></small>`;
   if (theme==='valentines') h+=`<small>💝 <a href="#" id="vlGo">Make a valentine</a></small>`;
@@ -6221,7 +6227,8 @@ document.addEventListener('click',e=>{ const a=e.target.closest('a,button'); if 
 var _om16=openMore; openMore=function(){ _om16(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
   const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.appendChild(b); };
   if (theme==='halloween'){ add('🍬','Candy log','Count & trade',openCandyLog); add('🏠','Best streets','Save & share',openBestStreets); }
-  if (theme==='thanksgiving'){ add('🎈','Parade bingo','Mark what you see',openBingo); add('🔮','Guess the balloons','Pick 5',openPicks); add('🌬️','Balloon wind check','Will they fly?',openBalloonWind); add('🪑','Seating chart','Who sits where',openSeating); add('🍽️','Kids’ table games','Silly questions',openKidsTable); add('🍗','Carving countdown','Set dinner time',setDinnerTime); }
+  if (theme==='thanksgiving'||macyMovedToday(simNow())){ add('🎈','Parade bingo','Mark what you see',openBingo); add('🔮','Guess the balloons','Pick 5',openPicks); add('🌬️','Balloon wind check','Will they fly?',openBalloonWind); }
+  if (theme==='thanksgiving'){ add('🪑','Seating chart','Who sits where',openSeating); add('🍽️','Kids’ table games','Silly questions',openKidsTable); add('🍗','Carving countdown','Set dinner time',setDinnerTime); }
   if (theme==='christmas'){ add('📻','Sleigh radio','Live on Christmas Eve',openRadio); add('📸','Santa cam','Photo from your town',openSantaCamPhoto); }
   if (hanukkahNight(simNow())) add('🕎','Dreidel','Spin for gelt',openDreidel);
   if (theme==='valentines') add('💝','Valentine maker','Make & send a card',openValentine);
@@ -6272,8 +6279,8 @@ function openReindeerTeam(){ const now=simNow(), live=typeof santa!=='undefined'
 
 // ---------- 🎈 Macy's parade: timeline, sizes, vote, route, checklist, your balloon
 var PARADE_SEGS=[[8.5,'🎺 Opening ceremony & Tom Turkey','The parade kicks off at 77th Street.'],[8.75,'🎈 First giant balloons','Character balloons start floating down Central Park West.'],[9.25,'🥁 Marching bands','High school bands from across the country.'],[9.75,'🎤 Broadway performances','Shows perform at Herald Square.'],[10.25,'🚂 Floats & music stars','Floats with singers roll by.'],[10.75,'🎈 More balloons & clowns','Big balloons and hundreds of clowns.'],[11.25,'🤸 Cheerleaders & dancers','Spirit teams and dance groups.'],[11.75,'🎅 Santa’s sleigh — the grand finale!','Santa arrives to kick off the holiday season!'],[12,'🏁 Parade over','See you next year!']];
-function paradeSeg(now){ const t=partsIn('America/New_York',now), tg=nthWeekday(t.year,10,4,4); if (t.month!==10 || t.day!==tg) return null; const h=t.hour+t.minute/60; if (h<8 || h>=12.2) return null; let k=-1; PARADE_SEGS.forEach((s,i)=>{ if (h>=s[0]) k=i; }); return {k,h}; }
-function paradeTimelineLine(now){ if (theme!=='thanksgiving') return ''; const s=paradeSeg(now); if (!s) return ''; return `<small>🗽 Herald Square now: ${s.k<0?'⏳ starting soon':PARADE_SEGS[s.k][1]} (approx.) · <a href="#" id="ptGo">timeline</a></small>`; }
+function paradeSeg(now){ const t=partsIn('America/New_York',now), tg=macyDay(t.year); if (t.month!==10 || t.day!==tg) return null; const h=t.hour+t.minute/60; if (h<8 || h>=12.2) return null; let k=-1; PARADE_SEGS.forEach((s,i)=>{ if (h>=s[0]) k=i; }); return {k,h}; }
+function paradeTimelineLine(now){ if (theme!=='thanksgiving' && !macyMovedToday(now)) return ''; const s=paradeSeg(now); if (!s) return ''; return `<small>🗽 Herald Square now: ${s.k<0?'⏳ starting soon':PARADE_SEGS[s.k][1]} (approx.) · <a href="#" id="ptGo">timeline</a></small>`; }
 function openParadeTimeline(){ const s=paradeSeg(simNow()); showModal(`<h3>🗽 Parade timeline</h3><p class="mut">Roughly what’s passing Herald Square (Eastern time). The exact order changes every year — this is a guide.</p>${PARADE_SEGS.map((p,i)=>{ const h=Math.floor(p[0]), m=Math.round((p[0]-h)*60); return `<div class="gBoardR" style="padding:5px 0;${s&&s.k===i?'background:rgba(255,179,71,.18);border-radius:8px':''}"><span><b>${h>12?h-12:h}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}</b> ${p[1]}${s&&s.k===i?' ← now':''}<br><small class="mut">${p[2]}</small></span></div>`; }).join('')}`); }
 function openBalloonSizes(){ showModal(`<h3>📏 How big are the balloons?</h3><div class="advMsg" style="line-height:1.7">🎈 The biggest balloons are about <b>5–6 stories tall</b> — taller than a <b>giraffe stacked on 3 more giraffes</b>.<br>🚌 Laid down, a big one is as long as about <b>4 school buses</b>.<br>👐 Each giant balloon needs <b>about 50–90 handlers</b> holding ropes.<br>🎈 It takes about <b>12,000 cubic feet of helium</b> — enough to fill <b>roughly 25,000 party balloons</b>.<br>🌬️ That’s why wind matters: big balloons act like sails!<br>📅 Balloons have flown in the parade since <b>1927</b>.</div><p class="mut">Sizes are typical — every balloon is different.</p>`); }
 var FAV_BALLOONS=['🦃 Tom Turkey','⭐ A star','🐶 A dog','🦖 A dinosaur','🐱 A cat','🚀 A rocket','⛄ A snowman','🦸 A superhero','🐉 A dragon','🐧 A penguin','🤖 A robot','🍕 A food balloon'];
@@ -6285,7 +6292,7 @@ async function openFavVote(){ const y=yr(), b=await boardDb(), mine=store.get('f
   document.querySelectorAll('[data-fv]').forEach(x=>x.onclick=async()=>{ const F=store.get('favBalloon',{}); F[y]=x.dataset.fv; store.set('favBalloon',F); if (b){ try{ await b.db.collection('balloonVotes').doc(b.id).set({y,v:x.dataset.fv,at:Date.now()}); }catch(e){ toast('Couldn’t vote — ask the owner to share the page so you can use it.'); } } try{ sfx('pop'); }catch(e){} openFavVote(); }); }
 var PARADE_ROUTE=[[40.7800,-73.9735,'Start: 77th St & Central Park West'],[40.7681,-73.9816,'Columbus Circle area'],[40.7662,-73.9773,'Central Park South & 6th Ave'],[40.7580,-73.9822,'6th Ave & 47th St'],[40.7497,-73.9877,'6th Ave & 34th St'],[40.7506,-73.9892,'Finish: Herald Square (Macy’s)']];
 var PROUTE={line:null};
-function paradeRouteTick(now){ const on=mode==='globe' && theme==='thanksgiving'; if (!on){ if (PROUTE.line) PROUTE.line.visible=false; return; }
+function paradeRouteTick(now){ const on=mode==='globe' && (theme==='thanksgiving'||macyMovedToday(now)); if (!on){ if (PROUTE.line) PROUTE.line.visible=false; return; }
   if (!PROUTE.line){ const pts=[]; for (let i=0;i<PARADE_ROUTE.length-1;i++){ const a=PARADE_ROUTE[i], c=PARADE_ROUTE[i+1]; for (let j=0;j<8;j++) pts.push(llToEcef(a[0]+(c[0]-a[0])*j/8,a[1]+(c[1]-a[1])*j/8).multiplyScalar(1.0008)); } const e=PARADE_ROUTE.at(-1); pts.push(llToEcef(e[0],e[1]).multiplyScalar(1.0008));
     PROUTE.line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xffb347,transparent:true,opacity:.95,depthWrite:false})); PROUTE.line.renderOrder=4; G.frame.add(PROUTE.line); }
   PROUTE.line.visible=camG.position.length()<1.08; }
@@ -6306,7 +6313,7 @@ function openMyBalloon(){ const B=store.get('myBalloon',{e:'🐶',c:'#ff6b6b',n:
   const save=()=>{ B.n=$('mbN').value.trim(); store.set('myBalloon',B); MYB.key=''; };
   document.querySelectorAll('[data-me]').forEach(b=>b.onclick=()=>{ B.e=b.dataset.me; save(); openMyBalloon(); }); document.querySelectorAll('[data-mc]').forEach(b=>b.onclick=()=>{ B.c=b.dataset.mc; save(); openMyBalloon(); });
   $('mbN').oninput=save; $('mbFly').onclick=()=>{ save(); B.fly=true; store.set('myBalloon',B); MYB.key=''; closeModal(); flyToLL(40.765,-73.981,1.04); toast(`🎈 ${B.n||'Your balloon'} is floating down the parade route!`); try{ fx.celebrate(2500); }catch(e){} }; }
-function myBalloonTick(now){ const B=store.get('myBalloon',null); const on=mode==='globe' && theme==='thanksgiving' && B && B.fly; if (!on){ if (MYB.pts) MYB.pts.visible=false; return; }
+function myBalloonTick(now){ const B=store.get('myBalloon',null); const on=mode==='globe' && (theme==='thanksgiving'||macyMovedToday(now)) && B && B.fly; if (!on){ if (MYB.pts) MYB.pts.visible=false; return; }
   const k=B.e+B.c; if (MYB.key!==k){ MYB.key=k; if (MYB.pts){ G.frame.remove(MYB.pts); MYB.pts.geometry.dispose(); } const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(3),3));
     MYB.pts=new THREE.Points(g,new THREE.PointsMaterial({size:34,sizeAttenuation:false,map:emojiTex(B.e,B.c),transparent:true,depthWrite:false})); MYB.pts.frustumCulled=false; MYB.pts.renderOrder=6; G.frame.add(MYB.pts); }
   const t=(performance.now()/60000)%1, f=t*(PARADE_ROUTE.length-1), i=Math.floor(f), a=PARADE_ROUTE[i], c=PARADE_ROUTE[i+1]||a, u=f-i, v=llToEcef(a[0]+(c[0]-a[0])*u,a[1]+(c[1]-a[1])*u).multiplyScalar(1.0015);
@@ -6316,7 +6323,7 @@ function myBalloonTick(now){ const B=store.get('myBalloon',null); const on=mode=
 var _lt17=layersTick; layersTick=function(now,M){ _lt17(now,M); countryTick(now); paradeRouteTick(now); myBalloonTick(now); };
 var _ll17=layerLines; layerLines=function(now){ let h=_ll17(now); if (!current) return h;
   if (theme==='christmas'){ const live=typeof santa!=='undefined'&&santa.on; h+=`<small>⏱️ <a href="#" id="sgGo">Guess his arrival</a> · 🦌 <a href="#" id="rjGo">reindeer team</a> · 🍪 <a href="#" id="fcGo">friends’ cookies</a>${live||santa.done?` · 🌍 <a href="#" id="cvGo">countries visited (${countriesVisited().length})</a>`:''}</small>`; if (live) h+=`<small>⭐ Tap Santa on the globe to spot the sleigh — ${((store.get('sleighStars',{})[santa.y]||{}).n||0)} stars</small>`; }
-  if (theme==='thanksgiving') h+=paradeTimelineLine(now)+`<small>📍 <a href="#" id="prGo">Parade route</a> · 📏 <a href="#" id="bzGo">balloon sizes</a> · 🗳️ <a href="#" id="fvGo">favorite balloon</a> · 🎟️ <a href="#" id="pcGo">checklist</a> · 🎨 <a href="#" id="mbGo">design a balloon</a></small>`;
+  if (theme==='thanksgiving'||macyMovedToday(now)) h+=paradeTimelineLine(now)+`<small>📍 <a href="#" id="prGo">Parade route</a> · 📏 <a href="#" id="bzGo">balloon sizes</a> · 🗳️ <a href="#" id="fvGo">favorite balloon</a> · 🎟️ <a href="#" id="pcGo">checklist</a> · 🎨 <a href="#" id="mbGo">design a balloon</a></small>`;
   return h; };
 document.addEventListener('click',e=>{ const a=e.target.closest('a,button'); if (!a) return;
   const map={sgGo:openSantaGuess,rjGo:openReindeerTeam,fcGo:openFriendsCookies,cvGo:openCountries,ptGo:openParadeTimeline,prGo:openParadeRoute,bzGo:openBalloonSizes,fvGo:openFavVote,pcGo:openParadeChecklist,mbGo:openMyBalloon};
@@ -6324,7 +6331,7 @@ document.addEventListener('click',e=>{ const a=e.target.closest('a,button'); if 
 var _om17=openMore; openMore=function(){ _om17(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
   const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.appendChild(b); };
   if (theme==='christmas'){ add('⏱️','Guess his arrival','When will Santa come?',openSantaGuess); add('🦌','Reindeer team','Who does what',openReindeerTeam); add('🍪','Friends’ cookies','Treats left out',openFriendsCookies); add('🌍','Countries visited','Santa’s list tonight',openCountries); }
-  if (theme==='thanksgiving'){ add('🗽','Parade timeline','What’s passing now',openParadeTimeline); add('📍','Parade route','Pick a viewing spot',openParadeRoute); add('📏','Balloon sizes','How big are they?',openBalloonSizes); add('🗳️','Favorite balloon','Vote',openFavVote); add('🎟️','Parade checklist','What to bring',openParadeChecklist); add('🎨','Design a balloon','Fly it over NYC',openMyBalloon); } };
+  if (theme==='thanksgiving'||macyMovedToday(simNow())){ add('🗽','Parade timeline','What’s passing now',openParadeTimeline); add('📍','Parade route','Pick a viewing spot',openParadeRoute); add('📏','Balloon sizes','How big are they?',openBalloonSizes); add('🗳️','Favorite balloon','Vote',openFavVote); add('🎟️','Parade checklist','What to bring',openParadeChecklist); add('🎨','Design a balloon','Fly it over NYC',openMyBalloon); } };
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {openSantaGuess,openReindeerTeam,openFriendsCookies,openCountries,openParadeTimeline,openParadeRoute,openBalloonSizes,openFavVote,openParadeChecklist,openMyBalloon,countriesVisited});
 
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
