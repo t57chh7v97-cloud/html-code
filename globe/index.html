@@ -2162,7 +2162,7 @@ function updateHoliday(now){
 }
 // the holiday box shows the big holiday news; everything else folds into "More" inside the box
 var HS_OPEN=false;
-const HS_PIN=/evPin|pLive|ytBtn|liveDot|LIVE|Happy birthday|shadow is on Earth|[Pp]arade|🎅|Santa|😴|Clocks go|Trick-or-treating|Hanukkah night|Kwanzaa day|tree lighting|[Ff]ireworks|Already 20|Next to celebrate|20\d\d in |Unwrap your presents|April Fools|pranks|elf is hiding|Dinner wave|of Christmas: |Spooky meter|Turkey comes out|Turkey is resting|Carving time|Your town is Santa|Midnight wave|plant trees/;
+const HS_PIN=/evPin|pLive|ytBtn|liveDot|LIVE|Happy birthday|shadow is on Earth|[Pp]arade|🎅|Santa|😴|Clocks go|Trick-or-treating|Hanukkah night|Kwanzaa day|tree lighting|[Ff]ireworks|Already 20|Next to celebrate|20\d\d in |Unwrap your presents|April Fools|pranks|elf is hiding|Dinner wave|of Christmas: |Spooky meter|Turkey comes out|Turkey is resting|Carving time|Your town is Santa|Midnight wave|plant trees|Herald Square now/;
 function stripSplit(ex){ const parts=ex.match(/<small[\s\S]*?<\/small>/g)||[]; const pin=[], more=[]; parts.forEach(x=>{ const links=(x.match(/<a /g)||[]).length, activity=links>=2 && !/LIVE|ytBtn|liveDot/.test(x); (HS_PIN.test(x)&&!activity?pin:more).push(x); });   // lines of activity links (tree · Secret Santa…) always fold away
   if (more.length<2) return parts.join('');
   return pin.join('')+(HS_OPEN?more.join(''):'')+`<small class="hsMore"><a href="#" id="hsMoreBtn">${HS_OPEN?'Show less ▴':`More (${more.length}) ▾`}</a></small>`; }
@@ -6227,6 +6227,105 @@ var _om16=openMore; openMore=function(){ _om16(); const grid=document.querySelec
   if (theme==='valentines') add('💝','Valentine maker','Make & send a card',openValentine);
   if (theme==='newyear'||theme==='christmas') add('🎆','Midnight wave','New Year by time zone',openMidnightWave); };
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {openCandyLog,openBestStreets,openSantaCamPhoto,openRadio,openBingo,openPicks,openBalloonWind,openSeating,openKidsTable,setDinnerTime,openDreidel,openMidnightWave,openValentine,spookyScore,SW16,treeTap});
+
+/* =========================================================
+   ROUND 17 — 🎅 in-your-country alert · arrival guess · friends' cookies · spot the sleigh · reindeer jobs
+   🎈 parade timeline · balloon sizes · favorite-balloon vote · route map · parade checklist · design your own balloon
+   ========================================================= */
+const _cntry=r=>{ const s=(r&&r[1]||'').split(',').map(x=>x.trim()); return s[s.length-1]||''; };
+
+// ---------- 🌍 "Santa's in your country!" + countries visited
+var SC17={lastCountry:'',warned:{}};
+function countryTick(now){ if (!current || typeof santa==='undefined' || !santa.on) return; const cur=ROUTE[Math.max(0,santa.idx)]; if (!cur) return; const c=_cntry(cur);
+  if (c && c!==SC17.lastCountry){ SC17.lastCountry=c; const v=santaVisitFor(current,santa.y||lpYear(now)); if (v.stop && _cntry(v.stop)===c && !SC17.warned[c+santa.y]){ SC17.warned[c+santa.y]=1; toast(`🎉 Santa is in your country (${c})! He’s getting close…`); try{ fx.celebrate(3000); sfx('fanfare'); }catch(e){} } } }
+function countriesVisited(){ const n=santa.done?ROUTE.length:Math.max(0,santa.idx+1), seen=[]; for (let i=1;i<n;i++){ const c=_cntry(ROUTE[i]); if (c && !seen.includes(c) && c!=='North Pole') seen.push(c); } return seen; }
+function openCountries(){ const L=countriesVisited(); showModal(`<h3>🌍 Countries Santa has visited</h3><p class="mut">${santa.on||santa.done?`${L.length} so far tonight:`:'The list fills in on Christmas Eve as Santa flies.'}</p><div style="columns:2;font-size:14px">${L.map((c,i)=>`<div>${i+1}. ${esc(c)}</div>`).join('')}</div>`); }
+
+// ---------- ⏱️ guess when Santa reaches your town
+function openSantaGuess(){ if (!current) return; const y=santa.y||lpYear(simNow()), v=santaVisitFor(current,y), G2=store.get('santaGuess',{}), g=G2[y];
+  const at=v.at, passed=at && simNow()>=at;
+  let res=''; if (g && passed){ const lp=localParts(at,current), [h,m]=g.split(':').map(Number), guessT=localToUTC(current,lp.year,lp.month,lp.day,h,m), mins=Math.round(Math.abs(at-guessT)/60000);
+    res=`<div class="advMsg" style="font-size:18px">🎅 He arrived at <b>${_fmtHM(at)}</b>. You guessed ${_fmtHM(guessT)} — <b>${mins} minute${mins===1?'':'s'} off</b>! ${mins<=5?'🏆 Amazing!':mins<=30?'⭐ So close!':'🎄 Nice try!'}</div>`; if (mins<=5) try{ fx.celebrate(3000); }catch(e){} }
+  showModal(`<h3>⏱️ Guess Santa’s arrival</h3><p class="mut">What time (your time) do you think Santa will reach ${esc(shortName(current))} on Christmas Eve?</p>${res}
+    ${passed?'':`<input type="time" id="sgT" value="${g||'23:00'}"><button class="btn primary" id="sgOk">${g?'Change my guess':'Lock in my guess'}</button>${g?`<p class="mut">Your guess: <b>${g}</b>. Come back after he visits to see how close you were!</p>`:''}`}`);
+  if ($('sgOk')) $('sgOk').onclick=()=>{ G2[y]=$('sgT').value||'23:00'; store.set('santaGuess',G2); toast('⏱️ Guess locked in!'); openSantaGuess(); }; }
+
+// ---------- 🍪 friends' cookies (shared in the Claude version)
+async function shareCookies(out){ const b=await boardDb(); if (!b) return; const y=santa.y||lpYear(simNow()); try{ await b.db.collection('cookies').doc(b.id).set({y,out:!!out,nick:store.get('nick','')||'A friend',town:current?shortName(current):'',at:Date.now()}); }catch(e){} }
+async function openFriendsCookies(){ const y=santa.y||lpYear(simNow()); showModal(`<h3>🍪 Friends’ cookie count</h3><div id="fcOut" class="mut">Loading…</div>`); const b=await boardDb();
+  if (!b){ $('fcOut').innerHTML='This works in the Claude version — friends you share the page with show up here when they put out cookies.'; return; }
+  const mine=store.get('cookies',null); if (mine && mine.y===y) await shareCookies(true);
+  try{ const s=await b.db.collection('cookies').where('y','==',y).limit(200).get(); const L=s.docs.map(d=>d.data()).filter(d=>d.out);
+    $('fcOut').innerHTML=`<div style="font-size:22px;font-weight:800;text-align:center">🍪 ${(L.length*3).toLocaleString()} cookies · 🥛 ${L.length} glasses of milk · 🥕 ${(L.length*3).toLocaleString()} carrots</div><p class="mut" style="text-align:center">${L.length} famil${L.length===1?'y':'ies'} left treats out</p>${L.map(d=>`<div>🍪 ${esc(d.nick)}${d.town?` · ${esc(d.town)}`:''}</div>`).join('')}`; }
+  catch(e){ $('fcOut').textContent='Couldn’t load — ask the owner to share the page so you can use it.'; } }
+var _ss17=store.set; store.set=function(k,v){ _ss17.call(store,k,v); if (k==='cookies' && v && v.at) shareCookies(true); };
+
+// ---------- 🎄 spot the sleigh: tap Santa on the globe while he flies
+santaLbl.style.pointerEvents='auto'; santaLbl.style.cursor='pointer';
+santaLbl.addEventListener('click',ev=>{ ev.stopPropagation(); if (!santa.on) return; const y=santa.y, S=store.get('sleighStars',{}), r=S[y]||{n:0,at:0}; if (Date.now()-r.at<45000){ toast(`⭐ You spotted Santa! Wait a bit and spot him again. (${r.n} stars)`); return; }
+  r.n++; r.at=Date.now(); S[y]=r; store.set('sleighStars',S); try{ fx.burst(ev.clientX,ev.clientY,true); sfx('ding'); }catch(e){} toast(`⭐ You spotted the sleigh over ${placeName(ROUTE[Math.max(0,santa.idx)])}! ${r.n} star${r.n===1?'':'s'} tonight`); });
+
+// ---------- 🦌 reindeer jobs
+var REINDEER=[['🔴','Rudolph','Navigator — lights the way through fog and snow'],['💨','Dasher','Speed boss — sets the pace for the whole team'],['💃','Dancer','Rooftop landings — light on her hooves'],['🌟','Prancer','Takeoffs — gets the sleigh airborne'],['🦊','Vixen','Weather watcher — dodges storms'],['☄️','Comet','Snack duty — collects the carrots'],['💘','Cupid','Morale — keeps everyone smiling'],['⚡','Donner','Thunder power — pulls through headwinds'],['🌩️','Blitzen','Lightning reflexes — steers around chimneys']];
+function openReindeerTeam(){ const now=simNow(), live=typeof santa!=='undefined'&&santa.on, r=_rng(Math.floor(+now/60000));
+  showModal(`<h3>🦌 Reindeer team</h3><p class="mut">${live?'Live status for tonight’s flight:':'Who does what on Christmas Eve:'}</p>${REINDEER.map(d=>`<div class="gBoardR" style="padding:5px 0"><span style="font-size:20px">${d[0]}</span><span style="flex:1;margin-left:8px"><b>${d[1]}</b><br><small class="mut">${d[2]}</small></span>${live?`<small>${['💪 strong','😤 pulling hard','😊 happy','🥕 munching','😴 a bit tired','🏃 full speed'][Math.floor(r()*6)]}</small>`:''}</div>`).join('')}`); }
+
+// ---------- 🎈 Macy's parade: timeline, sizes, vote, route, checklist, your balloon
+var PARADE_SEGS=[[8.5,'🎺 Opening ceremony & Tom Turkey','The parade kicks off at 77th Street.'],[8.75,'🎈 First giant balloons','Character balloons start floating down Central Park West.'],[9.25,'🥁 Marching bands','High school bands from across the country.'],[9.75,'🎤 Broadway performances','Shows perform at Herald Square.'],[10.25,'🚂 Floats & music stars','Floats with singers roll by.'],[10.75,'🎈 More balloons & clowns','Big balloons and hundreds of clowns.'],[11.25,'🤸 Cheerleaders & dancers','Spirit teams and dance groups.'],[11.75,'🎅 Santa’s sleigh — the grand finale!','Santa arrives to kick off the holiday season!'],[12,'🏁 Parade over','See you next year!']];
+function paradeSeg(now){ const t=partsIn('America/New_York',now), tg=nthWeekday(t.year,10,4,4); if (t.month!==10 || t.day!==tg) return null; const h=t.hour+t.minute/60; if (h<8 || h>=12.2) return null; let k=-1; PARADE_SEGS.forEach((s,i)=>{ if (h>=s[0]) k=i; }); return {k,h}; }
+function paradeTimelineLine(now){ if (theme!=='thanksgiving') return ''; const s=paradeSeg(now); if (!s) return ''; return `<small>🗽 Herald Square now: ${s.k<0?'⏳ starting soon':PARADE_SEGS[s.k][1]} (approx.) · <a href="#" id="ptGo">timeline</a></small>`; }
+function openParadeTimeline(){ const s=paradeSeg(simNow()); showModal(`<h3>🗽 Parade timeline</h3><p class="mut">Roughly what’s passing Herald Square (Eastern time). The exact order changes every year — this is a guide.</p>${PARADE_SEGS.map((p,i)=>{ const h=Math.floor(p[0]), m=Math.round((p[0]-h)*60); return `<div class="gBoardR" style="padding:5px 0;${s&&s.k===i?'background:rgba(255,179,71,.18);border-radius:8px':''}"><span><b>${h>12?h-12:h}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}</b> ${p[1]}${s&&s.k===i?' ← now':''}<br><small class="mut">${p[2]}</small></span></div>`; }).join('')}`); }
+function openBalloonSizes(){ showModal(`<h3>📏 How big are the balloons?</h3><div class="advMsg" style="line-height:1.7">🎈 The biggest balloons are about <b>5–6 stories tall</b> — taller than a <b>giraffe stacked on 3 more giraffes</b>.<br>🚌 Laid down, a big one is as long as about <b>4 school buses</b>.<br>👐 Each giant balloon needs <b>about 50–90 handlers</b> holding ropes.<br>🎈 It takes about <b>12,000 cubic feet of helium</b> — enough to fill <b>roughly 25,000 party balloons</b>.<br>🌬️ That’s why wind matters: big balloons act like sails!<br>📅 Balloons have flown in the parade since <b>1927</b>.</div><p class="mut">Sizes are typical — every balloon is different.</p>`); }
+var FAV_BALLOONS=['🦃 Tom Turkey','⭐ A star','🐶 A dog','🦖 A dinosaur','🐱 A cat','🚀 A rocket','⛄ A snowman','🦸 A superhero','🐉 A dragon','🐧 A penguin','🤖 A robot','🍕 A food balloon'];
+async function openFavVote(){ const y=yr(), b=await boardDb(), mine=store.get('favBalloon',{})[y];
+  showModal(`<h3>🗳️ Vote for your favorite balloon</h3><p class="mut">${b?'Everyone using this page in Claude votes together — one vote each.':'Your vote is saved on this device (the shared vote is in the Claude version).'}</p><div id="fvL"></div>`);
+  let counts={}; if (b){ try{ const s=await b.db.collection('balloonVotes').where('y','==',y).limit(300).get(); s.docs.forEach(d=>{ const v=d.data().v; counts[v]=(counts[v]||0)+1; }); }catch(e){} } else if (mine) counts[mine]=1;
+  const tot=Object.values(counts).reduce((a,c)=>a+c,0);
+  $('fvL').innerHTML=FAV_BALLOONS.map(f=>{ const n=counts[f]||0, pc=tot?Math.round(n/tot*100):0; return `<button class="btn" data-fv="${esc(f)}" style="display:block;width:100%;text-align:left;margin-top:5px;background:linear-gradient(90deg,rgba(255,179,71,.35) ${pc}%,transparent ${pc}%)">${f}${mine===f?' ✅':''} <small style="float:right">${tot?pc+'%':''}</small></button>`; }).join('')+`<p class="mut" style="text-align:center">${tot} vote${tot===1?'':'s'}</p>`;
+  document.querySelectorAll('[data-fv]').forEach(x=>x.onclick=async()=>{ const F=store.get('favBalloon',{}); F[y]=x.dataset.fv; store.set('favBalloon',F); if (b){ try{ await b.db.collection('balloonVotes').doc(b.id).set({y,v:x.dataset.fv,at:Date.now()}); }catch(e){ toast('Couldn’t vote — ask the owner to share the page so you can use it.'); } } try{ sfx('pop'); }catch(e){} openFavVote(); }); }
+var PARADE_ROUTE=[[40.7800,-73.9735,'Start: 77th St & Central Park West'],[40.7681,-73.9816,'Columbus Circle area'],[40.7662,-73.9773,'Central Park South & 6th Ave'],[40.7580,-73.9822,'6th Ave & 47th St'],[40.7497,-73.9877,'6th Ave & 34th St'],[40.7506,-73.9892,'Finish: Herald Square (Macy’s)']];
+var PROUTE={line:null};
+function paradeRouteTick(now){ const on=mode==='globe' && theme==='thanksgiving'; if (!on){ if (PROUTE.line) PROUTE.line.visible=false; return; }
+  if (!PROUTE.line){ const pts=[]; for (let i=0;i<PARADE_ROUTE.length-1;i++){ const a=PARADE_ROUTE[i], c=PARADE_ROUTE[i+1]; for (let j=0;j<8;j++) pts.push(llToEcef(a[0]+(c[0]-a[0])*j/8,a[1]+(c[1]-a[1])*j/8).multiplyScalar(1.0008)); } const e=PARADE_ROUTE.at(-1); pts.push(llToEcef(e[0],e[1]).multiplyScalar(1.0008));
+    PROUTE.line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xffb347,transparent:true,opacity:.95,depthWrite:false})); PROUTE.line.renderOrder=4; G.frame.add(PROUTE.line); }
+  PROUTE.line.visible=camG.position.length()<1.08; }
+var VIEW_SPOTS=[['🌳 Central Park West (70th–59th St)','Best views, biggest crowds — arrive by 6 AM.'],['🏙️ 6th Ave (59th–38th St)','Wide street, easier to find room — arrive by 7 AM.'],['🛍️ Near 34th St','Close to Herald Square — TV area is ticketed, so stand a block away.'],['📺 At home on TV','Coziest seat in the house — 8:30 AM on NBC.']];
+function openParadeRoute(){ const sp=store.get('viewSpot',-1); showModal(`<h3>📍 Parade route</h3><p class="mut">About 2.5 miles from the Upper West Side to Herald Square. Zoom all the way into Manhattan on the globe to see the orange route line.</p>
+  <ol style="font-size:14px">${PARADE_ROUTE.map(p=>`<li>${p[2]}</li>`).join('')}</ol><b>Where will you watch?</b>${VIEW_SPOTS.map((v,i)=>`<button class="btn ${sp===i?'primary':''}" data-vs="${i}" style="display:block;width:100%;text-align:left;margin-top:5px">${v[0]}<br><small>${v[1]}</small></button>`).join('')}<button class="btn" id="rtFly" style="margin-top:8px">🌎 Show me on the globe</button>`);
+  document.querySelectorAll('[data-vs]').forEach(b=>b.onclick=()=>{ store.set('viewSpot',+b.dataset.vs); openParadeRoute(); }); $('rtFly').onclick=()=>{ closeModal(); flyToLL(40.765,-73.981,1.03); }; }
+var CHECKLIST=['🧥 Warm layers, hat & gloves','🪑 Folding stool or blanket','☕ Hot drinks in a thermos','🥪 Snacks (no food stands nearby!)','🔋 Phone charger / battery','📍 A meeting spot if you get separated','🧻 Tissues & hand warmers','🚇 Subway plan — streets close early'];
+function openParadeChecklist(){ const C=store.get('paradeCheck',{}), y=yr(), done=C[y]||[], sp=store.get('viewSpot',-1);
+  showModal(`<h3>🎟️ Going to the parade?</h3><div class="advMsg">⏰ Best arrival: <b>${sp===0?'6:00 AM':sp===1?'7:00 AM':sp===2?'6:30 AM':'6:30–7:00 AM'}</b> for a front spot. The parade starts at 8:30 AM.</div>${CHECKLIST.map((c,i)=>`<label class="mopt${done.includes(i)?' on':''}" style="display:flex;gap:8px;padding:6px 0"><input type="checkbox" data-ck="${i}" ${done.includes(i)?'checked':''}><span>${c}</span></label>`).join('')}<p class="mut" style="text-align:center">${done.length}/${CHECKLIST.length} packed</p>`);
+  document.querySelectorAll('[data-ck]').forEach(b=>b.onchange=()=>{ const i=+b.dataset.ck; C[y]=b.checked?[...new Set([...done,i])]:done.filter(x=>x!==i); store.set('paradeCheck',C); openParadeChecklist(); }); }
+var MYB={pts:null,key:''};
+function openMyBalloon(){ const B=store.get('myBalloon',{e:'🐶',c:'#ff6b6b',n:''}), E=['🐶','🐱','🦖','🐉','🐧','🦄','🐻','🐸','🚀','⭐','🍕','🤖','👻','🦃','🐙','🦈'];
+  showModal(`<h3>🎨 Design your own balloon</h3><input id="mbN" maxlength="20" placeholder="Balloon name" value="${esc(B.n)}"><div style="display:flex;flex-wrap:wrap;gap:5px">${E.map(e=>`<button class="btn mini ${B.e===e?'primary':''}" data-me="${e}" style="font-size:22px">${e}</button>`).join('')}</div>
+    <div style="display:flex;gap:6px;margin:8px 0">${['#ff6b6b','#ffd36b','#6bd1ff','#8aff8a','#d78aff','#ffffff'].map(c=>`<button class="btn mini" data-mc="${c}" style="background:${c};width:34px;height:30px;${B.c===c?'outline:3px solid #fff':''}"></button>`).join('')}</div>
+    <div id="mbPrev" style="text-align:center;font-size:90px;filter:drop-shadow(0 0 18px ${B.c});animation:bwb 1.6s ease-in-out infinite alternate">${B.e}</div><p style="text-align:center;font-weight:700">${esc(B.n||'My balloon')}</p>
+    <button class="btn primary" id="mbFly" style="display:block;margin:0 auto">🎈 Fly it over New York!</button>`);
+  const save=()=>{ B.n=$('mbN').value.trim(); store.set('myBalloon',B); MYB.key=''; };
+  document.querySelectorAll('[data-me]').forEach(b=>b.onclick=()=>{ B.e=b.dataset.me; save(); openMyBalloon(); }); document.querySelectorAll('[data-mc]').forEach(b=>b.onclick=()=>{ B.c=b.dataset.mc; save(); openMyBalloon(); });
+  $('mbN').oninput=save; $('mbFly').onclick=()=>{ save(); B.fly=true; store.set('myBalloon',B); MYB.key=''; closeModal(); flyToLL(40.765,-73.981,1.04); toast(`🎈 ${B.n||'Your balloon'} is floating down the parade route!`); try{ fx.celebrate(2500); }catch(e){} }; }
+function myBalloonTick(now){ const B=store.get('myBalloon',null); const on=mode==='globe' && theme==='thanksgiving' && B && B.fly; if (!on){ if (MYB.pts) MYB.pts.visible=false; return; }
+  const k=B.e+B.c; if (MYB.key!==k){ MYB.key=k; if (MYB.pts){ G.frame.remove(MYB.pts); MYB.pts.geometry.dispose(); } const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(3),3));
+    MYB.pts=new THREE.Points(g,new THREE.PointsMaterial({size:34,sizeAttenuation:false,map:emojiTex(B.e,B.c),transparent:true,depthWrite:false})); MYB.pts.frustumCulled=false; MYB.pts.renderOrder=6; G.frame.add(MYB.pts); }
+  const t=(performance.now()/60000)%1, f=t*(PARADE_ROUTE.length-1), i=Math.floor(f), a=PARADE_ROUTE[i], c=PARADE_ROUTE[i+1]||a, u=f-i, v=llToEcef(a[0]+(c[0]-a[0])*u,a[1]+(c[1]-a[1])*u).multiplyScalar(1.0015);
+  MYB.pts.geometry.attributes.position.array.set([v.x,v.y,v.z]); MYB.pts.geometry.attributes.position.needsUpdate=true; MYB.pts.visible=camG.position.length()<1.3; }
+
+// ---------- wiring
+var _lt17=layersTick; layersTick=function(now,M){ _lt17(now,M); countryTick(now); paradeRouteTick(now); myBalloonTick(now); };
+var _ll17=layerLines; layerLines=function(now){ let h=_ll17(now); if (!current) return h;
+  if (theme==='christmas'){ const live=typeof santa!=='undefined'&&santa.on; h+=`<small>⏱️ <a href="#" id="sgGo">Guess his arrival</a> · 🦌 <a href="#" id="rjGo">reindeer team</a> · 🍪 <a href="#" id="fcGo">friends’ cookies</a>${live||santa.done?` · 🌍 <a href="#" id="cvGo">countries visited (${countriesVisited().length})</a>`:''}</small>`; if (live) h+=`<small>⭐ Tap Santa on the globe to spot the sleigh — ${((store.get('sleighStars',{})[santa.y]||{}).n||0)} stars</small>`; }
+  if (theme==='thanksgiving') h+=paradeTimelineLine(now)+`<small>📍 <a href="#" id="prGo">Parade route</a> · 📏 <a href="#" id="bzGo">balloon sizes</a> · 🗳️ <a href="#" id="fvGo">favorite balloon</a> · 🎟️ <a href="#" id="pcGo">checklist</a> · 🎨 <a href="#" id="mbGo">design a balloon</a></small>`;
+  return h; };
+document.addEventListener('click',e=>{ const a=e.target.closest('a,button'); if (!a) return;
+  const map={sgGo:openSantaGuess,rjGo:openReindeerTeam,fcGo:openFriendsCookies,cvGo:openCountries,ptGo:openParadeTimeline,prGo:openParadeRoute,bzGo:openBalloonSizes,fvGo:openFavVote,pcGo:openParadeChecklist,mbGo:openMyBalloon};
+  if (map[a.id]){ e.preventDefault(); map[a.id](); } });
+var _om17=openMore; openMore=function(){ _om17(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
+  const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.appendChild(b); };
+  if (theme==='christmas'){ add('⏱️','Guess his arrival','When will Santa come?',openSantaGuess); add('🦌','Reindeer team','Who does what',openReindeerTeam); add('🍪','Friends’ cookies','Treats left out',openFriendsCookies); add('🌍','Countries visited','Santa’s list tonight',openCountries); }
+  if (theme==='thanksgiving'){ add('🗽','Parade timeline','What’s passing now',openParadeTimeline); add('📍','Parade route','Pick a viewing spot',openParadeRoute); add('📏','Balloon sizes','How big are they?',openBalloonSizes); add('🗳️','Favorite balloon','Vote',openFavVote); add('🎟️','Parade checklist','What to bring',openParadeChecklist); add('🎨','Design a balloon','Fly it over NYC',openMyBalloon); } };
+if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {openSantaGuess,openReindeerTeam,openFriendsCookies,openCountries,openParadeTimeline,openParadeRoute,openBalloonSizes,openFavVote,openParadeChecklist,openMyBalloon,countriesVisited});
 
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS,SET,layerNote,noteFor};

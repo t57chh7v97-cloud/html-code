@@ -392,3 +392,7 @@ d3 from public CDNs.
 - 🍗 Carving countdown, seating chart, kids' table games
 - 🕎 Dreidel, 🎆 New Year's midnight wave, 💝 valentine maker, 🌳 Earth Day tree planting
 - Fix: turkeys/eggs hiding under a city name can now be tapped
+
+### Holiday round 17
+- 🎅 "Santa is in your country!" alert, countries visited tonight, guess his arrival time, friends' cookie count (Claude version), tap Santa to spot the sleigh, reindeer team jobs
+- 🎈 Macy's parade: live "Herald Square now" timeline, route line on the globe + viewing spots, balloon sizes, favorite-balloon vote, packing checklist, design your own balloon and fly it down the route
