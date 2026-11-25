@@ -384,3 +384,11 @@ d3 from public CDNs.
 - 🦃 Thanksgiving: turkey hunt (10 turkeys hidden in US & Canadian cities), dinner wave across US time zones, leftover ideas, pie slicing game
 - 🎄 Christmas: elf hide-and-seek (Dec 1–24), snowflake maker, town lights around your pin, wish list, reindeer games, 12 Days of Christmas (Dec 25–Jan 5), workshop toy counter + present-wrapping game
 - 🎅 Santa: a phone call from Santa (spoken aloud), Nice List certificate, live sleigh dashboard on Christmas Eve (speed, Rudolph's nose, sack, weather where Santa is)
+
+### Holiday round 16
+- 🎃 Candy log with a trade meter, Halloween-night spooky meter (moon + weather), best trick-or-treat streets list
+- 🎅 Santa 1-hour / 30-min / 10-min warnings, "your town is stop #N", Santa cam photo, live sleigh radio
+- 🎈 Macy's parade bingo, guess-the-balloons picks, balloon wind check (23 mph / 34 mph gust rule)
+- 🍗 Carving countdown, seating chart, kids' table games
+- 🕎 Dreidel, 🎆 New Year's midnight wave, 💝 valentine maker, 🌳 Earth Day tree planting
+- Fix: turkeys/eggs hiding under a city name can now be tapped

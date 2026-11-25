@@ -1106,7 +1106,7 @@ function frame(){
 const cityLayer=document.createElement('div'); labelsEl.prepend(cityLayer);
 const CPOOL=[]; const CMAX = innerWidth<=720 ? 34 : 70;
 for (let k=0;k<CMAX;k++){ const el=document.createElement('div'); el.className='clbl'; el.style.display='none'; el.innerHTML='<i></i><span></span>';
-  el.addEventListener('click',ev=>{ ev.stopPropagation(); const i=+el.dataset.i; if (i>=0) choose({i}); }); cityLayer.appendChild(el); CPOOL.push({el,i:-1,w:0}); }
+  el.addEventListener('click',ev=>{ ev.stopPropagation(); if (typeof EXTRAS_READY!=='undefined' && EXTRAS_READY && window.huntTapXY && window.huntTapXY(ev.clientX,ev.clientY,simNow())) return; const i=+el.dataset.i; if (i>=0) choose({i}); }); cityLayer.appendChild(el); CPOOL.push({el,i:-1,w:0}); }
 let chosenCities=[], lastPick=0, lastPickDist=0;
 const _e=new THREE.Vector3();
 function hideCityLabels(){ for (const c of CPOOL) if (c.i!==-1){ c.el.style.display='none'; c.i=-1; } for (const c of KPOOL) if (c.i!==-1){ c.el.style.display='none'; c.i=-1; } chosenCities=[]; chosenCountries=[]; }
@@ -2162,7 +2162,7 @@ function updateHoliday(now){
 }
 // the holiday box shows the big holiday news; everything else folds into "More" inside the box
 var HS_OPEN=false;
-const HS_PIN=/evPin|pLive|ytBtn|liveDot|LIVE|Happy birthday|shadow is on Earth|[Pp]arade|🎅|Santa|😴|Clocks go|Trick-or-treating|Hanukkah night|Kwanzaa day|tree lighting|[Ff]ireworks|Already 20|Next to celebrate|20\d\d in |Unwrap your presents|April Fools|pranks|elf is hiding|Dinner wave|of Christmas: /;
+const HS_PIN=/evPin|pLive|ytBtn|liveDot|LIVE|Happy birthday|shadow is on Earth|[Pp]arade|🎅|Santa|😴|Clocks go|Trick-or-treating|Hanukkah night|Kwanzaa day|tree lighting|[Ff]ireworks|Already 20|Next to celebrate|20\d\d in |Unwrap your presents|April Fools|pranks|elf is hiding|Dinner wave|of Christmas: |Spooky meter|Turkey comes out|Turkey is resting|Carving time|Your town is Santa|Midnight wave|plant trees/;
 function stripSplit(ex){ const parts=ex.match(/<small[\s\S]*?<\/small>/g)||[]; const pin=[], more=[]; parts.forEach(x=>{ const links=(x.match(/<a /g)||[]).length, activity=links>=2 && !/LIVE|ytBtn|liveDot/.test(x); (HS_PIN.test(x)&&!activity?pin:more).push(x); });   // lines of activity links (tree · Secret Santa…) always fold away
   if (more.length<2) return parts.join('');
   return pin.join('')+(HS_OPEN?more.join(''):'')+`<small class="hsMore"><a href="#" id="hsMoreBtn">${HS_OPEN?'Show less ▴':`More (${more.length}) ▾`}</a></small>`; }
@@ -2355,6 +2355,7 @@ canvas.addEventListener('pointerup',e=>{
   const lat=Math.asin(local.z)*R2D, lon=Math.atan2(local.y,local.x)*R2D;
   closeResults();
   if (EXTRAS_READY && GAME.on){ gameGuess(lat,lon); return; }
+  if (EXTRAS_READY && window.huntTapXY && window.huntTapXY(e.clientX,e.clientY,simNow())) return;   // turkeys, eggs, envelopes… (screen-pixel hit test)
   if (santaCardOn() && santaStopToast(lat,lon,90)) return;          // tapped one of Santa's stops
   if (EXTRAS_READY){ const pi=paradeAt(lat,lon,simNow()); if (pi>=0){ openParadeWatch(pi); return; } }
   if (EXTRAS_READY && (totTap(lat,lon,simNow()) || quakeTap(lat,lon))) return;
@@ -4285,7 +4286,14 @@ function makeHunt(o){ const H={...o, pts:null, at:0, list:[], tex:emojiTex(o.emo
   H.tap=(lat,lon,now)=>{ if (mode!=='globe' || !H.active(now) || !H.list.length) return false; if (H.minZoom && camG.position.length()>=H.minZoom) return false;
     let best=null, bd=Math.max(60,(camG.position.length()-1)*120); for (const it of H.list){ const dd=gcDist(lat,lon,it.lat,it.lon); if (dd<bd){ bd=dd; best=it; } } if (!best) return false;
     H.list=H.list.filter(x=>x!==best); H.dirty=true; H.onFind(best,now); return true; };
-  return H; }
+  // tap test in screen pixels (much more forgiving on a phone than km on the ground)
+  H.tapXY=(px,py,now)=>{ if (mode!=='globe' || !H.active(now) || !H.list.length || !H.pts || !H.pts.visible) return false; G.frame.updateMatrixWorld(); const M=G.frame.matrixWorld, cam=camG.position, v=new THREE.Vector3();
+    let best=null, bd=40; for (const it of H.list){ v.copy(llToEcef(it.lat,it.lon)).applyMatrix4(M); if (v.dot(cam)<1.02) continue; v.project(camG); if (v.z>1) continue;
+      const d=Math.hypot((v.x+1)/2*innerWidth-px,(1-v.y)/2*innerHeight-py); if (d<bd){ bd=d; best=it; } } if (!best) return false;
+    H.list=H.list.filter(x=>x!==best); H.dirty=true; H.onFind(best,now); return true; };
+  (window.HUNTS=window.HUNTS||[]).push(H); return H; }
+function huntTapXY(x,y,now){ for (const H of (window.HUNTS||[])) if (H.tapXY(x,y,now)) return true; return false; }
+window.huntTapXY=huntTapXY;
 const yearOf=now=>new Date(+now).getUTCFullYear();
 function seeded(seed,n,pool){ const r=rng(seed), out=[], used=new Set(); while (out.length<n && used.size<pool.length){ const i=pool[Math.floor(r()*pool.length)]; if (!used.has(i)){ used.add(i); out.push(i); } } return out; }
 function topCities(n,pred){ const out=[]; if (!P.ready) return out; for (let i=0;i<P.n && out.length<n;i++) if (pred(i)) out.push(i); return out; }
@@ -6027,7 +6035,198 @@ var _om15=openMore; openMore=function(){ _om15(); const grid=document.querySelec
   if (theme==='thanksgiving'){ add('🥡','Leftover ideas','What to make next',openLeftovers); add('🥧','Pie slicing','Cut 8 equal slices',openPieGame); add('🍽️','Dinner wave','Dinner across the US',openDinnerWave); }
   if (theme==='christmas'){ add('📞','Call from Santa','He’ll talk to you!',openSantaCall); add('🎁','Wish list','Share with family',openWishList); add('❄️','Snowflake maker','Draw & mirror',openSnowflake); add('💡','Town lights','Light up your pin',openTownLights);
     add('🦌','Reindeer games','Catch the presents',openReindeerGame); add('📜','Nice List certificate','Print-worthy proof',openCertificate); add('🛷','Sleigh dashboard','Live on Christmas Eve',openSleighDash); add('🎁','Wrap presents','Help the elves',openWrapGame); } };
-if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {closeModal,broomRide,openEscape,openTotPlanner,openCostumeContest,openDinnerWave,openLeftovers,openPieGame,openSnowflake,openTownLights,openWishList,openReindeerGame,collectTwelve,openSantaCall,openCertificate,openSleighDash,openWrapGame});
+if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {closeModal,turkeys,flyToLL,huntTapXY,broomRide,openEscape,openTotPlanner,openCostumeContest,openDinnerWave,openLeftovers,openPieGame,openSnowflake,openTownLights,openWishList,openReindeerGame,collectTwelve,openSantaCall,openCertificate,openSleighDash,openWrapGame});
+
+/* =========================================================
+   ROUND 16 — 🍬 candy log · 🌕 spooky meter · 🏠 best streets
+   🎅 Santa 1-hour warning · 📸 Santa cam snapshot · 📻 sleigh radio · 📊 your stop number
+   🎈 balloon bingo · 🎈 balloon picks · 🌬️ balloon wind check
+   🍗 carving countdown · 🪑 seating chart · 🍽️ kids' table games
+   🕎 dreidel · 🎆 midnight wave · 💝 valentine maker · 🌍 Earth Day trees
+   ========================================================= */
+const _sh16=a=>{ const b=a.slice(); for (let i=b.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [b[i],b[j]]=[b[j],b[i]]; } return b; };
+const _fmtHM=(d)=>current?fmtTime(d,current,false):d.toLocaleTimeString();
+
+// ---------- 🍬 candy log + trade meter
+var CANDY_KINDS=[['🍫','Chocolate bar',9],['🥜','Peanut butter cups',10],['🍬','Hard candy',3],['🍭','Lollipop',4],['🌈','Fruity chews',6],['🍡','Gummies',7],['🍪','Cookie',5],['🥨','Pretzels',2],['🍮','Caramels',5],['🪥','Toothbrush 😑',1],['🍎','Apple',2],['🌽','Candy corn',3]];
+function openCandyLog(){ const y=yr(), L=store.get('candyLog',{}), M=L[y]||{};
+  const total=Object.values(M).reduce((a,b)=>a+b,0), worth=CANDY_KINDS.reduce((a,k)=>a+(M[k[1]]||0)*k[2],0);
+  const best=CANDY_KINDS.filter(k=>M[k[1]]).sort((a,b)=>b[2]-a[2]), keep=best.slice(0,2).map(k=>k[0]+' '+k[1]), trade=best.slice(-2).filter(k=>k[2]<=5).map(k=>k[0]+' '+k[1]);
+  showModal(`<h3>🍬 Candy log ${y}</h3><p class="mut">Tap + or − for each piece. The trade meter shows what’s worth swapping.</p>
+    <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:4px 8px;align-items:center">${CANDY_KINDS.map(k=>`<span>${k[0]} ${k[1]} <small class="mut">${'★'.repeat(Math.ceil(k[2]/2))}</small></span><button class="btn mini" data-cm="${k[1]}">−</button><b style="min-width:22px;text-align:center">${M[k[1]]||0}</b><button class="btn mini" data-cp="${k[1]}">+</button>`).join('')}</div>
+    <div class="advMsg">🎃 <b>${total.toLocaleString()}</b> pieces · trade value <b>${worth.toLocaleString()}</b> points${keep.length?`<br>💎 Keep: ${keep.join(', ')}`:''}${trade.length?`<br>🔁 Trade away: ${trade.join(', ')}`:''}</div>${total?'<button class="btn" id="clShare">📤 Brag to friends</button>':''}`);
+  const ch=(n,d)=>{ M[n]=Math.max(0,(M[n]||0)+d); L[y]=M; store.set('candyLog',L); openCandyLog(); };
+  document.querySelectorAll('[data-cp]').forEach(b=>b.onclick=()=>{ ch(b.dataset.cp,1); try{ sfx('pop'); }catch(e){} }); document.querySelectorAll('[data-cm]').forEach(b=>b.onclick=()=>ch(b.dataset.cm,-1));
+  if ($('clShare')) $('clShare').onclick=()=>{ const t=`🎃 My Halloween ${y} haul: ${total} pieces!\n`+best.map(k=>`${k[0]} ${k[1]} × ${M[k[1]]}`).join('\n'); if (navigator.share) navigator.share({text:t}).catch(()=>{}); else { try{ navigator.clipboard.writeText(t); toast('📋 Copied!'); }catch(e){} } }; }
+
+// ---------- 🌕 spooky meter for Halloween night
+function moonIllum(t){ const s=sunState(t), e=moonState(t,s).elong; return { pc:Math.round((1-Math.cos(e*D2R))/2*100), waxing:((e%360)+360)%360<180 }; }
+function spookyScore(now){ if (!current) return null; const lp=localParts(now,current), y=lp.month>9?lp.year+1:lp.year, night=localToUTC(current,y,9,31,20), m=moonIllum(night);
+  let s=40, why=[]; if (m.pc>=90){ s+=25; why.push('🌕 a full moon!'); } else if (m.pc>=60){ s+=15; why.push(`🌔 a bright moon (${m.pc}%)`); } else if (m.pc<=10){ s+=18; why.push('🌑 a pitch-black new moon'); } else why.push(`🌙 moon ${m.pc}% lit`);
+  const c=WX.data&&WX.data.daily, k=c?c.time.findIndex(t=>t===`${y}-10-31`):-1;
+  if (k>=0){ const code=c.weather_code[k], lo=c.temperature_2m_min[k]; if ([45,48].includes(code)){ s+=20; why.push('🌫️ fog'); } else if (code>=51&&code<70){ s+=8; why.push('🌧️ creepy drizzle'); } else if (code>=95){ s+=15; why.push('⛈️ thunder'); } else if (code>=2&&code<=3){ s+=8; why.push('☁️ clouds over the moon'); }
+    if (lo<5){ s+=7; why.push('🥶 chilly air'); } }
+  const sa=sunAt(current.lat,current.lon,sunState(night),night); if (sa.set && localParts(sa.set,current).hour<18){ s+=10; why.push('🌇 an early sunset'); }
+  return { s:Math.min(100,s), why, y }; }
+function spookyLine(now){ if (theme!=='halloween') return ''; const r=spookyScore(now); if (!r) return ''; return `<small>👻 Spooky meter for Halloween night: <b>${r.s}/100</b> — ${r.why.slice(0,2).join(', ')}</small>`; }
+
+// ---------- 🏠 best trick-or-treat streets
+function openBestStreets(){ const L=store.get('streets',[]);
+  showModal(`<h3>🏠 Best trick-or-treat streets</h3><p class="mut">Save the streets with the best candy and decorations, then share the list with friends.</p>
+    ${L.length?L.slice().sort((a,b)=>b.r-a.r).map((s,i)=>`<div class="gBoardR" style="padding:5px 0"><span>${'🎃'.repeat(s.r)} <b>${esc(s.n)}</b>${s.t?` · <small class="mut">${esc(s.t)}</small>`:''}${s.note?`<br><small>${esc(s.note)}</small>`:''}</span><button class="btn mini" data-bs="${L.indexOf(s)}">✕</button></div>`).join(''):'<p class="mut">No streets yet.</p>'}
+    <input id="bsN" maxlength="40" placeholder="Street name (e.g. Maple Ave)"><input id="bsNote" maxlength="60" placeholder="Why it’s great (full-size bars! haunted house!)">
+    <div style="display:flex;gap:6px;align-items:center"><select id="bsR" style="width:auto"><option value="3">🎃🎃🎃 Amazing</option><option value="2">🎃🎃 Good</option><option value="1">🎃 OK</option></select><button class="btn primary" id="bsAdd">Save</button>${L.length?'<button class="btn" id="bsShare">📤 Share</button>':''}</div>`);
+  $('bsAdd').onclick=()=>{ const n=$('bsN').value.trim(); if (!n) return; L.push({n,r:+$('bsR').value,note:$('bsNote').value.trim(),t:current?shortName(current):''}); store.set('streets',L); openBestStreets(); };
+  document.querySelectorAll('[data-bs]').forEach(b=>b.onclick=()=>{ L.splice(+b.dataset.bs,1); store.set('streets',L); openBestStreets(); });
+  if ($('bsShare')) $('bsShare').onclick=()=>{ const t='🎃 Best trick-or-treat streets:\n'+L.slice().sort((a,b)=>b.r-a.r).map(s=>`${'🎃'.repeat(s.r)} ${s.n}${s.t?' ('+s.t+')':''}${s.note?' — '+s.note:''}`).join('\n'); if (navigator.share) navigator.share({text:t}).catch(()=>{}); else { try{ navigator.clipboard.writeText(t); toast('📋 Copied!'); }catch(e){} } }; }
+
+// ---------- 🎅 Santa: 1-hour / 30-min / 10-min warnings, your stop number, Santa cam, radio
+var SW16={fired:{},snap:null,radioLog:[],radioAt:0};
+function santaWarnTick(now){ if (!current || typeof santa==='undefined' || !santa.on) return; const v=santaVisitFor(current,santa.y||lpYear(now)); if (!v.stop||!v.at) return; const mins=(v.at-now)/60000;
+  for (const m of [60,30,10]) if (mins<=m && mins>m-2 && !SW16.fired[m+'_'+v.key]){ SW16.fired[m+'_'+v.key]=1;
+    const msg=m===60?`⏰ Santa is about 1 hour from ${shortName(current)} — time to get ready for bed!`:m===30?'🛏️ Santa is 30 minutes away! Lights out soon…':'🤫 Santa is 10 minutes away — he only comes when you’re asleep!';
+    toast(msg); try{ sfx('ding'); if (window.Notification && Notification.permission==='granted') new Notification('🎅 Santa Tracker',{body:msg}); }catch(e){} }
+  if (!SW16.snap && ((santa.status==='at' && santa.stop===v.stop) || santa.idx>ROUTE.indexOf(v.stop))){ SW16.snap=1; const S=store.get('santaCam',{}), y=santa.y||lpYear(now); if (!S[y]){ S[y]={town:placeName(v.stop),at:+now,presents:santa.presents||0}; store.set('santaCam',S); toast('📸 The Santa cam snapped a photo of Santa in your town! Open it from the Santa links.'); } } }
+function myStopLine(now){ if (theme!=='christmas' || !current || typeof santa==='undefined' || !ROUTE.length) return ''; const v=santaVisitFor(current,santa.y||lpYear(now)); if (!v.stop) return ''; const n=ROUTE.indexOf(v.stop); if (n<0) return '';
+  const tot=ROUTE.length-1, left=santa.on?Math.max(0,n-Math.max(0,santa.idx)):0; return `<small>📊 Your town is Santa’s stop #${n.toLocaleString()} of ${tot.toLocaleString()}${santa.on?(left>0?` · ${left.toLocaleString()} stop${left===1?'':'s'} to go`:santa.idx>n?' · ✅ visited!':' · he’s here!'):''}${store.get('santaCam',{})[santa.y||lpYear(now)]?' · 📸 <a href="#" id="camGo">Santa cam photo</a>':''}</small>`; }
+function openSantaCamPhoto(){ const y=santa.y||lpYear(simNow()), S=store.get('santaCam',{})[y]; if (!S){ toast('📸 The Santa cam takes a photo when Santa reaches your town on Christmas Eve.'); return; }
+  showModal(`<h3>📸 Santa cam</h3><canvas id="camC" width="720" height="540" style="width:100%;border-radius:10px"></canvas><button class="btn primary" id="camShare" style="margin-top:8px">Share…</button>`);
+  const c=$('camC'), x=c.getContext('2d'), g=x.createLinearGradient(0,0,0,540); g.addColorStop(0,'#0b1838'); g.addColorStop(1,'#25406e'); x.fillStyle=g; x.fillRect(0,0,720,540);
+  const r=_rng(y); for (let i=0;i<120;i++){ x.fillStyle=`rgba(255,255,255,${.3+r()*.7})`; x.beginPath(); x.arc(r()*720,r()*300,r()*1.8,0,7); x.fill(); }
+  x.fillStyle='#f4f9ff'; x.fillRect(0,420,720,120); x.fillStyle='#3a2a1a'; x.fillRect(220,260,280,170); x.fillStyle='#7a1f1f'; x.beginPath(); x.moveTo(200,265); x.lineTo(360,170); x.lineTo(520,265); x.fill(); x.fillStyle='#ffd36b'; x.fillRect(260,310,60,50); x.fillRect(400,310,60,50); x.fillStyle='#5b3a26'; x.fillRect(430,180,40,60);
+  x.font='70px serif'; x.textAlign='center'; x.fillText('🎅',450,180); x.font='44px serif'; x.fillText('🦌🦌🛷',220,140); x.font='30px serif'; x.fillText('🎁',300,450); x.fillText('🎁',420,452);
+  x.fillStyle='rgba(0,0,0,.55)'; x.fillRect(0,0,720,44); x.fillStyle='#ff4d4d'; x.beginPath(); x.arc(22,22,8,0,7); x.fill(); x.fillStyle='#fff'; x.font='bold 18px ui-monospace,monospace'; x.textAlign='left';
+  x.fillText(`REC  SANTA CAM · ${S.town}`.slice(0,52),40,28); x.textAlign='right'; x.fillText(new Date(S.at).toLocaleString('en-US',{timeZone:current?.tz?current.tz:undefined,month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}),708,28);
+  x.textAlign='center'; x.fillStyle='rgba(0,0,0,.5)'; x.fillRect(0,500,720,40); x.fillStyle='#fff'; x.font='16px system-ui'; x.fillText(`Caught on camera! ${Math.round(S.presents).toLocaleString('en-US')} presents delivered so far tonight`,360,526);
+  $('camShare').onclick=()=>c.toBlob(b=>{ const f=new File([b],'santa-cam.png',{type:'image/png'}); if (navigator.canShare&&navigator.canShare({files:[f]})) navigator.share({files:[f],title:'Santa cam'}).catch(()=>{}); else toast('Take a screenshot to save it 📸'); }); }
+var RADIO_WHO=[['🎅','Santa'],['🔴','Rudolph'],['🧝','Elf Mission Control'],['👵','Mrs. Claus'],['🦌','Dasher']];
+function radioLine(now){ const i=Math.max(0,santa.idx), cur=ROUTE[i], nxt=ROUTE[i+1], here=cur?placeName(cur):'the North Pole', there=nxt?placeName(nxt):'home', S=santaStats(now)||{}, mph=S.kmh?Math.round(S.kmh*.6214/100)*100:0;
+  const L=santa.status==='at'?[[0,`Down the chimney in ${here}. Ho ho ho!`],[2,`Copy that, Santa. ${Math.round(santa.presents||0).toLocaleString('en-US')} presents delivered so far.`],[3,`Don’t forget to drink the milk, dear!`],[1,`Nose is warmed up and ready.`],[4,`Hooves on the roof — quiet, everyone!`]]
+    :[[1,`Heading to ${there}. Nose on full brightness!`],[2,`Mission Control: cruising at about ${mph.toLocaleString()} mph. Looking good.`],[0,`Next stop ${there}. Keep it steady, team!`],[4,`Tailwind! We’re ahead of schedule.`],[3,`Bundle up, it’s cold up there!`],[2,`Elf radar: lots of kids asleep in ${there}. Great job!`]];
+  const l=L[Math.floor(Math.random()*L.length)]; return {who:RADIO_WHO[l[0]],t:l[1],at:+now}; }
+function radioTick(now){ if (typeof santa==='undefined' || !santa.on) return; if (Math.abs(+now-SW16.radioAt)<20000) return; SW16.radioAt=+now; SW16.radioLog.unshift(radioLine(now)); SW16.radioLog.length=Math.min(SW16.radioLog.length,30); if ($('rdLog')) drawRadio(); }
+function drawRadio(){ $('rdLog').innerHTML=SW16.radioLog.map(m=>`<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,.08)"><span style="font-size:18px">${m.who[0]}</span> <b>${m.who[1]}:</b> ${esc(m.t)} <small class="mut">${_fmtHM(new Date(m.at))}</small></div>`).join('')||'<p class="mut">📡 Tuning in…</p>'; }
+function openRadio(){ if (typeof santa==='undefined' || !santa.on){ showModal(`<h3>📻 Sleigh radio</h3><p class="mut">The sleigh radio goes live when Santa takes off on Christmas Eve.</p>`); return; }
+  if (!SW16.radioLog.length) SW16.radioLog.unshift(radioLine(simNow())); showModal(`<h3>📻 Sleigh radio <small style="color:#ff6b6b">● LIVE</small></h3><p class="mut">Listening in on the sleigh team…</p><div id="rdLog" style="max-height:50vh;overflow:auto"></div>`); drawRadio(); }
+
+// ---------- 🎈 Macy's parade: balloon bingo, balloon picks, wind check
+var BINGO=['🦃 Tom Turkey','🎈 A giant balloon','🥁 Marching band','🎤 Broadway show','🤸 Cheerleaders','🎅 Santa (the finale!)','🤡 Clowns','🌬️ Balloon wobbles in wind','🚒 Float with fire truck','🎶 Pop star on a float','🐉 Dragon or dinosaur','🧸 Teddy bear','⭐ Star balloon','🎄 Christmas tree float','📺 TV host waving','🐶 Dog balloon','🍰 Food float','🎃 Pumpkins','🐧 Penguin','🚀 Spaceship','🌈 Rainbow','🦸 Superhero','👸 Princess','🎩 Top hat'];
+function openBingo(){ const y=yr(), B=store.get('bingo',{}); let card=B[y]; if (!card){ card={cells:_sh16(BINGO).slice(0,16),hit:[]}; B[y]=card; store.set('bingo',B); }
+  const won=()=>{ const h=new Set(card.hit), L=[]; for (let i=0;i<4;i++){ L.push([0,1,2,3].map(k=>i*4+k)); L.push([0,1,2,3].map(k=>k*4+i)); } L.push([0,5,10,15],[3,6,9,12]); return L.filter(l=>l.every(i=>h.has(i))).length; };
+  showModal(`<h3>🎈 Parade bingo</h3><p class="mut">Watch the parade and tap what you see. Get 4 in a row!</p><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">${card.cells.map((c,i)=>`<button class="btn" data-bg="${i}" style="padding:8px 3px;font-size:12px;min-height:62px;white-space:normal;${card.hit.includes(i)?'background:#ffb347;color:#2a1600;font-weight:700':''}">${c}</button>`).join('')}</div><p id="bgS" style="text-align:center;font-weight:700">${won()?`🎉 BINGO ×${won()}!`:`${card.hit.length}/16 marked`}</p><button class="btn" id="bgNew" style="display:block;margin:0 auto">🔀 New card</button>`);
+  document.querySelectorAll('[data-bg]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.bg, before=won(); card.hit=card.hit.includes(i)?card.hit.filter(x=>x!==i):[...card.hit,i]; B[y]=card; store.set('bingo',B); if (won()>before){ try{ fx.celebrate(3500); sfx('fanfare'); }catch(e){} toast('🎉 BINGO!'); } openBingo(); });
+  $('bgNew').onclick=()=>{ B[y]=null; store.set('bingo',B); openBingo(); }; }
+var PARADE_PICKS=['🦃 Tom Turkey','⭐ Star balloon','🐶 A dog balloon','🦖 A dinosaur','🧽 A cartoon sponge','🐱 A cat','🚀 A rocket or spaceship','🎄 A Christmas tree','⛄ A snowman','🦸 A superhero','👻 A friendly ghost','🐻 A bear','🐧 A penguin','🐉 A dragon','🍕 A food balloon','🤖 A robot'];
+function openPicks(){ const y=yr(), K=store.get('paradePicks',{}), me=K[y]||{p:[],seen:[]};
+  showModal(`<h3>🔮 Guess the balloons</h3><p class="mut">Before the parade, pick <b>5</b> balloons you think will fly. During the parade, tap ✅ when you see them. 1 point each!</p>
+    ${PARADE_PICKS.map(b=>{ const p=me.p.includes(b), s=me.seen.includes(b); return `<div class="gBoardR" style="padding:4px 0"><span>${b}</span><span><button class="btn mini ${p?'primary':''}" data-pp="${esc(b)}">${p?'Picked':'Pick'}</button>${p?` <button class="btn mini ${s?'primary':''}" data-ps="${esc(b)}">${s?'✅ Seen':'Seen?'}</button>`:''}</span></div>`; }).join('')}
+    <p style="text-align:center;font-weight:700">🎯 Score: ${me.seen.filter(b=>me.p.includes(b)).length}/${me.p.length||5}</p>`);
+  const save=()=>{ K[y]=me; store.set('paradePicks',K); openPicks(); };
+  document.querySelectorAll('[data-pp]').forEach(b=>b.onclick=()=>{ const v=b.dataset.pp; if (me.p.includes(v)){ me.p=me.p.filter(x=>x!==v); me.seen=me.seen.filter(x=>x!==v); } else if (me.p.length<5) me.p.push(v); else { toast('You already picked 5 — unpick one first.'); return; } save(); });
+  document.querySelectorAll('[data-ps]').forEach(b=>b.onclick=()=>{ const v=b.dataset.ps; me.seen=me.seen.includes(v)?me.seen.filter(x=>x!==v):[...me.seen,v]; if (!me.seen.includes(v)) {} else try{ sfx('ding'); }catch(e){} save(); }); }
+async function openBalloonWind(){ const tg=nthWeekday(yr(),10,4,4), y=yr(), ds=`${y}-11-${String(tg).padStart(2,'0')}`;
+  showModal(`<h3>🌬️ Balloon wind check</h3><p class="mut">New York City rules: the giant balloons can’t fly high if winds are over <b>23 mph</b> or gusts are over <b>34 mph</b>. Handlers fly them low — or keep them grounded.</p><div id="bwOut" class="advMsg">Checking the forecast for Central Park West…</div>`);
+  try{ const j=await getJSON(`https://api.open-meteo.com/v1/forecast?latitude=40.77&longitude=-73.98&hourly=wind_speed_10m,wind_gusts_10m,temperature_2m,weather_code&wind_speed_unit=mph&timezone=America%2FNew_York&forecast_days=16`); const H=j.hourly;
+    const rows=[8,9,10,11,12].map(h=>H.time.indexOf(`${ds}T${String(h).padStart(2,'0')}:00`)).filter(i=>i>=0);
+    if (!rows.length){ $('bwOut').innerHTML='The forecast for parade day isn’t out yet — check back closer to Thanksgiving!'; return; }
+    const mx=Math.max(...rows.map(i=>H.wind_speed_10m[i])), gu=Math.max(...rows.map(i=>H.wind_gusts_10m[i])), ok=mx<=23&&gu<=34, close=!ok?false:(mx>17||gu>28);
+    $('bwOut').innerHTML=`<div style="font-size:22px;font-weight:800">${ok?(close?'🟡 Probably flying — but breezy!':'🟢 Balloons should fly high!'):'🔴 Too windy — balloons may fly low or stay grounded'}</div>
+      ${rows.map(i=>`<div class="gBoardR" style="padding:3px 0"><span>${H.time[i].slice(11)}</span><span>💨 ${Math.round(H.wind_speed_10m[i])} mph · gusts ${Math.round(H.wind_gusts_10m[i])} · ${wmo(H.weather_code[i])[0]} ${tC(H.temperature_2m[i])}</span></div>`).join('')}<small class="mut">Forecast for parade morning (Eastern time). The final call is made by the NYPD the morning of the parade.</small>`; }
+  catch(e){ $('bwOut').textContent='The live wind forecast works on the GitHub site.'; } }
+
+// ---------- 🍗 carving countdown, 🪑 seating chart, 🍽️ kids' table games
+function carveLine(now){ if (theme!=='thanksgiving' || !current) return ''; const lp=localParts(now,current), tg=nthWeekday(lp.year,10,4,4); if (lp.month!==10 || lp.day!==tg) return '';
+  const hm=store.get('dinnerAt','16:00').split(':').map(Number), dinner=localToUTC(current,lp.year,10,tg,hm[0],hm[1]), carve=new Date(+dinner-20*60000), rest=new Date(+carve-30*60000), ms=carve-now;
+  if (ms<-30*60000) return ''; const tx=ms>0?(+now<+rest?`🍗 Turkey comes out of the oven at ${_fmtHM(rest)} to rest · carving in <span class="cd">${fmtCountdown(ms)}</span>`:`🍗 Turkey is resting — carving in <span class="cd">${fmtCountdown(ms)}</span>`):'🔪 Carving time! Dinner in 20 minutes';
+  return `<small>${tx} · <a href="#" id="carveSet">dinner at ${_fmtHM(dinner)}</a></small>`; }
+function setDinnerTime(){ showModal(`<h3>🍗 When’s dinner?</h3><p class="mut">The turkey should rest ~30 minutes, then carving takes ~20.</p><input type="time" id="dtT" value="${store.get('dinnerAt','16:00')}"><button class="btn primary" id="dtOk">Save</button>`); $('dtOk').onclick=()=>{ store.set('dinnerAt',$('dtT').value||'16:00'); closeModal(); tick(true); toast('🍗 Carving countdown set!'); }; }
+function openSeating(){ const S=store.get('seating',{names:[],shape:'rect'});
+  showModal(`<h3>🪑 Seating chart</h3><p class="mut">Add everyone coming to dinner, then shuffle until it’s just right. Tap two names on the table to swap them.</p>
+    <div style="display:flex;gap:6px"><input id="stN" maxlength="16" placeholder="Name" style="flex:1"><button class="btn primary" id="stAdd">Add</button></div>
+    <div class="seg" id="stShape" style="margin:6px 0"><button data-v="rect" class="${S.shape==='rect'?'on':''}">▭ Long table</button><button data-v="round" class="${S.shape==='round'?'on':''}">◯ Round</button></div>
+    <canvas id="stC" width="440" height="320" style="width:100%;border-radius:10px;background:rgba(255,255,255,.04)"></canvas>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center"><button class="btn" id="stShuf">🔀 Shuffle</button><button class="btn" id="stClr">Clear</button></div>`);
+  const cv=$('stC'), x=cv.getContext('2d'); let sel=-1, seats=[];
+  const draw=()=>{ x.clearRect(0,0,440,320); const n=S.names.length; seats=[]; x.fillStyle='#8a5a32';
+    if (S.shape==='round'){ x.beginPath(); x.arc(220,160,85,0,7); x.fill(); for (let i=0;i<n;i++){ const a=i/n*6.283-1.57; seats.push([220+Math.cos(a)*125,160+Math.sin(a)*125]); } }
+    else { x.fillRect(70,125,300,70); const top=Math.ceil(n/2); for (let i=0;i<n;i++){ const t=i<top, k=t?i:i-top, m=t?top:n-top; seats.push([70+300*(k+.5)/Math.max(1,m),t?95:225]); } }
+    x.font='22px serif'; x.textAlign='center'; x.textBaseline='middle'; x.fillText('🦃',220,160);
+    S.names.forEach((nm,i)=>{ const [sx,sy]=seats[i]; x.fillStyle=i===sel?'#ffb347':'#2f6b4f'; x.beginPath(); x.arc(sx,sy,24,0,7); x.fill(); x.fillStyle='#fff'; x.font='bold 11px system-ui'; x.fillText(nm.slice(0,9),sx,sy); });
+    if (!n){ x.fillStyle='rgba(255,255,255,.5)'; x.font='14px system-ui'; x.fillText('Add names above',220,260); } store.set('seating',S); };
+  draw(); $('stAdd').onclick=()=>{ const v=$('stN').value.trim(); if (!v||S.names.length>=16) return; S.names.push(v); $('stN').value=''; draw(); };
+  $('stShape').querySelectorAll('button').forEach(b=>b.onclick=()=>{ S.shape=b.dataset.v; $('stShape').querySelectorAll('button').forEach(q=>q.classList.toggle('on',q===b)); draw(); });
+  $('stShuf').onclick=()=>{ S.names=_sh16(S.names); sel=-1; draw(); try{ sfx('pop'); }catch(e){} }; $('stClr').onclick=()=>{ S.names=[]; draw(); };
+  cv.onclick=e=>{ const r=cv.getBoundingClientRect(), px=(e.clientX-r.left)/r.width*440, py=(e.clientY-r.top)/r.height*320, i=seats.findIndex(s=>Math.hypot(s[0]-px,s[1]-py)<28); if (i<0) return; if (sel<0) sel=i; else { [S.names[sel],S.names[i]]=[S.names[i],S.names[sel]]; sel=-1; } draw(); }; }
+var KIDS_CARDS=['Would you rather eat only pie or only mashed potatoes for a week?','If a turkey could talk, what would it say at dinner?','Would you rather have a pet turkey or a pet penguin?','What’s the silliest thing you’re thankful for?','If you could invite any cartoon character to dinner, who?','Would you rather fly in the parade as a balloon or ride on a float?','Make up a new Thanksgiving food. What’s in it?','Would you rather have cranberry sauce hair or gravy shoes?','What would your giant parade balloon look like?','Who at this table would win a pie-eating contest?','Would you rather be the turkey or the person cooking it? 😄','Act out your favorite food without talking — everyone guesses!','What’s one thing that made you laugh this year?','Would you rather nap after dinner or play football?','If you were a pie, what flavor would you be?'];
+function openKidsTable(){ let d=_sh16(KIDS_CARDS), i=0; showModal(`<h3>🍽️ Kids’ table games</h3><div id="ktCard" class="advMsg" style="font-size:19px;min-height:110px;display:flex;align-items:center;justify-content:center;text-align:center"></div><div style="display:flex;gap:8px;justify-content:center"><button class="btn primary" id="ktNext">Next card ▶</button></div><p class="mut" style="text-align:center">Take turns reading a card out loud — everyone answers!</p>`);
+  const show=()=>{ $('ktCard').textContent=d[i%d.length]; }; show(); $('ktNext').onclick=()=>{ i++; show(); try{ sfx('pop'); }catch(e){} }; }
+
+// ---------- 🕎 dreidel
+function openDreidel(){ const G={me:10,pot:4,cpu:[10,10],turn:0,log:[]}; const SIDE=[['נ','Nun','nothing happens'],['ג','Gimel','takes the whole pot!'],['ה','Hei','takes half the pot'],['ש','Shin','puts one in']];
+  const spin=(who)=>{ const k=Math.floor(Math.random()*4); let gain=0; if (k===1){ gain=G.pot; G.pot=0; } else if (k===2){ gain=Math.ceil(G.pot/2); G.pot-=gain; } else if (k===3){ gain=-1; G.pot++; }
+    if (who<0) G.me+=gain; else G.cpu[who]+=gain; if (G.pot===0){ if (G.me>0){ G.me--; G.pot++; } G.cpu.forEach((v,j)=>{ if (v>0){ G.cpu[j]--; G.pot++; } }); }
+    G.log.unshift(`${who<0?'You':['Grandpa','Cousin'][who]} spun <b>${SIDE[k][0]} ${SIDE[k][1]}</b> — ${SIDE[k][2]}`); return k; };
+  const render=(k)=>{ if (!$('drD')) return; $('drD').textContent=k==null?'🕎':SIDE[k][0]; $('drS').innerHTML=`🪙 You: <b>${G.me}</b> · 👴 Grandpa: ${G.cpu[0]} · 🧒 Cousin: ${G.cpu[1]} · 🍯 Pot: <b>${G.pot}</b>`; $('drL').innerHTML=G.log.slice(0,6).join('<br>');
+    const out=[G.me,...G.cpu].map((v,i)=>v<=0?i:-1).filter(i=>i>=0); if (G.me<=0||G.cpu.every(v=>v<=0)||G.log.length>=30){ const win=G.me>=Math.max(...G.cpu); $('drSpin').disabled=true; $('drL').innerHTML=`<b>${win?'🎉 You win the gelt!':'🪙 Good game! Spin again tomorrow.'}</b><br>`+$('drL').innerHTML; if (win) try{ fx.celebrate(3000); }catch(e){} } };
+  showModal(`<h3>🕎 Dreidel</h3><p class="mut">Everyone starts with 10 gelt. נ nothing · ג take the pot · ה take half · ש put one in.</p><div id="drD" style="font-size:72px;text-align:center;transition:transform .8s">🕎</div><p id="drS" style="text-align:center"></p><button class="btn primary" id="drSpin" style="display:block;margin:0 auto">Spin! 🌀</button><p id="drL" class="mut" style="font-size:13px"></p>`);
+  render(null); $('drSpin').onclick=()=>{ const d=$('drD'); d.style.transform=`rotate(${720+Math.random()*360}deg)`; $('drSpin').disabled=true; try{ sfx('tick'); }catch(e){}
+    setTimeout(()=>{ d.style.transition='none'; d.style.transform=''; void d.offsetWidth; d.style.transition='transform .8s'; const k=spin(-1); render(k); setTimeout(()=>{ spin(0); spin(1); render(k); if ($('drSpin') && !(G.me<=0||G.log.length>=30)) $('drSpin').disabled=false; },700); },800); }; }
+
+// ---------- 🎆 midnight wave: New Year’s arriving zone by zone
+var NY_WAVE=[[14,'Kiribati (Line Islands)'],[13,'Samoa · Tonga'],[12,'New Zealand · Fiji'],[11,'Sydney · Melbourne'],[10,'Brisbane · Guam'],[9.5,'Adelaide'],[9,'Tokyo · Seoul'],[8,'Beijing · Singapore · Perth'],[7,'Bangkok · Jakarta'],[5.5,'India'],[4,'Dubai'],[3,'Moscow · Istanbul · Nairobi'],[2,'Cairo · Athens · Johannesburg'],[1,'Paris · Berlin · Rome · Lagos'],[0,'London · Lisbon · Accra'],[-1,'Cape Verde'],[-3,'Rio de Janeiro · Buenos Aires'],[-4,'Halifax · Puerto Rico'],[-5,'New York · Toronto · Kingston'],[-6,'Chicago · Mexico City'],[-7,'Denver · Phoenix'],[-8,'Los Angeles · Vancouver'],[-9,'Anchorage'],[-10,'Honolulu'],[-11,'American Samoa']];
+function newYearUTC(off,y){ return Date.UTC(y,0,1)-off*3600000; }
+function midnightWaveLine(now){ if (!current) return ''; const t=+now, y=new Date(t+14*3600000).getUTCFullYear(); const first=newYearUTC(14,y), last=newYearUTC(-11,y); if (t<first-6*3600000 || t>last+3600000) return '';
+  const done=NY_WAVE.filter(z=>t>=newYearUTC(z[0],y)).length, nx=NY_WAVE.find(z=>t<newYearUTC(z[0],y)); return `<small>🎆 Midnight wave: ${done}/${NY_WAVE.length} time zones are in ${y}${nx?` · next: ${nx[1]} in <span class="cd">${fmtCountdown(newYearUTC(nx[0],y)-t)}</span>`:''} · <a href="#" id="nwGo">see all</a></small>`; }
+function openMidnightWave(){ const t=+simNow(), y=new Date(t+14*3600000).getUTCFullYear()+(new Date(t).getUTCMonth()<11&&new Date(t).getUTCMonth()>0?1:0);
+  showModal(`<h3>🎆 New Year’s midnight wave ${y}</h3><p class="mut">New Year’s Day arrives one time zone at a time — it takes about 26 hours to reach everyone!</p>${NY_WAVE.map(z=>{ const at=newYearUTC(z[0],y), d=t>=at; return `<div class="gBoardR" style="padding:4px 0;${d?'':'opacity:.75'}"><span>${d?'🎉':'⏳'} ${z[1]}</span><small>${d?'celebrating!':(at-t<86400000*2?fmtCountdown(at-t):new Date(at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:current?.tz||undefined}))}</small></div>`; }).join('')}`); }
+
+// ---------- 💝 valentine card maker
+function openValentine(){ const V=store.get('valentine',{to:'',msg:'You make every day brighter!',from:store.get('nick',''),d:0});
+  showModal(`<h3>💝 Valentine maker</h3><input id="vTo" maxlength="20" placeholder="To" value="${esc(V.to)}"><input id="vMsg" maxlength="60" placeholder="Message" value="${esc(V.msg)}"><input id="vFrom" maxlength="20" placeholder="From" value="${esc(V.from)}">
+    <div class="seg" id="vD">${['💖 Hearts','🌹 Roses','🍫 Sweet','🐻 Cute'].map((l,i)=>`<button data-v="${i}" class="${V.d===i?'on':''}">${l}</button>`).join('')}</div><canvas id="vC" width="600" height="420" style="width:100%;border-radius:12px;margin-top:6px"></canvas><button class="btn primary" id="vShare" style="margin-top:6px">Send…</button>`);
+  const draw=()=>{ const c=$('vC'), x=c.getContext('2d'), th=[['#ffd6e4','#ff4d7d','💖'],['#fff0f0','#b3001b','🌹'],['#f7e3d0','#7b3f20','🍫'],['#ffeef8','#d63384','🐻']][V.d];
+    x.fillStyle=th[0]; x.fillRect(0,0,600,420); x.font='34px serif'; x.textAlign='center'; x.textBaseline='middle'; const r=_rng(V.d+7); for (let i=0;i<22;i++){ x.globalAlpha=.35; x.fillText(th[2],r()*600,r()*420); } x.globalAlpha=1;
+    x.fillStyle='rgba(255,255,255,.8)'; x.beginPath(); x.roundRect?x.roundRect(60,70,480,280,24):x.rect(60,70,480,280); x.fill();
+    x.fillStyle=th[1]; x.font='bold 36px Georgia,serif'; x.fillText(V.to?`To ${V.to}`:'Happy Valentine’s Day',300,125); x.font='italic 26px Georgia,serif';
+    const words=(V.msg||'').split(' '), lines=[]; let ln=''; words.forEach(w=>{ if ((ln+' '+w).length>28){ lines.push(ln); ln=w; } else ln=(ln?ln+' ':'')+w; }); lines.push(ln); lines.slice(0,3).forEach((l,i)=>x.fillText(l,300,195+i*36));
+    x.font='54px serif'; x.fillText(th[2],300,310-(3-Math.min(3,lines.length))*0); x.font='22px Georgia,serif'; x.fillText(V.from?`Love, ${V.from}`:'',300,375); store.set('valentine',V); };
+  ['vTo','vMsg','vFrom'].forEach(id=>$(id).oninput=()=>{ V.to=$('vTo').value; V.msg=$('vMsg').value; V.from=$('vFrom').value; draw(); });
+  $('vD').querySelectorAll('button').forEach(b=>b.onclick=()=>{ V.d=+b.dataset.v; $('vD').querySelectorAll('button').forEach(q=>q.classList.toggle('on',q===b)); draw(); }); draw();
+  $('vShare').onclick=()=>$('vC').toBlob(b=>{ const f=new File([b],'valentine.png',{type:'image/png'}); if (navigator.canShare&&navigator.canShare({files:[f]})) navigator.share({files:[f],title:'Happy Valentine’s Day!'}).catch(()=>{}); else toast('Take a screenshot to send it 💌'); }); }
+
+// ---------- 🌍 Earth Day: plant trees on the globe (tap anywhere, 10 per year)
+var TREES={pts:null,key:'',tex:null};
+function treesTick(now){ const on=mode==='globe' && theme==='earthday'; const all=store.get('trees',[]); if (!on || !all.length){ if (TREES.pts) TREES.pts.visible=false; return; }
+  const k=all.length+''; if (TREES.key!==k){ TREES.key=k; if (!TREES.tex) TREES.tex=emojiTex('🌳','#3ddc84'); if (TREES.pts){ G.frame.remove(TREES.pts); TREES.pts.geometry.dispose(); } const pos=new Float32Array(all.length*3);
+    all.forEach((t,i)=>{ const v=llToEcef(t.lat,t.lon).multiplyScalar(1.003); pos.set([v.x,v.y,v.z],i*3); }); const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    TREES.pts=new THREE.Points(g,new THREE.PointsMaterial({size:18,sizeAttenuation:false,map:TREES.tex,transparent:true,depthWrite:false})); TREES.pts.frustumCulled=false; TREES.pts.renderOrder=5; G.frame.add(TREES.pts); }
+  TREES.pts.visible=true; }
+function treeTap(lat,lon,now){ if (theme!=='earthday' || mode!=='globe') return false; const y=yearOf(now), all=store.get('trees',[]), mine=all.filter(t=>t.y===y).length; if (mine>=10){ toast('🌳 You planted all 10 trees this Earth Day! Come back next year.'); return false; }
+  all.push({lat,lon,y}); store.set('trees',all); try{ sfx('pop'); fx.burst(_lastTapXY[0],_lastTapXY[1],true); }catch(e){} toast(`🌱 You planted a tree! ${mine+1}/10 this Earth Day · ${all.length} total`); return true; }
+function earthDayLine(now){ if (theme!=='earthday') return ''; const all=store.get('trees',[]), mine=all.filter(t=>t.y===yearOf(now)).length; return `<small>🌳 Tap the globe to plant trees — ${mine}/10 planted this year${all.length>mine?` · ${all.length} all-time`:''}</small>`; }
+
+// ---------- wiring
+var _tt16=totTap; totTap=function(lat,lon,now){ return _tt16(lat,lon,now) || treeTap(lat,lon,now); };
+var _lt16=layersTick; layersTick=function(now,M){ _lt16(now,M); santaWarnTick(now); radioTick(now); treesTick(now); };
+var _ll16=layerLines; layerLines=function(now){ let h=_ll16(now); if (!current) return h;
+  if (theme==='halloween') h+=spookyLine(now)+`<small>🍬 <a href="#" id="clGo">Candy log</a> · 🏠 <a href="#" id="bsGo">best streets</a></small>`;
+  if (theme==='thanksgiving') h+=carveLine(now)+`<small>🎈 <a href="#" id="bgGo">Parade bingo</a> · 🔮 <a href="#" id="ppGo">guess the balloons</a> · 🌬️ <a href="#" id="bwGo">balloon wind check</a></small><small>🪑 <a href="#" id="stGo">Seating chart</a> · 🍽️ <a href="#" id="ktGo">kids’ table games</a> · 🍗 <a href="#" id="carveSet2">carving countdown</a></small>`;
+  if (theme==='christmas') h+=myStopLine(now)+(typeof santa!=='undefined'&&santa.on?`<small class="pLive">📻 <a href="#" id="rdGo">Sleigh radio — LIVE</a></small>`:'');
+  if (hanukkahNight(now)) h+=`<small>🕎 <a href="#" id="drGo">Play dreidel</a></small>`;
+  if (theme==='valentines') h+=`<small>💝 <a href="#" id="vlGo">Make a valentine</a></small>`;
+  return h+midnightWaveLine(now)+earthDayLine(now); };
+document.addEventListener('click',e=>{ const a=e.target.closest('a,button'); if (!a) return;
+  const map={clGo:openCandyLog,bsGo:openBestStreets,camGo:openSantaCamPhoto,rdGo:openRadio,bgGo:openBingo,ppGo:openPicks,bwGo:openBalloonWind,stGo:openSeating,ktGo:openKidsTable,carveSet:setDinnerTime,carveSet2:setDinnerTime,drGo:openDreidel,nwGo:openMidnightWave,vlGo:openValentine};
+  if (map[a.id]){ e.preventDefault(); map[a.id](); } });
+var _om16=openMore; openMore=function(){ _om16(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
+  const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.appendChild(b); };
+  if (theme==='halloween'){ add('🍬','Candy log','Count & trade',openCandyLog); add('🏠','Best streets','Save & share',openBestStreets); }
+  if (theme==='thanksgiving'){ add('🎈','Parade bingo','Mark what you see',openBingo); add('🔮','Guess the balloons','Pick 5',openPicks); add('🌬️','Balloon wind check','Will they fly?',openBalloonWind); add('🪑','Seating chart','Who sits where',openSeating); add('🍽️','Kids’ table games','Silly questions',openKidsTable); add('🍗','Carving countdown','Set dinner time',setDinnerTime); }
+  if (theme==='christmas'){ add('📻','Sleigh radio','Live on Christmas Eve',openRadio); add('📸','Santa cam','Photo from your town',openSantaCamPhoto); }
+  if (hanukkahNight(simNow())) add('🕎','Dreidel','Spin for gelt',openDreidel);
+  if (theme==='valentines') add('💝','Valentine maker','Make & send a card',openValentine);
+  if (theme==='newyear'||theme==='christmas') add('🎆','Midnight wave','New Year by time zone',openMidnightWave); };
+if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {openCandyLog,openBestStreets,openSantaCamPhoto,openRadio,openBingo,openPicks,openBalloonWind,openSeating,openKidsTable,setDinnerTime,openDreidel,openMidnightWave,openValentine,spookyScore,SW16,treeTap});
 
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS,SET,layerNote,noteFor};
