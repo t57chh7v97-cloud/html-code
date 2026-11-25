@@ -2162,7 +2162,7 @@ function updateHoliday(now){
 }
 // the holiday box shows the big holiday news; everything else folds into "More" inside the box
 var HS_OPEN=false;
-const HS_PIN=/evPin|pLive|ytBtn|liveDot|LIVE|Happy birthday|shadow is on Earth|[Pp]arade|🎅|Santa|😴|Clocks go|Trick-or-treating|Hanukkah night|Kwanzaa day|tree lighting|[Ff]ireworks|Already 20|Next to celebrate|20\d\d in |Unwrap your presents|April Fools|pranks|elf is hiding|Dinner wave|of Christmas: |Spooky meter|Turkey comes out|Turkey is resting|Carving time|Your town is Santa|Midnight wave|plant trees|Herald Square now/;
+const HS_PIN=/evPin|pLive|ytBtn|liveDot|LIVE|Happy birthday|shadow is on Earth|[Pp]arade|🎅|Santa|😴|Clocks go|Trick-or-treating|Hanukkah night|Kwanzaa day|tree lighting|[Ff]ireworks|Already 20|Next to celebrate|20\d\d in |Unwrap your presents|April Fools|pranks|elf is hiding|Dinner wave|of Christmas: |Spooky meter|Turkey comes out|Turkey is resting|Carving time|Your town is Santa|Midnight wave|plant trees|Herald Square now|Presents in|Christmas morning!|Kickoff in|Game on now|Parade eve|❌/;
 function stripSplit(ex){ const parts=ex.match(/<small[\s\S]*?<\/small>/g)||[]; const pin=[], more=[]; parts.forEach(x=>{ const links=(x.match(/<a /g)||[]).length, activity=links>=2 && !/LIVE|ytBtn|liveDot/.test(x); (HS_PIN.test(x)&&!activity?pin:more).push(x); });   // lines of activity links (tree · Secret Santa…) always fold away
   if (more.length<2) return parts.join('');
   return pin.join('')+(HS_OPEN?more.join(''):'')+`<small class="hsMore"><a href="#" id="hsMoreBtn">${HS_OPEN?'Show less ▴':`More (${more.length}) ▾`}</a></small>`; }
@@ -3959,7 +3959,10 @@ var PARADES=[ // city, lat, lon, time zone, start hour, end hour (≈), what it 
   ['Charlotte',35.227,-80.843,'America/New_York',17.5,20,'an evening parade along Tryon Street in Uptown with lit-up floats, balloons and bands',-1,'Novant Health Thanksgiving Eve Parade','80th',''],
   ['Plymouth, MA',41.958,-70.662,'America/New_York',10,13,'from Plymouth Rock along Water, Main and Court Streets — the only historically accurate chronological parade, 17th to 21st century, themed on America’s 250th',-5,'America’s Hometown Thanksgiving Celebration','31st','WCVB 5 / WMUR · rebroadcast Thanksgiving 9–11 AM']];
 function paradeDay(p,y){ return p[0]==='New York City' ? macyDay(y) : nthWeekday(y,10,4,4)+p[7]; }
-function paradeOn(p,now){ const t=partsIn(p[3],now); if (t.month!==10 || t.day!==paradeDay(p,t.year)) return 0; const h=t.hour+t.minute/60; return h>=p[4]&&h<p[5] ? 2 : h<p[4] ? 1 : 3; }
+// parades called off this year (city → why)
+var PARADE_CANCEL={2026:{'Charlotte':'Canceled because of high winds and rain — WCCB is airing a special show 6–8 PM instead'}};
+function paradeCanceled(p,y){ return (PARADE_CANCEL[y]||{})[p[0]]||''; }
+function paradeOn(p,now){ const t=partsIn(p[3],now); if (t.month!==10 || t.day!==paradeDay(p,t.year) || paradeCanceled(p,t.year)) return 0; const h=t.hour+t.minute/60; return h>=p[4]&&h<p[5] ? 2 : h<p[4] ? 1 : 3; }
 updateParade=function(t, now){
   const on = (theme==='thanksgiving'||macyMovedToday(now)) && mode==='globe' ? PARADES.map(p=>paradeOn(p,now)===2) : PARADES.map(()=>false);
   if (!on.some(Boolean)){ if (parade){ parade.root.visible=false; if (ctlG.minDistance<1.25) ctlG.minDistance=1.25; } return; }
@@ -3975,7 +3978,7 @@ watchParade=function(i){ i=i||0; const p=PARADES[i]; achieve('parade'); ctlG.min
 function paradeYT(p,y){ return 'https://www.youtube.com/results?search_query='+encodeURIComponent(`${p[8].replace(/’/g,"'")} ${y} live`); }
 function paradeLines(now){ if ((theme!=='thanksgiving' && !macyMovedToday(now)) || !current || current.cc!=='US') return '';
   const out=[], later=[];
-  PARADES.forEach((p,i)=>{ const t=partsIn(p[3],now); if (t.month!==10 || t.day!==paradeDay(p,t.year)) return; const h=t.hour+t.minute/60+t.second/3600;
+  PARADES.forEach((p,i)=>{ const t=partsIn(p[3],now); if (t.month!==10 || t.day!==paradeDay(p,t.year)) return; if (paradeCanceled(p,t.year)){ out.push(`<small>❌ ${esc(p[8])} (${esc(p[0])}) — ${esc(paradeCanceled(p,t.year))}</small>`); return; } const h=t.hour+t.minute/60+t.second/3600;
     const yt=`<a class="ytBtn" href="${paradeYT(p,t.year)}" target="_blank" rel="noopener">▶️ Watch on YouTube</a>`;
     if (h>=p[4] && h<p[5]) out.push(`<small class="pLive"><span class="liveDot"></span><b>LIVE NOW</b> · <a href="#" data-parade="${i}">${esc(p[8])}</a> (${esc(p[0])}) ${yt}</small>`);
     else if (h>=p[4]-1 && h<p[4]){ const m=Math.ceil((p[4]-h)*60); out.push(`<small>🎈 <b>${esc(p[8])}</b> (${esc(p[0])}) starts in ${m} min ${yt}</small>`); }
@@ -3987,7 +3990,7 @@ function openParadeGuide(){ const now=simNow(), y0=partsIn('America/New_York',no
   showModal(`<h3>🎈 Thanksgiving parades ${y0}</h3><p class="mut">Balloons float over each city on the globe while its parade is on. Times are the step-off; end times are approximate.</p>
   ${order.map(i=>{ const p=PARADES[i], s=paradeOn(p,now), y=partsIn(p[3],now).year, d=paradeDay(p,y), start=localToUTC({...current,tz:p[3],exactTz:true},y,10,d,Math.floor(p[4]),Math.round(p[4]%1*60));
     const day=new Date(Date.UTC(y,10,d)).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'});
-    return `<div class="advMsg" style="margin-top:6px"><b>${esc(p[8])}</b> · ${esc(p[0])}<br><small>${esc(p[9])} edition · ${esc(p[6])}</small><br><small class="mut">${day}, ${fmtTime(start,current,false)} your time${p[10]?' · 📺 '+esc(p[10]):''}${s===2?' · 🔴 on now':s===3?' · done for this year':''}</small> ${s===2?`<button class="btn mini" data-pw="${i}">Watch</button>`:''}</div>`; }).join('')}`);
+    return `<div class="advMsg" style="margin-top:6px"><b>${esc(p[8])}</b> · ${esc(p[0])}<br><small>${esc(p[9])} edition · ${esc(p[6])}</small><br><small class="mut">${day}, ${fmtTime(start,current,false)} your time${p[10]?' · 📺 '+esc(p[10]):''}${paradeCanceled(p,y)?' · ❌ canceled this year (weather)':p[0]==='New York City'&&MACY_MOVE[y]?' · 📢 moved to Saturday (storm)':''}${s===2?' · 🔴 on now':s===3?' · done for this year':''}</small> ${s===2?`<button class="btn mini" data-pw="${i}">Watch</button>`:''}</div>`; }).join('')}`);
   document.querySelectorAll('[data-pw]').forEach(b=>b.onclick=()=>{ closeModal(); watchParade(+b.dataset.pw); }); }
 document.addEventListener('click',e=>{ const a=e.target.closest('a'); if (!a) return; if (a.dataset.parade!=null){ e.preventDefault(); watchParade(+a.dataset.parade); } else if (a.id==='paradeGuide'){ e.preventDefault(); openParadeGuide(); } });
 
@@ -4718,12 +4721,13 @@ function openHopper(){ const L=holidaysToday(simNow());
 
 // ---------- 🎈 Thanksgiving parades: one compact line when several are on at once
 var _pl9=paradeLines; paradeLines=function(now){ if ((theme!=='thanksgiving' && !macyMovedToday(now)) || !current || current.cc!=='US') return '';
-  const st=PARADES.map((p,i)=>{ const t=partsIn(p[3],now); if (t.month!==10 || t.day!==paradeDay(p,t.year)) return null; const h=t.hour+t.minute/60+t.second/3600;
+  const st=PARADES.map((p,i)=>{ const t=partsIn(p[3],now); if (t.month!==10 || t.day!==paradeDay(p,t.year) || paradeCanceled(p,t.year)) return null; const h=t.hour+t.minute/60+t.second/3600;
     return h>=p[4]&&h<p[5]?'live':h>=p[4]-1&&h<p[4]?'soon':h>=p[5]&&h<p[5]+.5?'ended':h<p[4]-1?'later':null; });
   const n=s=>st.filter(x=>x===s).length, active=n('live')+n('soon')+n('ended'); if (active<=1) return _pl9(now);
   const bits=[]; if (n('live')) bits.push(`${n('live')} parade${n('live')>1?'s':''} on now`); if (n('soon')) bits.push(`${n('soon')} starting soon`); if (n('ended')) bits.push(`${n('ended')} just ended`);
   let h=`<small class="pLive">${n('live')?'<span class="liveDot"></span><b>LIVE NOW</b> ·':'🎈'} ${bits.join(' · ')} <a class="ytBtn" href="#" id="paradeAll">▶️ Watch</a></small>`;
   const later=PARADES.filter((p,i)=>st[i]==='later').map(p=>p[0]); if (later.length) h+=`<small>🎈 Later today: ${later.join(', ')} · <a href="#" id="paradeGuide">times</a></small>`;
+  PARADES.forEach(p=>{ const t=partsIn(p[3],now); if (t.month===10 && t.day===paradeDay(p,t.year) && paradeCanceled(p,t.year)) h+=`<small>❌ ${esc(p[8])} (${esc(p[0])}) — ${esc(paradeCanceled(p,t.year))}</small>`; });
   return h; };
 function openParadeAll(){ const now=simNow();
   showModal(`<h3>🎈 Parades on now</h3>${PARADES.map((p,i)=>{ const t=partsIn(p[3],now); if (t.month!==10 || t.day!==paradeDay(p,t.year)) return ''; const h=t.hour+t.minute/60;
@@ -5965,23 +5969,6 @@ function twelveLine(now){ const d=twelveDay(now); if (!d) return ''; const g=TWE
 function collectTwelve(){ const now=simNow(), d=twelveDay(now); if (!d) return; const y=yr(now)-(localParts(now,current).month===0?1:0), T=store.get('twelve',{}); T[y]=[...new Set([...(T[y]||[]),d])]; store.set('twelve',T); const g=TWELVE[d-1];
   try{ fx.celebrate(2000); }catch(e){} showModal(`<h3>🎶 On day ${d} of Christmas…</h3><div style="font-size:60px;text-align:center">${g[0]}</div><p style="text-align:center;font-weight:700">my true love gave to me ${g[1]}!</p><p class="mut" style="text-align:center">${g[2]}</p><div style="text-align:center;font-size:24px">${TWELVE.map((x,i)=>T[y].includes(i+1)?x[0]:'▫️').join(' ')}</div><p class="mut" style="text-align:center">${T[y].length}/12 collected</p>`); tick(true); }
 
-// ---------- 📞 a call from Santa (spoken out loud with the phone’s voice)
-function santaCallText(){ const nick=store.get('nick','')||'my friend', now=simNow(), y=yr(now), nn=(store.get('nnList',{})[y]||{}).pc, wl=(store.get('wishlist',{})[y]||[])[0], town=current?shortName(current):'your town';
-  const lp=current?localParts(now,current):{month:11,day:20}; const days=lp.month===11&&lp.day<25?25-lp.day:0;
-  return [`Ho ho ho! Hello ${nick}! This is Santa Claus, calling all the way from the North Pole!`,
-    days?`Only ${days} more sleep${days===1?'':'s'} until Christmas, and the elves are working around the clock.`:`Merry Christmas! The reindeer and I had a wonderful flight.`,
-    nn!=null?(nn>=60?`I checked my list twice, and I'm happy to say you're on the Nice List!`:`I checked my list… you're very close to the Nice List. A few more kind deeds and you'll be there!`):`Have you been helping out and being kind? My elves are watching!`,
-    wl?`I see you're wishing for ${wl.t}. I'll see what the workshop can do!`:'',
-    `I'll be flying over ${town} on Christmas Eve, so remember to go to sleep early, and maybe leave out some cookies and a carrot for Rudolph.`,
-    `Merry Christmas, ${nick}! Ho ho ho!`].filter(Boolean).join(' '); }
-function openSantaCall(){ const can='speechSynthesis' in window;
-  showModal(`<div style="text-align:center"><div style="font-size:64px" id="scAvatar">🎅</div><h3 style="margin:6px 0">Incoming call…</h3><p class="mut">Santa Claus · North Pole</p>
-    <div style="display:flex;gap:14px;justify-content:center;margin-top:14px"><button class="btn" id="scDecl" style="background:#c0111f;color:#fff;border-radius:999px;padding:12px 18px">📵 Decline</button><button class="btn" id="scAns" style="background:#1f9d55;color:#fff;border-radius:999px;padding:12px 18px">📞 Answer</button></div><p id="scTxt" class="advMsg" style="display:none;text-align:left;line-height:1.5"></p></div>`);
-  let ring=setInterval(()=>{ try{ sfx('ding',.6); }catch(e){} const a=$('scAvatar'); if (a) a.style.transform=a.style.transform?'':'rotate(-8deg)'; else clearInterval(ring); },900);
-  $('scDecl').onclick=()=>{ clearInterval(ring); closeModal(); toast('🎅 Santa will try again later. Ho ho ho!'); };
-  $('scAns').onclick=()=>{ clearInterval(ring); const t=santaCallText(); $('scAns').style.display='none'; $('scDecl').textContent='📵 Hang up'; $('scDecl').onclick=()=>{ try{ speechSynthesis.cancel(); }catch(e){} closeModal(); };
-    $('scTxt').style.display=''; $('scTxt').textContent=t; if (can){ try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(t); u.pitch=.55; u.rate=.9; const v=speechSynthesis.getVoices().find(v=>/en/i.test(v.lang)&&/male|daniel|fred|alex|aaron|arthur/i.test(v.name)); if (v) u.voice=v; speechSynthesis.speak(u); }catch(e){} } }; }
-
 // ---------- 📜 Nice List certificate (after the naughty-or-nice quiz)
 function openCertificate(){ const y=yr(), nn=(store.get('nnList',{})[y]||{}).pc, nick=store.get('nick','');
   if (nn==null || nn<60){ showModal(`<h3>📜 Nice List certificate</h3><p>${nn==null?'Take the “Naughty or nice?” quiz first!':'You’re not on the Nice List yet — be extra kind and take the quiz again!'}</p><button class="btn primary" id="ceQ">📜 Take the quiz</button>`); $('ceQ').onclick=openNaughtyNice; return; }
@@ -6029,18 +6016,18 @@ var _lt15=layersTick; layersTick=function(now,M){ _lt15(now,M); turkeys.update(n
 var _ll15=layerLines; layerLines=function(now){ let h=_ll15(now); if (!current) return h;
   if (theme==='halloween') h+=`<small>🧹 <a href="#" id="brGo">Broomstick ride</a> · 🏚️ <a href="#" id="esGo">escape the haunted house</a> · 🗺️ <a href="#" id="tpGo">trick-or-treat planner</a> · 🎭 <a href="#" id="ccGo">costume contest</a></small>`;
   if (theme==='thanksgiving') h+=`<small>🥡 <a href="#" id="loGo2">Leftover ideas</a> · 🥧 <a href="#" id="pgGo">pie slicing</a></small>`;
-  if (theme==='christmas') h+=`<small>📞 <a href="#" id="callGo">Call from Santa</a> · 🎁 <a href="#" id="wlGo">wish list</a> · ❄️ <a href="#" id="sfGo">snowflake maker</a> · 💡 <a href="#" id="tlGo">town lights</a> · 🦌 <a href="#" id="rgGo">reindeer games</a> · 📜 <a href="#" id="ceGo">Nice List certificate</a></small>`+(typeof santa!=='undefined'&&santa.on?`<small class="pLive">🛷 <a href="#" id="sdGo">Sleigh dashboard — LIVE</a></small>`:'');
+  if (theme==='christmas') h+=`<small>🎁 <a href="#" id="wlGo">wish list</a> · ❄️ <a href="#" id="sfGo">snowflake maker</a> · 💡 <a href="#" id="tlGo">town lights</a> · 🦌 <a href="#" id="rgGo">reindeer games</a> · 📜 <a href="#" id="ceGo">Nice List certificate</a></small>`+(typeof santa!=='undefined'&&santa.on?`<small class="pLive">🛷 <a href="#" id="sldGo">Sleigh dashboard — LIVE</a></small>`:'');
   return h+turkeyHuntLine(now)+dinnerWaveLine(now)+elfHideLine(now)+workshopLine(now)+twelveLine(now); };
 document.addEventListener('click',e=>{ const a=e.target.closest('a,button'); if (!a) return;
-  const map={brGo:broomRide,esGo:openEscape,tpGo:openTotPlanner,ccGo:openCostumeContest,dwGo:openDinnerWave,loGo2:openLeftovers,pgGo:openPieGame,callGo:openSantaCall,wlGo:openWishList,sfGo:openSnowflake,tlGo:openTownLights,rgGo:openReindeerGame,ceGo:openCertificate,sdGo:openSleighDash,wsGo:openWrapGame,twGo:collectTwelve};
+  const map={brGo:broomRide,esGo:openEscape,tpGo:openTotPlanner,ccGo:openCostumeContest,dwGo:openDinnerWave,loGo2:openLeftovers,pgGo:openPieGame,wlGo:openWishList,sfGo:openSnowflake,tlGo:openTownLights,rgGo:openReindeerGame,ceGo:openCertificate,sldGo:openSleighDash,wsGo:openWrapGame,twGo:collectTwelve};
   if (map[a.id]){ e.preventDefault(); map[a.id](); } });
 var _om15=openMore; openMore=function(){ _om15(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
   const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.appendChild(b); };
   if (theme==='halloween'){ add('🧹','Broomstick ride','Fly to spooky places',broomRide); add('🏚️','Escape room','Solve 3 riddles',openEscape); add('🗺️','Trick-or-treat planner','When it gets dark & tips',openTotPlanner); add('🎭','Costume contest','Enter & vote',openCostumeContest); }
   if (theme==='thanksgiving'){ add('🥡','Leftover ideas','What to make next',openLeftovers); add('🥧','Pie slicing','Cut 8 equal slices',openPieGame); add('🍽️','Dinner wave','Dinner across the US',openDinnerWave); }
-  if (theme==='christmas'){ add('📞','Call from Santa','He’ll talk to you!',openSantaCall); add('🎁','Wish list','Share with family',openWishList); add('❄️','Snowflake maker','Draw & mirror',openSnowflake); add('💡','Town lights','Light up your pin',openTownLights);
+  if (theme==='christmas'){ add('🎁','Wish list','Share with family',openWishList); add('❄️','Snowflake maker','Draw & mirror',openSnowflake); add('💡','Town lights','Light up your pin',openTownLights);
     add('🦌','Reindeer games','Catch the presents',openReindeerGame); add('📜','Nice List certificate','Print-worthy proof',openCertificate); add('🛷','Sleigh dashboard','Live on Christmas Eve',openSleighDash); add('🎁','Wrap presents','Help the elves',openWrapGame); } };
-if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {closeModal,turkeys,flyToLL,huntTapXY,broomRide,openEscape,openTotPlanner,openCostumeContest,openDinnerWave,openLeftovers,openPieGame,openSnowflake,openTownLights,openWishList,openReindeerGame,collectTwelve,openSantaCall,openCertificate,openSleighDash,openWrapGame});
+if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {closeModal,turkeys,flyToLL,huntTapXY,broomRide,openEscape,openTotPlanner,openCostumeContest,openDinnerWave,openLeftovers,openPieGame,openSnowflake,openTownLights,openWishList,openReindeerGame,collectTwelve,openCertificate,openSleighDash,openWrapGame});
 
 /* =========================================================
    ROUND 16 — 🍬 candy log · 🌕 spooky meter · 🏠 best streets
@@ -6217,12 +6204,12 @@ var _ll16=layerLines; layerLines=function(now){ let h=_ll16(now); if (!current) 
   if (theme==='halloween') h+=spookyLine(now)+`<small>🍬 <a href="#" id="clGo">Candy log</a> · 🏠 <a href="#" id="bsGo">best streets</a></small>`;
   if (theme==='thanksgiving'||macyMovedToday(now)) h+=`<small>🎈 <a href="#" id="bgGo">Parade bingo</a> · 🔮 <a href="#" id="ppGo">guess the balloons</a> · 🌬️ <a href="#" id="bwGo">balloon wind check</a></small>`;
   if (theme==='thanksgiving') h+=carveLine(now)+`<small>🪑 <a href="#" id="stGo">Seating chart</a> · 🍽️ <a href="#" id="ktGo">kids’ table games</a> · 🍗 <a href="#" id="carveSet2">carving countdown</a></small>`;
-  if (theme==='christmas') h+=myStopLine(now)+(typeof santa!=='undefined'&&santa.on?`<small class="pLive">📻 <a href="#" id="rdGo">Sleigh radio — LIVE</a></small>`:'');
+  if (theme==='christmas') h+=myStopLine(now)+(typeof santa!=='undefined'&&santa.on?`<small class="pLive">📻 <a href="#" id="radGo">Sleigh radio — LIVE</a></small>`:'');
   if (hanukkahNight(now)) h+=`<small>🕎 <a href="#" id="drGo">Play dreidel</a></small>`;
   if (theme==='valentines') h+=`<small>💝 <a href="#" id="vlGo">Make a valentine</a></small>`;
   return h+midnightWaveLine(now)+earthDayLine(now); };
 document.addEventListener('click',e=>{ const a=e.target.closest('a,button'); if (!a) return;
-  const map={clGo:openCandyLog,bsGo:openBestStreets,camGo:openSantaCamPhoto,rdGo:openRadio,bgGo:openBingo,ppGo:openPicks,bwGo:openBalloonWind,stGo:openSeating,ktGo:openKidsTable,carveSet:setDinnerTime,carveSet2:setDinnerTime,drGo:openDreidel,nwGo:openMidnightWave,vlGo:openValentine};
+  const map={clGo:openCandyLog,bsGo:openBestStreets,camGo:openSantaCamPhoto,radGo:openRadio,bgGo:openBingo,ppGo:openPicks,bwGo:openBalloonWind,stGo:openSeating,ktGo:openKidsTable,carveSet:setDinnerTime,carveSet2:setDinnerTime,drGo:openDreidel,nwGo:openMidnightWave,vlGo:openValentine};
   if (map[a.id]){ e.preventDefault(); map[a.id](); } });
 var _om16=openMore; openMore=function(){ _om16(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
   const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.appendChild(b); };
@@ -6323,16 +6310,123 @@ function myBalloonTick(now){ const B=store.get('myBalloon',null); const on=mode=
 var _lt17=layersTick; layersTick=function(now,M){ _lt17(now,M); countryTick(now); paradeRouteTick(now); myBalloonTick(now); };
 var _ll17=layerLines; layerLines=function(now){ let h=_ll17(now); if (!current) return h;
   if (theme==='christmas'){ const live=typeof santa!=='undefined'&&santa.on; h+=`<small>⏱️ <a href="#" id="sgGo">Guess his arrival</a> · 🦌 <a href="#" id="rjGo">reindeer team</a> · 🍪 <a href="#" id="fcGo">friends’ cookies</a>${live||santa.done?` · 🌍 <a href="#" id="cvGo">countries visited (${countriesVisited().length})</a>`:''}</small>`; if (live) h+=`<small>⭐ Tap Santa on the globe to spot the sleigh — ${((store.get('sleighStars',{})[santa.y]||{}).n||0)} stars</small>`; }
-  if (theme==='thanksgiving'||macyMovedToday(now)) h+=paradeTimelineLine(now)+`<small>📍 <a href="#" id="prGo">Parade route</a> · 📏 <a href="#" id="bzGo">balloon sizes</a> · 🗳️ <a href="#" id="fvGo">favorite balloon</a> · 🎟️ <a href="#" id="pcGo">checklist</a> · 🎨 <a href="#" id="mbGo">design a balloon</a></small>`;
+  if (theme==='thanksgiving'||macyMovedToday(now)) h+=paradeTimelineLine(now)+`<small>📍 <a href="#" id="prGo">Parade route</a> · 📏 <a href="#" id="bzGo">balloon sizes</a> · 🗳️ <a href="#" id="fvGo">favorite balloon</a> · 🎟️ <a href="#" id="pchkGo">checklist</a> · 🎨 <a href="#" id="mbGo">design a balloon</a></small>`;
   return h; };
 document.addEventListener('click',e=>{ const a=e.target.closest('a,button'); if (!a) return;
-  const map={sgGo:openSantaGuess,rjGo:openReindeerTeam,fcGo:openFriendsCookies,cvGo:openCountries,ptGo:openParadeTimeline,prGo:openParadeRoute,bzGo:openBalloonSizes,fvGo:openFavVote,pcGo:openParadeChecklist,mbGo:openMyBalloon};
+  const map={sgGo:openSantaGuess,rjGo:openReindeerTeam,fcGo:openFriendsCookies,cvGo:openCountries,ptGo:openParadeTimeline,prGo:openParadeRoute,bzGo:openBalloonSizes,fvGo:openFavVote,pchkGo:openParadeChecklist,mbGo:openMyBalloon};
   if (map[a.id]){ e.preventDefault(); map[a.id](); } });
 var _om17=openMore; openMore=function(){ _om17(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
   const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.appendChild(b); };
   if (theme==='christmas'){ add('⏱️','Guess his arrival','When will Santa come?',openSantaGuess); add('🦌','Reindeer team','Who does what',openReindeerTeam); add('🍪','Friends’ cookies','Treats left out',openFriendsCookies); add('🌍','Countries visited','Santa’s list tonight',openCountries); }
   if (theme==='thanksgiving'||macyMovedToday(simNow())){ add('🗽','Parade timeline','What’s passing now',openParadeTimeline); add('📍','Parade route','Pick a viewing spot',openParadeRoute); add('📏','Balloon sizes','How big are they?',openBalloonSizes); add('🗳️','Favorite balloon','Vote',openFavVote); add('🎟️','Parade checklist','What to bring',openParadeChecklist); add('🎨','Design a balloon','Fly it over NYC',openMyBalloon); } };
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {openSantaGuess,openReindeerTeam,openFriendsCookies,openCountries,openParadeTimeline,openParadeRoute,openBalloonSizes,openFavVote,openParadeChecklist,openMyBalloon,countriesVisited});
+
+/* =========================================================
+   ROUND 18 — 📬 Santa’s mailbag · 📖 bedtime story · 🪟 spot Santa from the window · ⏰ Christmas morning wake-up
+   🏆 balloon of the year · 🎈 100 years of parade trivia · 🎈 balloon inflation note · 🛍️ nap or shop? · 🏈 Thanksgiving football
+   🥪 sandwich ratings · 📅 advent door games · 🎉 New Year’s confetti cannon
+   ========================================================= */
+
+// ---------- 📬 Santa’s mailbag (an elf estimate that grows through December)
+function mailbagCount(now){ const t=+now, y=new Date(t).getUTCFullYear(), s=Date.UTC(y,10,1), e=Date.UTC(y,11,24,12); if (t<s) return 0; const f=Math.min(1,(t-s)/(e-s)); return Math.round(Math.pow(f,1.6)*500000000); }
+function mailbagLine(now){ if (theme!=='christmas' || !current) return ''; const lp=localParts(now,current); if (lp.month!==11 || lp.day>24) return ''; const L=store.get('letter',null), mine=L&&L.y===lp.year&&L.sent;
+  return `<small>📬 Santa’s mailbag: about ${mailbagCount(now).toLocaleString('en-US')} letters so far${mine?' — including yours!':' · <a href="#" id="r18Letter">add yours</a>'} <span class="mut">(elf estimate)</span></small>`; }
+
+// ---------- 📖 bedtime story from Santa (read-along, no voice)
+var STORY_BITS={hero:['a little reindeer named Pip','an elf named Juniper','a snowman named Frost','a polar bear cub named Biscuit'],prob:['lost the map to the North Pole','got stuck on a very windy rooftop','found a present with no name tag','ran out of glitter for the last toy'],help:['a friendly owl','the Northern Lights','a kind kid who was still awake (just for a minute!)','Rudolph and his glowing nose']};
+async function openBedtimeStory(){ const nick=store.get('nick','')||'little one', town=current?shortName(current):'your town', r=_rng(Date.now()%9973), pick=a=>a[Math.floor(r()*a.length)];
+  showModal(`<h3>📖 A bedtime story from Santa</h3><div id="bsT" class="advMsg" style="line-height:1.65;font-size:16px">✍️ Santa is writing…</div><button class="btn" id="bsNew">✨ Another story</button>`); $('bsNew').onclick=openBedtimeStory;
+  let text=null; try{ const smp=window.claude&&window.claude.use?await Promise.race([window.claude.use('sample'),new Promise(res=>setTimeout(()=>res(null),2500))]):null;
+    if (smp){ const out=await smp(`Write a cozy, gentle 150-word Christmas bedtime story told by Santa Claus to a child named ${nick} who lives in ${town}. Simple words, a little magic, ends with Santa saying goodnight. Plain text, no title.`,{}); if (out&&out.text) text=out.text.trim(); } }catch(e){}
+  if (!text){ const h=pick(STORY_BITS.hero), p=pick(STORY_BITS.prob), hp=pick(STORY_BITS.help);
+    text=`Ho ho ho… snuggle in, ${nick}. Once upon a snowy night, ${h} ${p}. Everyone at the North Pole was busy, the workshop was humming, and the snow was falling soft as pillows.\n\nSo ${h.split(' named ')[0]} took a deep breath and asked for help — and along came ${hp}. Together they fixed everything, one careful step at a time, and they laughed so hard their cheeks turned rosy.\n\nWhen the sleigh flew over ${town} that night, every window was dark and every child was dreaming. And do you know what? That’s exactly how the magic works.\n\nGoodnight, ${nick}. Sweet dreams. — Santa 🎅`; }
+  if ($('bsT')) $('bsT').innerHTML=esc(text).replace(/\n/g,'<br>'); }
+
+// ---------- 🪟 spot Santa from the window: tap the sleigh when it flashes past
+function openWindowGame(){ let round=0, times=[], showAt=0, timer=null, live=false;
+  showModal(`<h3>🪟 Spot Santa from your window</h3><p class="mut">Watch the night sky. When the sleigh zooms past, tap it as fast as you can! 5 rounds.</p><div id="wnW" style="position:relative;height:260px;border-radius:14px;overflow:hidden;background:linear-gradient(#071030,#1b2c5a);border:10px solid #6b4226;touch-action:manipulation">
+    <div style="position:absolute;inset:0;background:linear-gradient(90deg,transparent 49%,#6b4226 49%,#6b4226 51%,transparent 51%),linear-gradient(transparent 49%,#6b4226 49%,#6b4226 51%,transparent 51%);pointer-events:none;z-index:2"></div>
+    <div style="position:absolute;right:16px;top:14px;font-size:34px">🌙</div><div id="wnS" style="position:absolute;font-size:40px;display:none;cursor:pointer;z-index:3">🛷🦌</div><div id="wnMsg" style="position:absolute;left:0;right:0;bottom:10px;text-align:center;color:#fff;z-index:3;font-weight:700"></div></div><p id="wnR" style="text-align:center"></p>`);
+  const S=$('wnS'), msg=t=>$('wnMsg').textContent=t;
+  const next=()=>{ if (!$('wnS')) return; if (round>=5){ const avg=Math.round(times.reduce((a,b)=>a+b,0)/times.length), best=store.get('windowBest',0); if (!best||avg<best) store.set('windowBest',avg); msg(`🎅 Average: ${avg} ms ${!best||avg<best?'— new record!':`(best ${best} ms)`}`); $('wnR').innerHTML='<button class="btn primary" id="wnAgain">Play again</button>'; $('wnAgain').onclick=openWindowGame; if (avg<450) try{ fx.celebrate(2500); }catch(e){} return; }
+    msg('👀 Watch the sky…'); live=false; S.style.display='none'; timer=setTimeout(()=>{ if (!$('wnS')) return; const top=20+Math.random()*150; S.style.top=top+'px'; S.style.left='-80px'; S.style.display='block'; S.style.transition='none'; void S.offsetWidth; S.style.transition='left 1.4s linear'; S.style.left='110%'; showAt=performance.now(); live=true;
+      setTimeout(()=>{ if (live){ live=false; msg('💨 Too slow — he’s gone!'); times.push(1400); round++; setTimeout(next,900); } },1400); },900+Math.random()*2200); };
+  S.onpointerdown=e=>{ if (!live) return; live=false; const ms=Math.round(performance.now()-showAt); times.push(ms); round++; S.style.display='none'; try{ sfx('ding'); fx.burst(e.clientX,e.clientY,true); }catch(_){} msg(`⭐ Spotted in ${ms} ms! (${round}/5)`); setTimeout(next,900); };
+  next(); }
+
+// ---------- ⏰ Christmas morning wake-up countdown
+function wakeLine(now){ if (theme!=='christmas' || !current) return ''; const lp=localParts(now,current); if (!(lp.month===11 && (lp.day===24&&lp.hour>=17 || lp.day===25&&lp.hour<12))) return '';
+  const [h,m]=store.get('wakeAt','07:00').split(':').map(Number), wake=localToUTC(current,lp.year,11,25,h,m), ms=wake-now;
+  if (ms<=0) return lp.day===25?`<small>🎁 It’s Christmas morning! Did he come? Go look under the tree! 🎄</small>`:'';
+  return `<small>⏰ Presents in <span class="cd">${fmtCountdown(ms)}</span> (wake-up ${_fmtHM(wake)}) · <a href="#" id="r18Wake">change</a></small>`; }
+function setWake(){ showModal(`<h3>⏰ Christmas morning wake-up</h3><p class="mut">What time is everyone allowed to open presents?</p><input type="time" id="wkT" value="${store.get('wakeAt','07:00')}"><button class="btn primary" id="wkOk">Save</button>`); $('wkOk').onclick=()=>{ store.set('wakeAt',$('wkT').value||'07:00'); closeModal(); tick(true); }; }
+
+// ---------- 🏆 balloon of the year (from the favorite-balloon vote, after the parade)
+async function openBalloonAward(){ const y=yr(), b=await boardDb(); let counts={}; if (b){ try{ const s=await b.db.collection('balloonVotes').where('y','==',y).limit(300).get(); s.docs.forEach(d=>{ const v=d.data().v; counts[v]=(counts[v]||0)+1; }); }catch(e){} } else { const m=store.get('favBalloon',{})[y]; if (m) counts[m]=1; }
+  const top=Object.entries(counts).sort((a,c)=>c[1]-a[1]); if (!top.length){ showModal(`<h3>🏆 Balloon of the year</h3><p>No votes yet — vote for your favorite balloon first!</p><button class="btn primary" id="baV">🗳️ Vote</button>`); $('baV').onclick=openFavVote; return; }
+  showModal(`<h3>🏆 Balloon of the year ${y}</h3><div style="text-align:center;font-size:70px">${top[0][0].split(' ')[0]}</div><p style="text-align:center;font-size:20px;font-weight:800">${esc(top[0][0])}</p><p class="mut" style="text-align:center">${top[0][1]} vote${top[0][1]===1?'':'s'}${b?'':' (just yours — the shared vote is in the Claude version)'}</p>${top.slice(1,3).map((t,i)=>`<div style="text-align:center">${i?'🥉':'🥈'} ${esc(t[0])} · ${t[1]}</div>`).join('')}`); try{ fx.celebrate(3000); }catch(e){} }
+
+// ---------- 🎈 100 years of parade trivia
+var PARADE_TRIVIA=[['When was the very first Macy’s parade?',['1924','1950','1899'],0,'It started in 1924 — with live animals from the Central Park Zoo!'],['Which character was the first giant balloon, in 1927?',['Felix the Cat','Mickey Mouse','Snoopy'],0,'Felix the Cat floated first.'],['What happened to the balloons at the end of the early parades?',['They were let go into the sky','They were popped','They went to a museum'],0,'From 1928 they were released into the sky with a reward for finding them!'],['Why was the parade canceled from 1942 to 1944?',['Rubber and helium were needed for World War II','A blizzard','Nobody came'],0,'The balloons were even donated for their rubber.'],['Who always ends the parade?',['Santa Claus','Tom Turkey','The Rockettes'],0,'Santa’s arrival kicks off the holiday season.'],['Where does the parade finish?',['Herald Square, 34th Street','Times Square','Central Park'],0,'Right in front of Macy’s flagship store.'],['What happened to the 100th parade in 2026?',['It moved to Saturday because of a storm','It was canceled','It was held at night'],0,'A nor’easter with high winds pushed it to Saturday, Nov 28 — the first time it ever moved days.'],['Which character has flown in the parade more than any other?',['Snoopy','Garfield','Pikachu'],0,'Snoopy has appeared in many versions over the decades.']];
+function openParadeTrivia(){ let i=0, score=0; const Q=PARADE_TRIVIA.slice();
+  const show=()=>{ if (i>=Q.length){ const b=store.get('paradeTriv',0); if (score>b) store.set('paradeTriv',score); showModal(`<h3>🎈 Parade trivia</h3><p style="text-align:center;font-size:22px;font-weight:800">${score}/${Q.length} ${score===Q.length?'🏆':score>=6?'🎉':'🎈'}</p><button class="btn primary" id="ptA" style="display:block;margin:0 auto">Play again</button>`); $('ptA').onclick=openParadeTrivia; if (score>=6) try{ fx.celebrate(2500); }catch(e){} return; }
+    const q=Q[i], ord=[0,1,2].sort(()=>Math.random()-.5); showModal(`<h3>🎈 100 years of parades <small class="mut">${i+1}/${Q.length}</small></h3><p style="font-weight:700;font-size:16px">${q[0]}</p>${ord.map(k=>`<button class="btn" data-pq="${k}" style="display:block;width:100%;text-align:left;margin-top:6px">${q[1][k]}</button>`).join('')}<p id="ptE" class="mut"></p>`);
+    document.querySelectorAll('[data-pq]').forEach(b=>b.onclick=()=>{ if ($('ptE').textContent) return; const ok=+b.dataset.pq===q[2]; if (ok){ score++; try{ sfx('ding'); }catch(e){} } else try{ sfx('buzz'); }catch(e){} b.style.background=ok?'#1f9d55':'#c0111f'; $('ptE').textContent=(ok?'✅ ':'❌ ')+q[3]; setTimeout(()=>{ i++; show(); },1700); }); };
+  show(); }
+
+// ---------- 🎈 balloon inflation note (day before the parade)
+function inflationLine(now){ const t=partsIn('America/New_York',now), d=macyDay(t.year); if (!current || current.cc!=='US' || t.month!==10 || t.day!==d-1) return '';
+  return MACY_MOVE[t.year] ? `<small>🎈 Parade eve! The balloons were deflated for the storm — check Macy’s for when they’ll be re-inflated near the Museum of Natural History.</small>` : ''; }
+
+function paradeOver(now){ const t=partsIn('America/New_York',now), d=macyDay(t.year); return t.month===10 && (t.day>d || (t.day===d && t.hour>=12)); }
+
+// ---------- 🛍️ nap or shop?
+function openNapShop(){ const y=yr(), V=store.get('napShop',{}), mine=V[y];
+  showModal(`<h3>🛍️ Black Friday: nap or shop?</h3><p class="mut">The big question after Thanksgiving dinner…</p><div style="display:flex;gap:10px;justify-content:center"><button class="btn ${mine==='nap'?'primary':''}" data-ns="nap" style="font-size:22px;padding:14px 18px">😴 Nap</button><button class="btn ${mine==='shop'?'primary':''}" data-ns="shop" style="font-size:22px;padding:14px 18px">🛍️ Shop</button><button class="btn ${mine==='both'?'primary':''}" data-ns="both" style="font-size:22px;padding:14px 18px">🤹 Both</button></div>
+    ${mine?`<div class="advMsg" style="text-align:center;margin-top:10px">${mine==='nap'?'😴 Team Nap! Pillows ready — the deals will still be there online.':mine==='shop'?'🛍️ Team Shop! Make a list, set a budget, and bring snacks.':'🤹 Team Both — power nap, then shop. Legendary.'}</div>`:''}`);
+  document.querySelectorAll('[data-ns]').forEach(b=>b.onclick=()=>{ V[y]=b.dataset.ns; store.set('napShop',V); try{ sfx('pop'); }catch(e){} openNapShop(); }); }
+
+// ---------- 🏈 Thanksgiving week football (2026 schedule; times shown in your time zone)
+var NFL_TG={2026:[['2026-11-26T18:00:00Z','🐻 Bears @ 🦁 Lions','Detroit',42.34,-83.046],['2026-11-26T21:30:00Z','🦅 Eagles @ ⭐ Cowboys','Arlington, TX',32.748,-97.093],['2026-11-27T01:20:00Z','🏹 Chiefs @ 🦬 Bills','Orchard Park, NY',42.774,-78.787],['2026-11-27T20:00:00Z','🐴 Broncos @ 🏭 Steelers (Black Friday)','Pittsburgh',40.447,-80.016]]};
+function footballLine(now){ if (!current || current.cc!=='US') return ''; const L=NFL_TG[partsIn('America/New_York',now).year]; if (!L) return ''; const t=+now;
+  const nx=L.find(g=>t<Date.parse(g[0])+3.3*3600000); if (!nx) return ''; const ko=Date.parse(nx[0]), ms=ko-t; if (ms>40*3600000) return '';
+  return `<small>🏈 ${ms>0?`Kickoff in <span class="cd">${fmtCountdown(ms)}</span>`:'Game on now'}: ${nx[1]} · <a href="#" id="r18Fb">all games</a></small>`; }
+function openFootball(){ const L=NFL_TG[partsIn('America/New_York',simNow()).year]||[]; showModal(`<h3>🏈 Thanksgiving football</h3><p class="mut">Kickoff times in your time zone.</p>${L.map(g=>{ const d=new Date(g[0]); return `<div class="gBoardR" style="padding:6px 0"><span><b>${g[1]}</b><br><small class="mut">${g[2]}</small></span><span style="text-align:right">${d.toLocaleDateString('en-US',{weekday:'short',timeZone:current&&current.tz||undefined})}<br>${_fmtHM(d)}</span></div>`; }).join('')}<p class="mut">The Lions and Cowboys play every Thanksgiving — a tradition since the 1930s and 1960s.</p>`); }
+
+// ---------- 🥪 leftover sandwich ratings
+function openSandwichRatings(){ const L=store.get('sandRatings',[]);
+  showModal(`<h3>🥪 Leftover sandwich ratings</h3>${L.length?L.slice().sort((a,b)=>b.s-a.s).map(x=>`<div class="gBoardR" style="padding:5px 0"><span>${'⭐'.repeat(x.s)} <b>${esc(x.n)}</b><br><small class="mut">${esc(x.i)}</small></span><button class="btn mini" data-sr="${L.indexOf(x)}">✕</button></div>`).join(''):'<p class="mut">Rate the sandwiches your family makes!</p>'}
+    <input id="srN" maxlength="30" placeholder="Name (e.g. The Gobbler)"><input id="srI" maxlength="60" placeholder="What’s in it?"><div style="display:flex;gap:6px"><select id="srS" style="width:auto">${[5,4,3,2,1].map(n=>`<option value="${n}">${'⭐'.repeat(n)}</option>`).join('')}</select><button class="btn primary" id="srAdd">Rate it</button></div>`);
+  $('srAdd').onclick=()=>{ const n=$('srN').value.trim(); if (!n) return; L.push({n,i:$('srI').value.trim(),s:+$('srS').value}); store.set('sandRatings',L); try{ sfx('pop'); }catch(e){} openSandwichRatings(); };
+  document.querySelectorAll('[data-sr]').forEach(b=>b.onclick=()=>{ L.splice(+b.dataset.sr,1); store.set('sandRatings',L); openSandwichRatings(); }); }
+
+// ---------- 📅 advent door games: each opened door can launch a mini-game
+var ADVENT_GAMES=[['🦌 Reindeer games',()=>openReindeerGame()],['🎁 Wrap presents',()=>openWrapGame()],['❄️ Snowflake maker',()=>openSnowflake()],['🪟 Spot Santa',()=>openWindowGame()],['🥧 Pie slicing',()=>openPieGame()],['🎈 Parade trivia',()=>openParadeTrivia()]];
+var _oa18=openAdvent; openAdvent=function(){ _oa18(); const now=simNow(), d=adventDay(now); if (!(d>=1&&d<=25)) return; const g=ADVENT_GAMES[(d-1)%ADVENT_GAMES.length], body=$('xBody'); if (!body) return;
+  const b=document.createElement('button'); b.className='btn primary'; b.style.cssText='display:block;margin:10px auto 0'; b.textContent=`🎮 Door ${d} game: ${g[0]}`; b.onclick=()=>{ closeModal(); g[1](); }; body.appendChild(b); };
+
+// ---------- 🎉 New Year’s confetti cannon
+function confettiCannon(){ try{ fx.celebrate(6000); for (let k=0;k<6;k++) setTimeout(()=>fx.burst(innerWidth*(0.15+Math.random()*0.7),innerHeight*(0.3+Math.random()*0.3),true),k*180); sfx('fanfare'); }catch(e){} const n=store.get('confetti',0)+1; store.set('confetti',n); toast(`🎉 BOOM! Confetti cannon fired (${n} total)`); }
+function confettiLine(now){ if (!current) return ''; const lp=localParts(now,current); if (!((lp.month===11&&lp.day===31&&lp.hour>=18)||(lp.month===0&&lp.day===1&&lp.hour<3))) return ''; return `<small>🎉 <a href="#" id="r18Boom">Fire the confetti cannon!</a></small>`; }
+
+// ---------- wiring
+var _ll18=layerLines; layerLines=function(now){ let h=_ll18(now); if (!current) return h;
+  h+=mailbagLine(now)+wakeLine(now)+inflationLine(now)+confettiLine(now);
+  if (theme==='christmas') h+=`<small>📖 <a href="#" id="r18Story">Bedtime story from Santa</a> · 🪟 <a href="#" id="r18Win">spot Santa from your window</a></small>`;
+  if (theme==='thanksgiving'||macyMovedToday(now)||paradeOver(now)&&partsIn('America/New_York',now).day<=macyDay(partsIn('America/New_York',now).year)+1) h+=`<small>🎈 <a href="#" id="r18Triv">100 years of parade trivia</a>${paradeOver(now)?` · 🏆 <a href="#" id="r18Award">balloon of the year</a>`:''}</small>`;
+  if (theme==='thanksgiving') h+=footballLine(now)+`<small>🛍️ <a href="#" id="r18Nap">Nap or shop?</a> · 🥪 <a href="#" id="r18Sand">sandwich ratings</a></small>`;
+  else if (theme==='christmas' && current.cc==='US') h+=footballLine(now);
+  return h; };
+document.addEventListener('click',e=>{ const a=e.target.closest('a,button'); if (!a) return;
+  const map={r18Letter:()=>openLetter(),r18Story:openBedtimeStory,r18Win:openWindowGame,r18Wake:setWake,r18Triv:openParadeTrivia,r18Award:openBalloonAward,r18Nap:openNapShop,r18Fb:openFootball,r18Sand:openSandwichRatings,r18Boom:confettiCannon};
+  if (map[a.id]){ e.preventDefault(); map[a.id](); } });
+var _om18=openMore; openMore=function(){ _om18(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
+  const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.appendChild(b); };
+  if (theme==='christmas'){ add('📖','Bedtime story','From Santa',openBedtimeStory); add('🪟','Spot Santa','Window game',openWindowGame); add('⏰','Wake-up time','Christmas morning',setWake); }
+  if (theme==='thanksgiving'||macyMovedToday(simNow())){ add('🎈','Parade trivia','100 years',openParadeTrivia); add('🏆','Balloon of the year','The winner',openBalloonAward); }
+  if (theme==='thanksgiving'){ add('🏈','Football','Kickoff times',openFootball); add('🛍️','Nap or shop?','Black Friday',openNapShop); add('🥪','Sandwich ratings','Rate leftovers',openSandwichRatings); }
+  if (theme==='newyear') add('🎉','Confetti cannon','Boom!',confettiCannon); };
+if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {openBedtimeStory,openWindowGame,setWake,openBalloonAward,openParadeTrivia,openNapShop,openFootball,openSandwichRatings,confettiCannon,openAdvent:()=>openAdvent()});
 
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS,SET,layerNote,noteFor};

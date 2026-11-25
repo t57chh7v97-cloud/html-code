@@ -383,7 +383,7 @@ d3 from public CDNs.
 - 🎃 Halloween: broomstick ride to spooky places, escape-the-haunted-house riddles, trick-or-treat planner (sunset, dark time, forecast, safety tips), costume contest
 - 🦃 Thanksgiving: turkey hunt (10 turkeys hidden in US & Canadian cities), dinner wave across US time zones, leftover ideas, pie slicing game
 - 🎄 Christmas: elf hide-and-seek (Dec 1–24), snowflake maker, town lights around your pin, wish list, reindeer games, 12 Days of Christmas (Dec 25–Jan 5), workshop toy counter + present-wrapping game
-- 🎅 Santa: a phone call from Santa (spoken aloud), Nice List certificate, live sleigh dashboard on Christmas Eve (speed, Rudolph's nose, sack, weather where Santa is)
+- 🎅 Santa: Nice List certificate, live sleigh dashboard on Christmas Eve (speed, Rudolph's nose, sack, weather where Santa is)
 
 ### Holiday round 16
 - 🎃 Candy log with a trade meter, Halloween-night spooky meter (moon + weather), best trick-or-treat streets list
@@ -396,3 +396,10 @@ d3 from public CDNs.
 ### Holiday round 17
 - 🎅 "Santa is in your country!" alert, countries visited tonight, guess his arrival time, friends' cookie count (Claude version), tap Santa to spot the sleigh, reindeer team jobs
 - 🎈 Macy's parade: live "Herald Square now" timeline, route line on the globe + viewing spots, balloon sizes, favorite-balloon vote, packing checklist, design your own balloon and fly it down the route
+
+### Holiday round 18
+- 📬 Santa's mailbag counter, 📖 bedtime story from Santa, 🪟 spot-Santa window game, ⏰ Christmas morning wake-up countdown
+- 🎈 100 years of parade trivia, 🏆 balloon of the year, parade-eve balloon note
+- 🏈 Thanksgiving football kickoff times, 🛍️ nap or shop?, 🥪 leftover sandwich ratings
+- 📅 a mini-game behind each advent door, 🎉 New Year's confetti cannon
+- 2026 updates: Macy's parade moved to Saturday Nov 28 (storm); Charlotte's Thanksgiving Eve Parade canceled (weather)
