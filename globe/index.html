@@ -2162,7 +2162,7 @@ function updateHoliday(now){
 }
 // the holiday box shows the big holiday news; everything else folds into "More" inside the box
 var HS_OPEN=false;
-const HS_PIN=/evPin|pLive|ytBtn|liveDot|LIVE|Happy birthday|shadow is on Earth|[Pp]arade|🎅|Santa|😴|Clocks go|Trick-or-treating|Hanukkah night|Kwanzaa day|tree lighting|[Ff]ireworks|Already 20|Next to celebrate|20\d\d in |Unwrap your presents|April Fools|pranks/;
+const HS_PIN=/evPin|pLive|ytBtn|liveDot|LIVE|Happy birthday|shadow is on Earth|[Pp]arade|🎅|Santa|😴|Clocks go|Trick-or-treating|Hanukkah night|Kwanzaa day|tree lighting|[Ff]ireworks|Already 20|Next to celebrate|20\d\d in |Unwrap your presents|April Fools|pranks|elf is hiding|Dinner wave|of Christmas: /;
 function stripSplit(ex){ const parts=ex.match(/<small[\s\S]*?<\/small>/g)||[]; const pin=[], more=[]; parts.forEach(x=>{ const links=(x.match(/<a /g)||[]).length, activity=links>=2 && !/LIVE|ytBtn|liveDot/.test(x); (HS_PIN.test(x)&&!activity?pin:more).push(x); });   // lines of activity links (tree · Secret Santa…) always fold away
   if (more.length<2) return parts.join('');
   return pin.join('')+(HS_OPEN?more.join(''):'')+`<small class="hsMore"><a href="#" id="hsMoreBtn">${HS_OPEN?'Show less ▴':`More (${more.length}) ▾`}</a></small>`; }
@@ -5781,6 +5781,253 @@ var _os14=openSettings; openSettings=function(){ _os14(); const b=$('xBody'); if
   i18nApply(b); };
 if (typeof PREF_KEYS!=='undefined' && !PREF_KEYS.includes('lang')) PREF_KEYS.push('lang'); if (typeof SYNC_KEYS!=='undefined' && !SYNC_KEYS.includes('lang')) SYNC_KEYS.push('lang');
 ['setTop','setBtn'].forEach(k=>{ const el=document.getElementById(k); if (el) el.onclick=()=>openSettings(); });   // use the newest Settings (with language & accessibility)
+
+/* =========================================================
+   ROUND 15 — 🎃 broomstick ride · escape the haunted house · trick-or-treat planner · costume contest
+   🦃 turkey hunt · dinner wave · leftover ideas · pie slicing game
+   🎄 elf hide-and-seek · snowflake maker · light up your town · wish list · reindeer games · 12 Days of Christmas
+   🎅 call from Santa · Nice List certificate · sleigh dashboard · workshop wrapping game
+   ========================================================= */
+const _rng=s=>()=>{ s=(s*9301+49297)%233280; return s/233280; };
+
+// ---------- 🧹 broomstick ride: a witch flies you past the world's spookiest places
+var BROOM={on:false,i:0,t:0,el:null};
+function broomRide(){ if (BROOM.on) return broomStop(); BROOM.on=true; BROOM.i=0; closeModal();
+  const el=document.createElement('div'); el.id='broom'; el.innerHTML='<span class="bw">🧙‍♀️</span><span class="bb b1">🦇</span><span class="bb b2">🦇</span><span class="bb b3">🦇</span><button class="btn mini" id="broomStop">Land 🧹</button><div id="broomTxt"></div>'; document.body.appendChild(el); BROOM.el=el;
+  $('broomStop').onclick=broomStop; const hop=()=>{ if (!BROOM.on) return; const h=HAUNTED[BROOM.i%HAUNTED.length]; ctlG.minDistance=1.05; flyToLL(h[2],h[3],1.5); $('broomTxt').innerHTML=`<b>${esc(h[0])}</b><br>${esc(h[1])}`; try{ sfx('pop'); }catch(e){} BROOM.i++; BROOM.t=setTimeout(hop,4200); }; hop(); achieve&&achieve('broom'); }
+function broomStop(){ BROOM.on=false; clearTimeout(BROOM.t); if (BROOM.el){ BROOM.el.remove(); BROOM.el=null; } toast('🧹 Landed safely. Happy Halloween!'); }
+
+// ---------- 🏚️ escape the haunted house (3 riddles before midnight)
+var ESCAPE=[['🚪 The front door slams shut! A note on it says:','What has keys but can’t open locks?',['A piano','A ghost','A skeleton'],0],
+  ['🕯️ In the library, the candles flicker. A voice whispers:','The more of me you take, the more you leave behind. What am I?',['Footsteps','Candy','Shadows'],0],
+  ['🪞 A mirror shows a message:','What gets wetter the more it dries?',['A towel','A cauldron','The moon'],0],
+  ['🗝️ The last door has a lock with letters:','I’m tall when I’m young and short when I’m old. What am I?',['A candle','A pumpkin','A vampire'],0]];
+function openEscape(){ let i=0, lives=3, t0=Date.now(); const Q=ESCAPE.slice().sort(()=>Math.random()-.5).slice(0,3);
+  const show=()=>{ if (i>=Q.length){ const s=Math.round((Date.now()-t0)/1000), b=store.get('escapeBest',0); if (!b||s<b) store.set('escapeBest',s); try{ fx.celebrate(3000); }catch(e){} showModal(`<h3>🏚️ You escaped! 🎉</h3><p style="text-align:center;font-size:20px">in ${s} seconds${!b||s<b?' — new record!':''}</p><button class="btn primary" id="esA" style="display:block;margin:0 auto">Play again</button>`); $('esA').onclick=openEscape; return; }
+    if (lives<=0){ showModal(`<h3>👻 BOO! The ghosts got you!</h3><p class="mut" style="text-align:center">The clock struck midnight…</p><button class="btn primary" id="esA" style="display:block;margin:0 auto">Try again</button>`); $('esA').onclick=openEscape; return; }
+    const q=Q[i], order=[0,1,2].sort(()=>Math.random()-.5);
+    showModal(`<h3>🏚️ Escape the haunted house <small class="mut">room ${i+1}/3 · ${'❤️'.repeat(lives)}</small></h3><p class="mut">${q[0]}</p><p style="font-size:17px;font-weight:700">“${q[1]}”</p>${order.map(k=>`<button class="btn" data-es="${k}" style="display:block;width:100%;text-align:left;margin-top:6px">${q[2][k]}</button>`).join('')}`);
+    document.querySelectorAll('[data-es]').forEach(b=>b.onclick=()=>{ if (+b.dataset.es===q[3]){ i++; try{ sfx('ding'); }catch(e){} toast('🔓 The door creaks open…'); } else { lives--; try{ sfx('buzz'); fx.shake(); }catch(e){} toast('👻 Wrong! A ghost flies past…'); } show(); }); };
+  show(); }
+
+// ---------- 🗺️ trick-or-treat planner
+function openTotPlanner(){ if (!current) return; const now=simNow(), lp=localParts(now,current), y=lp.month>9?lp.year+1:lp.year, d=localToUTC(current,y,9,31,12), sa=sunAt(current.lat,current.lon,sunState(d),d);
+  const set=sa.set?fmtTime(sa.set,current,false):'—', dark=sa.set?fmtTime(new Date(+sa.set+35*60000),current,false):'—', start=sa.set?fmtTime(new Date(+sa.set-30*60000),current,false):'5:30 PM';
+  const c=WX.data&&WX.data.daily, k=c?c.time.findIndex(t=>t===`${y}-10-31`):-1, wx=k>=0?`${wmo(c.weather_code[k])[0]} ${wmo(c.weather_code[k])[1]}, ${tC(c.temperature_2m_max[k])} / ${tC(c.temperature_2m_min[k])}`:'';
+  showModal(`<h3>🗺️ Trick-or-treat planner</h3><p class="mut">Halloween ${y} in ${esc(shortName(current))}</p><div class="advMsg">🌇 Sunset: <b>${set}</b><br>🌑 Fully dark by about <b>${dark}</b><br>🎃 Best time to start: <b>${start}</b> (porch lights come on as the sun sets)${wx?`<br>🌤️ Forecast: ${wx}`:''}</div>
+    <ol class="steps" style="font-size:14px"><li>🔦 Bring a flashlight or glow stick — it’s dark by ${dark}.</li><li>👀 Only visit houses with porch lights on.</li><li>🚸 Stay on sidewalks and cross at corners.</li><li>👥 Go with a grown-up or a group, and agree on a time to be home.</li><li>🍬 Check your candy at home before eating it.</li>${c&&k>=0&&c.temperature_2m_max[k]<10?'<li>🧥 It’ll be chilly — plan a costume that fits over a jacket!</li>':''}</ol>`); }
+
+// ---------- 🎭 costume contest (shared in the Claude version)
+async function openCostumeContest(){ const y=yr(), b=await boardDb(); let rows=[];
+  const load=async()=>{ if (b){ try{ const s=await b.db.collection('costumes').where('y','==',y).limit(100).get(); rows=s.docs.map(d=>({id:d.id,...d.data()})); }catch(e){ rows=[]; } } else rows=store.get('costumes',{})[y]||[]; render(); };
+  const myVote=()=>store.get('costumeVote',{})[y];
+  const render=()=>{ const el=$('ccList'); if (!el) return; const sorted=rows.slice().sort((a,c)=>Object.keys(c.votes||{}).length-Object.keys(a.votes||{}).length);
+    el.innerHTML=sorted.length?sorted.map((r,i)=>{ const n=Object.keys(r.votes||{}).length; return `<div class="gBoardR" style="padding:5px 0"><span>${i===0&&n?'👑 ':''}${esc(r.who||'?')} — <b>${esc(r.costume||'')}</b> · ${n} vote${n===1?'':'s'}</span><button class="btn mini" data-cv="${esc(r.id||r.who)}" ${myVote()===(r.id||r.who)?'disabled':''}>${myVote()===(r.id||r.who)?'✅':'Vote'}</button></div>`; }).join(''):'<span class="mut">No costumes yet — enter yours!</span>';
+    el.querySelectorAll('[data-cv]').forEach(x=>x.onclick=async()=>{ const id=x.dataset.cv, V=store.get('costumeVote',{}); V[y]=id; store.set('costumeVote',V);
+      if (b){ try{ const me=b.id; for (const r of rows){ const v={...(r.votes||{})}; if (r.id===id) v[me]=1; else delete v[me]; if (JSON.stringify(v)!==JSON.stringify(r.votes||{})) await b.db.collection('costumes').doc(r.id).update({votes:v}); } }catch(e){ toast('Couldn’t vote — you may need Contributor access.'); } }
+      else { const C=store.get('costumes',{}); (C[y]||[]).forEach(r=>{ r.votes={}; if ((r.id||r.who)===id) r.votes.me=1; }); store.set('costumes',C); }
+      load(); }); };
+  showModal(`<h3>🎭 Costume contest</h3><p class="mut">${b?'Everyone using this page in Claude can enter and vote — one vote each!':'Enter costumes and vote (saved on this device — the shared contest is in the Claude version).'}</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><input id="ccWho" placeholder="Your name" maxlength="20" value="${esc(store.get('nick',''))}" style="flex:1;min-width:100px"><input id="ccC" placeholder="Your costume" maxlength="40" style="flex:2;min-width:140px"><button class="btn primary" id="ccAdd">Enter</button></div><div id="ccList"></div>`);
+  $('ccAdd').onclick=async()=>{ const who=$('ccWho').value.trim(), costume=$('ccC').value.trim(); if (!who||!costume) return; store.set('nick',who); $('ccC').value='';
+    if (b){ try{ await b.db.collection('costumes').doc(b.id+'_'+y).set({y,who,costume,votes:{},at:Date.now()}); }catch(e){ toast('Couldn’t enter — you may need Contributor access.'); } }
+    else { const C=store.get('costumes',{}); C[y]=[...(C[y]||[]),{id:'c'+Date.now(),who,costume,votes:{}}]; store.set('costumes',C); } load(); };
+  load(); }
+
+// ---------- 🦃 turkey hunt (Thanksgiving week: 10 turkeys hiding in North American cities)
+var turkeys=makeHunt({ emoji:'🦃', glow:'#ffb347', minZoom:1.8,
+  active:now=>theme==='thanksgiving' && current && current.cc==='US', found:now=>(store.get('turkeys',{})[yearOf(now)]||[]),
+  items:now=>{ const y=yearOf(now), pool=topCities(400,i=>P.pop[i]>=300000 && (P.cc[i]==='US'||P.cc[i]==='CA')); return seeded(y*613,10,pool).map(i=>({key:i,lat:P.lat[i],lon:P.lon[i],i})); },
+  onFind:(it,now)=>{ const y=yearOf(now), S=store.get('turkeys',{}), L=S[y]||[]; L.push(it.key); S[y]=L; store.set('turkeys',S);
+    toast(`🦃 Gobble! You found a turkey in ${P.name[it.i]}! ${L.length}/10`); try{ sfx('ding',.8); }catch(e){} if (L.length>=10){ fx.celebrate(8000); toast('🏆 You found all 10 turkeys! Happy Thanksgiving!'); } } });
+function turkeyHuntLine(now){ if (theme!=='thanksgiving' || !current || current.cc!=='US') return ''; const n=(store.get('turkeys',{})[yearOf(now)]||[]).length; return `<small>🦃 Turkey hunt: ${n}/10 found — zoom in on US & Canadian cities to spot them</small>`; }
+
+// ---------- 🍽️ dinner wave: Thanksgiving dinner sweeps across the US time zones
+var US_ZONES=[['Eastern','America/New_York','New York'],['Central','America/Chicago','Chicago'],['Mountain','America/Denver','Denver'],['Pacific','America/Los_Angeles','Los Angeles'],['Alaska','America/Anchorage','Anchorage'],['Hawaii','Pacific/Honolulu','Honolulu']];
+function dinnerStatus(h){ return h<6?'😴 sleeping':h<9?'🍳 breakfast & parade time':h<12?'🎈 watching the parade':h<14?'🔥 the turkey’s roasting':h<17?'🍽️ DINNER TIME!':h<19?'🥧 pie time':h<22?'🛋️ too full to move':'😴 food coma'; }
+function dinnerWaveLine(now){ if (theme!=='thanksgiving' || !current || current.cc!=='US') return ''; const t=partsIn('America/New_York',now), tg=nthWeekday(t.year,10,4,4); if (t.month!==10 || t.day!==tg) return '';
+  const eating=US_ZONES.filter(z=>{ const h=partsIn(z[1],now).hour; return h>=14&&h<17; }).map(z=>z[0]); return eating.length?`<small>🍽️ Dinner wave: it’s dinnertime in the ${eating.join(' & ')} time zone${eating.length>1?'s':''}! · <a href="#" id="dwGo">see all</a></small>`:`<small>🍽️ <a href="#" id="dwGo">Dinner wave across the US</a></small>`; }
+function openDinnerWave(){ const now=simNow(); showModal(`<h3>🍽️ Dinner wave</h3><p class="mut">Most families sit down for Thanksgiving dinner in the mid-afternoon — so dinner sweeps west across the country hour by hour.</p>
+  ${US_ZONES.map(z=>{ const h=partsIn(z[1],now).hour; return `<div class="gBoardR" style="padding:6px 0"><span><b>${z[0]}</b> · ${z[2]} · ${fmtParts(now,z[1],{hour:'numeric',minute:'2-digit',hour12:h12})}</span><span>${dinnerStatus(h)}</span></div>`; }).join('')}`); }
+
+// ---------- 🥡 leftover ideas
+var LEFTOVERS={turkey:'🦃 Turkey',stuffing:'🍞 Stuffing',potatoes:'🥔 Mashed potatoes',cranberry:'🍒 Cranberry sauce',gravy:'🥫 Gravy',rolls:'🥖 Rolls',pie:'🥧 Pie',veggies:'🥦 Veggies'};
+var LO_RECIPES=[[['turkey','rolls','cranberry'],'🥪 The Moist Maker sandwich','Turkey and cranberry on a roll, with a gravy-soaked slice of bread in the middle.'],[['turkey','veggies','gravy'],'🥧 Turkey pot pie','Turkey, veggies and gravy under a crust (or biscuits) — bake 25 min at 400°F/200°C.'],
+  [['stuffing'],'🧇 Stuffing waffles','Press leftover stuffing (mixed with an egg) in a waffle iron until crispy. Top with gravy.'],[['potatoes'],'🥞 Mashed potato pancakes','Mix potatoes with an egg and a little flour, pan-fry until golden.'],
+  [['turkey','potatoes','veggies'],'🥘 Shepherd’s pie','Turkey and veggies on the bottom, mashed potatoes on top, bake until bubbly.'],[['pie'],'🥛 Pie milkshake','Blend a slice of pie with vanilla ice cream and milk. Yes, really.'],
+  [['turkey'],'🌮 Turkey tacos','Shred turkey, warm it with taco seasoning, serve in tortillas with salsa.'],[['cranberry'],'🍓 Cranberry smoothie','Blend cranberry sauce with yogurt, a banana and ice.'],[['rolls'],'🍮 Bread pudding','Tear up rolls, soak in milk, egg, sugar and cinnamon, bake 40 min.'],[['turkey','gravy'],'🍜 Turkey noodle soup','Simmer turkey, broth, veggies and noodles for 20 minutes.']];
+async function openLeftovers(){ const pick=new Set(store.get('leftovers',['turkey','stuffing','potatoes']));
+  showModal(`<h3>🥡 What can I make with leftovers?</h3><p class="mut">Tap what’s in your fridge:</p><div id="loP" style="display:flex;flex-wrap:wrap;gap:6px">${Object.entries(LEFTOVERS).map(([k,v])=>`<button class="btn mini ${pick.has(k)?'primary':''}" data-lo="${k}">${v}</button>`).join('')}</div><button class="btn primary" id="loGo" style="margin-top:10px">🍳 Give me ideas</button><div id="loOut"></div>`);
+  document.querySelectorAll('[data-lo]').forEach(b=>b.onclick=()=>{ const k=b.dataset.lo; pick.has(k)?pick.delete(k):pick.add(k); b.classList.toggle('primary'); store.set('leftovers',[...pick]); });
+  $('loGo').onclick=async()=>{ const have=[...pick], out=$('loOut'); if (!have.length) return; out.innerHTML='<p class="mut">🍳 Thinking…</p>';
+    let sample=null; try{ if (window.claude && window.claude.use) sample=await Promise.race([window.claude.use('sample'),new Promise(r=>setTimeout(()=>r(null),3000))]); }catch(e){}
+    if (sample){ try{ const r=await sample(`Suggest 3 fun, easy Thanksgiving leftover recipes a kid could make with a grown-up, using mostly: ${have.map(k=>LEFTOVERS[k].slice(3)).join(', ')}. For each: an emoji + name on one line, then 2 short sentences of how to make it. Plain text, no markdown.`,{}); if (r && r.text){ out.innerHTML=`<div class="advMsg" style="line-height:1.55">${esc(r.text.trim()).replace(/\n/g,'<br>')}</div>`; return; } }catch(e){} }
+    const L=LO_RECIPES.map(r=>({r,s:r[0].filter(x=>pick.has(x)).length/r[0].length})).filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,4);
+    out.innerHTML=L.length?L.map(x=>`<div class="advMsg" style="margin-top:6px"><b>${x.r[1]}</b><br><small>${x.r[2]}</small></div>`).join(''):'<p class="mut">Pick a few more leftovers!</p>'; }; }
+
+// ---------- 🥧 pie slicing game: make 8 equal slices
+function openPieGame(){ showModal(`<h3>🥧 Pie slicing</h3><p class="mut">Tap around the edge of the pie to cut 8 slices. The more equal they are, the higher your score!</p><canvas id="pgC" width="360" height="360" style="width:100%;max-width:320px;display:block;margin:0 auto;touch-action:manipulation"></canvas><p id="pgS" style="text-align:center;font-weight:700">0/8 cuts</p><button class="btn" id="pgR" style="display:block;margin:0 auto">Start over</button>`);
+  const cv=$('pgC'), x=cv.getContext('2d'); let cuts=[];
+  const draw=()=>{ x.clearRect(0,0,360,360); x.fillStyle='#c9732f'; x.beginPath(); x.arc(180,180,160,0,7); x.fill(); x.fillStyle='#e8a24f'; x.beginPath(); x.arc(180,180,140,0,7); x.fill(); x.fillStyle='#d48a3a'; for (let i=0;i<40;i++){ const a=i/40*6.283; x.beginPath(); x.arc(180+Math.cos(a)*150,180+Math.sin(a)*150,9,0,7); x.fill(); }
+    x.strokeStyle='#fff'; x.lineWidth=3; cuts.forEach(a=>{ x.beginPath(); x.moveTo(180,180); x.lineTo(180+Math.cos(a)*165,180+Math.sin(a)*165); x.stroke(); }); };
+  draw(); cv.onclick=e=>{ if (cuts.length>=8) return; const r=cv.getBoundingClientRect(), px=(e.clientX-r.left)/r.width*360-180, py=(e.clientY-r.top)/r.height*360-180; cuts.push(Math.atan2(py,px)); try{ sfx('pop'); }catch(_){} draw();
+    if (cuts.length<8){ $('pgS').textContent=`${cuts.length}/8 cuts`; return; }
+    const a=cuts.slice().sort((p,q)=>p-q), sizes=a.map((v,i)=>((i<7?a[i+1]:a[0]+6.2832)-v)), ideal=6.2832/8, err=sizes.reduce((s,v)=>s+Math.abs(v-ideal),0)/8/ideal, score=Math.max(0,Math.round(100-err*100)), best=store.get('pieBest',0);
+    if (score>best) store.set('pieBest',score); $('pgS').textContent=`Score: ${score}/100 ${score>=90?'🏆 Master baker!':score>=70?'🥧 Nice slicing!':'😅 Someone got a tiny slice!'} · best ${Math.max(best,score)}`; if (score>=90) try{ fx.celebrate(2500); }catch(_){} };
+  $('pgR').onclick=()=>{ cuts=[]; draw(); $('pgS').textContent='0/8 cuts'; }; }
+
+// ---------- 🧝 elf hide-and-seek (Dec 1–24: an elf hides somewhere on the screen each day)
+var ELFHIDE={el:null,key:''};
+function elfHideTick(now){ if (!current || theme!=='christmas'){ if (ELFHIDE.el){ ELFHIDE.el.remove(); ELFHIDE.el=null; } return; } const lp=localParts(now,current); const k=lp.year+'-'+lp.day;
+  if (lp.month!==11 || lp.day>24 || (store.get('elfFound',{})[lp.year]||[]).includes(lp.day)){ if (ELFHIDE.el){ ELFHIDE.el.remove(); ELFHIDE.el=null; } return; }
+  if (ELFHIDE.key===k && ELFHIDE.el) return; ELFHIDE.key=k; if (ELFHIDE.el) ELFHIDE.el.remove(); const r=_rng(lp.year*400+lp.day*37);
+  const spots=[[.04,.30],[.9,.28],[.5,.24],[.08,.55],[.88,.52],[.3,.40],[.7,.42],[.15,.18],[.62,.20],[.92,.42]], s=spots[Math.floor(r()*spots.length)];
+  const el=document.createElement('button'); el.id='hidingElf'; el.textContent=['🧝','🧝‍♀️','🧝‍♂️'][lp.day%3]; el.style.cssText=`position:fixed;left:${s[0]*100}vw;top:${s[1]*100}vh;z-index:7;font-size:22px;background:none;border:0;padding:4px;opacity:.85;cursor:pointer;transform:rotate(${(r()-.5)*40}deg)`;
+  el.onclick=()=>{ const F=store.get('elfFound',{}); F[lp.year]=[...(F[lp.year]||[]),lp.day]; store.set('elfFound',F); const n=F[lp.year].length, prizes=['⭐ a gold star','🍬 a candy cane','🎁 a tiny present','❄️ a magic snowflake','🍪 a cookie','🔔 a jingle bell'];
+    try{ fx.celebrate(2500); sfx('ding'); }catch(e){} toast(`🧝 You found today’s elf! He gave you ${prizes[lp.day%prizes.length]}. (${n}/24 this December)`); el.remove(); ELFHIDE.el=null; };
+  document.body.appendChild(el); ELFHIDE.el=el; }
+function elfHideLine(now){ if (theme!=='christmas' || !current) return ''; const lp=localParts(now,current); if (lp.month!==11 || lp.day>24) return ''; const F=store.get('elfFound',{})[lp.year]||[];
+  return F.includes(lp.day)?`<small>🧝 You found today’s elf! (${F.length}/24) Come back tomorrow…</small>`:`<small>🧝 An elf is hiding somewhere on your screen today… can you find him? (${F.length}/24)</small>`; }
+
+// ---------- ❄️ snowflake maker (draw in one slice — it’s mirrored 12 ways)
+function openSnowflake(){ showModal(`<h3>❄️ Snowflake maker</h3><p class="mut">Draw with your finger — every line is copied 12 times, like folding and cutting paper!</p><canvas id="sfC" width="360" height="360" style="width:100%;max-width:320px;display:block;margin:0 auto;background:#0b1838;border-radius:50%;touch-action:none"></canvas>
+  <div style="display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap"><button class="btn" id="sfClr">Clear</button><button class="btn" id="sfRnd">🎲 Random</button><button class="btn primary" id="sfSave">Save</button></div>`);
+  const cv=$('sfC'), x=cv.getContext('2d'); let down=false, last=null; const S=store.get('snowflake',null);
+  x.lineCap='round'; x.strokeStyle='#eaf6ff'; x.lineWidth=4; x.shadowColor='#9fd3ff'; x.shadowBlur=6;
+  const seg=(a,b)=>{ for (let k=0;k<6;k++){ for (const m of [1,-1]){ x.save(); x.translate(180,180); x.rotate(k*Math.PI/3); x.scale(1,m); x.beginPath(); x.moveTo(a[0],a[1]); x.lineTo(b[0],b[1]); x.stroke(); x.restore(); } } };
+  const pt=e=>{ const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)/r.width*360-180,(e.clientY-r.top)/r.height*360-180]; };
+  cv.onpointerdown=e=>{ down=true; last=pt(e); cv.setPointerCapture(e.pointerId); }; cv.onpointerup=()=>{ down=false; };
+  cv.onpointermove=e=>{ if (!down) return; const p=pt(e); seg(last,p); last=p; };
+  if (S){ const im=new Image(); im.onload=()=>x.drawImage(im,0,0); im.src=S; }
+  $('sfClr').onclick=()=>x.clearRect(0,0,360,360);
+  $('sfRnd').onclick=()=>{ x.clearRect(0,0,360,360); let p=[0,0]; for (let i=0;i<14;i++){ const q=[Math.random()*160,(Math.random()-.5)*50]; seg(p,q); if (Math.random()<.5) p=q; } };
+  $('sfSave').onclick=()=>{ try{ store.set('snowflake',cv.toDataURL('image/png')); toast('❄️ Saved! No two snowflakes are alike.'); fx.celebrate(1500); }catch(e){} }; }
+
+// ---------- 💡 light up your town: a ring of twinkling Christmas lights around your pin at night
+var TOWNL={pts:null,key:''};
+function townLightsTick(now){ const on=theme==='christmas' && current && store.get('townLights',true) && mode==='globe';
+  if (!on){ if (TOWNL.pts) TOWNL.pts.visible=false; return; } const pal=store.get('townLightsPal','classic'), k=current.lat.toFixed(3)+','+current.lon.toFixed(3)+pal;
+  if (TOWNL.key!==k){ TOWNL.key=k; if (TOWNL.pts){ G.frame.remove(TOWNL.pts); TOWNL.pts.geometry.dispose(); } const N=48, pos=new Float32Array(N*3), col=new Float32Array(N*3);
+    const C={classic:[[1,.25,.25],[.3,1,.4],[1,.85,.2],[.35,.6,1]],white:[[1,.95,.8]],blue:[[.4,.7,1],[.8,.9,1]],candy:[[1,.2,.3],[1,1,1]]}[pal]||[[1,1,1]];
+    for (let i=0;i<N;i++){ const a=i/N*6.283, r=.32+.06*Math.sin(i*1.7), la=current.lat+Math.sin(a)*r, lo=current.lon+Math.cos(a)*r/Math.max(.2,Math.cos(current.lat*D2R)); const v=llToEcef(la,lo).multiplyScalar(1.0025); pos.set([v.x,v.y,v.z],i*3); col.set(C[i%C.length],i*3); }
+    const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('color',new THREE.BufferAttribute(col,3));
+    TOWNL.pts=new THREE.Points(g,new THREE.PointsMaterial({size:5,sizeAttenuation:false,vertexColors:true,transparent:true,depthWrite:false})); TOWNL.pts.renderOrder=5; G.frame.add(TOWNL.pts); }
+  TOWNL.pts.visible=camG.position.length()<2.2; TOWNL.pts.material.opacity=.6+.4*Math.sin(performance.now()/300); }
+function openTownLights(){ const cur=store.get('townLightsPal','classic'), on=store.get('townLights',true);
+  showModal(`<h3>💡 Light up your town</h3><p class="mut">Strings of Christmas lights circle your pin on the globe — zoom in to see them twinkle.</p><div class="seg" id="tlP" style="flex-wrap:wrap">${[['classic','🌈 Classic'],['white','✨ Warm white'],['blue','💙 Icy blue'],['candy','🍬 Candy cane']].map(([k,l])=>`<button data-v="${k}" class="${k===cur?'on':''}">${l}</button>`).join('')}</div>
+    <div class="seg" id="tlO" style="margin-top:6px"><button data-v="1" class="${on?'on':''}">Lights on</button><button data-v="0" class="${!on?'on':''}">Off</button></div>`);
+  $('tlP').querySelectorAll('button').forEach(b=>b.onclick=()=>{ store.set('townLightsPal',b.dataset.v); $('tlP').querySelectorAll('button').forEach(q=>q.classList.toggle('on',q===b)); });
+  $('tlO').querySelectorAll('button').forEach(b=>b.onclick=()=>{ store.set('townLights',b.dataset.v==='1'); $('tlO').querySelectorAll('button').forEach(q=>q.classList.toggle('on',q===b)); }); }
+
+// ---------- 🎁 wish list
+function openWishList(){ const y=yr(), W=store.get('wishlist',{}), L=W[y]||[];
+  showModal(`<h3>🎁 My wish list ${y}</h3>${L.length?L.map((w,i)=>`<div class="gBoardR" style="padding:5px 0"><span>${'⭐'.repeat(w.s||1)} ${esc(w.t)}</span><button class="btn mini" data-wl="${i}">✕</button></div>`).join(''):'<p class="mut">Nothing yet — what are you hoping for?</p>'}
+    <div style="display:flex;gap:6px;margin-top:8px"><input id="wlT" maxlength="50" placeholder="I’d love…" style="flex:1"><select id="wlS" style="width:auto"><option value="1">⭐</option><option value="2">⭐⭐</option><option value="3">⭐⭐⭐</option></select></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="wlAdd">Add</button>${L.length?'<button class="btn" id="wlShare">📤 Share with family</button><button class="btn" id="wlSanta">✉️ Put it in my letter to Santa</button>':''}</div>`);
+  $('wlAdd').onclick=()=>{ const t=$('wlT').value.trim(); if (!t) return; W[y]=[...L,{t,s:+$('wlS').value}]; store.set('wishlist',W); openWishList(); };
+  document.querySelectorAll('[data-wl]').forEach(b=>b.onclick=()=>{ L.splice(+b.dataset.wl,1); W[y]=L; store.set('wishlist',W); openWishList(); });
+  const txt=()=>`🎁 My Christmas wish list ${y}:\n`+L.slice().sort((a,b)=>(b.s||1)-(a.s||1)).map(w=>`${'⭐'.repeat(w.s||1)} ${w.t}`).join('\n');
+  if ($('wlShare')) $('wlShare').onclick=()=>{ if (navigator.share) navigator.share({title:'My wish list',text:txt()}).catch(()=>{}); else { try{ navigator.clipboard.writeText(txt()); toast('📋 Copied — paste it in a message!'); }catch(e){} } };
+  if ($('wlSanta')) $('wlSanta').onclick=()=>{ closeModal(); try{ openLetter(); setTimeout(()=>{ const ta=document.querySelector('#xBody textarea'); if (ta && !ta.value.includes(L[0].t)) ta.value=(ta.value?ta.value+'\n\n':'Dear Santa,\n\n')+'This year I’m wishing for:\n'+L.map(w=>'• '+w.t).join('\n'); },200); }catch(e){} }; }
+
+// ---------- 🦌 reindeer games: steer the sleigh, catch the presents
+function openReindeerGame(){ showModal(`<h3>🦌 Reindeer games</h3><p class="mut">Drag the sleigh left and right to catch presents. Avoid the lumps of coal! 30 seconds.</p><canvas id="rgC" width="360" height="460" style="width:100%;max-width:340px;display:block;margin:0 auto;border-radius:12px;background:linear-gradient(#0b1838,#1c3466);touch-action:none"></canvas><p id="rgS" style="text-align:center;font-weight:700"></p>`);
+  const cv=$('rgC'), x=cv.getContext('2d'); let px=180, items=[], score=0, t0=performance.now(), over=false;
+  const mv=e=>{ const r=cv.getBoundingClientRect(); px=Math.max(30,Math.min(330,(e.clientX-r.left)/r.width*360)); }; cv.onpointerdown=e=>{ mv(e); cv.setPointerCapture(e.pointerId); }; cv.onpointermove=mv;
+  (function loop(){ if (!$('rgC')) return; const t=(performance.now()-t0)/1000;
+    if (!over){ if (Math.random()<.05+t*.002) items.push({x:20+Math.random()*320,y:-20,v:2.2+Math.random()*2+t*.06,c:Math.random()<.2}); items.forEach(i=>i.y+=i.v);
+      items=items.filter(i=>{ if (i.y>405&&i.y<440&&Math.abs(i.x-px)<38){ if (i.c){ score=Math.max(0,score-3); try{ sfx('buzz'); }catch(_){} } else { score++; try{ sfx('pop'); }catch(_){} } return false; } return i.y<480; });
+      if (t>30){ over=true; const b=store.get('reindeerBest',0); if (score>b){ store.set('reindeerBest',score); try{ fx.celebrate(3000); }catch(_){} } $('rgS').textContent=`🎁 You caught ${score} presents!${score>b?' New best!':` Best: ${b}`}`; } }
+    x.clearRect(0,0,360,460); x.font='26px serif'; x.textAlign='center'; x.textBaseline='middle'; for (let s=0;s<20;s++){ x.fillStyle='rgba(255,255,255,.5)'; x.fillRect((s*97)%360,(s*53+t*20)%460,2,2); }
+    items.forEach(i=>x.fillText(i.c?'🪨':'🎁',i.x,i.y)); x.font='38px serif'; x.fillText('🛷',px,425); x.font='20px serif'; x.fillText('🦌',px-40,418);
+    x.fillStyle='#fff'; x.font='bold 18px system-ui'; x.textAlign='left'; x.fillText(`🎁 ${score}   ⏱ ${Math.max(0,30-t).toFixed(0)}s`,10,22); requestAnimationFrame(loop); })(); }
+
+// ---------- 🎶 12 Days of Christmas (Dec 25 – Jan 5)
+var TWELVE=[['🐦','a partridge in a pear tree','The song is from England and was first printed in 1780.'],['🕊️','two turtle doves','Turtle doves are a symbol of true love and friendship.'],['🐔','three French hens','French hens were fancy chickens — expensive back then!'],['🐦‍⬛','four calling birds','In older versions they were “colly birds” — blackbirds.'],
+  ['💍','five gold rings','Some people think these were ring-necked pheasants, not jewelry!'],['🪿','six geese a-laying','Geese lay eggs in spring — a sign of new life.'],['🦢','seven swans a-swimming','Swans mate for life.'],['🥛','eight maids a-milking','Milk was a big deal in winter, when fresh food was scarce.'],
+  ['💃','nine ladies dancing','Twelfth Night was a huge party with dancing.'],['🤸','ten lords a-leaping','Leaping dances were popular in old English celebrations.'],['🎶','eleven pipers piping','Pipers played music at winter festivals.'],['🥁','twelve drummers drumming','The 12th day is Jan 5 — the night before Three Kings Day!']];
+function twelveDay(now){ if (!current) return 0; const lp=localParts(now,current); if (lp.month===11 && lp.day>=25) return lp.day-24; if (lp.month===0 && lp.day<=5) return lp.day+7; return 0; }
+function twelveLine(now){ const d=twelveDay(now); if (!d) return ''; const g=TWELVE[d-1]; const got=(store.get('twelve',{})[yr(now)-(localParts(now,current).month===0?1:0)]||[]).includes(d);
+  return `<small>🎶 Day ${d} of Christmas: ${g[0]} ${g[1]} · ${got?'✅ collected':'<a href="#" id="twGo">collect it</a>'}</small>`; }
+function collectTwelve(){ const now=simNow(), d=twelveDay(now); if (!d) return; const y=yr(now)-(localParts(now,current).month===0?1:0), T=store.get('twelve',{}); T[y]=[...new Set([...(T[y]||[]),d])]; store.set('twelve',T); const g=TWELVE[d-1];
+  try{ fx.celebrate(2000); }catch(e){} showModal(`<h3>🎶 On day ${d} of Christmas…</h3><div style="font-size:60px;text-align:center">${g[0]}</div><p style="text-align:center;font-weight:700">my true love gave to me ${g[1]}!</p><p class="mut" style="text-align:center">${g[2]}</p><div style="text-align:center;font-size:24px">${TWELVE.map((x,i)=>T[y].includes(i+1)?x[0]:'▫️').join(' ')}</div><p class="mut" style="text-align:center">${T[y].length}/12 collected</p>`); tick(true); }
+
+// ---------- 📞 a call from Santa (spoken out loud with the phone’s voice)
+function santaCallText(){ const nick=store.get('nick','')||'my friend', now=simNow(), y=yr(now), nn=(store.get('nnList',{})[y]||{}).pc, wl=(store.get('wishlist',{})[y]||[])[0], town=current?shortName(current):'your town';
+  const lp=current?localParts(now,current):{month:11,day:20}; const days=lp.month===11&&lp.day<25?25-lp.day:0;
+  return [`Ho ho ho! Hello ${nick}! This is Santa Claus, calling all the way from the North Pole!`,
+    days?`Only ${days} more sleep${days===1?'':'s'} until Christmas, and the elves are working around the clock.`:`Merry Christmas! The reindeer and I had a wonderful flight.`,
+    nn!=null?(nn>=60?`I checked my list twice, and I'm happy to say you're on the Nice List!`:`I checked my list… you're very close to the Nice List. A few more kind deeds and you'll be there!`):`Have you been helping out and being kind? My elves are watching!`,
+    wl?`I see you're wishing for ${wl.t}. I'll see what the workshop can do!`:'',
+    `I'll be flying over ${town} on Christmas Eve, so remember to go to sleep early, and maybe leave out some cookies and a carrot for Rudolph.`,
+    `Merry Christmas, ${nick}! Ho ho ho!`].filter(Boolean).join(' '); }
+function openSantaCall(){ const can='speechSynthesis' in window;
+  showModal(`<div style="text-align:center"><div style="font-size:64px" id="scAvatar">🎅</div><h3 style="margin:6px 0">Incoming call…</h3><p class="mut">Santa Claus · North Pole</p>
+    <div style="display:flex;gap:14px;justify-content:center;margin-top:14px"><button class="btn" id="scDecl" style="background:#c0111f;color:#fff;border-radius:999px;padding:12px 18px">📵 Decline</button><button class="btn" id="scAns" style="background:#1f9d55;color:#fff;border-radius:999px;padding:12px 18px">📞 Answer</button></div><p id="scTxt" class="advMsg" style="display:none;text-align:left;line-height:1.5"></p></div>`);
+  let ring=setInterval(()=>{ try{ sfx('ding',.6); }catch(e){} const a=$('scAvatar'); if (a) a.style.transform=a.style.transform?'':'rotate(-8deg)'; else clearInterval(ring); },900);
+  $('scDecl').onclick=()=>{ clearInterval(ring); closeModal(); toast('🎅 Santa will try again later. Ho ho ho!'); };
+  $('scAns').onclick=()=>{ clearInterval(ring); const t=santaCallText(); $('scAns').style.display='none'; $('scDecl').textContent='📵 Hang up'; $('scDecl').onclick=()=>{ try{ speechSynthesis.cancel(); }catch(e){} closeModal(); };
+    $('scTxt').style.display=''; $('scTxt').textContent=t; if (can){ try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(t); u.pitch=.55; u.rate=.9; const v=speechSynthesis.getVoices().find(v=>/en/i.test(v.lang)&&/male|daniel|fred|alex|aaron|arthur/i.test(v.name)); if (v) u.voice=v; speechSynthesis.speak(u); }catch(e){} } }; }
+
+// ---------- 📜 Nice List certificate (after the naughty-or-nice quiz)
+function openCertificate(){ const y=yr(), nn=(store.get('nnList',{})[y]||{}).pc, nick=store.get('nick','');
+  if (nn==null || nn<60){ showModal(`<h3>📜 Nice List certificate</h3><p>${nn==null?'Take the “Naughty or nice?” quiz first!':'You’re not on the Nice List yet — be extra kind and take the quiz again!'}</p><button class="btn primary" id="ceQ">📜 Take the quiz</button>`); $('ceQ').onclick=openNaughtyNice; return; }
+  showModal(`<h3>📜 Your Nice List certificate</h3><input id="ceN" maxlength="24" placeholder="Your name" value="${esc(nick)}"><canvas id="ceC" width="800" height="560" style="width:100%;border-radius:10px"></canvas><button class="btn primary" id="ceShare" style="margin-top:8px">Share…</button>`);
+  const draw=()=>{ const c=$('ceC'), x=c.getContext('2d'), n=$('ceN').value.trim()||'A Very Nice Kid'; x.fillStyle='#fff8e7'; x.fillRect(0,0,800,560); x.strokeStyle='#b8860b'; x.lineWidth=10; x.strokeRect(20,20,760,520); x.strokeStyle='#c8102e'; x.lineWidth=3; x.strokeRect(38,38,724,484);
+    x.textAlign='center'; x.fillStyle='#c8102e'; x.font='bold 46px Georgia,serif'; x.fillText('Official Nice List',400,120); x.fillStyle='#333'; x.font='22px Georgia,serif'; x.fillText('This certifies that',400,180);
+    x.fillStyle='#1f5c3a'; x.font='bold italic 52px Georgia,serif'; x.fillText(n,400,250); x.fillStyle='#333'; x.font='22px Georgia,serif'; x.fillText(`has been checked twice and is officially NICE for Christmas ${y}`,400,305); x.fillText(`Niceness score: ${nn}%`,400,345);
+    x.font='40px serif'; x.fillText('🎄🎅⭐🦌🎁',400,420); x.font='italic 28px Georgia,serif'; x.fillStyle='#c8102e'; x.fillText('~ Santa Claus ~',560,490); x.font='14px system-ui'; x.fillStyle='#999'; x.fillText('North Pole Department of Niceness',220,490); };
+  $('ceN').oninput=e=>{ store.set('nick',e.target.value.trim()); draw(); }; draw();
+  $('ceShare').onclick=()=>$('ceC').toBlob(b=>{ const f=new File([b],'nice-list.png',{type:'image/png'}); if (navigator.canShare&&navigator.canShare({files:[f]})) navigator.share({files:[f],title:'I’m on the Nice List!'}).catch(()=>{}); else toast('Take a screenshot to save it 📸'); }); try{ fx.celebrate(2500); }catch(e){} }
+
+// ---------- 🛷 sleigh dashboard (Christmas Eve, while Santa flies)
+async function openSleighDash(){ if (typeof santa==='undefined' || !santa.on){ showModal(`<h3>🛷 Sleigh dashboard</h3><p class="mut">The dashboard goes live when Santa takes off on Christmas Eve!</p>`); return; }
+  showModal(`<h3>🛷 Sleigh dashboard <small class="mut" style="color:#ff6b6b">● LIVE</small></h3><div id="sdBody"></div><p class="mut" id="sdWx">Checking the weather where Santa is…</p>`);
+  const draw=()=>{ if (!$('sdBody')) return clearInterval(iv); if (!santa.on || !ROUTE[Math.max(0,santa.idx)]){ $('sdBody').innerHTML='<p class="mut">🏁 Santa has finished his trip — see you next Christmas Eve!</p>'; return; } const now=simNow(), S=santaStats(now)||{}, us=useUS(), cur=ROUTE[Math.max(0,santa.idx)], nxt=ROUTE[santa.idx+1], sa=sunAt(santa.lat,santa.lon,sunState(now),now), nose=Math.max(0,Math.min(100,Math.round((6-sa.alt)*8)));
+    const left=Math.max(0,100-Math.round((santa.presents||0)/7700000000*100)), cookies=Math.round((santa.presents||0)/2.5*3), sp=S.kmh?(us?`${(Math.round(S.kmh*.6214/100)*100).toLocaleString()} mph`:`${(Math.round(S.kmh/100)*100).toLocaleString()} km/h`):'🛑 stopped';
+    const bar=(p,c)=>`<div style="height:10px;border-radius:5px;background:rgba(255,255,255,.12);overflow:hidden;margin-top:3px"><div style="height:100%;width:${p}%;background:${c}"></div></div>`;
+    $('sdBody').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="advMsg" style="margin:0">🚀 <b>Speed</b><br>${sp}</div><div class="advMsg" style="margin:0">⛰️ <b>Altitude</b><br>${santa.status==='fly'?(us?'≈ 35,000 ft':'≈ 10,700 m'):'on a rooftop 🏠'}</div>
+      <div class="advMsg" style="margin:0">🎁 <b>Sack</b> ${left}% full${bar(left,'#ffd36b')}</div><div class="advMsg" style="margin:0">🔴 <b>Rudolph’s nose</b> ${nose}%${bar(nose,'#ff4d4d')}<small class="mut">${nose>60?'dark out — shining bright!':nose>20?'twilight — warming up':'daylight — resting'}</small></div>
+      <div class="advMsg" style="margin:0">🍪 <b>Cookies eaten</b><br>${cookies.toLocaleString()}</div><div class="advMsg" style="margin:0">📍 <b>${santa.status==='fly'?'Flying to':'Now at'}</b><br>${esc(placeName(santa.status==='fly'&&nxt?nxt:cur))}</div></div>`; };
+  draw(); const iv=setInterval(draw,1000);
+  try{ const j=await getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${santa.lat.toFixed(2)}&longitude=${santa.lon.toFixed(2)}&current=temperature_2m,weather_code,wind_speed_10m`); const c=j.current, w=wmo(c.weather_code);
+    if ($('sdWx')) $('sdWx').innerHTML=`🌤️ Weather where Santa is: ${w[0]} ${w[1]}, ${tC(c.temperature_2m)}, wind ${useUS()?Math.round(c.wind_speed_10m*.6214)+' mph':Math.round(c.wind_speed_10m)+' km/h'}${c.wind_speed_10m>40?' — hold on tight! 🌬️':''}`; }
+  catch(e){ if ($('sdWx')) $('sdWx').textContent='Live weather at Santa’s spot works on the GitHub site.'; } }
+
+// ---------- 🏭 Santa's workshop: toys counter + a present-wrapping game (December, before Christmas Eve)
+function toysMade(now){ const t=+now, y=new Date(t).getUTCFullYear(), s=Date.UTC(y,0,1), e=Date.UTC(y,11,24,10); return t<s||t>e?0:Math.round((t-s)/(e-s)*7700000000); }
+function workshopLine(now){ if (theme!=='christmas' || !current) return ''; const lp=localParts(now,current); if (lp.month!==11 || lp.day>=24) return ''; return `<small>🏭 Elves have built ${toysMade(now).toLocaleString('en-US')} toys this year · <a href="#" id="wsGo">help wrap presents</a></small>`; }
+function openWrapGame(){ const steps=[['📦','box'],['🧻','paper'],['🎀','bow'],['🏷️','tag']]; let i=0, score=0, need=[], t0=performance.now(), timer=null;
+  const next=()=>{ need=steps.slice().sort(()=>Math.random()-.5).slice(0,3); i=0; render(); };
+  const render=()=>{ if (!$('wgN')) return; $('wgN').innerHTML=need.map((s,k)=>`<span style="opacity:${k<i?.3:1};font-size:34px">${s[0]}</span>`).join(' → '); $('wgS').textContent=`🎁 ${score} wrapped · ⏱ ${Math.max(0,30-Math.floor((performance.now()-t0)/1000))}s`; };
+  showModal(`<h3>🎁 Help the elves wrap presents!</h3><p class="mut">Tap the steps in the order shown. 30 seconds — go!</p><div id="wgN" style="text-align:center;margin:12px 0"></div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${steps.map(s=>`<button class="btn" data-wg="${s[1]}" style="font-size:30px;padding:12px 0">${s[0]}</button>`).join('')}</div><p id="wgS" style="text-align:center;font-weight:700"></p>`);
+  document.querySelectorAll('[data-wg]').forEach(b=>b.onclick=()=>{ if (performance.now()-t0>30000) return; if (b.dataset.wg===need[i][1]){ i++; try{ sfx('pop'); }catch(e){} if (i>=need.length){ score++; next(); return; } } else { try{ sfx('buzz'); }catch(e){} i=0; } render(); });
+  next(); timer=setInterval(()=>{ if (!$('wgS')) return clearInterval(timer); render(); if (performance.now()-t0>30000){ clearInterval(timer); const b=store.get('wrapBest',0); if (score>b){ store.set('wrapBest',score); try{ fx.celebrate(2500); }catch(e){} } $('wgS').textContent=`⏰ Time! You wrapped ${score} presents${score>b?' — new best!':` (best ${b})`} 🎄`; } },250); }
+
+// ---------- wiring
+document.head.insertAdjacentHTML('beforeend',`<style>
+  #broom{position:fixed;inset:0;pointer-events:none;z-index:8} #broom .bw{position:absolute;left:50%;top:38%;font-size:54px;transform:translate(-50%,-50%);animation:bwb 1.2s ease-in-out infinite alternate;filter:drop-shadow(0 0 10px #a35cff)}
+  #broom .bb{position:absolute;font-size:22px;animation:bbf 2.4s ease-in-out infinite} #broom .b1{left:38%;top:33%} #broom .b2{left:60%;top:30%;animation-delay:.6s} #broom .b3{left:44%;top:46%;animation-delay:1.2s}
+  #broomStop{position:absolute;left:50%;bottom:calc(30px + env(safe-area-inset-bottom));transform:translateX(-50%);pointer-events:auto} #broomTxt{position:absolute;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(20,8,36,.85);padding:8px 12px;border-radius:12px;color:#fff;text-align:center;font-size:13px;max-width:80vw}
+  @keyframes bwb{from{transform:translate(-50%,-50%) rotate(-6deg)}to{transform:translate(-50%,-58%) rotate(6deg)}} @keyframes bbf{0%,100%{transform:translate(0,0)}50%{transform:translate(14px,-10px)}}</style>`);
+var _tt15=totTap; totTap=function(lat,lon,now){ return turkeys.tap(lat,lon,now) || _tt15(lat,lon,now); };
+var _lt15=layersTick; layersTick=function(now,M){ _lt15(now,M); turkeys.update(now); elfHideTick(now); townLightsTick(now); };
+var _ll15=layerLines; layerLines=function(now){ let h=_ll15(now); if (!current) return h;
+  if (theme==='halloween') h+=`<small>🧹 <a href="#" id="brGo">Broomstick ride</a> · 🏚️ <a href="#" id="esGo">escape the haunted house</a> · 🗺️ <a href="#" id="tpGo">trick-or-treat planner</a> · 🎭 <a href="#" id="ccGo">costume contest</a></small>`;
+  if (theme==='thanksgiving') h+=`<small>🥡 <a href="#" id="loGo2">Leftover ideas</a> · 🥧 <a href="#" id="pgGo">pie slicing</a></small>`;
+  if (theme==='christmas') h+=`<small>📞 <a href="#" id="callGo">Call from Santa</a> · 🎁 <a href="#" id="wlGo">wish list</a> · ❄️ <a href="#" id="sfGo">snowflake maker</a> · 💡 <a href="#" id="tlGo">town lights</a> · 🦌 <a href="#" id="rgGo">reindeer games</a> · 📜 <a href="#" id="ceGo">Nice List certificate</a></small>`+(typeof santa!=='undefined'&&santa.on?`<small class="pLive">🛷 <a href="#" id="sdGo">Sleigh dashboard — LIVE</a></small>`:'');
+  return h+turkeyHuntLine(now)+dinnerWaveLine(now)+elfHideLine(now)+workshopLine(now)+twelveLine(now); };
+document.addEventListener('click',e=>{ const a=e.target.closest('a,button'); if (!a) return;
+  const map={brGo:broomRide,esGo:openEscape,tpGo:openTotPlanner,ccGo:openCostumeContest,dwGo:openDinnerWave,loGo2:openLeftovers,pgGo:openPieGame,callGo:openSantaCall,wlGo:openWishList,sfGo:openSnowflake,tlGo:openTownLights,rgGo:openReindeerGame,ceGo:openCertificate,sdGo:openSleighDash,wsGo:openWrapGame,twGo:collectTwelve};
+  if (map[a.id]){ e.preventDefault(); map[a.id](); } });
+var _om15=openMore; openMore=function(){ _om15(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
+  const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.appendChild(b); };
+  if (theme==='halloween'){ add('🧹','Broomstick ride','Fly to spooky places',broomRide); add('🏚️','Escape room','Solve 3 riddles',openEscape); add('🗺️','Trick-or-treat planner','When it gets dark & tips',openTotPlanner); add('🎭','Costume contest','Enter & vote',openCostumeContest); }
+  if (theme==='thanksgiving'){ add('🥡','Leftover ideas','What to make next',openLeftovers); add('🥧','Pie slicing','Cut 8 equal slices',openPieGame); add('🍽️','Dinner wave','Dinner across the US',openDinnerWave); }
+  if (theme==='christmas'){ add('📞','Call from Santa','He’ll talk to you!',openSantaCall); add('🎁','Wish list','Share with family',openWishList); add('❄️','Snowflake maker','Draw & mirror',openSnowflake); add('💡','Town lights','Light up your pin',openTownLights);
+    add('🦌','Reindeer games','Catch the presents',openReindeerGame); add('📜','Nice List certificate','Print-worthy proof',openCertificate); add('🛷','Sleigh dashboard','Live on Christmas Eve',openSleighDash); add('🎁','Wrap presents','Help the elves',openWrapGame); } };
+if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {closeModal,broomRide,openEscape,openTotPlanner,openCostumeContest,openDinnerWave,openLeftovers,openPieGame,openSnowflake,openTownLights,openWishList,openReindeerGame,collectTwelve,openSantaCall,openCertificate,openSleighDash,openWrapGame});
 
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS,SET,layerNote,noteFor};

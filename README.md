@@ -378,3 +378,9 @@ night-side city lights placed at real city coordinates.
 
 Everything runs in the browser. The only network use is loading Three.js and
 d3 from public CDNs.
+
+### Holiday round 15
+- 🎃 Halloween: broomstick ride to spooky places, escape-the-haunted-house riddles, trick-or-treat planner (sunset, dark time, forecast, safety tips), costume contest
+- 🦃 Thanksgiving: turkey hunt (10 turkeys hidden in US & Canadian cities), dinner wave across US time zones, leftover ideas, pie slicing game
+- 🎄 Christmas: elf hide-and-seek (Dec 1–24), snowflake maker, town lights around your pin, wish list, reindeer games, 12 Days of Christmas (Dec 25–Jan 5), workshop toy counter + present-wrapping game
+- 🎅 Santa: a phone call from Santa (spoken aloud), Nice List certificate, live sleigh dashboard on Christmas Eve (speed, Rudolph's nose, sack, weather where Santa is)
