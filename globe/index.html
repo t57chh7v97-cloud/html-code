@@ -5819,18 +5819,18 @@ function openTotPlanner(){ if (!current) return; const now=simNow(), lp=localPar
 
 // ---------- 🎭 costume contest (shared in the Claude version)
 async function openCostumeContest(){ const y=yr(), b=await boardDb(); let rows=[];
-  const load=async()=>{ if (b){ try{ const s=await b.db.collection('costumes').where('y','==',y).limit(100).get(); rows=s.docs.map(d=>({id:d.id,...d.data()})); }catch(e){ rows=[]; } } else rows=store.get('costumes',{})[y]||[]; render(); };
+  const load=async()=>{ if (b){ try{ const s=await b.db.collection('costumes').where('y','==',y).limit(200).get(); const all=s.docs.map(d=>({id:d.id,...d.data()})); rows=all.filter(r=>r.costume).map(r=>({...r,votes:Object.fromEntries(all.filter(v=>v.vote===r.id).map(v=>[v.id,1]))})); }catch(e){ rows=[]; } } else rows=store.get('costumes',{})[y]||[]; render(); };
   const myVote=()=>store.get('costumeVote',{})[y];
   const render=()=>{ const el=$('ccList'); if (!el) return; const sorted=rows.slice().sort((a,c)=>Object.keys(c.votes||{}).length-Object.keys(a.votes||{}).length);
     el.innerHTML=sorted.length?sorted.map((r,i)=>{ const n=Object.keys(r.votes||{}).length; return `<div class="gBoardR" style="padding:5px 0"><span>${i===0&&n?'👑 ':''}${esc(r.who||'?')} — <b>${esc(r.costume||'')}</b> · ${n} vote${n===1?'':'s'}</span><button class="btn mini" data-cv="${esc(r.id||r.who)}" ${myVote()===(r.id||r.who)?'disabled':''}>${myVote()===(r.id||r.who)?'✅':'Vote'}</button></div>`; }).join(''):'<span class="mut">No costumes yet — enter yours!</span>';
     el.querySelectorAll('[data-cv]').forEach(x=>x.onclick=async()=>{ const id=x.dataset.cv, V=store.get('costumeVote',{}); V[y]=id; store.set('costumeVote',V);
-      if (b){ try{ const me=b.id; for (const r of rows){ const v={...(r.votes||{})}; if (r.id===id) v[me]=1; else delete v[me]; if (JSON.stringify(v)!==JSON.stringify(r.votes||{})) await b.db.collection('costumes').doc(r.id).update({votes:v}); } }catch(e){ toast('Couldn’t vote — you may need Contributor access.'); } }
+      if (b){ try{ const ref=b.db.collection('costumes').doc(b.id), mine=rows.find(r=>r.id===b.id); await ref.set(mine?{y,who:mine.who,costume:mine.costume,vote:id,at:mine.at||Date.now()}:{y,vote:id,at:Date.now()}); }catch(e){ toast('Couldn’t vote — ask the owner to share the page so you can use it.'); } }
       else { const C=store.get('costumes',{}); (C[y]||[]).forEach(r=>{ r.votes={}; if ((r.id||r.who)===id) r.votes.me=1; }); store.set('costumes',C); }
       load(); }); };
   showModal(`<h3>🎭 Costume contest</h3><p class="mut">${b?'Everyone using this page in Claude can enter and vote — one vote each!':'Enter costumes and vote (saved on this device — the shared contest is in the Claude version).'}</p>
     <div style="display:flex;gap:6px;flex-wrap:wrap"><input id="ccWho" placeholder="Your name" maxlength="20" value="${esc(store.get('nick',''))}" style="flex:1;min-width:100px"><input id="ccC" placeholder="Your costume" maxlength="40" style="flex:2;min-width:140px"><button class="btn primary" id="ccAdd">Enter</button></div><div id="ccList"></div>`);
   $('ccAdd').onclick=async()=>{ const who=$('ccWho').value.trim(), costume=$('ccC').value.trim(); if (!who||!costume) return; store.set('nick',who); $('ccC').value='';
-    if (b){ try{ await b.db.collection('costumes').doc(b.id+'_'+y).set({y,who,costume,votes:{},at:Date.now()}); }catch(e){ toast('Couldn’t enter — you may need Contributor access.'); } }
+    if (b){ try{ const ref=b.db.collection('costumes').doc(b.id); let vote=null; try{ const d=await ref.get(); vote=d.exists&&d.data().y===y?d.data().vote||null:null; }catch(_){} await ref.set({y,who,costume,vote,at:Date.now()}); }catch(e){ toast('Couldn’t enter — you may need Contributor access.'); } }
     else { const C=store.get('costumes',{}); C[y]=[...(C[y]||[]),{id:'c'+Date.now(),who,costume,votes:{}}]; store.set('costumes',C); } load(); };
   load(); }
 
