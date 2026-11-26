@@ -418,3 +418,6 @@ d3 from public CDNs.
 - ⚠️ Official National Weather Service alerts (home, on the way, destination), 🕐 leave now or wait?, 🗺️ open in Apple Maps / Google Maps / Waze, 🌇 arrive before dark, 📲 share my ETA, 🌉 windy-bridge warning, 🔙 tonight's trip home, 🚘 driving mode, 🕯️ storm-ready checklist
 - 🦃 All Thanksgiving activities organized into 7 categories — in Settings, the More menu, and one link in the holiday box
 - ◀ Back button on every pop-up window opened from another one (Settings → category → activity → Back → Back)
+
+### Round 22 — passenger extras
+- 🎵 songs until we're there, ⛽ quick stops (gas, bathroom, coffee… in Apple/Google Maps), 🌉 bridge countdown + alert, 🔔 10-minute arrival alarm, 📒 trip log (saves itself when you arrive)

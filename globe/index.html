@@ -2162,7 +2162,7 @@ function updateHoliday(now){
 }
 // the holiday box shows the big holiday news; everything else folds into "More" inside the box
 var HS_OPEN=false;
-const HS_PIN=/evPin|pLive|ytBtn|liveDot|LIVE|Happy birthday|shadow is on Earth|[Pp]arade|🎅|Santa|😴|Clocks go|Trick-or-treating|Hanukkah night|Kwanzaa day|tree lighting|[Ff]ireworks|Already 20|Next to celebrate|20\d\d in |Unwrap your presents|April Fools|pranks|elf is hiding|Dinner wave|of Christmas: |Spooky meter|Turkey comes out|Turkey is resting|Carving time|Your town is Santa|Midnight wave|plant trees|Herald Square now|Presents in|Christmas morning!|Kickoff in|Game on now|Parade eve|❌|Happy National|Happy Native|Happy Grandparents|Happy Siblings|Happy World|Kindness Week|Leftovers|Host to-do|School starts|Trip \d|Tracking your trip|busiest travel/;
+const HS_PIN=/evPin|pLive|ytBtn|liveDot|LIVE|Happy birthday|shadow is on Earth|[Pp]arade|🎅|Santa|😴|Clocks go|Trick-or-treating|Hanukkah night|Kwanzaa day|tree lighting|[Ff]ireworks|Already 20|Next to celebrate|20\d\d in |Unwrap your presents|April Fools|pranks|elf is hiding|Dinner wave|of Christmas: |Spooky meter|Turkey comes out|Turkey is resting|Carving time|Your town is Santa|Midnight wave|plant trees|Herald Square now|Presents in|Christmas morning!|Kickoff in|Game on now|Parade eve|❌|Happy National|Happy Native|Happy Grandparents|Happy Siblings|Happy World|Kindness Week|Leftovers|Host to-do|School starts|Trip \d|Tracking your trip|busiest travel|Next bridge|songs? until/;
 function stripSplit(ex){ const parts=ex.match(/<small[\s\S]*?<\/small>/g)||[]; const pin=[], more=[]; parts.forEach(x=>{ const links=(x.match(/<a /g)||[]).length, activity=links>=2 && !/LIVE|ytBtn|liveDot/.test(x); (HS_PIN.test(x)&&!activity?pin:more).push(x); });   // lines of activity links (tree · Secret Santa…) always fold away
   while (pin.length>3) more.unshift(pin.pop());   // at most 3 lines stay out — the rest fold into More so the box never takes over the screen
   if (more.length<2) return parts.join('');
@@ -6861,6 +6861,53 @@ var _om21=openMore; openMore=function(){ _om21(); const grid=document.querySelec
   add('⚠️','Weather alerts','From the Weather Service',openAlerts); add('🕐','Leave now or wait?','Calmest time to go',openLeaveOrWait); add('🗺️','Open in Maps','Turn-by-turn',openInMaps); add('🌇','Arrive before dark','Sunset there',openBeforeDark); add('📲','Share my ETA','Tell the family',openShareEta); add('🔙','Trip home tonight','Weather + traffic',openTripHome); add('🚘','Driving mode','Big simple screen',openDrivingMode); add('🕯️','Storm checklist','Be ready',openStormReady);
   if (theme==='thanksgiving'||macyMovedToday(simNow())) add('🦃','All Thanksgiving','By category',()=>openTgHub(),true); };
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {openAlerts,openLeaveOrWait,openInMaps,openBeforeDark,openShareEta,openTripHome,openDrivingMode,openStormReady,openTgHub,openSettings:()=>openSettings()});
+
+/* =========================================================
+   ROUND 22 — passenger extras: 🎵 songs until we’re there · ⛽ quick stops · 🌉 bridge countdown · 🔔 arrival alarm · 📒 trip log
+   ========================================================= */
+// ---------- 🎵 songs until we’re there (about 3½ minutes a song)
+function songsLeft(){ const s=AWT.watch!=null?awtState():null; if (s) return Math.max(0,Math.ceil(s.h*60/3.5)); const t=tripInfo(); return t?Math.ceil(_driveHoursNow(t)*60/3.5):null; }
+function openSongs(){ const n=songsLeft(); showModal(`<h3>🎵 How many songs until we’re there?</h3>${n==null?'<p>Tell the travel check where you’re going first!</p>':`<div style="font-size:64px;text-align:center;font-weight:800">${n}</div><p style="text-align:center;font-size:18px">songs to go 🎶</p><p class="mut" style="text-align:center">About 3½ minutes per song${AWT.watch==null?' — turn on “Are we there yet?” for a live count':''}.</p><div class="advMsg">${n<=3?'🎉 Almost there — one more sing-along!':n<=10?'🎤 Time for a car karaoke round!':'🎧 Make a playlist — everyone picks 3 songs!'}</div>`}`); }
+
+// ---------- ⛽ quick stops near you (opens your maps app)
+var QUICK=[['⛽','Gas station','gas station'],['🚻','Bathroom / rest area','rest area'],['☕','Coffee','coffee'],['🍔','Fast food','fast food'],['💊','Pharmacy','pharmacy'],['🔌','EV charging','EV charging station']];
+function openQuickStops(){ const go=(q)=>{ const at=AWT.pos||(current?[current.lat,current.lon]:null), ll=at?`${at[0].toFixed(4)},${at[1].toFixed(4)}`:''; const apple=`https://maps.apple.com/?q=${encodeURIComponent(q)}${ll?`&sll=${ll}`:''}`, google=`https://www.google.com/maps/search/${encodeURIComponent(q)}/${ll?`@${ll},13z`:''}`; return [apple,google]; };
+  showModal(`<h3>⛽ Quick stops</h3><p class="mut">${AWT.pos?'Near where you are right now.':'Near your pin — turn on “Are we there yet?” to search from where the car is.'} Opens in your maps app.</p>${QUICK.map(q=>{ const [a,g]=go(q[2]); return `<div class="gBoardR" style="padding:5px 0"><span style="font-size:16px">${q[0]} <b>${q[1]}</b></span><span><a class="btn mini primary" href="${a}" target="_blank" rel="noopener">🍎 Apple</a> <a class="btn mini" href="${g}" target="_blank" rel="noopener">Google</a></span></div>`; }).join('')}<p class="mut">Lots of places close early on Thanksgiving — check hours before you stop.</p>`); }
+
+// ---------- 🌉 bridge countdown (major bridges; alerts while “Are we there yet?” is tracking)
+var BRIDGES=[['Mario M. Cuomo (Tappan Zee) Bridge',41.07,-73.885],['Throgs Neck Bridge',40.80,-73.794],['Bronx–Whitestone Bridge',40.801,-73.830],['RFK (Triborough) Bridge',40.780,-73.926],['George Washington Bridge',40.852,-73.953],['Verrazzano-Narrows Bridge',40.607,-74.045],['Brooklyn Bridge',40.706,-73.997],['Manhattan Bridge',40.707,-73.991],['Williamsburg Bridge',40.713,-73.972],['Queensboro Bridge',40.757,-73.954],['Goethals Bridge',40.635,-74.198],['Outerbridge Crossing',40.525,-74.247],['Bear Mountain Bridge',41.320,-73.986],['Newburgh–Beacon Bridge',41.519,-73.993],['Kingston–Rhinecliff Bridge',41.958,-73.960],['Rip Van Winkle Bridge',42.221,-73.856],['Delaware Memorial Bridge',39.689,-75.517],['Benjamin Franklin Bridge',39.953,-75.135],['Walt Whitman Bridge',39.905,-75.130],['Chesapeake Bay Bridge',38.993,-76.381],['Golden Gate Bridge',37.819,-122.479],['San Francisco–Oakland Bay Bridge',37.798,-122.378],['Mackinac Bridge',45.817,-84.728],['Sunshine Skyway Bridge',27.620,-82.656],['Lake Pontchartrain Causeway',30.212,-90.117],['Zakim Bridge (Boston)',42.369,-71.062],['Tobin Bridge (Boston)',42.383,-71.050]];
+var BRG={warned:{}};
+function bridgeAhead(){ if (!AWT.pos||!AWT.dest) return null; const [la,lo]=AWT.pos, toDest=gcDist(la,lo,AWT.dest.lat,AWT.dest.lon); let best=null;
+  for (const b of BRIDGES){ const d1=gcDist(la,lo,b[1],b[2]), d2=gcDist(b[1],b[2],AWT.dest.lat,AWT.dest.lon); if (d1<40 && d1+d2<toDest*1.15+3 && d2<toDest+1){ if (!best||d1<best.d) best={b,d:d1}; } } return best; }
+function bridgeTick(){ const a=bridgeAhead(); if (!a) return; const k=a.b[0]+(AWT.start||[]).join(); if (a.d<3 && !BRG.warned[k]){ BRG.warned[k]=1; const windy=WX.data&&WX.data.current&&WX.data.current.wind_speed_10m>=35;
+  toast(`🌉 ${a.b[0]} coming up!${windy?' It’s windy — both hands on the wheel.':''}`); try{ sfx('ding'); navigator.vibrate&&navigator.vibrate(200); }catch(e){} } }
+function bridgeLine2(){ const a=bridgeAhead(); return a?`<small>🌉 Next bridge: <b>${esc(a.b[0])}</b> in about ${_mi(a.d*1.25)}</small>`:''; }
+
+// ---------- 🔔 arrival alarm (10 minutes out)
+var ARR={done:''};
+function arrivalTick(){ const s=AWT.watch!=null?awtState():null; if (!s||!AWT.dest) return; const k=AWT.dest.name+(AWT.start||[]).join(); if (s.h*60<=10 && s.pc<99 && ARR.done!==k){ ARR.done=k;
+  const msg=`🔔 About 10 minutes to ${AWT.dest.name}! Wake up, shoes on, grab your stuff 👟`; toast(msg); try{ sfx('fanfare'); navigator.vibrate&&navigator.vibrate([300,150,300]); if (window.Notification&&Notification.permission==='granted') new Notification('🦃 Almost there!',{body:msg}); }catch(e){} } }
+
+// ---------- 📒 trip log (saved automatically when “Are we there yet?” sees you arrive)
+function logTrip(e){ const L=store.get('tripLog',[]); L.unshift(e); store.set('tripLog',L.slice(0,50)); }
+var _stopAWT22=stopAWT; stopAWT=function(){ try{ if (AWT.pos&&AWT.dest&&AWT.t0&&gcDist(AWT.pos[0],AWT.pos[1],AWT.dest.lat,AWT.dest.lon)<3){ const mins=Math.round((Date.now()-AWT.t0)/60000), from=AWT.from||'Home'; logTrip({from,to:AWT.dest.name,at:Date.now(),mins,km:Math.round(gcDist(AWT.start[0],AWT.start[1],AWT.dest.lat,AWT.dest.lon))}); toast(`📒 Trip saved: ${_hm(mins/60)} to ${AWT.dest.name}`); } }catch(e){} AWT.t0=0; _stopAWT22(); };
+function awtStamp(){ if (AWT.watch!=null && AWT.start && !AWT.t0){ AWT.t0=Date.now(); AWT.from=current?shortName(current):'Home'; } }
+function openTripLog(){ const L=store.get('tripLog',[]);
+  showModal(`<h3>📒 Trip log</h3>${L.length?L.map((t,i)=>`<div class="gBoardR" style="padding:6px 0"><span><b>${esc(t.from)} → ${esc(t.to)}</b><br><small class="mut">${new Date(t.at).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})} · arrived ${_fmtHM(new Date(t.at))}</small></span><span style="text-align:right"><b>${_hm(t.mins/60)}</b><br><button class="btn mini" data-tl="${i}">✕</button></span></div>`).join(''):'<p class="mut">No trips yet. Turn on “📍 Are we there yet?” when you leave — when you arrive, the trip saves itself here.</p>'}
+    <details style="margin-top:8px"><summary>➕ Add a trip yourself</summary><input id="tlF" placeholder="From" value="${esc(current?shortName(current):'')}"><input id="tlT" placeholder="To"><div style="display:flex;gap:6px"><input id="tlM" type="number" min="1" placeholder="Minutes" style="width:100px"><button class="btn primary" id="tlAdd">Save</button></div></details>`);
+  document.querySelectorAll('[data-tl]').forEach(b=>b.onclick=()=>{ L.splice(+b.dataset.tl,1); store.set('tripLog',L); openTripLog(); });
+  $('tlAdd').onclick=()=>{ const to=$('tlT').value.trim(), m=+$('tlM').value; if (!to||!m) return; logTrip({from:$('tlF').value.trim()||'Home',to,at:Date.now(),mins:m}); openTripLog(); }; }
+
+// ---------- wiring
+var _lt22=layersTick; layersTick=function(now,M){ _lt22(now,M); awtStamp(); bridgeTick(); arrivalTick(); };
+var _ll22=layerLines; layerLines=function(now){ let h=_ll22(now); if (!current||AWT.watch==null) return h; const n=songsLeft(); return h+bridgeLine2()+(n!=null?`<small>🎵 About ${n} song${n===1?'':'s'} until we’re there · <a href="#" id="r22Songs">more</a></small>`:''); };
+document.addEventListener('click',e=>{ const a=e.target.closest('a,button'); if (!a) return; const map={r22Songs:openSongs}; if (map[a.id]){ e.preventDefault(); map[a.id](); } });
+var _om22=openMore; openMore=function(){ _om22(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
+  const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.appendChild(b); };
+  add('🎵','Songs until there','Car countdown',openSongs); add('⛽','Quick stops','Gas, bathroom, coffee',openQuickStops); add('📒','Trip log','How long trips took',openTripLog); };
+// add them to the Thanksgiving “Travel & navigating” category too
+var _tgHub22=tgHub; tgHub=function(){ const H=_tgHub22(); H[0][2].push(['🎵','Songs until there',openSongs],['⛽','Quick stops',openQuickStops],['📒','Trip log',openTripLog]); return H; };
+if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {openSongs,openQuickStops,openTripLog,bridgeAhead,AWT,arrivalTick,bridgeTick});
 
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS,SET,layerNote,noteFor};
