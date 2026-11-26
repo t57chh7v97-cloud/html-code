@@ -467,7 +467,7 @@
   <div class="fpRow"><button id="fpCam" class="btn mini">🎥 Free cam</button><button id="fpLand" class="btn mini">🛬 Land</button></div></div>
 <div id="finale"></div><div id="sgGlass"></div><button id="sgShake" class="btn" style="display:none">❄️ Shake</button>
 <div id="game" class="glass"></div><div id="gBoard"></div>
-<div id="xModal"><div class="xbox glass"><button id="xClose" aria-label="Close">✕</button><div id="xBody"></div></div></div>
+<div id="xModal"><div class="xbox glass"><button id="xClose" aria-label="Close">✕</button><button id="xBack" class="btn mini" aria-label="Back" style="display:none;margin:-4px 0 8px">◀ Back</button><div id="xBody"></div></div></div>
 <div id="ballDrop" aria-hidden="true"><div class="bdPole"><div id="bdBall"></div></div><div id="bdNum"></div><div class="bdLbl">Times Square</div></div>
 <div id="overChip" class="glass" style="display:none"></div>
 <div id="musicMenu" class="glass" role="menu"></div><input id="mFile" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg" hidden><input id="nyFile" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg" hidden>
@@ -3109,9 +3109,19 @@ function makePostcard(){
     if ($('pcShare')) $('pcShare').onclick=()=>navigator.share({files:[file],title}).catch(()=>{}); },'image/png'); }
 
 // ---- tiny modal
-function showModal(html){ $('xBody').innerHTML=html; $('xModal').classList.add('show'); }
-function closeModal(){ $('xModal').classList.remove('show'); }
-$('xClose').onclick=closeModal; $('xModal').addEventListener('pointerdown',e=>{ if (e.target===$('xModal')) closeModal(); });
+// pop-up windows remember where you came from: opening one window from another adds a ◀ Back button
+// (the old window's buttons are kept as-is, so going back works without re-opening anything)
+var MSTACK=[];
+const _mKey=el=>{ const h=el&&el.querySelector('h3'); return h?h.textContent.replace(/\s+/g,' ').trim().split(' ').slice(0,3).join(' '):''; };
+function _updBack(){ const b=$('xBack'); if (b) b.style.display=MSTACK.length?'':'none'; }
+function showModal(html){ const box=$('xBody'), open=$('xModal').classList.contains('show');
+  if (open && box.firstChild){ const tmp=document.createElement('div'); tmp.innerHTML=html; const a=_mKey(box), b=_mKey(tmp);
+    if (a && b && a!==b){ const frag=document.createDocumentFragment(); while (box.firstChild) frag.appendChild(box.firstChild); MSTACK.push({frag,y:box.parentNode.scrollTop}); if (MSTACK.length>15) MSTACK.shift(); } }
+  else if (!open) MSTACK=[];
+  box.innerHTML=html; $('xModal').classList.add('show'); _updBack(); if (!open || MSTACK.length) box.parentNode.scrollTop=0; }
+function modalBack(){ const s=MSTACK.pop(); if (!s) return closeModal(); const box=$('xBody'); box.innerHTML=''; box.appendChild(s.frag); _updBack(); box.parentNode.scrollTop=s.y||0; try{ sfx('pop',.5); }catch(e){} }
+function closeModal(){ $('xModal').classList.remove('show'); MSTACK=[]; _updBack(); }
+$('xClose').onclick=closeModal; $('xBack').onclick=modalBack; $('xModal').addEventListener('pointerdown',e=>{ if (e.target===$('xModal')) closeModal(); });
 // ---- 🔗 share the app: QR code to scan, copy the link, or the phone's share sheet
 var APP_URL='https://t57chh7v97-cloud.github.io/html-code/globe/';
 function openShare(){
@@ -6819,10 +6829,10 @@ function tgHub(){ const f=(n)=>typeof window[n]==='function'?window[n]:null; ret
   ['🎮','Games & fun',[['🧠','Thanksgiving trivia',openTrivia],['🎈','Parade trivia',openParadeTrivia],['🥧','Pie slicing',openPieGame],['🦴','Wishbone pull',openWishbone],['🖐️','Hand turkey',openHandTurkey],['🍽️','Kids’ table games',openKidsTable],['🍽️','Dinner wave',openDinnerWave],['🛍️','Nap or shop?',openNapShop],['🏃','Turkey Trot',openTrot],['🦃','Turkey hunt',()=>{ closeModal(); toast('🦃 Zoom in on big US & Canadian cities and tap the turkeys!'); flyToLL(39,-95,2.2); }]]],
   ['🙏','Thankful',[['🍂','Gratitude wall',openGratitude],['🫙','Thankful jar',openThankfulJar],['🔗','Thankful chain',openChain],['🕊️','Turkey pardon',openPardon],['🪶','Native American Heritage Day',openNAHD]]] ]; }
 function openTgHub(cat){ const H=tgHub();
-  if (cat==null){ showModal(`<h3>🦃 Thanksgiving activities</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${H.map((c,i)=>`<button class="btn" data-tgc="${i}" style="padding:14px 8px;text-align:center"><div style="font-size:28px">${c[0]}</div><b>${c[1]}</b><br><small class="mut">${c[2].length} things</small></button>`).join('')}</div>`);
+  if (cat==null){ showModal(`<h3>🦃 Thanksgiving activities</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${H.map((c,i)=>`<button class="btn" data-tgc="${i}" style="padding:14px 8px;text-align:center;white-space:normal;min-width:0"><div style="font-size:28px">${c[0]}</div><b>${c[1]}</b><br><small class="mut">${c[2].length} things</small></button>`).join('')}</div>`);
     document.querySelectorAll('[data-tgc]').forEach(b=>b.onclick=()=>openTgHub(+b.dataset.tgc)); return; }
-  const c=H[cat]; showModal(`<h3>${c[0]} ${c[1]}</h3><button class="btn mini" id="tgBack">◀ All categories</button><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">${c[2].map((a,i)=>`<button class="btn" data-tga="${i}" style="text-align:left;padding:10px"><span style="font-size:20px">${a[0]}</span> ${a[1]}</button>`).join('')}</div>`);
-  $('tgBack').onclick=()=>openTgHub(); document.querySelectorAll('[data-tga]').forEach(b=>b.onclick=()=>{ try{ c[2][+b.dataset.tga][2](); }catch(e){ toast('Couldn’t open that one'); } }); }
+  const c=H[cat]; showModal(`<h3>${c[0]} ${c[1]}</h3><button class="btn mini" id="tgBack">◀ All categories</button><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">${c[2].map((a,i)=>`<button class="btn" data-tga="${i}" style="text-align:left;padding:10px;white-space:normal;min-width:0;line-height:1.25"><span style="font-size:20px">${a[0]}</span> ${a[1]}</button>`).join('')}</div>`);
+  if (MSTACK.length) $('tgBack').remove(); else $('tgBack').onclick=()=>openTgHub(); document.querySelectorAll('[data-tga]').forEach(b=>b.onclick=()=>{ try{ c[2][+b.dataset.tga][2](); }catch(e){ toast('Couldn’t open that one'); } }); }
 // Settings gets a Thanksgiving section with the categories
 var _os21=openSettings; openSettings=function(){ _os21(); const b=$('xBody'); if (!b) return; const H=tgHub();
   b.insertAdjacentHTML('beforeend',`<div class="setRow" style="display:block"><b>🦃 Thanksgiving activities</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${H.map((c,i)=>`<button class="btn mini" data-stc="${i}">${c[0]} ${c[1]}</button>`).join('')}</div></div>`);
