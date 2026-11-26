@@ -5189,7 +5189,9 @@ function openTrivia(){ let i=0, score=0; const Q=TG_TRIVIA.slice().sort(()=>Math
   show(); }
 
 // ---------- 🚗 Thanksgiving travel check
-function findPlace(q){ const k=fold(q); if (!k || !P.ready) return -1; let best=-1, bp=-1; for (let i=0;i<P.name.length;i++){ const key=P.key[i]; if (key===k || key.startsWith(k)){ const pop=(P.pop[i]||0)*(key===k?10:1); if (pop>bp){ bp=pop; best=i; } } } return best; }
+function findPlace(q){ // "Baldwin, NY" or "Baldwin NY" picks the Baldwin in New York, not the biggest Baldwin anywhere
+  const m=String(q).trim().match(/^(.+?)[,\s]+([A-Za-z]{2})$/); if (m && P.ready){ const k2=fold(m[1]), st=m[2].toUpperCase(); let b2=-1, bp2=-1; for (let i=0;i<P.name.length;i++){ if ((P.ad[i]||'').toUpperCase()!==st && P.cc[i]!==st) continue; const key=P.key[i]; if (key===k2 || key.startsWith(k2)){ const pop=(P.pop[i]||0)*(key===k2?10:1); if (pop>bp2){ bp2=pop; b2=i; } } } if (b2>=0) return b2; }
+  const k=fold(q); if (!k || !P.ready) return -1; let best=-1, bp=-1; for (let i=0;i<P.name.length;i++){ const key=P.key[i]; if (key===k || key.startsWith(k)){ const pop=(P.pop[i]||0)*(key===k?10:1); if (pop>bp){ bp=pop; best=i; } } } return best; }
 function roadEstimate(km){ const road=km*(km<100?1.4:km<500?1.28:1.2), kmh=km<30?40:km<100?60:km<300?80:km<800?95:100; return {km:road, h:road/kmh}; }
 // Thanksgiving traffic: how much slower than normal, by days from Thanksgiving (−1 = Wednesday before) and hour; any other day = normal rush hours
 function tgTraffic(dayOff,hour,dow){ const rush=(dow>=1&&dow<=5)?(hour>=7&&hour<10?1.3:hour>=16&&hour<19?1.35:1.0):1.0;
@@ -5204,7 +5206,7 @@ async function openTravel(){ const y0=yearOf(simNow()), tg0=nthWeekday(y0,10,4,4
   const T=Object.assign({to:'',time:'09:00'},store.get('trip',{})); if (!T.date) T.date=iso(new Date(+tgDate+((T.day!=null?T.day:-1))*86400000));
   const chips=[-3,-2,-1,0,1,2,3,4].map(o=>{ const d=new Date(+tgDate+o*86400000); return [iso(d),(o===0?'🦃 ':'')+d.toLocaleDateString(undefined,{weekday:'short',day:'numeric',timeZone:'UTC'})]; });
   showModal(`<h3>🚗 Thanksgiving travel check</h3><p class="mut">Where are you going, and when are you leaving?</p>
-    <div style="display:flex;gap:6px"><input id="trTo" placeholder="Town or city" value="${esc(T.to)}" style="flex:1"><button class="btn primary" id="trGo">Check</button></div>
+    <div style="display:flex;gap:6px"><input id="trTo" placeholder="Town, state (e.g. Baldwin, NY)" value="${esc(T.to)}" style="flex:1"><button class="btn primary" id="trGo">Check</button></div>
     <div class="seg" id="trDay" style="margin-top:8px;flex-wrap:wrap">${chips.map(([v,l])=>`<button data-v="${v}" class="${T.date===v?'on':''}">${l}</button>`).join('')}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px"><label class="setRow" style="margin:0"><b>Or pick any date</b><input type="date" id="trDate" value="${T.date}"></label><label class="setRow" style="margin:0"><b>Leaving at</b><input type="time" id="trTime" value="${T.time}"></label></div><div id="trOut"></div>`);
   const go=async()=>{ const q=$('trTo').value.trim(); if (!q || !current) return; const i=findPlace(q); if (i<0){ $('trOut').innerHTML='<p class="mut">Couldn’t find that place — try a bigger town nearby.</p>'; return; }
@@ -6642,7 +6644,7 @@ if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window._
    ✅ arrived-safe message · 🎒 packing list · 🚙 carpool planner · 🍿 snack & fun timer · 🔙 Sunday traffic warning · 🌤️ weather when you arrive
    ========================================================= */
 function tripInfo(){ const T=store.get('trip',{}); if (!T.to || !current || !P.ready) return null; const i=findPlace(T.to); if (i<0) return null;
-  const km=gcDist(current.lat,current.lon,P.lat[i],P.lon[i]), est=roadEstimate(km); return {T,i,name:P.name[i],lat:P.lat[i],lon:P.lon[i],km,est}; }
+  const km=gcDist(current.lat,current.lon,P.lat[i],P.lon[i]), est=roadEstimate(km); return {T,i,name:placeLabel(i).slice(0,P.cc[i]==='US'||P.cc[i]==='CA'?2:1).join(', '),town:P.name[i],lat:P.lat[i],lon:P.lon[i],km,est}; }
 const _needTrip=(title)=>{ showModal(`<h3>${title}</h3><p>First tell the travel check where you’re going.</p><button class="btn primary" id="ntGo">🚗 Open travel check</button>`); $('ntGo').onclick=()=>openTravel(); };
 const _mi=k=>useUS()?`${Math.round(k*.6214).toLocaleString()} mi`:`${Math.round(k).toLocaleString()} km`;
 const _hm=h=>{ const H=Math.floor(h), M=Math.round((h-H)*60); return H?`${H} h ${M} min`:`${M} min`; };
@@ -6778,8 +6780,15 @@ async function openLeaveOrWait(){ const t=tripInfo(); if (!t) return _needTrip('
   catch(e){ $('lwOut').textContent='This works on the GitHub site and in the iPhone app.'; } }
 
 // ---------- 🗺️ open in Maps
-function openInMaps(){ const t=tripInfo(); if (!t) return _needTrip('🗺️ Open in Maps'); const ll=`${t.lat},${t.lon}`, nm=encodeURIComponent(t.name);
-  showModal(`<h3>🗺️ Directions to ${esc(t.name)}</h3><p class="mut">Opens turn-by-turn directions from where you are now.</p><a class="btn primary" style="display:block;text-align:center;margin-top:6px" href="https://maps.apple.com/?daddr=${ll}&q=${nm}&dirflg=d" target="_blank" rel="noopener">🍎 Apple Maps</a><a class="btn" style="display:block;text-align:center;margin-top:6px" href="https://www.google.com/maps/dir/?api=1&destination=${ll}&travelmode=driving" target="_blank" rel="noopener">🗺️ Google Maps</a><a class="btn" style="display:block;text-align:center;margin-top:6px" href="https://waze.com/ul?ll=${ll}&navigate=yes" target="_blank" rel="noopener">🚙 Waze</a><p class="mut">Tip: put your exact address in the maps app — the app only knows the town.</p>`); }
+function openInMaps(){ const t=tripInfo(); if (!t) return _needTrip('🗺️ Open in Maps'); const T=store.get('trip',{});
+  showModal(`<h3>🗺️ Directions to ${esc(t.name)}</h3><p class="mut">Type the exact address so the maps app goes to the right house — not just the middle of town.</p>
+    <input id="mpA" maxlength="120" placeholder="e.g. 123 Main St (we add ${esc(t.name)})" value="${esc(T.addr||'')}" autocomplete="street-address" style="width:100%">
+    <small class="mut" id="mpHint"></small>
+    <a class="btn primary" id="mpApple" style="display:block;text-align:center;margin-top:8px" target="_blank" rel="noopener">🍎 Apple Maps</a><a class="btn" id="mpGoogle" style="display:block;text-align:center;margin-top:6px" target="_blank" rel="noopener">🗺️ Google Maps</a><a class="btn" id="mpWaze" style="display:block;text-align:center;margin-top:6px" target="_blank" rel="noopener">🚙 Waze</a>`);
+  const set=()=>{ const a=$('mpA').value.trim(), T2=store.get('trip',{}); T2.addr=a; store.set('trip',T2); const ll=`${t.lat},${t.lon}`, q=encodeURIComponent(a+(a && !new RegExp(t.town,'i').test(a)?', '+t.name:''));
+    $('mpApple').href=a?`https://maps.apple.com/?daddr=${q}&dirflg=d`:`https://maps.apple.com/?daddr=${ll}&dirflg=d`; $('mpGoogle').href=a?`https://www.google.com/maps/dir/?api=1&destination=${q}&travelmode=driving`:`https://www.google.com/maps/dir/?api=1&destination=${ll}&travelmode=driving`; $('mpWaze').href=a?`https://waze.com/ul?q=${q}&navigate=yes`:`https://waze.com/ul?ll=${ll}&navigate=yes`;
+    $('mpHint').textContent=a?`✅ Going to: ${a}${a && !new RegExp(t.town,'i').test(a)?', '+t.name:''}`:'⚠️ No address yet — it will go to the middle of '+t.name+'.'; };
+  $('mpA').oninput=set; set(); }
 
 // ---------- 🌇 arrive before dark + 📲 share my ETA
 function _driveHoursNow(t){ const now=simNow(), lp=localParts(now,current), tg=_tgDay(lp.year), off=lp.month===10?lp.day-tg:9; return t.est.h*tgTraffic(off,lp.hour,new Date(+now).getUTCDay()); }
