@@ -403,3 +403,9 @@ d3 from public CDNs.
 - 🏈 Thanksgiving football kickoff times, 🛍️ nap or shop?, 🥪 leftover sandwich ratings
 - 📅 a mini-game behind each advent door, 🎉 New Year's confetti cannon
 - 2026 updates: Macy's parade moved to Saturday Nov 28 (storm); Charlotte's Thanksgiving Eve Parade canceled (weather)
+
+### Holiday round 19
+- 🦃 Hand turkey maker, turkey size/thaw/roast calculator, leftovers timer, family pick'em, recipe box, thankful paper chain, who-hosts-next-year spinner, turkey pardon facts, parade watch party (Claude version)
+- 🏠 Hosting: oven timeline, guest list, house-prep countdown · 🚗 road trip games (license plates, I spy, 20 questions)
+- 📆 Special days: Native American Heritage Day, Donut Day, Dog Day, Grandparents Day, Siblings Day, World Kindness Week, World Emoji Day, first day of school
+- Fix: search results no longer slide under the buttons
