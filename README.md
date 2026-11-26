@@ -402,7 +402,7 @@ d3 from public CDNs.
 - 🎈 100 years of parade trivia, 🏆 balloon of the year, parade-eve balloon note
 - 🏈 Thanksgiving football kickoff times, 🛍️ nap or shop?, 🥪 leftover sandwich ratings
 - 📅 a mini-game behind each advent door, 🎉 New Year's confetti cannon
-- 2026 updates: Macy's parade moved to Saturday Nov 28 (storm); Charlotte's Thanksgiving Eve Parade canceled (weather)
+- 2026 updates: Macy's parade moved to Saturday Nov 28 (storm); Charlotte's Thanksgiving Eve Parade and Philadelphia's street parade canceled (weather)
 
 ### Holiday round 19
 - 🦃 Hand turkey maker, turkey size/thaw/roast calculator, leftovers timer, family pick'em, recipe box, thankful paper chain, who-hosts-next-year spinner, turkey pardon facts, parade watch party (Claude version)

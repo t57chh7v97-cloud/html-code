@@ -60,7 +60,7 @@
   .short{display:none}
   #fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
   #holStrip{display:none;margin:-4px 0 10px;padding:7px 10px;border-radius:10px;font-size:13.5px;font-weight:600;background:rgba(255,255,255,.06);border:1px solid var(--line);line-height:1.35}
-  #holStrip.show{display:block}
+  #holStrip.show{display:block;max-height:min(30vh,240px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   #holStrip small a{color:var(--accent);font-weight:700}
   #extras{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px} #extras:empty{display:none} #extras .btn.mini{font-size:12.5px;padding:5px 9px}
   #layerMenu{position:fixed;z-index:8;display:none;width:min(320px,calc(100vw - 16px));padding:8px;border-radius:14px;font-size:13.5px}
@@ -2164,6 +2164,7 @@ function updateHoliday(now){
 var HS_OPEN=false;
 const HS_PIN=/evPin|pLive|ytBtn|liveDot|LIVE|Happy birthday|shadow is on Earth|[Pp]arade|🎅|Santa|😴|Clocks go|Trick-or-treating|Hanukkah night|Kwanzaa day|tree lighting|[Ff]ireworks|Already 20|Next to celebrate|20\d\d in |Unwrap your presents|April Fools|pranks|elf is hiding|Dinner wave|of Christmas: |Spooky meter|Turkey comes out|Turkey is resting|Carving time|Your town is Santa|Midnight wave|plant trees|Herald Square now|Presents in|Christmas morning!|Kickoff in|Game on now|Parade eve|❌|Happy National|Happy Native|Happy Grandparents|Happy Siblings|Happy World|Kindness Week|Leftovers|Host to-do|School starts|Trip \d|Tracking your trip|busiest travel/;
 function stripSplit(ex){ const parts=ex.match(/<small[\s\S]*?<\/small>/g)||[]; const pin=[], more=[]; parts.forEach(x=>{ const links=(x.match(/<a /g)||[]).length, activity=links>=2 && !/LIVE|ytBtn|liveDot/.test(x); (HS_PIN.test(x)&&!activity?pin:more).push(x); });   // lines of activity links (tree · Secret Santa…) always fold away
+  while (pin.length>3) more.unshift(pin.pop());   // at most 3 lines stay out — the rest fold into More so the box never takes over the screen
   if (more.length<2) return parts.join('');
   return pin.join('')+(HS_OPEN?more.join(''):'')+`<small class="hsMore"><a href="#" id="hsMoreBtn">${HS_OPEN?'Show less ▴':`More (${more.length}) ▾`}</a></small>`; }
 // safety net: never leave an empty pop-up's dark backdrop over the app (it would block every tap)
@@ -3960,7 +3961,7 @@ var PARADES=[ // city, lat, lon, time zone, start hour, end hour (≈), what it 
   ['Plymouth, MA',41.958,-70.662,'America/New_York',10,13,'from Plymouth Rock along Water, Main and Court Streets — the only historically accurate chronological parade, 17th to 21st century, themed on America’s 250th',-5,'America’s Hometown Thanksgiving Celebration','31st','WCVB 5 / WMUR · rebroadcast Thanksgiving 9–11 AM']];
 function paradeDay(p,y){ return p[0]==='New York City' ? macyDay(y) : nthWeekday(y,10,4,4)+p[7]; }
 // parades called off this year (city → why)
-var PARADE_CANCEL={2026:{'Charlotte':'Canceled because of high winds and rain — WCCB is airing a special show 6–8 PM instead'}};
+var PARADE_CANCEL={2026:{'Charlotte':'Canceled because of high winds and rain — WCCB is airing a special show 6–8 PM instead','Philadelphia':'Street parade canceled because of the storm — a TV-only show airs 10 AM–noon on 6abc'}};
 function paradeCanceled(p,y){ return (PARADE_CANCEL[y]||{})[p[0]]||''; }
 function paradeOn(p,now){ const t=partsIn(p[3],now); if (t.month!==10 || t.day!==paradeDay(p,t.year) || paradeCanceled(p,t.year)) return 0; const h=t.hour+t.minute/60; return h>=p[4]&&h<p[5] ? 2 : h<p[4] ? 1 : 3; }
 updateParade=function(t, now){
