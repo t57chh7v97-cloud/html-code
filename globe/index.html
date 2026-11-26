@@ -6733,6 +6733,116 @@ var _om20=openMore; openMore=function(){ _om20(); const grid=document.querySelec
   add('🌤️','Weather there','When you arrive',openArriveWeather); add('🎒','Packing list','Trip checklist',openPacking); add('🚙','Carpool','Who rides with who',openCarpool); add('🍿','Snack & fun timer','Make the drive fun',openFunTimer); add('✅','Arrived safe','Tell the family',openArrived); };
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {openRouteWeather,openBestLeave,startAWT,openRestStops,openArrived,openPacking,openCarpool,openFunTimer,openArriveWeather,tripInfo});
 
+/* =========================================================
+   ROUND 21 — 🧭 navigating today: ⚠️ NWS weather alerts · 🕐 leave now or wait? · 🗺️ open in Maps · 🌇 arrive before dark · 📲 share my ETA
+   🌉 bridge wind warning · 🔙 tonight’s trip home · 🚘 driving mode · 🕯️ storm-ready checklist
+   🦃 Thanksgiving activities organized into categories (Settings, More, and one link in the holiday box)
+   ========================================================= */
+// ---------- ⚠️ official National Weather Service alerts (US)
+var NWS={at:{},data:{},seen:store.get('nwsSeen',{})};
+async function nwsAlerts(lat,lon){ const k=lat.toFixed(2)+','+lon.toFixed(2); if (NWS.data[k] && Date.now()-NWS.at[k]<10*60000) return NWS.data[k];
+  try{ const r=await fetch(`https://api.weather.gov/alerts/active?point=${lat.toFixed(4)},${lon.toFixed(4)}`,{headers:{Accept:'application/geo+json'}}); if (!r.ok) throw 0; const j=await r.json();
+    NWS.data[k]=(j.features||[]).map(f=>f.properties).filter(p=>p && p.event).map(p=>({id:p.id,event:p.event,headline:p.headline||p.event,sev:p.severity,ends:p.ends||p.expires,desc:(p.description||'').slice(0,600),area:p.areaDesc})); NWS.at[k]=Date.now(); return NWS.data[k]; }
+  catch(e){ return null; } }
+const _sevIcon=s=>({Extreme:'🟣',Severe:'🔴',Moderate:'🟠',Minor:'🟡'}[s]||'⚪');
+var NWS_LAST=0;
+async function nwsTick(){ if (!current || current.cc!=='US' || Date.now()-NWS_LAST<10*60000) return; NWS_LAST=Date.now(); const L=await nwsAlerts(current.lat,current.lon); if (!L) return; NWS.mine=L;
+  L.forEach(a=>{ if (!NWS.seen[a.id] && (a.sev==='Severe'||a.sev==='Extreme')){ NWS.seen[a.id]=1; store.set('nwsSeen',NWS.seen); toast(`⚠️ ${a.event} for ${shortName(current)}`); try{ sfx('buzz'); }catch(e){} } }); tick(true); }
+function nwsLine(now){ if (!current || current.cc!=='US' || !NWS.mine || !NWS.mine.length) return ''; const top=NWS.mine.slice().sort((a,b)=>['Extreme','Severe','Moderate','Minor'].indexOf(a.sev)-['Extreme','Severe','Moderate','Minor'].indexOf(b.sev))[0];
+  return `<small class="evPin">⚠️ ${_sevIcon(top.sev)} <b>${esc(top.event)}</b> for ${esc(shortName(current))}${NWS.mine.length>1?` +${NWS.mine.length-1} more`:''} · <a href="#" id="r21Al">details</a></small>`; }
+async function openAlerts(){ showModal(`<h3>⚠️ Weather alerts</h3><div id="alOut" class="mut">Checking the National Weather Service…</div>`); if (!current) return;
+  const t=tripInfo(), spots=[[shortName(current),current.lat,current.lon]]; if (t){ const m=_along([current.lat,current.lon],[t.lat,t.lon],.5), ci=_nearCity(m[0],m[1],20000); spots.push([ci>=0?P.name[ci]+' (on the way)':'On the way',m[0],m[1]],[t.name,t.lat,t.lon]); }
+  if (current.cc!=='US'){ $('alOut').textContent='Official alerts come from the US National Weather Service, so they only work for places in the United States.'; return; }
+  const res=await Promise.all(spots.map(s=>nwsAlerts(s[1],s[2]))); if (res.every(r=>r==null)){ $('alOut').textContent='Couldn’t reach the National Weather Service — weather alerts work on the GitHub site and in the iPhone app.'; return; }
+  $('alOut').innerHTML=spots.map((s,i)=>{ const L=res[i]||[]; return `<h4 style="margin:10px 0 4px">📍 ${esc(s[0])}</h4>${L.length?L.map(a=>`<details class="advMsg" style="margin-top:4px"><summary>${_sevIcon(a.sev)} <b>${esc(a.event)}</b>${a.ends?` <small class="mut">until ${_fmtHM(new Date(a.ends))}</small>`:''}</summary><small>${esc(a.desc)}</small></details>`).join(''):'<div class="mut">✅ No alerts right now</div>'}`; }).join('')+`<p class="mut">From the National Weather Service. Updates every 10 minutes.</p>`; }
+
+// ---------- 🕐 leave now or wait? (next 12 hours at home and where you’re going)
+async function openLeaveOrWait(){ const t=tripInfo(); if (!t) return _needTrip('🕐 Leave now or wait?'); showModal(`<h3>🕐 Leave now or wait?</h3><p class="mut">${esc(shortName(current))} → ${esc(t.name)} · about ${_hm(t.est.h)} driving</p><div id="lwOut" class="mut">Checking the next 12 hours…</div>`);
+  try{ const j=await getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${current.lat.toFixed(2)},${t.lat.toFixed(2)}&longitude=${current.lon.toFixed(2)},${t.lon.toFixed(2)}&hourly=wind_gusts_10m,precipitation,snowfall&wind_speed_unit=mph&timezone=auto&forecast_days=2`);
+    const A=Array.isArray(j)?j:[j], H=A[0].hourly, H2=(A[1]||A[0]).hourly, nowIso=new Date().toISOString().slice(0,13), lp=localParts(simNow(),current);
+    let k0=H.time.findIndex(x=>{ const d=new Date(x); return d.getHours()===lp.hour && d.getDate()===lp.day; }); if (k0<0) k0=0;
+    const rows=[]; for (let k=k0;k<Math.min(H.time.length,k0+12);k++){ const g=Math.max(H.wind_gusts_10m[k],H2.wind_gusts_10m[k]||0), pr=H.precipitation[k]+(H2.precipitation[k]||0), sn=(H.snowfall[k]||0)+(H2.snowfall[k]||0), sc=g/10+pr*2+sn*4; rows.push({h:new Date(H.time[k]).getHours(),g,pr,sn,sc}); }
+    const best=rows.reduce((a,b)=>b.sc<a.sc?b:a), nowR=rows[0], fmt=h=>`${h%12||12} ${h<12?'AM':'PM'}`, mx=Math.max(...rows.map(r=>r.sc),1);
+    const verdict=nowR.sc<=best.sc*1.15+0.5?'✅ Now is about as good as it gets — go when you’re ready!':`⏳ Better to wait until about <b>${fmt(best.h)}</b> — calmer weather then.`;
+    $('lwOut').innerHTML=`<div class="advMsg" style="font-size:16px">${verdict}</div>${rows.map(r=>`<div style="display:flex;align-items:center;gap:6px;font-size:12.5px"><span style="width:44px">${fmt(r.h)}</span><div style="flex:1;height:10px;border-radius:5px;background:rgba(255,255,255,.08)"><div style="height:100%;width:${Math.max(4,Math.round(r.sc/mx*100))}%;border-radius:5px;background:${r===best?'#3ddc84':r.sc>mx*.66?'#ff6b6b':'#ffb347'}"></div></div><span style="width:120px;text-align:right">💨${Math.round(r.g)} mph${r.pr>=0.5?` · 💧${r.pr.toFixed(1)}`:''}${r.sn>0?' · ❄️':''}</span></div>`).join('')}<p class="mut">Worst of wind and rain at home and at ${esc(t.name)}, hour by hour.</p>`; }
+  catch(e){ $('lwOut').textContent='This works on the GitHub site and in the iPhone app.'; } }
+
+// ---------- 🗺️ open in Maps
+function openInMaps(){ const t=tripInfo(); if (!t) return _needTrip('🗺️ Open in Maps'); const ll=`${t.lat},${t.lon}`, nm=encodeURIComponent(t.name);
+  showModal(`<h3>🗺️ Directions to ${esc(t.name)}</h3><p class="mut">Opens turn-by-turn directions from where you are now.</p><a class="btn primary" style="display:block;text-align:center;margin-top:6px" href="https://maps.apple.com/?daddr=${ll}&q=${nm}&dirflg=d" target="_blank" rel="noopener">🍎 Apple Maps</a><a class="btn" style="display:block;text-align:center;margin-top:6px" href="https://www.google.com/maps/dir/?api=1&destination=${ll}&travelmode=driving" target="_blank" rel="noopener">🗺️ Google Maps</a><a class="btn" style="display:block;text-align:center;margin-top:6px" href="https://waze.com/ul?ll=${ll}&navigate=yes" target="_blank" rel="noopener">🚙 Waze</a><p class="mut">Tip: put your exact address in the maps app — the app only knows the town.</p>`); }
+
+// ---------- 🌇 arrive before dark + 📲 share my ETA
+function _driveHoursNow(t){ const now=simNow(), lp=localParts(now,current), tg=_tgDay(lp.year), off=lp.month===10?lp.day-tg:9; return t.est.h*tgTraffic(off,lp.hour,new Date(+now).getUTCDay()); }
+function openBeforeDark(){ const t=tripInfo(); if (!t) return _needTrip('🌇 Arrive before dark'); const now=simNow(), sa=sunAt(t.lat,t.lon,sunState(now),now), h=_driveHoursNow(t);
+  if (!sa.set){ showModal(`<h3>🌇 Arrive before dark</h3><p>No normal sunset there today.</p>`); return; } const leaveBy=new Date(+sa.set-h*3600000-15*60000), late=leaveBy<now;
+  showModal(`<h3>🌇 Arrive before dark</h3><div class="advMsg" style="line-height:1.7">🌇 Sunset in ${esc(t.name)}: <b>${_fmtHM(sa.set)}</b><br>🚗 Drive right now: about <b>${_hm(h)}</b> (with today’s traffic)<br>${late?'🌙 It’ll be dark when you get there — drive extra carefully and use your headlights.':`⏰ Leave by <b>${_fmtHM(leaveBy)}</b> to arrive in daylight`}</div>`); }
+function openShareEta(){ const t=tripInfo(); if (!t) return _needTrip('📲 Share my ETA'); const h=AWT.watch!=null&&awtState()?awtState().h:_driveHoursNow(t), eta=new Date(Date.now()+h*3600000), nick=store.get('nick','');
+  const msgs=[`Leaving now! Should get to ${t.name} around ${_fmtHM(eta)} 🦃🚗`,`On the road — ETA about ${_fmtHM(eta)}. Save us some pie! 🥧`,`Running a little late because of the weather — now arriving around ${_fmtHM(new Date(+eta+20*60000))}.`];
+  showModal(`<h3>📲 Share my ETA</h3><p class="mut">About ${_hm(h)} to ${esc(t.name)} right now.</p>${msgs.map((m,i)=>`<button class="btn" data-se="${i}" style="display:block;width:100%;text-align:left;margin-top:6px">${esc(m)}</button>`).join('')}`);
+  document.querySelectorAll('[data-se]').forEach(b=>b.onclick=()=>_share19(msgs[+b.dataset.se]+(nick?` — ${nick}`:''),'My ETA')); }
+
+// ---------- 🌉 bridge wind warning (when it’s windy where you are)
+function bridgeLine(now){ if (!current || !WX.data || !WX.data.current) return ''; const w=WX.data.current.wind_speed_10m; if (w==null || w<40) return '';
+  return `<small class="evPin">🌉 Windy out there (${useUS()?Math.round(w*.6214)+' mph':Math.round(w)+' km/h'}) — slow down on bridges and open highways, keep both hands on the wheel, and give trucks extra room</small>`; }
+
+// ---------- 🔙 tonight’s trip home
+async function openTripHome(){ const t=tripInfo(); if (!t) return _needTrip('🔙 Tonight’s trip home'); showModal(`<h3>🔙 Tonight’s trip home</h3><p class="mut">${esc(t.name)} → ${esc(shortName(current))}</p><div id="thOut" class="mut">Checking tonight…</div>`);
+  const lp=localParts(simNow(),current), off=lp.month===10?lp.day-_tgDay(lp.year):9, fmt=h=>`${h%12||12} ${h<12?'AM':'PM'}`;
+  try{ const j=await getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${current.lat.toFixed(2)},${t.lat.toFixed(2)}&longitude=${current.lon.toFixed(2)},${t.lon.toFixed(2)}&hourly=wind_gusts_10m,precipitation&wind_speed_unit=mph&timezone=auto&forecast_days=2`); const A=Array.isArray(j)?j:[j];
+    const day=`${lp.year}-${String(lp.month+1).padStart(2,'0')}-${String(lp.day).padStart(2,'0')}`, rows=[16,17,18,19,20,21,22,23].map(h=>{ const k=A[0].hourly.time.indexOf(`${day}T${String(h).padStart(2,'0')}:00`); if (k<0) return null; const g=Math.max(A[0].hourly.wind_gusts_10m[k],(A[1]||A[0]).hourly.wind_gusts_10m[k]), pr=A[0].hourly.precipitation[k]+((A[1]||A[0]).hourly.precipitation[k]||0), dr=t.est.h*tgTraffic(off,h,0); return {h,g,pr,dr,sc:g/10+pr*2+dr}; }).filter(Boolean);
+    if (!rows.length){ $('thOut').textContent='No forecast for tonight.'; return; } const best=rows.reduce((a,b)=>b.sc<a.sc?b:a);
+    $('thOut').innerHTML=`<div class="advMsg">🌙 Best time to head home: <b>${fmt(best.h)}</b> — about ${_hm(best.dr)}, gusts ${Math.round(best.g)} mph</div>${rows.map(r=>`<div class="gBoardR" style="padding:4px 0;${r===best?'background:rgba(61,220,132,.15);border-radius:8px':''}"><b>${fmt(r.h)}</b><span>🚗 ${_hm(r.dr)} · 💨 ${Math.round(r.g)} mph${r.pr>=0.5?` · 💧 ${r.pr.toFixed(1)} mm`:''}</span></div>`).join('')}<p class="mut">${rows.some(r=>r.g>=45)?'⚠️ Very strong gusts tonight — staying over might be the safest choice.':'Drive safe and text when you’re home!'}</p>`; }
+  catch(e){ $('thOut').textContent='This works on the GitHub site and in the iPhone app.'; } }
+
+// ---------- 🚘 driving mode (big, simple screen for the passenger)
+function openDrivingMode(){ const t=tripInfo(); if (!t) return _needTrip('🚘 Driving mode'); const ov=document.createElement('div'); ov.id='drvMode';
+  ov.style.cssText='position:fixed;inset:0;z-index:50;background:#05070d;color:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:18px;padding:calc(20px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom));text-align:center';
+  document.body.appendChild(ov); const draw=()=>{ if (!document.getElementById('drvMode')) return clearInterval(iv); const s=AWT.watch!=null?awtState():null, h=s?s.h:_driveHoursNow(t), eta=new Date(Date.now()+h*3600000), al=(NWS.mine||[]).length, nextStop=Math.ceil((s?s.h:t.est.h)/2)>0&&t.est.h>2;
+    ov.innerHTML=`<div style="font-size:22px;opacity:.7">🚘 Driving to ${esc(t.name)}</div><div style="font-size:64px;font-weight:800">${_fmtHM(eta)}</div><div style="font-size:24px">arrive · ${s?_mi(s.left)+' to go':_hm(h)+' left'}</div>${s?`<div style="width:80%;height:26px;border-radius:13px;background:#222;overflow:hidden"><div style="height:100%;width:${s.pc}%;background:linear-gradient(90deg,#ffb347,#3ddc84)"></div></div>`:''}
+      <div style="font-size:22px">${al?`⚠️ ${al} weather alert${al>1?'s':''} here`:'✅ No weather alerts here'}</div>${nextStop?'<div style="font-size:20px;opacity:.8">🛑 Take a break every 2 hours</div>':''}
+      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">${AWT.watch==null?'<button class="btn primary" id="dmTrack" style="font-size:20px;padding:16px 22px">📍 Track trip</button>':''}<button class="btn" id="dmEta" style="font-size:20px;padding:16px 22px">📲 Share ETA</button><button class="btn" id="dmExit" style="font-size:20px;padding:16px 22px">✕ Exit</button></div><div style="font-size:14px;opacity:.5">Passengers only — drivers, eyes on the road! 🙂</div>`;
+    $('dmExit').onclick=()=>{ ov.remove(); clearInterval(iv); }; $('dmEta').onclick=()=>{ ov.remove(); clearInterval(iv); openShareEta(); }; if ($('dmTrack')) $('dmTrack').onclick=()=>{ startAWT(); closeModal(); draw(); }; };
+  draw(); const iv=setInterval(draw,15000); try{ navigator.wakeLock && navigator.wakeLock.request('screen').catch(()=>{}); }catch(e){} }
+
+// ---------- 🕯️ storm-ready checklist
+var STORM=['🔋 Phone fully charged + car charger','⛽ At least half a tank of gas','🔦 Flashlight with fresh batteries','🧣 Blanket & warm layers in the car','💧 Water & snacks','🩹 Small first-aid kit','📻 Know where to get local alerts','🧊 Fridge & freezer closed if the power goes out (food stays cold ~4 hours)','🕯️ Candles or lanterns at home — never use a grill or generator indoors','🏠 Charge power banks & laptops before the storm'];
+function openStormReady(){ const D=store.get('stormDone',[]); showModal(`<h3>🕯️ Storm-ready checklist</h3><p class="mut">${D.length}/${STORM.length} ready</p>${STORM.map((s,i)=>`<label class="mopt${D.includes(i)?' on':''}" style="display:flex;gap:8px;padding:5px 0"><input type="checkbox" data-sr2="${i}" ${D.includes(i)?'checked':''}><span>${s}</span></label>`).join('')}`);
+  document.querySelectorAll('[data-sr2]').forEach(b=>b.onchange=()=>{ const i=+b.dataset.sr2, n=b.checked?[...new Set([...D,i])]:D.filter(x=>x!==i); store.set('stormDone',n); openStormReady(); }); }
+
+// ---------- 🦃 Thanksgiving activities, organized into categories
+function tgHub(){ const f=(n)=>typeof window[n]==='function'?window[n]:null; return [
+  ['🧭','Travel & navigating',[['⚠️','Weather alerts',openAlerts],['🕐','Leave now or wait?',openLeaveOrWait],['🗺️','Open in Maps',openInMaps],['🚗','Travel check',openTravel],['🌧️','Route weather',openRouteWeather],['⏰','Best time to leave',openBestLeave],['🌇','Arrive before dark',openBeforeDark],['📍','Are we there yet?',startAWT],['🚘','Driving mode',openDrivingMode],['📲','Share my ETA',openShareEta],['🛑','Rest stops',openRestStops],['🌤️','Weather there',openArriveWeather],['🔙','Tonight’s trip home',openTripHome],['✅','Arrived safe',openArrived]]],
+  ['🎒','Trip prep',[['🕯️','Storm-ready checklist',openStormReady],['🎒','Packing list',openPacking],['🚙','Carpool',openCarpool],['🍿','Snack & fun timer',openFunTimer],['🚘','Road trip games',()=>openRoadTrip()]]],
+  ['🍽️','Food & cooking',[['🦃','Turkey calculator',openTurkeyCalc],['⏲️','Turkey timer',openTurkey],['🏠','Oven timeline',openHostTimeline],['🍗','Carving countdown',setDinnerTime],['🍽️','Dinner planner',()=>openPlanner()],['📖','Recipe box',()=>openRecipeBox()],['🥡','Leftover ideas',openLeftovers],['🥪','Sandwich stacker',openSandwich],['⭐','Sandwich ratings',openSandwichRatings],['🥧','Best pie vote',openPies]]],
+  ['🏠','Hosting',[['👥','Guest list',openGuestList],['🧹','House prep',openHostPrep],['🪑','Seating chart',openSeating],['🍁','Friendsgiving sign-up',openFriendsgiving],['🎡','Who hosts next year?',openHostSpinner]]],
+  ['🎈','Parades & football',[['🎈','Parade guide',openParadeGuide],['🗽','Parade timeline',openParadeTimeline],['📍','Parade route',openParadeRoute],['🎯','Parade bingo',openBingo],['🔮','Guess the balloons',openPicks],['🌬️','Balloon wind check',openBalloonWind],['📏','Balloon sizes',openBalloonSizes],['🗳️','Favorite balloon',openFavVote],['🏆','Balloon of the year',openBalloonAward],['🎨','Design a balloon',openMyBalloon],['🎟️','Parade checklist',openParadeChecklist],['🎉','Watch party',openWatchParty],['🏈','Football kickoffs',openFootball],['🏆','Family pick’em',openPickem]]],
+  ['🎮','Games & fun',[['🧠','Thanksgiving trivia',openTrivia],['🎈','Parade trivia',openParadeTrivia],['🥧','Pie slicing',openPieGame],['🦴','Wishbone pull',openWishbone],['🖐️','Hand turkey',openHandTurkey],['🍽️','Kids’ table games',openKidsTable],['🍽️','Dinner wave',openDinnerWave],['🛍️','Nap or shop?',openNapShop],['🏃','Turkey Trot',openTrot],['🦃','Turkey hunt',()=>{ closeModal(); toast('🦃 Zoom in on big US & Canadian cities and tap the turkeys!'); flyToLL(39,-95,2.2); }]]],
+  ['🙏','Thankful',[['🍂','Gratitude wall',openGratitude],['🫙','Thankful jar',openThankfulJar],['🔗','Thankful chain',openChain],['🕊️','Turkey pardon',openPardon],['🪶','Native American Heritage Day',openNAHD]]] ]; }
+function openTgHub(cat){ const H=tgHub();
+  if (cat==null){ showModal(`<h3>🦃 Thanksgiving activities</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${H.map((c,i)=>`<button class="btn" data-tgc="${i}" style="padding:14px 8px;text-align:center"><div style="font-size:28px">${c[0]}</div><b>${c[1]}</b><br><small class="mut">${c[2].length} things</small></button>`).join('')}</div>`);
+    document.querySelectorAll('[data-tgc]').forEach(b=>b.onclick=()=>openTgHub(+b.dataset.tgc)); return; }
+  const c=H[cat]; showModal(`<h3>${c[0]} ${c[1]}</h3><button class="btn mini" id="tgBack">◀ All categories</button><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">${c[2].map((a,i)=>`<button class="btn" data-tga="${i}" style="text-align:left;padding:10px"><span style="font-size:20px">${a[0]}</span> ${a[1]}</button>`).join('')}</div>`);
+  $('tgBack').onclick=()=>openTgHub(); document.querySelectorAll('[data-tga]').forEach(b=>b.onclick=()=>{ try{ c[2][+b.dataset.tga][2](); }catch(e){ toast('Couldn’t open that one'); } }); }
+// Settings gets a Thanksgiving section with the categories
+var _os21=openSettings; openSettings=function(){ _os21(); const b=$('xBody'); if (!b) return; const H=tgHub();
+  b.insertAdjacentHTML('beforeend',`<div class="setRow" style="display:block"><b>🦃 Thanksgiving activities</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${H.map((c,i)=>`<button class="btn mini" data-stc="${i}">${c[0]} ${c[1]}</button>`).join('')}</div></div>`);
+  b.querySelectorAll('[data-stc]').forEach(x=>x.onclick=()=>openTgHub(+x.dataset.stc)); };
+// the holiday box: one “all activities” link instead of many activity lines
+var _ss21=stripSplit; stripSplit=function(ex){ if (theme!=='thanksgiving' && !(current && macyMovedToday(simNow()))) return _ss21(ex);
+  const parts=(ex.match(/<small[\s\S]*?<\/small>/g)||[]).filter(x=>{ const links=(x.match(/<a /g)||[]).length; return !(links>=2 && !/LIVE|ytBtn|liveDot|evPin/.test(x)); });
+  return _ss21(parts.join(''))+`<small class="hsMore">🦃 <a href="#" id="r21Hub">All Thanksgiving activities</a> · 🧭 <a href="#" id="r21Nav">navigating today</a></small>`; };
+
+// ---------- wiring
+var _lt21=layersTick; layersTick=function(now,M){ _lt21(now,M); nwsTick(); };
+var _ll21=layerLines; layerLines=function(now){ return nwsLine(now)+bridgeLine(now)+_ll21(now); };
+document.addEventListener('click',e=>{ const a=e.target.closest('a,button'); if (!a) return;
+  const map={r21Al:openAlerts,r21Hub:()=>openTgHub(),r21Nav:()=>openTgHub(0)}; if (map[a.id]){ e.preventDefault(); map[a.id](); } });
+var _om21=openMore; openMore=function(){ _om21(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
+  const add=(icon,t,d,fn,first)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; first?grid.prepend(b):grid.appendChild(b); };
+  add('⚠️','Weather alerts','From the Weather Service',openAlerts); add('🕐','Leave now or wait?','Calmest time to go',openLeaveOrWait); add('🗺️','Open in Maps','Turn-by-turn',openInMaps); add('🌇','Arrive before dark','Sunset there',openBeforeDark); add('📲','Share my ETA','Tell the family',openShareEta); add('🔙','Trip home tonight','Weather + traffic',openTripHome); add('🚘','Driving mode','Big simple screen',openDrivingMode); add('🕯️','Storm checklist','Be ready',openStormReady);
+  if (theme==='thanksgiving'||macyMovedToday(simNow())) add('🦃','All Thanksgiving','By category',()=>openTgHub(),true); };
+if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {openAlerts,openLeaveOrWait,openInMaps,openBeforeDark,openShareEta,openTripHome,openDrivingMode,openStormReady,openTgHub,openSettings:()=>openSettings()});
+
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS,SET,layerNote,noteFor};
 frame();

@@ -413,3 +413,7 @@ d3 from public CDNs.
 ### Holiday round 20 — Thanksgiving travel
 - 🌧️ Storm check along your route, ⏰ best time to leave (Wednesday & Sunday traffic chart), 📍 "are we there yet?" live GPS progress, 🛑 rest stops every ~2 hours, 🌤️ weather when you arrive
 - 🎒 Packing list, 🚙 carpool planner, 🍿 snack & fun timer, ✅ arrived-safe message, 🔙 Sunday traffic warning
+
+### Round 21 — navigating today
+- ⚠️ Official National Weather Service alerts (home, on the way, destination), 🕐 leave now or wait?, 🗺️ open in Apple Maps / Google Maps / Waze, 🌇 arrive before dark, 📲 share my ETA, 🌉 windy-bridge warning, 🔙 tonight's trip home, 🚘 driving mode, 🕯️ storm-ready checklist
+- 🦃 All Thanksgiving activities organized into 7 categories — in Settings, the More menu, and one link in the holiday box
