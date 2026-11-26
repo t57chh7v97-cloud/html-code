@@ -6673,9 +6673,15 @@ function openBestLeave(){ const t=tripInfo(); if (!t) return _needTrip('⏰ Best
 var AWT={watch:null,start:null,pos:null,dest:null,at:0};
 function startAWT(){ const t=tripInfo(); if (!t) return _needTrip('📍 Are we there yet?'); if (!navigator.geolocation){ toast('This device can’t share its location.'); return; }
   AWT.dest={lat:t.lat,lon:t.lon,name:t.name}; AWT.start=null; if (AWT.watch!=null) navigator.geolocation.clearWatch(AWT.watch);
-  AWT.watch=navigator.geolocation.watchPosition(p=>{ const c=[p.coords.latitude,p.coords.longitude]; if (!AWT.start){ AWT.start=c; if (current){ const home=[current.lat,current.lon]; if (gcDist(home[0],home[1],AWT.dest.lat,AWT.dest.lon)>gcDist(c[0],c[1],AWT.dest.lat,AWT.dest.lon)) AWT.start=home; } }   // count from your pin (home), not from wherever tracking was turned on AWT.pos=c; AWT.at=Date.now(); if ($('awtBox')) drawAWT(); tick(true);
-      if (gcDist(c[0],c[1],AWT.dest.lat,AWT.dest.lon)<2){ stopAWT(); try{ fx.celebrate(5000); sfx('fanfare'); }catch(e){} toast(`🎉 You made it to ${AWT.dest.name}! Send an “arrived safe” message?`); setTimeout(openArrived,1500); } },
-    e=>toast('📍 Location is off — turn it on to track the trip.'),{enableHighAccuracy:true,maximumAge:10000,timeout:20000});
+  const onPos=p=>{ const c=[p.coords.latitude,p.coords.longitude]; if (!AWT.start){ AWT.start=c; if (current){ const home=[current.lat,current.lon]; if (gcDist(home[0],home[1],AWT.dest.lat,AWT.dest.lon)>gcDist(c[0],c[1],AWT.dest.lat,AWT.dest.lon)) AWT.start=home; } } AWT.pos=c; AWT.at=Date.now(); if ($('awtBox')) drawAWT(); tick(true);
+      if (gcDist(c[0],c[1],AWT.dest.lat,AWT.dest.lon)<2){ stopAWT(); try{ fx.celebrate(5000); sfx('fanfare'); }catch(e){} toast(`🎉 You made it to ${AWT.dest.name}! Send an “arrived safe” message?`); setTimeout(openArrived,1500); } };
+  const onErr=(e,hi)=>{ const box=$('awtBox');
+      if (e && e.code===1){ if (box) box.innerHTML='🚫 <b>Location is blocked.</b><br><small>iPhone: Settings → Privacy & Security → Location Services → Safari Websites (or Where & When) → “While Using”. Then reload and try again.</small>'; stopAWT(); return; }
+      if (hi){ if (AWT.watch!=null) navigator.geolocation.clearWatch(AWT.watch); AWT.watch=navigator.geolocation.watchPosition(onPos,e2=>onErr(e2,false),{enableHighAccuracy:false,maximumAge:60000,timeout:30000}); if (box&&!AWT.pos) box.innerHTML='📡 Still looking… (switching to a faster, rougher location)'; }
+      else if (box&&!AWT.pos) box.innerHTML='📡 No GPS signal yet — it’ll update as soon as your phone finds you. Make sure Location Services is on.'; };
+  // a quick rough fix right away, then keep watching with GPS
+  navigator.geolocation.getCurrentPosition(onPos,()=>{},{enableHighAccuracy:false,maximumAge:300000,timeout:8000});
+  AWT.watch=navigator.geolocation.watchPosition(onPos,e=>onErr(e,true),{enableHighAccuracy:true,maximumAge:10000,timeout:15000});
   showModal(`<h3>📍 Are we there yet?</h3><div id="awtBox">📡 Finding you…</div><button class="btn" id="awtStop" style="margin-top:8px">Stop tracking</button>`); $('awtStop').onclick=()=>{ stopAWT(); closeModal(); }; }
 function stopAWT(){ if (AWT.watch!=null) navigator.geolocation.clearWatch(AWT.watch); AWT.watch=null; tick(true); }
 function awtState(){ if (!AWT.pos||!AWT.start||!AWT.dest) return null; const tot=Math.max(1,gcDist(AWT.start[0],AWT.start[1],AWT.dest.lat,AWT.dest.lon)), left=gcDist(AWT.pos[0],AWT.pos[1],AWT.dest.lat,AWT.dest.lon), pc=Math.max(0,Math.min(100,Math.round((1-left/tot)*100))), e=roadEstimate(left); return {pc,left,h:e.h,eta:new Date(Date.now()+e.h*3600000)}; }
