@@ -409,3 +409,7 @@ d3 from public CDNs.
 - 🏠 Hosting: oven timeline, guest list, house-prep countdown · 🚗 road trip games (license plates, I spy, 20 questions)
 - 📆 Special days: Native American Heritage Day, Donut Day, Dog Day, Grandparents Day, Siblings Day, World Kindness Week, World Emoji Day, first day of school
 - Fix: search results no longer slide under the buttons
+
+### Holiday round 20 — Thanksgiving travel
+- 🌧️ Storm check along your route, ⏰ best time to leave (Wednesday & Sunday traffic chart), 📍 "are we there yet?" live GPS progress, 🛑 rest stops every ~2 hours, 🌤️ weather when you arrive
+- 🎒 Packing list, 🚙 carpool planner, 🍿 snack & fun timer, ✅ arrived-safe message, 🔙 Sunday traffic warning

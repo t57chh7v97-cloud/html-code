@@ -2162,7 +2162,7 @@ function updateHoliday(now){
 }
 // the holiday box shows the big holiday news; everything else folds into "More" inside the box
 var HS_OPEN=false;
-const HS_PIN=/evPin|pLive|ytBtn|liveDot|LIVE|Happy birthday|shadow is on Earth|[Pp]arade|🎅|Santa|😴|Clocks go|Trick-or-treating|Hanukkah night|Kwanzaa day|tree lighting|[Ff]ireworks|Already 20|Next to celebrate|20\d\d in |Unwrap your presents|April Fools|pranks|elf is hiding|Dinner wave|of Christmas: |Spooky meter|Turkey comes out|Turkey is resting|Carving time|Your town is Santa|Midnight wave|plant trees|Herald Square now|Presents in|Christmas morning!|Kickoff in|Game on now|Parade eve|❌|Happy National|Happy Native|Happy Grandparents|Happy Siblings|Happy World|Kindness Week|Leftovers|Host to-do|School starts/;
+const HS_PIN=/evPin|pLive|ytBtn|liveDot|LIVE|Happy birthday|shadow is on Earth|[Pp]arade|🎅|Santa|😴|Clocks go|Trick-or-treating|Hanukkah night|Kwanzaa day|tree lighting|[Ff]ireworks|Already 20|Next to celebrate|20\d\d in |Unwrap your presents|April Fools|pranks|elf is hiding|Dinner wave|of Christmas: |Spooky meter|Turkey comes out|Turkey is resting|Carving time|Your town is Santa|Midnight wave|plant trees|Herald Square now|Presents in|Christmas morning!|Kickoff in|Game on now|Parade eve|❌|Happy National|Happy Native|Happy Grandparents|Happy Siblings|Happy World|Kindness Week|Leftovers|Host to-do|School starts|Trip \d|Tracking your trip|busiest travel/;
 function stripSplit(ex){ const parts=ex.match(/<small[\s\S]*?<\/small>/g)||[]; const pin=[], more=[]; parts.forEach(x=>{ const links=(x.match(/<a /g)||[]).length, activity=links>=2 && !/LIVE|ytBtn|liveDot/.test(x); (HS_PIN.test(x)&&!activity?pin:more).push(x); });   // lines of activity links (tree · Secret Santa…) always fold away
   if (more.length<2) return parts.join('');
   return pin.join('')+(HS_OPEN?more.join(''):'')+`<small class="hsMore"><a href="#" id="hsMoreBtn">${HS_OPEN?'Show less ▴':`More (${more.length}) ▾`}</a></small>`; }
@@ -6625,6 +6625,112 @@ var _om19=openMore; openMore=function(){ _om19(); const grid=document.querySelec
     add('🏈','Family pick’em','Pick the winners',openPickem); add('📖','Recipe box','Family recipes',()=>openRecipeBox()); add('🔗','Thankful chain','A link a day',openChain); add('🎡','Who hosts next?','Spin the wheel',openHostSpinner); add('🕊️','Turkey pardon','The tradition',openPardon); }
   if (theme==='thanksgiving'||macyMovedToday(simNow())) add('🎉','Watch party','Parade with friends',openWatchParty); };
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {openHandTurkey,openTurkeyCalc,openPickem,openRecipeBox,openChain,openHostSpinner,openPardon,openWatchParty,openRoadTrip,openHostTimeline,openGuestList,openHostPrep,openSpecialDays,openNAHD,openDonutStack,openDogCard,openGrandCard,openSiblings,openKindness,openEmojiGame,openFirstDay,specialDay});
+
+/* =========================================================
+   ROUND 20 — 🚗 Thanksgiving travel: storm alerts along the route · best time to leave · “are we there yet?” GPS bar · rest stops
+   ✅ arrived-safe message · 🎒 packing list · 🚙 carpool planner · 🍿 snack & fun timer · 🔙 Sunday traffic warning · 🌤️ weather when you arrive
+   ========================================================= */
+function tripInfo(){ const T=store.get('trip',{}); if (!T.to || !current || !P.ready) return null; const i=findPlace(T.to); if (i<0) return null;
+  const km=gcDist(current.lat,current.lon,P.lat[i],P.lon[i]), est=roadEstimate(km); return {T,i,name:P.name[i],lat:P.lat[i],lon:P.lon[i],km,est}; }
+const _needTrip=(title)=>{ showModal(`<h3>${title}</h3><p>First tell the travel check where you’re going.</p><button class="btn primary" id="ntGo">🚗 Open travel check</button>`); $('ntGo').onclick=()=>openTravel(); };
+const _mi=k=>useUS()?`${Math.round(k*.6214).toLocaleString()} mi`:`${Math.round(k).toLocaleString()} km`;
+const _hm=h=>{ const H=Math.floor(h), M=Math.round((h-H)*60); return H?`${H} h ${M} min`:`${M} min`; };
+function _along(a,b,f){ const A=llToEcef(a[0],a[1]), B=llToEcef(b[0],b[1]), v=A.clone().lerp(B,f).normalize(); return [Math.asin(v.z)*R2D, Math.atan2(v.y,v.x)*R2D]; }
+function _nearCity(lat,lon,minPop){ let best=-1, bd=1e9; for (let i=0;i<P.n;i++){ if (P.pop[i]<minPop) continue; const d=gcDist(lat,lon,P.lat[i],P.lon[i]); if (d<bd){ bd=d; best=i; } } return best; }
+function _tripDate(T){ return T.date || (()=>{ const y=yr(); return `${y}-11-${String(nthWeekday(y,10,4,4)-1).padStart(2,'0')}`; })(); }
+
+// ---------- 🌧️ storm alerts along the route
+async function openRouteWeather(){ const t=tripInfo(); if (!t) return _needTrip('🌧️ Weather along your route'); const date=_tripDate(t.T), pts=[0,.25,.5,.75,1].map(f=>_along([current.lat,current.lon],[t.lat,t.lon],f));
+  showModal(`<h3>🌧️ Weather along your route</h3><p class="mut">${esc(shortName(current))} → ${esc(t.name)} · ${date}</p><div id="rwOut" class="mut">Checking 5 spots along the way…</div>`);
+  try{ const j=await getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${pts.map(p=>p[0].toFixed(2)).join(',')}&longitude=${pts.map(p=>p[1].toFixed(2)).join(',')}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,wind_gusts_10m_max&wind_speed_unit=mph&timezone=auto&start_date=${date}&end_date=${date}`);
+    const arr=Array.isArray(j)?j:[j]; let worst=0;
+    const rows=arr.map((r,k)=>{ const d=r.daily; if (!d||!d.time||!d.time.length) return ''; const g=d.wind_gusts_10m_max[0], pr=d.precipitation_sum[0], sn=d.snowfall_sum[0], c=d.weather_code[0]; const lvl=(sn>=2||g>=50)?3:(sn>0||g>=35||pr>=15)?2:(pr>=2||g>=25)?1:0; worst=Math.max(worst,lvl);
+      const ci=_nearCity(pts[k][0],pts[k][1],20000), nm=k===0?shortName(current):k===4?t.name:(ci>=0?P.name[ci]:'on the way');
+      return `<div class="gBoardR" style="padding:5px 0"><span>${['🟢','🟡','🟠','🔴'][lvl]} <b>${esc(nm)}</b></span><span>${wmo(c)[0]} ${tC(d.temperature_2m_max[0])}${pr>=1?` · 💧${Math.round(pr)} mm`:''}${sn>0?` · ❄️ ${sn.toFixed(1)} cm`:''} · 💨 gusts ${Math.round(g)} mph</span></div>`; }).join('');
+    $('rwOut').innerHTML=rows?`<div class="advMsg" style="font-size:16px;font-weight:700">${['🟢 Looks fine for driving','🟡 Some rain or breezy — drive carefully','🟠 Rough weather on the way — leave extra time','🔴 Storm warning — think about changing your plans'][worst]}</div>${rows}<p class="mut">Forecast for the day you leave. Always check local alerts before you go.</p>`:'<p class="mut">That date is too far away for a forecast — check back within 2 weeks of your trip.</p>'; }
+  catch(e){ $('rwOut').textContent='The route forecast works on the GitHub site and in the iPhone app.'; } }
+
+// ---------- ⏰ best time to leave (Wednesday before & Sunday after)
+function openBestLeave(){ const t=tripInfo(); if (!t) return _needTrip('⏰ Best time to leave');
+  const chart=(off,label)=>{ const hrs=[]; for (let h=5;h<=22;h++) hrs.push([h,t.est.h*tgTraffic(off,h,off===3?0:3)]); const best=hrs.reduce((a,b)=>b[1]<a[1]?b:a), max=Math.max(...hrs.map(x=>x[1]));
+    return `<h4 style="margin:10px 0 4px">${label}</h4>${hrs.map(([h,v])=>`<div style="display:flex;align-items:center;gap:6px;font-size:12px"><span style="width:44px">${h%12||12} ${h<12?'AM':'PM'}</span><div style="flex:1;height:10px;border-radius:5px;background:rgba(255,255,255,.08)"><div style="height:100%;width:${Math.round(v/max*100)}%;border-radius:5px;background:${v===best[1]?'#3ddc84':v>t.est.h*1.45?'#ff6b6b':'#ffb347'}"></div></div><span style="width:62px;text-align:right">${_hm(v)}</span></div>`).join('')}<p style="margin:4px 0"><b>✅ Best: leave around ${best[0]%12||12} ${best[0]<12?'AM':'PM'}</b> (about ${_hm(best[1])})</p>`; };
+  showModal(`<h3>⏰ Best time to leave</h3><p class="mut">${esc(shortName(current))} → ${esc(t.name)} · ${_mi(t.est.km)} by road · about ${_hm(t.est.h)} with no traffic</p>${chart(-1,'🦃 Wednesday before Thanksgiving')}${chart(3,'🔙 Sunday after Thanksgiving')}<p class="mut">Estimates based on typical holiday traffic patterns.</p>`); }
+
+// ---------- 📍 “are we there yet?” (live GPS progress)
+var AWT={watch:null,start:null,pos:null,dest:null,at:0};
+function startAWT(){ const t=tripInfo(); if (!t) return _needTrip('📍 Are we there yet?'); if (!navigator.geolocation){ toast('This device can’t share its location.'); return; }
+  AWT.dest={lat:t.lat,lon:t.lon,name:t.name}; AWT.start=null; if (AWT.watch!=null) navigator.geolocation.clearWatch(AWT.watch);
+  AWT.watch=navigator.geolocation.watchPosition(p=>{ const c=[p.coords.latitude,p.coords.longitude]; if (!AWT.start) AWT.start=c; AWT.pos=c; AWT.at=Date.now(); if ($('awtBox')) drawAWT(); tick(true);
+      if (gcDist(c[0],c[1],AWT.dest.lat,AWT.dest.lon)<2){ stopAWT(); try{ fx.celebrate(5000); sfx('fanfare'); }catch(e){} toast(`🎉 You made it to ${AWT.dest.name}! Send an “arrived safe” message?`); setTimeout(openArrived,1500); } },
+    e=>toast('📍 Location is off — turn it on to track the trip.'),{enableHighAccuracy:false,maximumAge:30000,timeout:20000});
+  showModal(`<h3>📍 Are we there yet?</h3><div id="awtBox">📡 Finding you…</div><button class="btn" id="awtStop" style="margin-top:8px">Stop tracking</button>`); $('awtStop').onclick=()=>{ stopAWT(); closeModal(); }; }
+function stopAWT(){ if (AWT.watch!=null) navigator.geolocation.clearWatch(AWT.watch); AWT.watch=null; tick(true); }
+function awtState(){ if (!AWT.pos||!AWT.start||!AWT.dest) return null; const tot=Math.max(1,gcDist(AWT.start[0],AWT.start[1],AWT.dest.lat,AWT.dest.lon)), left=gcDist(AWT.pos[0],AWT.pos[1],AWT.dest.lat,AWT.dest.lon), pc=Math.max(0,Math.min(100,Math.round((1-left/tot)*100))), e=roadEstimate(left); return {pc,left,h:e.h,eta:new Date(Date.now()+e.h*3600000)}; }
+function drawAWT(){ const s=awtState(); if (!s) return; $('awtBox').innerHTML=`<div style="font-size:34px;text-align:center">${s.pc<30?'🚗💨':s.pc<70?'🚗🎶':s.pc<95?'🚗👀':'🏠🎉'}</div><div style="height:22px;border-radius:11px;background:rgba(255,255,255,.1);overflow:hidden;position:relative"><div style="height:100%;width:${s.pc}%;background:linear-gradient(90deg,#ffb347,#3ddc84)"></div><span style="position:absolute;inset:0;text-align:center;font-weight:800;line-height:22px">${s.pc}%</span></div>
+  <p style="text-align:center;font-size:17px">${s.pc>=98?'Almost there!':`<b>Not yet!</b> 😄 ${_mi(s.left)} to go · arriving about <b>${_fmtHM(s.eta)}</b>`}</p><p class="mut" style="text-align:center">Heading to ${esc(AWT.dest.name)}</p>`; }
+function awtLine(now){ if (AWT.watch==null) return ''; const s=awtState(); return `<small>📍 ${s?`Trip ${s.pc}% done · ${_mi(s.left)} to go · ETA ${_fmtHM(s.eta)}`:'Tracking your trip…'} · <a href="#" id="r20Awt">open</a></small>`; }
+
+// ---------- 🛑 rest stops every ~2 hours
+function openRestStops(){ const t=tripInfo(); if (!t) return _needTrip('🛑 Rest stop planner'); const n=Math.floor(t.est.h/2), [hh,mm]=(t.T.time||'09:00').split(':').map(Number);
+  const stops=[]; for (let k=1;k<=n;k++){ const f=(k*2)/t.est.h; if (f>=0.95) break; const p=_along([current.lat,current.lon],[t.lat,t.lon],f), ci=_nearCity(p[0],p[1],15000); stops.push({k,ci,at:hh+mm/60+k*2+(k-1)*0.33}); }
+  const fmt=h=>{ h=((h%24)+24)%24; const H=Math.floor(h), M=Math.round((h-H)*60)%60; return `${H%12||12}:${String(M).padStart(2,'0')} ${H<12?'AM':'PM'}`; };
+  showModal(`<h3>🛑 Rest stop planner</h3><p class="mut">${esc(shortName(current))} → ${esc(t.name)} · about ${_hm(t.est.h)} driving · leaving ${fmt(hh+mm/60)}</p>${stops.length?stops.map(s=>`<div class="gBoardR" style="padding:6px 0"><span>🛑 <b>Stop ${s.k}</b> near ${s.ci>=0?esc(P.name[s.ci]):'the highway'}<br><small class="mut">stretch, bathroom, snacks — about 20 min</small></span><b>${fmt(s.at)}</b></div>`).join(''):'<div class="advMsg">🚗 Short trip — under 2 hours, no rest stop needed!</div>'}<p class="mut">Experts suggest a break about every 2 hours to stay alert. Stops are near towns on a straight line — your real route may differ.</p>`); }
+
+// ---------- ✅ arrived safe
+function openArrived(){ const town=current?shortName(current):'', t=tripInfo(), to=t?t.name:'', nick=store.get('nick','');
+  const msgs=[`We made it to ${to||'our destination'} safe and sound! 🦃🚗`,`Arrived! Traffic was ${['not bad','crazy','fine'][Math.floor(Math.random()*3)]} — see you soon ❤️`,`Made it! Happy Thanksgiving! 🦃`];
+  showModal(`<h3>✅ Arrived safe</h3><p class="mut">Tap a message to send it to family.</p>${msgs.map((m,i)=>`<button class="btn" data-am="${i}" style="display:block;width:100%;text-align:left;margin-top:6px">${esc(m)}</button>`).join('')}`);
+  document.querySelectorAll('[data-am]').forEach(b=>b.onclick=()=>_share19(msgs[+b.dataset.am]+(nick?` — ${nick}`:''),'Arrived safe')); }
+
+// ---------- 🎒 packing list
+var PACK=['📱 Phone chargers & cables','🔋 Portable battery','🛌 Pajamas & toothbrush','👕 Outfit for Thanksgiving dinner','🧥 Warm jacket, hat & gloves','💊 Any medicine you need','🥧 The dish you’re bringing!','🎁 A small host gift','🎮 Games, books or tablet for the car','🍪 Car snacks & water','🗺️ Address saved in your maps app','🧻 Tissues & wipes'];
+function openPacking(){ const y=yr(), K=store.get('packing',{}), done=K[y]||[], extra=store.get('packExtra',[]), all=[...PACK,...extra];
+  showModal(`<h3>🎒 Thanksgiving trip packing</h3><p class="mut">${done.length}/${all.length} packed</p>${all.map((p,i)=>`<label class="mopt${done.includes(i)?' on':''}" style="display:flex;gap:8px;padding:5px 0"><input type="checkbox" data-pk2="${i}" ${done.includes(i)?'checked':''}><span>${esc(p)}</span></label>`).join('')}<div style="display:flex;gap:6px;margin-top:6px"><input id="pkN" maxlength="40" placeholder="Add something"><button class="btn primary" id="pkAdd">Add</button></div>`);
+  document.querySelectorAll('[data-pk2]').forEach(b=>b.onchange=()=>{ const i=+b.dataset.pk2; K[y]=b.checked?[...new Set([...done,i])]:done.filter(x=>x!==i); store.set('packing',K); if (K[y].length===all.length) try{ fx.celebrate(2500); toast('🎒 All packed — have a great trip!'); }catch(e){} openPacking(); });
+  $('pkAdd').onclick=()=>{ const v=$('pkN').value.trim(); if (!v) return; extra.push('📌 '+v); store.set('packExtra',extra); openPacking(); }; }
+
+// ---------- 🚙 carpool planner
+function openCarpool(){ const C=store.get('carpool',[]);
+  showModal(`<h3>🚙 Carpool planner</h3>${C.length?C.map((c,i)=>{ const left=(c.seats||4)-c.riders.length; return `<div class="advMsg" style="margin-top:6px"><b>🚗 ${esc(c.driver)}</b> · ${c.seats} seats · leaves ${esc(c.time||'?')} <button class="btn mini" data-cd="${i}" style="float:right">✕</button><br>${c.riders.map((r,k)=>`<span class="btn mini" style="margin:3px 3px 0 0">${esc(r)} <a href="#" data-cr="${i}|${k}">✕</a></span>`).join('')}${left>0?`<div style="display:flex;gap:6px;margin-top:5px"><input data-cn="${i}" maxlength="20" placeholder="Add rider (${left} seat${left===1?'':'s'} left)"><button class="btn mini" data-ca="${i}">Add</button></div>`:'<small>🚫 Full</small>'}</div>`; }).join(''):'<p class="mut">Add a car for each driver.</p>'}
+    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><input id="cpD" maxlength="20" placeholder="Driver" style="flex:1"><input id="cpS" type="number" min="1" max="8" value="4" style="width:60px" title="Seats for riders"><input id="cpT" type="time" value="09:00" style="width:110px"><button class="btn primary" id="cpAdd">Add car</button></div>${C.length?'<button class="btn" id="cpShare" style="margin-top:6px">📤 Share the plan</button>':''}`);
+  const save=()=>{ store.set('carpool',C); openCarpool(); };
+  $('cpAdd').onclick=()=>{ const d=$('cpD').value.trim(); if (!d) return; C.push({driver:d,seats:Math.max(1,+$('cpS').value||4),time:$('cpT').value,riders:[]}); save(); };
+  document.querySelectorAll('[data-cd]').forEach(b=>b.onclick=()=>{ C.splice(+b.dataset.cd,1); save(); });
+  document.querySelectorAll('[data-ca]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.ca, v=document.querySelector(`[data-cn="${i}"]`).value.trim(); if (v){ C[i].riders.push(v); save(); } });
+  document.querySelectorAll('[data-cr]').forEach(a=>a.onclick=e=>{ e.preventDefault(); const [i,k]=a.dataset.cr.split('|').map(Number); C[i].riders.splice(k,1); save(); });
+  if ($('cpShare')) $('cpShare').onclick=()=>_share19('🚙 Thanksgiving carpool\n'+C.map(c=>`🚗 ${c.driver} (leaves ${c.time||'?'}): ${c.riders.join(', ')||'no riders yet'}`).join('\n'),'Carpool'); }
+
+// ---------- 🍿 snack & fun timer
+var FUN=['🍿 Snack time!','🚘 License plate hunt','🎵 Sing-along — everyone picks a song','👀 I spy round','🧃 Drink & stretch break','❓ 20 questions','🎬 Movie or show time','😴 Quiet time / nap','🍬 Treat time!','🗺️ Guess how many miles are left'];
+function openFunTimer(){ const t=tripInfo(); const hrs=t?t.est.h:3, [hh,mm]=((t&&t.T.time)||'09:00').split(':').map(Number), step=0.75, n=Math.max(2,Math.floor(hrs/step));
+  const fmt=h=>{ h=((h%24)+24)%24; const H=Math.floor(h), M=Math.round((h-H)*60)%60; return `${H%12||12}:${String(M).padStart(2,'0')} ${H<12?'AM':'PM'}`; };
+  showModal(`<h3>🍿 Snack & fun timer</h3><p class="mut">${t?`About ${_hm(hrs)} to ${esc(t.name)}. `:''}Something fun every 45 minutes makes the drive go faster!</p>${Array.from({length:n},(_,k)=>`<div class="gBoardR" style="padding:5px 0"><b>${fmt(hh+mm/60+(k+1)*step)}</b><span>${FUN[k%FUN.length]}</span></div>`).join('')}<button class="btn primary" id="ftOn" style="margin-top:8px">${store.get('funTimer',false)?'🔕 Turn off reminders':'🔔 Remind me during the drive'}</button>`);
+  $('ftOn').onclick=()=>{ const on=!store.get('funTimer',false); store.set('funTimer',on); store.set('funStart',on?Date.now():0); toast(on?'🔔 You’ll get a fun reminder every 45 minutes!':'🔕 Reminders off'); openFunTimer(); }; }
+var FT_LAST=-1; function funTick(){ if (!store.get('funTimer',false)) return; const s=store.get('funStart',0), k=Math.floor((Date.now()-s)/(45*60000)); if (k>=1 && k!==FT_LAST){ FT_LAST=k; toast(`⏰ ${FUN[(k-1)%FUN.length]}`); try{ sfx('ding'); }catch(e){} } if (Date.now()-s>12*3600000) store.set('funTimer',false); }
+
+// ---------- 🔙 Sunday traffic warning + 🌤️ weather when you arrive
+function sundayLine(now){ if (!current || current.cc!=='US') return ''; const lp=localParts(now,current), tg=_tgDay(lp.year); if (lp.month!==10) return ''; const d=lp.day-tg; if (d!==2 && d!==3) return '';
+  return `<small>🔙 ${d===3?'Today':'Tomorrow'} (Sunday) is one of the busiest travel days of the year — leave before 10 AM or after 8 PM to dodge the worst traffic · <a href="#" id="r20Best">best time</a></small>`; }
+async function openArriveWeather(){ const t=tripInfo(); if (!t) return _needTrip('🌤️ Weather when you arrive'); const date=_tripDate(t.T);
+  showModal(`<h3>🌤️ Weather in ${esc(t.name)}</h3><p class="mut">On ${date}, when you arrive</p><div id="awOut" class="mut">Checking…</div>`);
+  try{ const j=await getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${t.lat.toFixed(3)}&longitude=${t.lon.toFixed(3)}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_gusts_10m_max&wind_speed_unit=mph&timezone=auto&forecast_days=16`); const d=j.daily, k=d.time.indexOf(date);
+    if (k<0){ $('awOut').textContent='Too far away for a forecast — check back within 2 weeks of your trip.'; return; } const w=wmo(d.weather_code[k]);
+    $('awOut').innerHTML=`<div style="font-size:54px;text-align:center">${w[0]}</div><p style="text-align:center;font-size:18px"><b>${w[1]}</b> · ${tC(d.temperature_2m_max[k])} / ${tC(d.temperature_2m_min[k])}</p><p style="text-align:center">☔ ${d.precipitation_probability_max[k]??'—'}% chance of rain · 💨 gusts ${Math.round(d.wind_gusts_10m_max[k])} mph</p><div class="advMsg">${d.temperature_2m_min[k]<2?'🧥 Pack your warmest coat — it’ll be cold!':d.precipitation_probability_max[k]>50?'☔ Bring an umbrella!':'😎 Looks nice for a visit!'}</div>`; }
+  catch(e){ $('awOut').textContent='The forecast works on the GitHub site and in the iPhone app.'; } }
+
+// ---------- wiring
+var _lt20=layersTick; layersTick=function(now,M){ _lt20(now,M); funTick(); };
+var _ll20=layerLines; layerLines=function(now){ let h=_ll20(now); if (!current) return h; h+=awtLine(now)+sundayLine(now);
+  if (theme==='thanksgiving' || (current.cc==='US' && localParts(now,current).month===10 && localParts(now,current).day<=_tgDay(localParts(now,current).year)+4)) h+=`<small>🚗 Trip tools: 🌧️ <a href="#" id="r20Rw">route weather</a> · ⏰ <a href="#" id="r20Best2">best time to leave</a> · 📍 <a href="#" id="r20Awt2">are we there yet?</a> · 🛑 <a href="#" id="r20Rest">rest stops</a> · 🌤️ <a href="#" id="r20Aw">weather there</a></small><small>🎒 <a href="#" id="r20Pack">Packing list</a> · 🚙 <a href="#" id="r20Car">carpool</a> · 🍿 <a href="#" id="r20Fun">snack & fun timer</a> · ✅ <a href="#" id="r20Arr">arrived safe</a></small>`;
+  return h; };
+document.addEventListener('click',e=>{ const a=e.target.closest('a,button'); if (!a) return;
+  const map={r20Rw:openRouteWeather,r20Best:openBestLeave,r20Best2:openBestLeave,r20Awt:()=>{ showModal(`<h3>📍 Are we there yet?</h3><div id="awtBox"></div><button class="btn" id="awtStop" style="margin-top:8px">Stop tracking</button>`); drawAWT(); $('awtStop').onclick=()=>{ stopAWT(); closeModal(); }; },r20Awt2:startAWT,r20Rest:openRestStops,r20Aw:openArriveWeather,r20Pack:openPacking,r20Car:openCarpool,r20Fun:openFunTimer,r20Arr:openArrived};
+  if (map[a.id]){ e.preventDefault(); map[a.id](); } });
+var _om20=openMore; openMore=function(){ _om20(); const grid=document.querySelector('#xBody .moreGrid'); if (!grid) return;
+  const add=(icon,t,d,fn)=>{ const b=document.createElement('button'); b.className='moreItem'; b.innerHTML=`<span class="mi">${icon}</span><b>${t}</b><small>${d}</small>`; b.onclick=fn; grid.appendChild(b); };
+  add('🌧️','Route weather','Storms on the way',openRouteWeather); add('⏰','Best time to leave','Beat the traffic',openBestLeave); add('📍','Are we there yet?','Live trip progress',startAWT); add('🛑','Rest stops','Every 2 hours',openRestStops);
+  add('🌤️','Weather there','When you arrive',openArriveWeather); add('🎒','Packing list','Trip checklist',openPacking); add('🚙','Carpool','Who rides with who',openCarpool); add('🍿','Snack & fun timer','Make the drive fun',openFunTimer); add('✅','Arrived safe','Tell the family',openArrived); };
+if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) Object.assign(window.__x9||{}, {openRouteWeather,openBestLeave,startAWT,openRestStops,openArrived,openPacking,openCarpool,openFunTimer,openArriveWeather,tripInfo});
 
 var _zAxis=new THREE.Vector3(0,0,1); EXTRAS_READY=true;
 if (/^localhost$|^127\.0\.0\.1$/.test(location.hostname)) window.__x={ISS,issNextPass,issAt,sunAt,sunState,get current(){return current;},GAME,LAYERS,SET,layerNote,noteFor};
